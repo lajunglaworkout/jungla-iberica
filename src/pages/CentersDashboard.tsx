@@ -1,9 +1,7 @@
-// En: src/pages/CentersDashboard.tsx
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
-import type { Center } from '../types/center'; // <-- CORRECCIÓN: Se añade "type" aquí
+import type { Center } from '../types/center';
 
 export const CentersDashboard: React.FC = () => {
   const { user } = useSession();
@@ -40,7 +38,7 @@ export const CentersDashboard: React.FC = () => {
   return (
     <div>
       <h1>Panel de Centros</h1>
-      <p>Bienvenido, <strong>{user?.name}</strong>. Tu rol es: <strong>{user?.role}</strong>.</p>
+      <p>Bienvenido, <strong>{user?.email}</strong>.</p>
       
       {centers.length > 0 ? (
         <ul>
