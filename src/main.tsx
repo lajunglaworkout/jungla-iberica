@@ -1,10 +1,7 @@
-// src/main.tsx - ACTUALIZADO
-
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { SessionProvider } from './contexts/SessionContext.tsx' // <-- CAMBIO
+import { SessionProvider } from './contexts/SessionContext.tsx'
 import { DataProvider } from './contexts/DataContext.tsx'
 
 import { MantineProvider, createTheme } from '@mantine/core';
@@ -23,10 +20,10 @@ const theme = createTheme({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <MantineProvider theme={theme}>
-    <SessionProvider> {/* <-- CAMBIO */}
+    <SessionProvider>
       <DataProvider>
         <App />
       </DataProvider>
-    </SessionProvider> {/* <-- CAMBIO */}
+    </SessionProvider>
   </MantineProvider>
 );
