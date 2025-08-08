@@ -1,6 +1,4 @@
-// ARCHIVO 1: src/contexts/DataContext.tsx - VERSIÓN FINAL
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Center, Employee } from '../types/database';
@@ -40,6 +38,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     };
+    
     fetchData();
   }, []);
 
