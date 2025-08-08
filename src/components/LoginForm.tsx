@@ -17,10 +17,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [success, setSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   
+  // Detectar si es móvil
+  const [isMobile, setIsMobile] = useState(false);
+  
   // Animación de entrada
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
     setIsVisible(true);
+    // Detectar móvil
+    setIsMobile(window.innerWidth <= 768);
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const validateForm = () => {
@@ -122,12 +134,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   // Pantalla de éxito
   if (success) {
     return (
-      <div style={styles.successContainer}>
-        <div style={styles.successCard}>
+      <div style={isMobile ? styles.mobileSuccessContainer : styles.successContainer}>
+        <div style={isMobile ? styles.mobileSuccessCard : styles.successCard}>
           <div style={styles.successIcon}>
-            <CheckCircle size={48} style={{ color: '#10b981' }} />
+            <CheckCircle size={isMobile ? 40 : 48} style={{ color: '#10b981' }} />
           </div>
-          <h2 style={styles.successTitle}>¡Bienvenido a La Jungla!</h2>
+          <h2 style={isMobile ? styles.mobileSuccessTitle : styles.successTitle}>¡Bienvenido a La Jungla!</h2>
           <p style={styles.successText}>Acceso exitoso. Cargando tu dashboard...</p>
           <div style={styles.loadingSpinner}></div>
         </div>
@@ -142,66 +154,85 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       
       <div style={{
         ...styles.mainCard,
+        ...(isMobile ? styles.mobileMainCard : {}),
         transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
         opacity: isVisible ? 1 : 0,
       }}>
-        <div style={styles.cardContainer}>
-          {/* Panel Izquierdo - Branding */}
-          <div style={styles.leftPanel}>
-            {/* Pattern decorativo */}
-            <div style={styles.decorativePattern}>
-              <div style={styles.circle1}></div>
-              <div style={styles.circle2}></div>
-              <div style={styles.circle3}></div>
-            </div>
-            
-            <div style={styles.brandingContent}>
-              {/* Logo */}
-              <div style={styles.logoContainer}>
-                <div style={styles.logoIcon}>
-                  <Dumbbell size={32} color="white" />
-                </div>
-                <div style={styles.logoText}>
-                  <h1 style={styles.logoTitle}>LA JUNGLA</h1>
-                  <p style={styles.logoSubtitle}>WORKOUT</p>
-                </div>
+        <div style={isMobile ? styles.mobileCardContainer : styles.cardContainer}>
+          {/* Panel Izquierdo - Solo visible en desktop */}
+          {!isMobile && (
+            <div style={styles.leftPanel}>
+              {/* Pattern decorativo */}
+              <div style={styles.decorativePattern}>
+                <div style={styles.circle1}></div>
+                <div style={styles.circle2}></div>
+                <div style={styles.circle3}></div>
               </div>
               
-              <h2 style={styles.welcomeTitle}>
-                Bienvenido de vuelta
-              </h2>
-              <p style={styles.welcomeText}>
-                Accede a tu panel de control para gestionar tu centro fitness. 
-                Controla todo desde un solo lugar.
-              </p>
-              
-              <div style={styles.featuresList}>
-                <div style={styles.featureItem}>
-                  <CheckCircle size={20} style={styles.featureIcon} />
-                  <span>Gestión completa de centros</span>
+              <div style={styles.brandingContent}>
+                {/* Logo */}
+                <div style={styles.logoContainer}>
+                  <div style={styles.logoIcon}>
+                    <Dumbbell size={32} color="white" />
+                  </div>
+                  <div style={styles.logoText}>
+                    <h1 style={styles.logoTitle}>LA JUNGLA</h1>
+                    <p style={styles.logoSubtitle}>WORKOUT</p>
+                  </div>
                 </div>
-                <div style={styles.featureItem}>
-                  <CheckCircle size={20} style={styles.featureIcon} />
-                  <span>Control de empleados y clientes</span>
-                </div>
-                <div style={styles.featureItem}>
-                  <CheckCircle size={20} style={styles.featureIcon} />
-                  <span>Reportes y analytics en tiempo real</span>
+                
+                <h2 style={styles.welcomeTitle}>
+                  Bienvenido de vuelta
+                </h2>
+                <p style={styles.welcomeText}>
+                  Accede a tu panel de control para gestionar tu centro fitness. 
+                  Controla todo desde un solo lugar.
+                </p>
+                
+                <div style={styles.featuresList}>
+                  <div style={styles.featureItem}>
+                    <CheckCircle size={20} style={styles.featureIcon} />
+                    <span>Gestión completa de centros</span>
+                  </div>
+                  <div style={styles.featureItem}>
+                    <CheckCircle size={20} style={styles.featureIcon} />
+                    <span>Control de empleados y clientes</span>
+                  </div>
+                  <div style={styles.featureItem}>
+                    <CheckCircle size={20} style={styles.featureIcon} />
+                    <span>Reportes y analytics en tiempo real</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Panel Derecho - Formulario */}
-          <div style={styles.rightPanel}>
-            <div style={styles.formContainer}>
+          {/* Panel del Formulario - Responsive */}
+          <div style={isMobile ? styles.mobileRightPanel : styles.rightPanel}>
+            <div style={isMobile ? styles.mobileFormContainer : styles.formContainer}>
+              
+              {/* Logo móvil - Solo visible en móvil */}
+              {isMobile && (
+                <div style={styles.mobileLogoContainer}>
+                  <div style={styles.mobileLogoIcon}>
+                    <Dumbbell size={28} color="#059669" />
+                  </div>
+                  <div style={styles.mobileLogoText}>
+                    <h1 style={styles.mobileLogoTitle}>LA JUNGLA</h1>
+                    <p style={styles.mobileLogoSubtitle}>WORKOUT</p>
+                  </div>
+                </div>
+              )}
+              
               <div style={styles.formHeader}>
-                <h3 style={styles.formTitle}>Iniciar Sesión</h3>
-                <p style={styles.formSubtitle}>Ingresa tus credenciales para acceder</p>
+                <h3 style={isMobile ? styles.mobileFormTitle : styles.formTitle}>Iniciar Sesión</h3>
+                <p style={isMobile ? styles.mobileFormSubtitle : styles.formSubtitle}>
+                  Ingresa tus credenciales para acceder
+                </p>
               </div>
 
               {error && (
-                <div style={styles.errorAlert}>
+                <div style={isMobile ? styles.mobileErrorAlert : styles.errorAlert}>
                   <AlertCircle size={20} style={styles.errorIcon} />
                   <span style={styles.errorText}>{error}</span>
                 </div>
@@ -224,7 +255,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                       value={formData.email}
                       onChange={handleInputChange}
                       style={{
-                        ...styles.input,
+                        ...(isMobile ? styles.mobileInput : styles.input),
                         ...(validationErrors.email ? styles.inputError : {})
                       }}
                       placeholder="tu@email.com"
@@ -251,8 +282,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                       value={formData.password}
                       onChange={handleInputChange}
                       style={{
-                        ...styles.input,
-                        paddingRight: '40px',
+                        ...(isMobile ? styles.mobileInput : styles.input),
+                        paddingRight: '50px',
                         ...(validationErrors.password ? styles.inputError : {})
                       }}
                       placeholder="••••••••"
@@ -275,7 +306,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 </div>
 
                 {/* Remember Me & Forgot Password */}
-                <div style={styles.formOptions}>
+                <div style={isMobile ? styles.mobileFormOptions : styles.formOptions}>
                   <div style={styles.rememberMe}>
                     <input
                       id="remember-me"
@@ -303,7 +334,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   onClick={handleSubmit}
                   disabled={loading}
                   style={{
-                    ...styles.submitButton,
+                    ...(isMobile ? styles.mobileSubmitButton : styles.submitButton),
                     ...(loading ? styles.submitButtonDisabled : {})
                   }}
                 >
@@ -320,7 +351,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
               {/* Footer */}
               <div style={styles.formFooter}>
-                <p style={styles.footerText}>
+                <p style={isMobile ? styles.mobileFooterText : styles.footerText}>
                   ¿Problemas para acceder?{' '}
                   <button 
                     style={styles.supportLink}
@@ -340,7 +371,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   );
 };
 
-// Estilos CSS en JS
+// Estilos CSS en JS con responsive design
 const styles = {
   container: {
     minHeight: '100vh',
@@ -366,11 +397,24 @@ const styles = {
     width: '100%',
     transition: 'all 1s ease-out',
   },
+  mobileMainCard: {
+    margin: '0',
+    borderRadius: '0',
+    minHeight: '100vh',
+    maxWidth: 'none',
+    boxShadow: 'none',
+  },
   cardContainer: {
     display: 'flex',
     flexDirection: 'row' as const,
     minHeight: '600px',
   },
+  mobileCardContainer: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    minHeight: '100vh',
+  },
+  // Panel izquierdo (solo desktop)
   leftPanel: {
     flex: '1',
     background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
@@ -465,14 +509,56 @@ const styles = {
   featureIcon: {
     marginRight: '12px',
   },
+  // Panel derecho responsive
   rightPanel: {
     flex: '1',
     padding: '48px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  mobileRightPanel: {
+    flex: '1',
+    padding: '24px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   formContainer: {
     maxWidth: '384px',
     margin: '0 auto',
+    width: '100%',
   },
+  mobileFormContainer: {
+    width: '100%',
+    maxWidth: '320px',
+  },
+  // Logo móvil
+  mobileLogoContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '32px',
+  },
+  mobileLogoIcon: {
+    background: 'rgba(5, 150, 105, 0.1)',
+    padding: '12px',
+    borderRadius: '12px',
+    marginRight: '12px',
+  },
+  mobileLogoText: {},
+  mobileLogoTitle: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    margin: 0,
+    color: '#059669',
+  },
+  mobileLogoSubtitle: {
+    color: '#6b7280',
+    fontWeight: '500',
+    margin: 0,
+    fontSize: '14px',
+  },
+  // Headers responsive
   formHeader: {
     textAlign: 'center' as const,
     marginBottom: '32px',
@@ -483,15 +569,35 @@ const styles = {
     color: '#1f2937',
     marginBottom: '8px',
   },
+  mobileFormTitle: {
+    fontSize: '22px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: '8px',
+  },
   formSubtitle: {
     color: '#6b7280',
   },
+  mobileFormSubtitle: {
+    color: '#6b7280',
+    fontSize: '14px',
+  },
+  // Alertas responsive
   errorAlert: {
     background: '#fef2f2',
     border: '1px solid #fecaca',
     borderRadius: '8px',
     padding: '16px',
     marginBottom: '24px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  mobileErrorAlert: {
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '8px',
+    padding: '12px',
+    marginBottom: '20px',
     display: 'flex',
     alignItems: 'center',
   },
@@ -503,10 +609,11 @@ const styles = {
     color: '#b91c1c',
     fontSize: '14px',
   },
+  // Campos de formulario
   formFields: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '24px',
+    gap: '20px',
   },
   fieldContainer: {},
   fieldLabel: {
@@ -543,6 +650,20 @@ const styles = {
     outline: 'none',
     boxSizing: 'border-box' as const,
   },
+  mobileInput: {
+    width: '100%',
+    paddingLeft: '40px',
+    paddingRight: '12px',
+    paddingTop: '14px',
+    paddingBottom: '14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '16px', // Evita zoom en iOS
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+    transition: 'all 0.2s',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  },
   inputError: {
     borderColor: '#fca5a5',
   },
@@ -554,16 +675,23 @@ const styles = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    padding: 0,
+    padding: '8px',
   },
   validationError: {
     marginTop: '4px',
     fontSize: '14px',
     color: '#dc2626',
   },
+  // Opciones de formulario responsive
   formOptions: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mobileFormOptions: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px',
     alignItems: 'center',
   },
   rememberMe: {
@@ -588,6 +716,7 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '500',
   },
+  // Botones responsive
   submitButton: {
     width: '100%',
     display: 'flex',
@@ -603,6 +732,22 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s',
     boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  },
+  mobileSubmitButton: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '16px',
+    background: 'linear-gradient(90deg, #059669 0%, #0d9488 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.1)',
   },
   submitButtonDisabled: {
     opacity: 0.5,
@@ -621,12 +766,17 @@ const styles = {
     animation: 'spin 1s linear infinite',
     marginRight: '8px',
   },
+  // Footer responsive
   formFooter: {
-    marginTop: '32px',
+    marginTop: '24px',
     textAlign: 'center' as const,
   },
   footerText: {
     fontSize: '14px',
+    color: '#6b7280',
+  },
+  mobileFooterText: {
+    fontSize: '13px',
     color: '#6b7280',
   },
   supportLink: {
@@ -635,8 +785,9 @@ const styles = {
     border: 'none',
     cursor: 'pointer',
     fontWeight: '500',
-    fontSize: '14px',
+    fontSize: 'inherit',
   },
+  // Pantallas de éxito responsive
   successContainer: {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f766e 100%)',
@@ -645,6 +796,14 @@ const styles = {
     justifyContent: 'center',
     padding: '16px',
   },
+  mobileSuccessContainer: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f766e 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  },
   successCard: {
     background: 'white',
     borderRadius: '16px',
@@ -652,6 +811,16 @@ const styles = {
     padding: '32px',
     maxWidth: '384px',
     width: '100%',
+    textAlign: 'center' as const,
+    animation: 'bounce 1s ease-in-out',
+  },
+  mobileSuccessCard: {
+    background: 'white',
+    borderRadius: '16px',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    padding: '24px',
+    width: '100%',
+    maxWidth: '300px',
     textAlign: 'center' as const,
     animation: 'bounce 1s ease-in-out',
   },
@@ -673,9 +842,16 @@ const styles = {
     color: '#1f2937',
     marginBottom: '16px',
   },
+  mobileSuccessTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: '16px',
+  },
   successText: {
     color: '#6b7280',
     marginBottom: '16px',
+    fontSize: '14px',
   },
   loadingSpinner: {
     width: '24px',
@@ -714,9 +890,31 @@ styleSheet.innerText = `
     }
   }
   
-  @media (max-width: 1024px) {
-    .cardContainer {
-      flex-direction: column;
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+  }
+  
+  /* Fix para evitar zoom en iOS */
+  input[type="email"],
+  input[type="password"],
+  input[type="text"] {
+    font-size: 16px !important;
+  }
+  
+  /* Mejoras de accesibilidad táctil */
+  @media (max-width: 768px) {
+    button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    input {
+      min-height: 44px;
     }
   }
 `;
