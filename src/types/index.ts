@@ -245,4 +245,6 @@ export interface MarketingCampaign {
   budget: number;
   spent: number;
   roi: number;
+  // Sistema de roles avanzado para Jungla Ibérica
+export * from './roles';
 }
