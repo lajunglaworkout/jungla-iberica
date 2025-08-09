@@ -1,6 +1,7 @@
-// src/components/RoleDashboard.tsx - SISTEMA COMPLETO SIN ERRORES TypeScript
+// src/components/RoleDashboard.tsx - SISTEMA COMPLETO CON MARKETING INTEGRADO
 import React, { useState, useEffect } from 'react';
 import { 
+  Video, // <-- AGREGADO para sistema marketing
   Bell, Search, Settings, LogOut, TrendingUp, TrendingDown, 
   Crown, Shield, Users, UserCheck, Briefcase, Building2, 
   Dumbbell, Heart, Menu, Home, BarChart3, Globe, Plus, 
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
+import MarketingContentSystem from './MarketingContentSystem'; // <-- AGREGADO
 
 // Interfaces
 interface Meeting {
@@ -1384,6 +1386,7 @@ const ExecutiveDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showStrategicMeeting, setShowStrategicMeeting] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showMarketingSystem, setShowMarketingSystem] = useState(false); // <-- AGREGADO
 
   useEffect(() => {
     console.log('🧠 ExecutiveDashboard: useEffect ejecutado');
@@ -1865,7 +1868,7 @@ const ExecutiveDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Acciones rápidas */}
+      {/* Acciones rápidas - ACTUALIZADO CON MARKETING */}
       <div style={{
         display: 'flex',
         gap: '16px',
@@ -1890,6 +1893,27 @@ const ExecutiveDashboard: React.FC = () => {
         >
           <Calendar style={{ height: '20px', width: '20px' }} />
           Nueva Reunión Estratégica
+        </button>
+        
+        {/* NUEVO BOTÓN MARKETING */}
+        <button
+          onClick={() => setShowMarketingSystem(true)}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#ec4899',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Video style={{ height: '20px', width: '20px' }} />
+          Sistema Marketing
         </button>
         
         <button
@@ -1933,13 +1957,23 @@ const ExecutiveDashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* Modales - SISTEMA ESTRATÉGICO INTEGRADO */}
+      {/* Modales - SISTEMA ESTRATÉGICO INTEGRADO CON MARKETING */}
       <StrategicMeetingSystem
         isOpen={showStrategicMeeting}
         onClose={() => setShowStrategicMeeting(false)}
         onComplete={(meetingData) => {
           handleMeetingCreated(meetingData);
           setShowStrategicMeeting(false);
+        }}
+      />
+      
+      {/* NUEVO MODAL MARKETING */}
+      <MarketingContentSystem
+        isOpen={showMarketingSystem}
+        onClose={() => setShowMarketingSystem(false)}
+        onComplete={(data) => {
+          console.log('Marketing content created:', data);
+          setShowMarketingSystem(false);
         }}
       />
       
