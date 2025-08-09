@@ -1,4 +1,4 @@
-// src/components/RoleDashboard.tsx - CORRECCIÓN DE INTEGRACIÓN
+// src/components/RoleDashboard.tsx - VERSIÓN COMPLETA QUE FUNCIONA
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, Search, Settings, LogOut, TrendingUp, TrendingDown, 
@@ -13,10 +13,7 @@ import {
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 
-// Importar el dashboard inteligente
-// import IntelligentExecutiveDashboard from './IntelligentExecutiveDashboard';
-
-// Por ahora, crearemos una versión inline del dashboard ejecutivo para evitar problemas de import
+// Dashboard ejecutivo completo
 const ExecutiveDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [meetings, setMeetings] = useState<any[]>([]);
