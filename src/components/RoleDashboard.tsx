@@ -1,4 +1,4 @@
-// src/components/RoleDashboard.tsx - SISTEMA COMPLETO CON TODAS LAS FUNCIONALIDADES
+// src/components/RoleDashboard.tsx - SISTEMA COMPLETO SIN ERRORES TypeScript
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, Search, Settings, LogOut, TrendingUp, TrendingDown, 
@@ -8,12 +8,12 @@ import {
   Phone, MapPin, Camera, Save, UserPlus, Edit2, Trash2, Loader2,
   Calendar, Clock, Target, Flag, MessageSquare, FileText, Send,
   AlertCircle, CheckCircle, PlayCircle, PauseCircle, ChevronDown,
-  Brain, Zap
+  Brain, Zap, ChevronRight, ArrowLeft, DollarSign
 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 
-// Interfaces corregidas
+// Interfaces
 interface Meeting {
   id?: string;
   titulo: string;
@@ -68,6 +68,17 @@ interface Alert {
   nivel_urgencia?: string;
 }
 
+interface MeetingData {
+  type: string;
+  department: string;
+  date: string;
+  participants: string[];
+  metrics: Record<string, string>;
+  objectives: Array<{id: number; title: string; status: string}>;
+  tasks: Array<{id: number; title: string; assignedTo: string; deadline: string; priority: string}>;
+  notes: string;
+}
+
 // Equipo directivo
 const LEADERSHIP_TEAM = [
   { id: 'carlossuarezparra@gmail.com', name: 'Carlos Suárez Parra', role: 'CEO' },
@@ -89,79 +100,836 @@ const PRIORITY_LEVELS = [
   { value: 'critica', label: 'Crítica', color: '#dc2626' }
 ];
 
-// Modal para crear reunión
-const CreateMeetingModal: React.FC<{
+// SISTEMA DE REUNIONES ESTRATÉGICAS
+const StrategicMeetingSystem: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onSave: (meeting: Meeting) => void;
-}> = ({ isOpen, onClose, onSave }) => {
-  const { employee } = useSession();
-  const [formData, setFormData] = useState<Meeting>({
-    titulo: '',
-    descripcion: '',
-    fecha: new Date().toISOString().split('T')[0],
-    hora_inicio: '09:00',
-    hora_fin: '10:00',
-    participantes: [],
-    tipo: 'operativa',
-    estado: 'programada',
-    creado_por: employee?.email || ''
+  onComplete: (meetingData: any) => void;
+}> = ({ isOpen, onClose, onComplete }) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [meetingData, setMeetingData] = useState<MeetingData>({
+    type: '',
+    department: '',
+    date: '',
+    participants: [],
+    metrics: {},
+    objectives: [],
+    tasks: [],
+    notes: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
+  const totalSteps = 6;
+
+  // Configuraciones
+  const MEETING_TYPES_CONFIG: Record<string, any> = {
+    semanal: {
+      label: 'Reunión Semanal',
+      description: 'Seguimiento operativo y táctico',
+      duration: '1-2 horas',
+      frequency: 'Cada lunes',
+      color: '#3b82f6',
+      icon: Clock
+    },
+    mensual: {
+      label: 'Reunión Mensual',
+      description: 'Revisión estratégica y planificación',
+      duration: '2-3 horas',
+      frequency: 'Primer lunes del mes',
+      color: '#8b5cf6',
+      icon: Calendar
+    }
+  };
+
+  const DEPARTMENTS = [
+    { id: 'direccion', name: 'Dirección', icon: Building2, color: '#1f2937' },
+    { id: 'marketing', name: 'Marketing', icon: Globe, color: '#3b82f6' },
+    { id: 'rrhh', name: 'RRHH', icon: Users, color: '#10b981' },
+    { id: 'operaciones', name: 'Operaciones', icon: Briefcase, color: '#f59e0b' },
+    { id: 'wellness', name: 'Wellness', icon: Heart, color: '#ef4444' }
+  ];
+
+  const METRICS_CONFIG: Record<string, any[]> = {
+    semanal: [
+      { id: 'revenue_week', label: 'Facturación Semanal', type: 'currency', target: 15000 },
+      { id: 'new_clients', label: 'Nuevos Clientes', type: 'number', target: 5 },
+      { id: 'churn_rate', label: 'Tasa de Abandono (%)', type: 'percentage', target: 2 },
+      { id: 'satisfaction_score', label: 'Puntuación Satisfacción', type: 'rating', target: 4.5 }
+    ],
+    mensual: [
+      { id: 'revenue_month', label: 'Facturación Mensual', type: 'currency', target: 60000 },
+      { id: 'growth_rate', label: 'Crecimiento (%)', type: 'percentage', target: 15 },
+      { id: 'market_penetration', label: 'Penetración Mercado (%)', type: 'percentage', target: 25 },
+      { id: 'customer_lifetime', label: 'Valor Vida Cliente', type: 'currency', target: 2500 },
+      { id: 'operational_margin', label: 'Margen Operativo (%)', type: 'percentage', target: 35 }
+    ]
+  };
+
+  // Función para guardar en Supabase
+  const saveMeetingToDatabase = async () => {
     try {
-      console.log('🎯 Creando reunión:', formData);
-      
-      const { data, error } = await supabase
+      const selectedType = MEETING_TYPES_CONFIG[meetingData.type];
+      const selectedDepartment = DEPARTMENTS.find(d => d.id === meetingData.department);
+
+      // 1. Guardar reunión principal
+      const { data: meetingRecord, error: meetingError } = await supabase
         .from('reuniones')
         .insert([{
-          ...formData,
+          titulo: `${selectedType?.label} - ${selectedDepartment?.name}`,
+          descripcion: `Reunión ${meetingData.type} del departamento ${meetingData.department}`,
+          fecha: meetingData.date,
+          hora_inicio: '09:00',
+          hora_fin: meetingData.type === 'mensual' ? '12:00' : '11:00',
+          participantes: meetingData.participants,
+          tipo: 'estrategica',
+          estado: 'programada',
+          creado_por: 'carlossuarezparra@gmail.com',
+          acta_reunion: JSON.stringify({
+            metrics: meetingData.metrics,
+            objectives: meetingData.objectives,
+            type: meetingData.type,
+            department: meetingData.department
+          }),
           creado_en: new Date().toISOString(),
           actualizado_en: new Date().toISOString()
         }])
         .select()
         .single();
 
-      if (error) {
-        console.error('❌ Error creando reunión:', error);
-        throw error;
+      if (meetingError) throw meetingError;
+
+      // 2. Guardar objetivos
+      if (meetingData.objectives.length > 0) {
+        const objectivesData = meetingData.objectives.map((obj: any) => ({
+          titulo: obj.title,
+          estado: 'activo',
+          reunion_origen: meetingRecord.id,
+          departamento_responsable: meetingData.department,
+          fecha_limite: meetingData.date,
+          creado_por: 'carlossuarezparra@gmail.com',
+          creado_en: new Date().toISOString()
+        }));
+
+        await supabase.from('objetivos').insert(objectivesData);
       }
-      
-      console.log('✅ Reunión creada:', data);
-      onSave(data as Meeting);
-      onClose();
-      
-      // Reset form
-      setFormData({
-        titulo: '',
-        descripcion: '',
-        fecha: new Date().toISOString().split('T')[0],
-        hora_inicio: '09:00',
-        hora_fin: '10:00',
-        participantes: [],
-        tipo: 'operativa',
-        estado: 'programada',
-        creado_por: employee?.email || ''
-      });
+
+      // 3. Guardar tareas
+      if (meetingData.tasks.length > 0) {
+        const tasksData = meetingData.tasks.map((task: any) => ({
+          titulo: task.title,
+          asignado_a: task.assignedTo,
+          creado_por: 'carlossuarezparra@gmail.com',
+          reunion_origen: meetingRecord.id,
+          prioridad: task.priority,
+          estado: 'pendiente',
+          fecha_limite: task.deadline,
+          verificacion_requerida: true,
+          creado_en: new Date().toISOString(),
+          actualizado_en: new Date().toISOString()
+        }));
+
+        await supabase.from('tareas').insert(tasksData);
+      }
+
+      return meetingRecord;
     } catch (error) {
-      console.error('Error creating meeting:', error);
-      alert('Error al crear la reunión. Inténtalo de nuevo.');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error saving meeting:', error);
+      throw error;
     }
   };
 
-  const handleParticipantToggle = (participantId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      participantes: prev.participantes.includes(participantId)
-        ? prev.participantes.filter(id => id !== participantId)
-        : [...prev.participantes, participantId]
-    }));
+  // Paso 1: Selección de tipo
+  const TypeSelection = () => (
+    <div style={{ padding: '20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+          Tipo de Reunión Estratégica
+        </h2>
+        <p style={{ color: '#6b7280' }}>
+          Selecciona el tipo de reunión para configurar el contenido específico
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+        {Object.entries(MEETING_TYPES_CONFIG).map(([key, type]) => {
+          const Icon = type.icon;
+          return (
+            <button
+              key={key}
+              onClick={() => setMeetingData(prev => ({ ...prev, type: key }))}
+              style={{
+                padding: '24px',
+                borderRadius: '12px',
+                border: `2px solid ${meetingData.type === key ? '#3b82f6' : '#e5e7eb'}`,
+                backgroundColor: meetingData.type === key ? '#f0f9ff' : 'white',
+                textAlign: 'left',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: meetingData.type === key ? '0 10px 25px -5px rgba(59, 130, 246, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                <div style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  backgroundColor: `${type.color}20`
+                }}>
+                  <Icon style={{ height: '24px', width: '24px', color: type.color }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                    {type.label}
+                  </h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+                    {type.description}
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock style={{ height: '16px', width: '16px' }} />
+                  <span>Duración: {type.duration}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar style={{ height: '16px', width: '16px' }} />
+                  <span>Frecuencia: {type.frequency}</span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Paso 2: Selección de departamento
+  const DepartmentSelection = () => (
+    <div style={{ padding: '20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+          Departamento Responsable
+        </h2>
+        <p style={{ color: '#6b7280' }}>
+          Selecciona el departamento que liderará esta reunión
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+        {DEPARTMENTS.map((dept) => {
+          const Icon = dept.icon;
+          return (
+            <button
+              key={dept.id}
+              onClick={() => setMeetingData(prev => ({ ...prev, department: dept.id }))}
+              style={{
+                padding: '24px',
+                borderRadius: '12px',
+                border: `2px solid ${meetingData.department === dept.id ? '#3b82f6' : '#e5e7eb'}`,
+                backgroundColor: meetingData.department === dept.id ? '#f0f9ff' : 'white',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{
+                padding: '16px',
+                borderRadius: '8px',
+                backgroundColor: `${dept.color}20`,
+                margin: '0 auto 12px',
+                width: 'fit-content'
+              }}>
+                <Icon style={{ height: '32px', width: '32px', color: dept.color }} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                {dept.name}
+              </h3>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Paso 3: Configuración básica
+  const BasicConfiguration = () => (
+    <div style={{ padding: '20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+          Configuración de la Reunión
+        </h2>
+        <p style={{ color: '#6b7280' }}>
+          Fecha y participantes del equipo directivo
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+            Fecha de la Reunión
+          </label>
+          <input
+            type="date"
+            value={meetingData.date}
+            onChange={(e) => setMeetingData(prev => ({ ...prev, date: e.target.value }))}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '16px',
+              boxSizing: 'border-box'
+            }}
+            min={new Date().toISOString().split('T')[0]}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+            Participantes del Equipo Directivo
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {LEADERSHIP_TEAM.map((member) => (
+              <label key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={meetingData.participants.includes(member.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setMeetingData(prev => ({
+                        ...prev,
+                        participants: [...prev.participants, member.id]
+                      }));
+                    } else {
+                      setMeetingData(prev => ({
+                        ...prev,
+                        participants: prev.participants.filter((id: string) => id !== member.id)
+                      }));
+                    }
+                  }}
+                  style={{ width: '16px', height: '16px' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img 
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=059669&color=fff`}
+                    alt={member.name}
+                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                  />
+                  <div>
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                      {member.name}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
+                      {member.role}
+                    </span>
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Paso 4: Métricas
+  const MetricsConfiguration = () => {
+    const metrics = METRICS_CONFIG[meetingData.type] || [];
+    
+    return (
+      <div style={{ padding: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+            Métricas a Revisar
+          </h2>
+          <p style={{ color: '#6b7280' }}>
+            Introduce los valores actuales de las métricas clave
+          </p>
+        </div>
+
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #0ea5e9',
+          borderRadius: '8px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', marginBottom: '8px' }}>
+            <BarChart3 style={{ height: '20px', width: '20px' }} />
+            <span style={{ fontWeight: '500' }}>
+              Métricas {meetingData.type === 'semanal' ? 'Semanales' : 'Mensuales'}
+            </span>
+          </div>
+          <p style={{ color: '#0369a1', fontSize: '14px', margin: 0 }}>
+            Estas métricas se evaluarán contra los objetivos establecidos
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+          {metrics.map((metric: any) => (
+            <div key={metric.id} style={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '16px'
+            }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                {metric.label}
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="number"
+                  step={metric.type === 'currency' ? '0.01' : metric.type === 'percentage' ? '0.1' : '1'}
+                  placeholder={`Objetivo: ${metric.target}${metric.type === 'percentage' ? '%' : metric.type === 'currency' ? '€' : ''}`}
+                  value={meetingData.metrics[metric.id] || ''}
+                  onChange={(e) => setMeetingData(prev => ({
+                    ...prev,
+                    metrics: { ...prev.metrics, [metric.id]: e.target.value }
+                  }))}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {metric.type === 'currency' && '€'}
+                  {metric.type === 'percentage' && '%'}
+                  {metric.type === 'rating' && '/5'}
+                </div>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#6b7280' }}>
+                Objetivo: {metric.target}{metric.type === 'percentage' ? '%' : metric.type === 'currency' ? '€' : metric.type === 'rating' ? '/5' : ''}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Paso 5: Objetivos y tareas
+  const ObjectivesAndTasks = () => {
+    const [newObjective, setNewObjective] = useState('');
+    const [newTask, setNewTask] = useState({
+      title: '',
+      assignedTo: '',
+      deadline: '',
+      priority: 'media'
+    });
+
+    const addObjective = () => {
+      if (newObjective.trim()) {
+        setMeetingData(prev => ({
+          ...prev,
+          objectives: [...prev.objectives, {
+            id: Date.now(),
+            title: newObjective,
+            status: 'pending'
+          }]
+        }));
+        setNewObjective('');
+      }
+    };
+
+    const addTask = () => {
+      if (newTask.title.trim() && newTask.assignedTo && newTask.deadline) {
+        setMeetingData(prev => ({
+          ...prev,
+          tasks: [...prev.tasks, {
+            id: Date.now(),
+            ...newTask
+          }]
+        }));
+        setNewTask({
+          title: '',
+          assignedTo: '',
+          deadline: '',
+          priority: 'media'
+        });
+      }
+    };
+
+    return (
+      <div style={{ padding: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+            Objetivos y Tareas
+          </h2>
+          <p style={{ color: '#6b7280' }}>
+            Define los objetivos a alcanzar y las tareas específicas
+          </p>
+        </div>
+
+        {/* Objetivos */}
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Target style={{ height: '20px', width: '20px', color: '#3b82f6' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              Objetivos Estratégicos
+            </h3>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+            <input
+              type="text"
+              value={newObjective}
+              onChange={(e) => setNewObjective(e.target.value)}
+              placeholder="Ej: Aumentar retención de clientes en un 15%"
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && addObjective()}
+            />
+            <button
+              onClick={addObjective}
+              style={{
+                padding: '12px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <Plus style={{ height: '16px', width: '16px' }} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {meetingData.objectives.map((objective: any, index: number) => (
+              <div key={objective.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '6px'
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280' }}>
+                  {index + 1}.
+                </span>
+                <span style={{ flex: 1, fontSize: '14px', color: '#111827' }}>
+                  {objective.title}
+                </span>
+                <button
+                  onClick={() => setMeetingData(prev => ({
+                    ...prev,
+                    objectives: prev.objectives.filter((obj: any) => obj.id !== objective.id)
+                  }))}
+                  style={{
+                    color: '#ef4444',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '18px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tareas */}
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <CheckCircle style={{ height: '20px', width: '20px', color: '#10b981' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              Tareas Específicas
+            </h3>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <input
+              type="text"
+              value={newTask.title}
+              onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Título de la tarea"
+              style={{
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+            <select
+              value={newTask.assignedTo}
+              onChange={(e) => setNewTask(prev => ({ ...prev, assignedTo: e.target.value }))}
+              style={{
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            >
+              <option value="">Asignar a...</option>
+              {LEADERSHIP_TEAM.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={newTask.deadline}
+              onChange={(e) => setNewTask(prev => ({ ...prev, deadline: e.target.value }))}
+              style={{
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={newTask.priority}
+                onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value }))}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+                <option value="critica">Crítica</option>
+              </select>
+              <button
+                onClick={addTask}
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus style={{ height: '16px', width: '16px' }} />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {meetingData.tasks.map((task: any) => (
+              <div key={task.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '6px'
+              }}>
+                <Flag style={{
+                  height: '16px',
+                  width: '16px',
+                  color: task.priority === 'critica' ? '#ef4444' :
+                         task.priority === 'alta' ? '#f97316' :
+                         task.priority === 'media' ? '#f59e0b' : '#6b7280'
+                }} />
+                <span style={{ flex: 1, fontSize: '14px', color: '#111827' }}>
+                  {task.title}
+                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {LEADERSHIP_TEAM.find((m: any) => m.id === task.assignedTo)?.name}
+                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {new Date(task.deadline).toLocaleDateString('es-ES')}
+                </span>
+                <button
+                  onClick={() => setMeetingData(prev => ({
+                    ...prev,
+                    tasks: prev.tasks.filter((t: any) => t.id !== task.id)
+                  }))}
+                  style={{
+                    color: '#ef4444',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '18px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Paso 6: Resumen
+  const Summary = () => {
+    const selectedType = MEETING_TYPES_CONFIG[meetingData.type];
+    const selectedDepartment = DEPARTMENTS.find((d: any) => d.id === meetingData.department);
+
+    return (
+      <div style={{ padding: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+            Resumen de la Reunión
+          </h2>
+          <p style={{ color: '#6b7280' }}>
+            Revisa todos los detalles antes de crear la reunión
+          </p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '24px',
+          marginBottom: '24px'
+        }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+            Detalles Generales
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '14px' }}>
+            <div>
+              <span style={{ fontWeight: '500', color: '#6b7280' }}>Tipo:</span>
+              <span style={{ marginLeft: '8px', color: '#111827' }}>{selectedType?.label}</span>
+            </div>
+            <div>
+              <span style={{ fontWeight: '500', color: '#6b7280' }}>Departamento:</span>
+              <span style={{ marginLeft: '8px', color: '#111827' }}>{selectedDepartment?.name}</span>
+            </div>
+            <div>
+              <span style={{ fontWeight: '500', color: '#6b7280' }}>Fecha:</span>
+              <span style={{ marginLeft: '8px', color: '#111827' }}>
+                {new Date(meetingData.date).toLocaleDateString('es-ES')}
+              </span>
+            </div>
+            <div>
+              <span style={{ fontWeight: '500', color: '#6b7280' }}>Participantes:</span>
+              <span style={{ marginLeft: '8px', color: '#111827' }}>{meetingData.participants.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Objetivos ({meetingData.objectives.length})
+            </h3>
+            {meetingData.objectives.length > 0 ? (
+              <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {meetingData.objectives.map((objective: any, index: number) => (
+                  <li key={objective.id} style={{ fontSize: '14px', color: '#6b7280' }}>
+                    {index + 1}. {objective.title}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>No hay objetivos definidos</p>
+            )}
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Tareas ({meetingData.tasks.length})
+            </h3>
+            {meetingData.tasks.length > 0 ? (
+              <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {meetingData.tasks.map((task: any) => (
+                  <li key={task.id} style={{ fontSize: '14px', color: '#6b7280' }}>
+                    {task.title}
+                    <span style={{ color: '#9ca3af', marginLeft: '8px' }}>
+                      - {LEADERSHIP_TEAM.find((m: any) => m.id === task.assignedTo)?.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>No hay tareas definidas</p>
+            )}
+          </div>
+        </div>
+
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#f0fdf4',
+          border: '1px solid #10b981',
+          borderRadius: '8px',
+          marginTop: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#047857' }}>
+            <CheckCircle style={{ height: '20px', width: '20px' }} />
+            <span style={{ fontWeight: '500' }}>¿Todo listo?</span>
+          </div>
+          <p style={{ color: '#047857', fontSize: '14px', marginTop: '4px', margin: 0 }}>
+            La reunión se guardará en el sistema y se enviarán notificaciones a todos los participantes.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const handleNext = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const savedMeeting = await saveMeetingToDatabase();
+      onComplete(savedMeeting);
+      alert('¡Reunión estratégica creada exitosamente! 🎉');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al crear la reunión. Inténtalo de nuevo.');
+    }
+  };
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 1: return meetingData.type !== '';
+      case 2: return meetingData.department !== '';
+      case 3: return meetingData.date !== '' && meetingData.participants.length > 0;
+      case 4: return Object.keys(meetingData.metrics).length > 0;
+      case 5: return meetingData.objectives.length > 0 || meetingData.tasks.length > 0;
+      case 6: return true;
+      default: return false;
+    }
   };
 
   if (!isOpen) return null;
@@ -173,224 +941,169 @@ const CreateMeetingModal: React.FC<{
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      zIndex: 9999,
+      overflow: 'auto'
     }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '24px',
-        width: '100%',
-        maxWidth: '500px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            Nueva Reunión Ejecutiva
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <X style={{ height: '24px', width: '24px', color: '#6b7280' }} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-              Título *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.titulo}
-              onChange={(e) => setFormData(prev => ({ ...prev, titulo: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-              placeholder="Ej: Revisión Estrategia Q1 2025"
-            />
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-              Tipo de Reunión
-            </label>
-            <select
-              value={formData.tipo}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                tipo: e.target.value as 'estrategica' | 'operativa' | 'seguimiento' | 'urgente'
-              }))}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            >
-              {MEETING_TYPES.map(type => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-                Fecha *
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.fecha}
-                onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-                Inicio *
-              </label>
-              <input
-                type="time"
-                required
-                value={formData.hora_inicio}
-                onChange={(e) => setFormData(prev => ({ ...prev, hora_inicio: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-                Fin *
-              </label>
-              <input
-                type="time"
-                required
-                value={formData.hora_fin}
-                onChange={(e) => setFormData(prev => ({ ...prev, hora_fin: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '12px' }}>
-              Participantes
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {LEADERSHIP_TEAM.map(member => (
-                <label key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.participantes.includes(member.id)}
-                    onChange={() => handleParticipantToggle(member.id)}
-                    style={{ marginRight: '8px' }}
-                  />
-                  <span style={{ fontSize: '14px', color: '#374151' }}>
-                    {member.name} ({member.role})
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-              Descripción/Agenda
-            </label>
-            <textarea
-              value={formData.descripcion || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-              placeholder="Agenda, objetivos y puntos a tratar..."
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{
+            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            borderRadius: '12px',
+            padding: '24px',
+            color: 'white',
+            marginBottom: '32px',
+            position: 'relative'
+          }}>
             <button
-              type="button"
               onClick={onClose}
               style={{
-                padding: '10px 20px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                backgroundColor: 'white',
-                color: '#374151',
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
                 cursor: 'pointer',
-                fontSize: '14px'
+                color: 'white',
+                fontSize: '18px'
               }}
             >
-              Cancelar
+              ×
             </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', margin: 0 }}>
+                  Sistema de Reuniones Estratégicas
+                </h1>
+                <p style={{ opacity: 0.9, margin: 0 }}>
+                  Configuración inteligente basada en tipo y departamento
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '14px', opacity: 0.75 }}>Paso</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                  {currentStep}/{totalSteps}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                Progreso de configuración
+              </span>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                {Math.round((currentStep / totalSteps) * 100)}%
+              </span>
+            </div>
+            <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '10px', height: '8px' }}>
+              <div 
+                style={{
+                  backgroundColor: '#3b82f6',
+                  height: '8px',
+                  borderRadius: '10px',
+                  transition: 'width 0.3s ease',
+                  width: `${(currentStep / totalSteps) * 100}%`
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+            marginBottom: '32px'
+          }}>
+            {currentStep === 1 && <TypeSelection />}
+            {currentStep === 2 && <DepartmentSelection />}
+            {currentStep === 3 && <BasicConfiguration />}
+            {currentStep === 4 && <MetricsConfiguration />}
+            {currentStep === 5 && <ObjectivesAndTasks />}
+            {currentStep === 6 && <Summary />}
+          </div>
+
+          {/* Navigation */}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button
-              type="submit"
-              disabled={isSubmitting}
+              onClick={handlePrevious}
+              disabled={currentStep === 1}
               style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '6px',
-                backgroundColor: isSubmitting ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: currentStep === 1 ? 'not-allowed' : 'pointer',
+                backgroundColor: currentStep === 1 ? '#f3f4f6' : '#e5e7eb',
+                color: currentStep === 1 ? '#9ca3af' : '#374151',
+                fontSize: '16px',
+                fontWeight: '500'
               }}
             >
-              {isSubmitting && <Loader2 style={{ height: '16px', width: '16px', animation: 'spin 1s linear infinite' }} />}
-              {!isSubmitting && <Calendar style={{ height: '16px', width: '16px' }} />}
-              {isSubmitting ? 'Creando...' : 'Crear Reunión'}
+              <ArrowLeft style={{ height: '16px', width: '16px' }} />
+              Anterior
             </button>
+
+            {currentStep < totalSteps ? (
+              <button
+                onClick={handleNext}
+                disabled={!canProceed()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: canProceed() ? 'pointer' : 'not-allowed',
+                  backgroundColor: canProceed() ? '#3b82f6' : '#f3f4f6',
+                  color: canProceed() ? 'white' : '#9ca3af',
+                  fontSize: '16px',
+                  fontWeight: '500'
+                }}
+              >
+                Siguiente
+                <ChevronRight style={{ height: '16px', width: '16px' }} />
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  fontSize: '16px',
+                  fontWeight: '500'
+                }}
+              >
+                <Save style={{ height: '16px', width: '16px' }} />
+                Crear Reunión
+              </button>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
-// Modal para crear tarea
+// Modal para crear tarea (mantenemos el original)
 const CreateTaskModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -669,7 +1382,7 @@ const ExecutiveDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showStrategicMeeting, setShowStrategicMeeting] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
 
   useEffect(() => {
@@ -970,7 +1683,7 @@ const ExecutiveDashboard: React.FC = () => {
               Reuniones Programadas ({meetings.length})
             </h3>
             <button
-              onClick={() => setShowMeetingModal(true)}
+              onClick={() => setShowStrategicMeeting(true)}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#3b82f6',
@@ -1024,7 +1737,7 @@ const ExecutiveDashboard: React.FC = () => {
                 </div>
                 {meeting.participantes && meeting.participantes.length > 0 && (
                   <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    Participantes: {meeting.participantes.map(p => 
+                    Participantes: {meeting.participantes.map((p: string) => 
                       LEADERSHIP_TEAM.find(l => l.id === p)?.name
                     ).filter(Boolean).join(', ')}
                   </div>
@@ -1037,7 +1750,7 @@ const ExecutiveDashboard: React.FC = () => {
                 <Calendar style={{ height: '48px', width: '48px', margin: '0 auto 16px', opacity: 0.5 }} />
                 <p style={{ margin: 0 }}>No hay reuniones programadas</p>
                 <button
-                  onClick={() => setShowMeetingModal(true)}
+                  onClick={() => setShowStrategicMeeting(true)}
                   style={{
                     marginTop: '8px',
                     padding: '8px 16px',
@@ -1160,7 +1873,7 @@ const ExecutiveDashboard: React.FC = () => {
         flexWrap: 'wrap'
       }}>
         <button
-          onClick={() => setShowMeetingModal(true)}
+          onClick={() => setShowStrategicMeeting(true)}
           style={{
             padding: '12px 24px',
             backgroundColor: '#3b82f6',
@@ -1176,7 +1889,7 @@ const ExecutiveDashboard: React.FC = () => {
           }}
         >
           <Calendar style={{ height: '20px', width: '20px' }} />
-          Nueva Reunión
+          Nueva Reunión Estratégica
         </button>
         
         <button
@@ -1220,11 +1933,14 @@ const ExecutiveDashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* Modales */}
-      <CreateMeetingModal 
-        isOpen={showMeetingModal} 
-        onClose={() => setShowMeetingModal(false)}
-        onSave={handleMeetingCreated}
+      {/* Modales - SISTEMA ESTRATÉGICO INTEGRADO */}
+      <StrategicMeetingSystem
+        isOpen={showStrategicMeeting}
+        onClose={() => setShowStrategicMeeting(false)}
+        onComplete={(meetingData) => {
+          handleMeetingCreated(meetingData);
+          setShowStrategicMeeting(false);
+        }}
       />
       
       <CreateTaskModal 
@@ -1394,7 +2110,7 @@ const SuperAdminDashboard: React.FC = () => {
               </h2>
               <p style={{ color: '#6b7280', marginBottom: '16px' }}>
                 Funcionalidad de gestión de empleados disponible próximamente.
-                Por ahora, enfócate en el Dashboard Ejecutivo para crear reuniones y tareas.
+                Por ahora, enfócate en el Dashboard Ejecutivo para crear reuniones estratégicas y tareas.
               </p>
               <button
                 onClick={() => setActiveTab('executive')}
