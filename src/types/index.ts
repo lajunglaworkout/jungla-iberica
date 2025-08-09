@@ -1,3 +1,7 @@
+// src/types/index.ts - Actualizado con sistema completo de tipos
+
+// ===== INTERFACES EXISTENTES =====
+
 export interface User {
   id: string;
   name: string;
@@ -41,6 +45,391 @@ export interface Permission {
   module: string; // 'centers', 'inventory', 'users', 'reports', etc.
   actions: string[]; // 'create', 'read', 'update', 'delete'
 }
+
+// ===== SISTEMA DE ROLES AVANZADO =====
+
+export type UserRole = 
+  | 'superadmin'
+  | 'admin'
+  | 'department_manager'
+  | 'brand_employee'
+  | 'franchisee'
+  | 'center_manager'
+  | 'trainer'
+  | 'collaborator'
+  | 'employee';
+
+export type BusinessUnit = 
+  | 'jungla_workout'
+  | 'jungla_online'
+  | 'jungla_academy'
+  | 'jungla_tech'
+  | 'all';
+
+export interface RolePermissions {
+  // Gestión de usuarios y empleados
+  canManageUsers: boolean | string;
+  canViewAllEmployees: boolean;
+  canCreateEmployees: boolean;
+  canEditEmployees: boolean | string;
+  canDeleteEmployees: boolean | string;
+  
+  // Gestión de centros
+  canViewAllCenters: boolean;
+  canCreateCenters: boolean;
+  canEditCenters: boolean | string;
+  canDeleteCenters: boolean;
+  canManageFranchises: boolean;
+  
+  // Datos financieros y reportes
+  canViewFinancials: boolean | string;
+  canViewReports: boolean | string;
+  canExportData: boolean;
+  
+  // Configuración del sistema
+  canManageSystem: boolean;
+  canViewLogs: boolean;
+  canManageIntegrations: boolean;
+  
+  // Operaciones específicas
+  canManageInventory: boolean | string;
+  canManageTasks: boolean | string;
+  canManageMarketing: boolean | string;
+  canViewAnalytics: boolean | string;
+  
+  // Reuniones y tareas ejecutivas
+  canCreateMeetings: boolean;
+  canManageExecutiveTasks: boolean;
+  canViewExecutiveDashboard: boolean;
+}
+
+export interface DashboardConfig {
+  defaultView: string;
+  availableViews: string[];
+  showFinancialMetrics: boolean;
+  showOperationalMetrics: boolean;
+  showUserManagement: boolean;
+  showCenterManagement: boolean;
+  showReports: boolean;
+  allowDataExport: boolean;
+  businessUnitsAccess: BusinessUnit[];
+}
+
+// ===== INTERFAZ PRINCIPAL PARA EMPLEADOS =====
+
+export interface EmployeeWithRole {
+  // Datos básicos
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  
+  // Datos de Supabase (tabla empleados)
+  identificacion?: string;
+  correo_electronico?: string;
+  telefono?: string;
+  DNI?: string;
+  fecha_de_nacimiento?: string;
+  DIRECCION?: string;
+  posicion?: string;
+  fecha_de_contratacion?: string;
+  tipo_de_contrato?: string;
+  imagen_de_perfil?: string;
+  esta_activo?: boolean;
+  id_del_centro?: string;
+  id_departamento?: string;
+  
+  // Propiedades de compatibilidad
+  avatar?: string;
+  phone?: string;
+  address?: string;
+  position?: string;
+  isActive?: boolean;
+  centerId?: string;
+  departmentId?: string;
+  
+  // Sistema de roles avanzado
+  advancedRole: UserRole;
+  permissions: RolePermissions;
+  dashboardConfig: DashboardConfig;
+  
+  // Metadatos
+  createdAt?: string;
+  updatedAt?: string;
+  lastLogin?: string;
+}
+
+// ===== FUNCIONES DEL SISTEMA DE ROLES =====
+
+export function getAdvancedRole(dbRole: string, employee: any): UserRole {
+  // Mapeo específico para tus usuarios
+  const email = employee.correo_electronico || employee.email;
+  
+  if (email === 'carlossuarezparra@gmail.com') return 'superadmin';
+  if (email === 'beni.jungla@gmail.com') return 'admin';
+  
+  // Mapeo por rol de BD
+  switch (dbRole?.toLowerCase()) {
+    case 'administrador':
+    case 'superadmin':
+      return 'superadmin';
+    case 'director':
+    case 'admin':
+      return 'admin';
+    case 'encargado':
+      return employee.id_del_centro ? 'center_manager' : 'department_manager';
+    case 'empleado':
+      return employee.id_del_centro ? 'center_manager' : 'brand_employee';
+    case 'entrenador':
+      return 'trainer';
+    case 'franquiciado':
+      return 'franchisee';
+    case 'proveedor':
+      return 'collaborator';
+    default:
+      return 'employee';
+  }
+}
+
+export function getRoleConfig(role: UserRole): { permissions: RolePermissions; config: DashboardConfig } {
+  const configs: Record<UserRole, { permissions: RolePermissions; config: DashboardConfig }> = {
+    superadmin: {
+      permissions: {
+        canManageUsers: true,
+        canViewAllEmployees: true,
+        canCreateEmployees: true,
+        canEditEmployees: true,
+        canDeleteEmployees: true,
+        canViewAllCenters: true,
+        canCreateCenters: true,
+        canEditCenters: true,
+        canDeleteCenters: true,
+        canManageFranchises: true,
+        canViewFinancials: true,
+        canViewReports: true,
+        canExportData: true,
+        canManageSystem: true,
+        canViewLogs: true,
+        canManageIntegrations: true,
+        canManageInventory: true,
+        canManageTasks: true,
+        canManageMarketing: true,
+        canViewAnalytics: true,
+        canCreateMeetings: true,
+        canManageExecutiveTasks: true,
+        canViewExecutiveDashboard: true,
+      },
+      config: {
+        defaultView: 'executive',
+        availableViews: ['executive', 'analytics', 'centers', 'users', 'reports'],
+        showFinancialMetrics: true,
+        showOperationalMetrics: true,
+        showUserManagement: true,
+        showCenterManagement: true,
+        showReports: true,
+        allowDataExport: true,
+        businessUnitsAccess: ['all'],
+      },
+    },
+    admin: {
+      permissions: {
+        canManageUsers: true,
+        canViewAllEmployees: true,
+        canCreateEmployees: true,
+        canEditEmployees: true,
+        canDeleteEmployees: 'own_unit',
+        canViewAllCenters: true,
+        canCreateCenters: true,
+        canEditCenters: true,
+        canDeleteCenters: false,
+        canManageFranchises: true,
+        canViewFinancials: true,
+        canViewReports: true,
+        canExportData: true,
+        canManageSystem: false,
+        canViewLogs: true,
+        canManageIntegrations: false,
+        canManageInventory: true,
+        canManageTasks: true,
+        canManageMarketing: true,
+        canViewAnalytics: true,
+        canCreateMeetings: true,
+        canManageExecutiveTasks: true,
+        canViewExecutiveDashboard: true,
+      },
+      config: {
+        defaultView: 'executive',
+        availableViews: ['executive', 'analytics', 'centers', 'users'],
+        showFinancialMetrics: true,
+        showOperationalMetrics: true,
+        showUserManagement: true,
+        showCenterManagement: true,
+        showReports: true,
+        allowDataExport: true,
+        businessUnitsAccess: ['all'],
+      },
+    },
+    // Configuraciones simplificadas para otros roles
+    department_manager: {
+      permissions: {
+        canManageUsers: false,
+        canViewAllEmployees: false,
+        canCreateEmployees: false,
+        canEditEmployees: 'own_department',
+        canDeleteEmployees: false,
+        canViewAllCenters: true,
+        canCreateCenters: false,
+        canEditCenters: false,
+        canDeleteCenters: false,
+        canManageFranchises: false,
+        canViewFinancials: 'department',
+        canViewReports: 'department',
+        canExportData: false,
+        canManageSystem: false,
+        canViewLogs: false,
+        canManageIntegrations: false,
+        canManageInventory: 'own_department',
+        canManageTasks: 'own_department',
+        canManageMarketing: false,
+        canViewAnalytics: 'department',
+        canCreateMeetings: false,
+        canManageExecutiveTasks: false,
+        canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard',
+        availableViews: ['dashboard', 'tasks'],
+        showFinancialMetrics: false,
+        showOperationalMetrics: true,
+        showUserManagement: false,
+        showCenterManagement: false,
+        showReports: false,
+        allowDataExport: false,
+        businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    // Otros roles con configuraciones básicas
+    brand_employee: {
+      permissions: {
+        canManageUsers: false,
+        canViewAllEmployees: false,
+        canCreateEmployees: false,
+        canEditEmployees: false,
+        canDeleteEmployees: false,
+        canViewAllCenters: false,
+        canCreateCenters: false,
+        canEditCenters: false,
+        canDeleteCenters: false,
+        canManageFranchises: false,
+        canViewFinancials: false,
+        canViewReports: false,
+        canExportData: false,
+        canManageSystem: false,
+        canViewLogs: false,
+        canManageIntegrations: false,
+        canManageInventory: false,
+        canManageTasks: 'assigned',
+        canManageMarketing: false,
+        canViewAnalytics: false,
+        canCreateMeetings: false,
+        canManageExecutiveTasks: false,
+        canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard',
+        availableViews: ['dashboard'],
+        showFinancialMetrics: false,
+        showOperationalMetrics: false,
+        showUserManagement: false,
+        showCenterManagement: false,
+        showReports: false,
+        allowDataExport: false,
+        businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    // Configuraciones por defecto para el resto de roles
+    franchisee: {
+      permissions: {
+        canManageUsers: false, canViewAllEmployees: false, canCreateEmployees: false, canEditEmployees: false, canDeleteEmployees: false,
+        canViewAllCenters: false, canCreateCenters: false, canEditCenters: 'own', canDeleteCenters: false, canManageFranchises: false,
+        canViewFinancials: 'own', canViewReports: 'own', canExportData: false, canManageSystem: false, canViewLogs: false, canManageIntegrations: false,
+        canManageInventory: 'own', canManageTasks: 'own', canManageMarketing: false, canViewAnalytics: 'own',
+        canCreateMeetings: false, canManageExecutiveTasks: false, canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard', availableViews: ['dashboard'], showFinancialMetrics: true, showOperationalMetrics: true,
+        showUserManagement: false, showCenterManagement: false, showReports: false, allowDataExport: false, businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    center_manager: {
+      permissions: {
+        canManageUsers: false, canViewAllEmployees: false, canCreateEmployees: false, canEditEmployees: false, canDeleteEmployees: false,
+        canViewAllCenters: false, canCreateCenters: false, canEditCenters: 'own', canDeleteCenters: false, canManageFranchises: false,
+        canViewFinancials: 'own', canViewReports: 'own', canExportData: false, canManageSystem: false, canViewLogs: false, canManageIntegrations: false,
+        canManageInventory: 'own', canManageTasks: 'own', canManageMarketing: false, canViewAnalytics: 'own',
+        canCreateMeetings: false, canManageExecutiveTasks: false, canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard', availableViews: ['dashboard'], showFinancialMetrics: false, showOperationalMetrics: true,
+        showUserManagement: false, showCenterManagement: false, showReports: false, allowDataExport: false, businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    trainer: {
+      permissions: {
+        canManageUsers: false, canViewAllEmployees: false, canCreateEmployees: false, canEditEmployees: false, canDeleteEmployees: false,
+        canViewAllCenters: false, canCreateCenters: false, canEditCenters: false, canDeleteCenters: false, canManageFranchises: false,
+        canViewFinancials: false, canViewReports: false, canExportData: false, canManageSystem: false, canViewLogs: false, canManageIntegrations: false,
+        canManageInventory: false, canManageTasks: 'assigned', canManageMarketing: false, canViewAnalytics: false,
+        canCreateMeetings: false, canManageExecutiveTasks: false, canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard', availableViews: ['dashboard'], showFinancialMetrics: false, showOperationalMetrics: false,
+        showUserManagement: false, showCenterManagement: false, showReports: false, allowDataExport: false, businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    collaborator: {
+      permissions: {
+        canManageUsers: false, canViewAllEmployees: false, canCreateEmployees: false, canEditEmployees: false, canDeleteEmployees: false,
+        canViewAllCenters: false, canCreateCenters: false, canEditCenters: false, canDeleteCenters: false, canManageFranchises: false,
+        canViewFinancials: false, canViewReports: false, canExportData: false, canManageSystem: false, canViewLogs: false, canManageIntegrations: false,
+        canManageInventory: false, canManageTasks: 'assigned', canManageMarketing: false, canViewAnalytics: false,
+        canCreateMeetings: false, canManageExecutiveTasks: false, canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard', availableViews: ['dashboard'], showFinancialMetrics: false, showOperationalMetrics: false,
+        showUserManagement: false, showCenterManagement: false, showReports: false, allowDataExport: false, businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+    employee: {
+      permissions: {
+        canManageUsers: false, canViewAllEmployees: false, canCreateEmployees: false, canEditEmployees: false, canDeleteEmployees: false,
+        canViewAllCenters: false, canCreateCenters: false, canEditCenters: false, canDeleteCenters: false, canManageFranchises: false,
+        canViewFinancials: false, canViewReports: false, canExportData: false, canManageSystem: false, canViewLogs: false, canManageIntegrations: false,
+        canManageInventory: false, canManageTasks: 'assigned', canManageMarketing: false, canViewAnalytics: false,
+        canCreateMeetings: false, canManageExecutiveTasks: false, canViewExecutiveDashboard: false,
+      },
+      config: {
+        defaultView: 'dashboard', availableViews: ['dashboard'], showFinancialMetrics: false, showOperationalMetrics: false,
+        showUserManagement: false, showCenterManagement: false, showReports: false, allowDataExport: false, businessUnitsAccess: ['jungla_workout'],
+      },
+    },
+  };
+
+  return configs[role] || configs.employee;
+}
+
+export function hasPermission(role: UserRole, permission: keyof RolePermissions): boolean {
+  const { permissions } = getRoleConfig(role);
+  const permissionValue = permissions[permission];
+  return permissionValue === true;
+}
+
+export function hasBusinessUnitAccess(role: UserRole, businessUnit: BusinessUnit): boolean {
+  const { config } = getRoleConfig(role);
+  return config.businessUnitsAccess.includes('all') || config.businessUnitsAccess.includes(businessUnit);
+}
+
+// ===== INTERFACES EXISTENTES (sin cambios) =====
 
 export interface Center {
   id: string;
@@ -132,7 +521,6 @@ export interface CenterTask {
   createdById: string;
 }
 
-// Resto de interfaces existentes...
 export interface MaintenanceTask {
   id: string;
   center: string;
@@ -245,6 +633,4 @@ export interface MarketingCampaign {
   budget: number;
   spent: number;
   roi: number;
-  // Sistema de roles avanzado para Jungla Ibérica
-export * from './roles';
 }
