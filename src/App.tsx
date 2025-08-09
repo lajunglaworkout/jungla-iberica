@@ -1,81 +1,57 @@
+// src/App.tsx - Versión con Sistema de Roles Integrado
 import React from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { DataProvider } from './contexts/DataContext';
 import LoginForm from './components/LoginForm';
-// import { CentersDashboard } from './pages/CentersDashboard'; // Descomenta cuando esté listo
+import RoleDashboard from './components/RoleDashboard';
 import './App.css';
 
-// Componente temporal de Dashboard hasta que tengas el real
-const TempDashboard: React.FC = () => {
-  const { user, signOut } = useSession();
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                La Jungla Workout - Dashboard
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
-                Bienvenido, {user?.email}
-              </span>
-              <button
-                onClick={signOut}
-                className="text-sm text-emerald-600 hover:text-emerald-500"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Contenido principal temporal */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="border-4 border-dashed border-gray-200 rounded-lg h-96 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                ¡Login Exitoso! 🎉
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Has iniciado sesión correctamente en La Jungla Workout
-              </p>
-              <p className="text-sm text-gray-500">
-                Usuario: {user?.email}
-              </p>
-              <div className="mt-6">
-                <p className="text-sm text-blue-600">
-                  Aquí irá tu dashboard principal...
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+// Componente de Loading
+const LoadingScreen: React.FC = () => (
+  <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-700 flex items-center justify-center">
+    <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Verificando sesión...</h2>
+      <p className="text-gray-600 text-sm">Cargando tu perfil y permisos</p>
     </div>
-  );
-};
+  </div>
+);
 
-// Componente que maneja la lógica de autenticación
+// Componente de Error
+const ErrorScreen: React.FC<{ error: string; onRetry?: () => void }> = ({ error, onRetry }) => (
+  <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-orange-700 flex items-center justify-center">
+    <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md">
+      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Error de Sistema</h2>
+      <p className="text-gray-600 text-sm mb-4">{error}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+        >
+          Reintentar
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+// Componente que maneja la lógica de autenticación y roles
 const AppContent: React.FC = () => {
-  const { isAuthenticated, loading } = useSession();
+  const { isAuthenticated, loading, error, employee, userRole } = useSession();
 
   // Mostrar loading mientras se verifica la sesión
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-700 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando sesión...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
+  }
+
+  // Mostrar error si hay problemas
+  if (error) {
+    return <ErrorScreen error={error} />;
   }
 
   // Si no está autenticado, mostrar login
@@ -83,12 +59,19 @@ const AppContent: React.FC = () => {
     return <LoginForm />;
   }
 
-  // Si está autenticado, mostrar dashboard (temporal por ahora)
+  // Si está autenticado pero no hay datos del empleado
+  if (!employee || !userRole) {
+    return (
+      <ErrorScreen 
+        error="No se pudieron cargar los datos del usuario. Contacta con el administrador."
+      />
+    );
+  }
+
+  // Si todo está correcto, mostrar dashboard según el rol
   return (
     <DataProvider>
-      <TempDashboard />
-      {/* Cuando tengas CentersDashboard listo, reemplaza TempDashboard por: */}
-      {/* <CentersDashboard /> */}
+      <RoleDashboard />
     </DataProvider>
   );
 };
