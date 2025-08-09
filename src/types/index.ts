@@ -165,8 +165,9 @@ export function getAdvancedRole(dbRole: string, employee: any): UserRole {
   // Mapeo específico para tus usuarios
   const email = employee.correo_electronico || employee.email;
   
-  if (email === 'carlossuarezparra@gmail.com') return 'superadmin';
-  if (email === 'beni.jungla@gmail.com') return 'admin';
+  if (email === 'carlossuarezparra@gmail.com') return 'superadmin';  // Carlos
+  if (email === 'beni.jungla@gmail.com') return 'admin';            // Benito Morales
+  if (email === 'lajunglacentral@gmail.com') return 'admin';        // Vicente
   
   // Mapeo por rol de BD
   switch (dbRole?.toLowerCase()) {
