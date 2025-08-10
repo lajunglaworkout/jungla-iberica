@@ -1,99 +1,154 @@
-// src/components/RoleDashboard.tsx - SISTEMA COMPLETO CON MARKETING INTEGRADO
 import React, { useState, useEffect } from 'react';
-import { 
-  Video, // <-- AGREGADO para sistema marketing
-  Bell, Search, Settings, LogOut, TrendingUp, TrendingDown, 
-  Crown, Shield, Users, UserCheck, Briefcase, Building2, 
-  Dumbbell, Heart, Menu, Home, BarChart3, Globe, Plus, 
-  ArrowRight, Eye, Edit, Filter, RefreshCw, X, User, Mail, 
-  Phone, MapPin, Camera, Save, UserPlus, Edit2, Trash2, Loader2,
-  Calendar, Clock, Target, Flag, MessageSquare, FileText, Send,
-  AlertCircle, CheckCircle, PlayCircle, PauseCircle, ChevronDown,
-  Brain, Zap, ChevronRight, ArrowLeft, DollarSign
+import {
+  Crown, Users, Building2, BarChart3, Settings, Menu, Bell,
+  Target, Flag, Brain, CheckCircle, Calendar, Video, Search,
+  X, MapPin, AlertTriangle, DollarSign, Globe, 
+  Loader2, RefreshCw, Clock, Heart, Briefcase
 } from 'lucide-react';
-import { useSession } from '../contexts/SessionContext';
-import { supabase } from '../lib/supabase';
-import MarketingContentSystem from './MarketingContentSystem'; // <-- MANTENEMOS ESTE
-import MarketingPublicationSystem from './MarketingPublicationSystem'; // <-- AGREGADO NUEVO
 
-// Interfaces
-interface Meeting {
-  id?: string;
-  titulo: string;
-  descripcion?: string;
-  fecha: string;
-  hora_inicio: string;
-  hora_fin: string;
-  participantes: string[];
-  tipo: 'estrategica' | 'operativa' | 'seguimiento' | 'urgente';
-  estado: 'programada' | 'en_curso' | 'finalizada' | 'cancelada';
-  acta_reunion?: string;
-  tareas_generadas?: string[];
-  creado_por: string;
-  creado_en?: string;
-  actualizado_en?: string;
+// ====== INTERFACES ======
+interface DepartmentStatus {
+  id: string;
+  name: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  tasksCompleted: number;
+  totalTasks: number;
+  completionRate: number;
+  criticalAlerts: number;
+  status: 'excellent' | 'good' | 'warning' | 'critical';
+  manager: string;
+  lastUpdate: string;
+  keyMetrics: {
+    revenue?: number;
+    customers?: number;
+    satisfaction?: number;
+    efficiency?: number;
+  };
+}
+
+interface CenterKPI {
+  id: string;
+  name: string;
+  city: string;
+  type: 'Propio' | 'Franquicia';
+  status: 'Activo' | 'En Construcción' | 'Suspendido';
+  manager: string;
+  monthlyRevenue: number;
+  monthlyTarget: number;
+  members: number;
+  memberTarget: number;
+  satisfaction: number;
+  alerts: number;
+  lastUpdate: string;
 }
 
 interface Task {
   id?: string;
   titulo: string;
-  descripcion?: string;
   asignado_a: string;
   creado_por: string;
-  reunion_origen?: string;
   prioridad: 'baja' | 'media' | 'alta' | 'critica';
-  estado: 'pendiente' | 'en_progreso' | 'en_revision' | 'completada' | 'cancelada';
+  estado: 'pendiente' | 'en_progreso' | 'completada';
   fecha_limite: string;
-  tiempo_estimado?: number;
-  tiempo_real?: number;
-  fecha_inicio?: string;
-  fecha_finalizacion?: string;
   verificacion_requerida: boolean;
-  verificado_por?: string;
-  fecha_verificacion?: string;
-  etiquetas?: string[];
-  creado_en?: string;
-  actualizado_en?: string;
 }
 
-interface Objective {
+interface Meeting {
   id?: string;
   titulo: string;
-  estado?: string;
-  porcentaje_completitud?: number;
-  probabilidad_cumplimiento?: number;
-  riesgo_calculado?: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  tipo: 'estrategica' | 'operativa';
+  estado: 'programada' | 'en_curso' | 'finalizada';
+  participantes: string[];
+  creado_por: string;
 }
 
-interface Alert {
-  id?: string;
-  titulo: string;
-  nivel_urgencia?: string;
-}
+// ====== DATOS ======
+const DEPARTMENTS_DATA: DepartmentStatus[] = [
+  {
+    id: 'direccion',
+    name: 'Dirección',
+    icon: Crown,
+    color: '#1f2937',
+    tasksCompleted: 12,
+    totalTasks: 15,
+    completionRate: 80,
+    criticalAlerts: 1,
+    status: 'good',
+    lastUpdate: '2025-08-09 09:15',
+    keyMetrics: { revenue: 58500, efficiency: 85 },
+    manager: 'Carlos Suárez'
+  },
+  {
+    id: 'marketing',
+    name: 'Marketing',
+    icon: Globe,
+    color: '#3b82f6',
+    tasksCompleted: 8,
+    totalTasks: 12,
+    completionRate: 67,
+    criticalAlerts: 2,
+    status: 'warning',
+    lastUpdate: '2025-08-09 08:45',
+    keyMetrics: { customers: 245, satisfaction: 4.2 },
+    manager: 'Ana García'
+  },
+  {
+    id: 'finanzas',
+    name: 'Finanzas',
+    icon: BarChart3,
+    color: '#8b5cf6',
+    tasksCompleted: 7,
+    totalTasks: 10,
+    completionRate: 70,
+    criticalAlerts: 3,
+    status: 'critical',
+    lastUpdate: '2025-08-09 09:10',
+    keyMetrics: { revenue: 62000, efficiency: 75 },
+    manager: 'Roberto Sánchez'
+  }
+];
 
-interface MeetingData {
-  type: string;
-  department: string;
-  date: string;
-  participants: string[];
-  metrics: Record<string, string>;
-  objectives: Array<{id: number; title: string; status: string}>;
-  tasks: Array<{id: number; title: string; assignedTo: string; deadline: string; priority: string}>;
-  notes: string;
-}
+const CENTERS_DATA: CenterKPI[] = [
+  {
+    id: 'sevilla-central',
+    name: 'La Jungla Sevilla Central',
+    city: 'Sevilla',
+    type: 'Propio',
+    status: 'Activo',
+    manager: 'Vicente Benítez',
+    monthlyRevenue: 35000,
+    monthlyTarget: 32000,
+    members: 450,
+    memberTarget: 400,
+    satisfaction: 4.7,
+    alerts: 0,
+    lastUpdate: '2025-08-09 09:00'
+  },
+  {
+    id: 'sevilla-este',
+    name: 'La Jungla Sevilla Este',
+    city: 'Sevilla',
+    type: 'Franquicia',
+    status: 'Activo',
+    manager: 'José Manuel Torres',
+    monthlyRevenue: 28000,
+    monthlyTarget: 30000,
+    members: 380,
+    memberTarget: 420,
+    satisfaction: 4.3,
+    alerts: 2,
+    lastUpdate: '2025-08-09 08:30'
+  }
+];
 
-// Equipo directivo
 const LEADERSHIP_TEAM = [
   { id: 'carlossuarezparra@gmail.com', name: 'Carlos Suárez Parra', role: 'CEO' },
   { id: 'beni.jungla@gmail.com', name: 'Benito Morales', role: 'Director' },
   { id: 'lajunglacentral@gmail.com', name: 'Vicente Benítez', role: 'Director' }
-];
-
-const MEETING_TYPES = [
-  { value: 'estrategica', label: 'Estratégica', color: '#8b5cf6' },
-  { value: 'operativa', label: 'Operativa', color: '#3b82f6' },
-  { value: 'seguimiento', label: 'Seguimiento', color: '#10b981' },
-  { value: 'urgente', label: 'Urgente', color: '#ef4444' }
 ];
 
 const PRIORITY_LEVELS = [
@@ -103,412 +158,315 @@ const PRIORITY_LEVELS = [
   { value: 'critica', label: 'Crítica', color: '#dc2626' }
 ];
 
-// SISTEMA DE REUNIONES ESTRATÉGICAS
-const StrategicMeetingSystem: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete: (meetingData: any) => void;
-}> = ({ isOpen, onClose, onComplete }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [meetingData, setMeetingData] = useState<MeetingData>({
-    type: '',
-    department: '',
-    date: '',
-    participants: [],
-    metrics: {},
-    objectives: [],
-    tasks: [],
-    notes: ''
-  });
-
-  const totalSteps = 6;
-
-  // Configuraciones
-  const MEETING_TYPES_CONFIG: Record<string, any> = {
-    semanal: {
-      label: 'Reunión Semanal',
-      description: 'Seguimiento operativo y táctico',
-      duration: '1-2 horas',
-      frequency: 'Cada lunes',
-      color: '#3b82f6',
-      icon: Clock
-    },
-    mensual: {
-      label: 'Reunión Mensual',
-      description: 'Revisión estratégica y planificación',
-      duration: '2-3 horas',
-      frequency: 'Primer lunes del mes',
-      color: '#8b5cf6',
-      icon: Calendar
-    }
+// ====== COMPONENTE TARJETA DE DEPARTAMENTO ======
+const DepartmentCard: React.FC<{
+  department: DepartmentStatus;
+  onClick?: () => void;
+}> = ({ department, onClick }) => {
+  const Icon = department.icon;
+  const statusColors = {
+    excellent: '#10b981',
+    good: '#3b82f6',
+    warning: '#f59e0b',
+    critical: '#ef4444'
   };
-
-  const DEPARTMENTS = [
-    { id: 'direccion', name: 'Dirección', icon: Building2, color: '#1f2937' },
-    { id: 'marketing', name: 'Marketing', icon: Globe, color: '#3b82f6' },
-    { id: 'rrhh', name: 'RRHH', icon: Users, color: '#10b981' },
-    { id: 'operaciones', name: 'Operaciones', icon: Briefcase, color: '#f59e0b' },
-    { id: 'wellness', name: 'Wellness', icon: Heart, color: '#ef4444' }
-  ];
-
-  const METRICS_CONFIG: Record<string, any[]> = {
-    semanal: [
-      { id: 'revenue_week', label: 'Facturación Semanal', type: 'currency', target: 15000 },
-      { id: 'new_clients', label: 'Nuevos Clientes', type: 'number', target: 5 },
-      { id: 'churn_rate', label: 'Tasa de Abandono (%)', type: 'percentage', target: 2 },
-      { id: 'satisfaction_score', label: 'Puntuación Satisfacción', type: 'rating', target: 4.5 }
-    ],
-    mensual: [
-      { id: 'revenue_month', label: 'Facturación Mensual', type: 'currency', target: 60000 },
-      { id: 'growth_rate', label: 'Crecimiento (%)', type: 'percentage', target: 15 },
-      { id: 'market_penetration', label: 'Penetración Mercado (%)', type: 'percentage', target: 25 },
-      { id: 'customer_lifetime', label: 'Valor Vida Cliente', type: 'currency', target: 2500 },
-      { id: 'operational_margin', label: 'Margen Operativo (%)', type: 'percentage', target: 35 }
-    ]
-  };
-
-  // Función para guardar en Supabase
-  const saveMeetingToDatabase = async () => {
-    try {
-      const selectedType = MEETING_TYPES_CONFIG[meetingData.type];
-      const selectedDepartment = DEPARTMENTS.find(d => d.id === meetingData.department);
-
-      // 1. Guardar reunión principal
-      const { data: meetingRecord, error: meetingError } = await supabase
-        .from('reuniones')
-        .insert([{
-          titulo: `${selectedType?.label} - ${selectedDepartment?.name}`,
-          descripcion: `Reunión ${meetingData.type} del departamento ${meetingData.department}`,
-          fecha: meetingData.date,
-          hora_inicio: '09:00',
-          hora_fin: meetingData.type === 'mensual' ? '12:00' : '11:00',
-          participantes: meetingData.participants,
-          tipo: 'estrategica',
-          estado: 'programada',
-          creado_por: 'carlossuarezparra@gmail.com',
-          acta_reunion: JSON.stringify({
-            metrics: meetingData.metrics,
-            objectives: meetingData.objectives,
-            type: meetingData.type,
-            department: meetingData.department
-          }),
-          creado_en: new Date().toISOString(),
-          actualizado_en: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (meetingError) throw meetingError;
-
-      // 2. Guardar objetivos
-      if (meetingData.objectives.length > 0) {
-        const objectivesData = meetingData.objectives.map((obj: any) => ({
-          titulo: obj.title,
-          estado: 'activo',
-          reunion_origen: meetingRecord.id,
-          departamento_responsable: meetingData.department,
-          fecha_limite: meetingData.date,
-          creado_por: 'carlossuarezparra@gmail.com',
-          creado_en: new Date().toISOString()
-        }));
-
-        await supabase.from('objetivos').insert(objectivesData);
-      }
-
-      // 3. Guardar tareas
-      if (meetingData.tasks.length > 0) {
-        const tasksData = meetingData.tasks.map((task: any) => ({
-          titulo: task.title,
-          asignado_a: task.assignedTo,
-          creado_por: 'carlossuarezparra@gmail.com',
-          reunion_origen: meetingRecord.id,
-          prioridad: task.priority,
-          estado: 'pendiente',
-          fecha_limite: task.deadline,
-          verificacion_requerida: true,
-          creado_en: new Date().toISOString(),
-          actualizado_en: new Date().toISOString()
-        }));
-
-        await supabase.from('tareas').insert(tasksData);
-      }
-
-      return meetingRecord;
-    } catch (error) {
-      console.error('Error saving meeting:', error);
-      throw error;
-    }
-  };
-
-  // Paso 1: Selección de tipo
-  const TypeSelection = () => (
-    <div style={{ padding: '20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
-          Tipo de Reunión Estratégica
-        </h2>
-        <p style={{ color: '#6b7280' }}>
-          Selecciona el tipo de reunión para configurar el contenido específico
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-        {Object.entries(MEETING_TYPES_CONFIG).map(([key, type]) => {
-          const Icon = type.icon;
-          return (
-            <button
-              key={key}
-              onClick={() => setMeetingData(prev => ({ ...prev, type: key }))}
-              style={{
-                padding: '24px',
-                borderRadius: '12px',
-                border: `2px solid ${meetingData.type === key ? '#3b82f6' : '#e5e7eb'}`,
-                backgroundColor: meetingData.type === key ? '#f0f9ff' : 'white',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: meetingData.type === key ? '0 10px 25px -5px rgba(59, 130, 246, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                <div style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  backgroundColor: `${type.color}20`
-                }}>
-                  <Icon style={{ height: '24px', width: '24px', color: type.color }} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
-                    {type.label}
-                  </h3>
-                  <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-                    {type.description}
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock style={{ height: '16px', width: '16px' }} />
-                  <span>Duración: {type.duration}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar style={{ height: '16px', width: '16px' }} />
-                  <span>Frecuencia: {type.frequency}</span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  // Los demás pasos del sistema... (por brevedad, mantengo solo la estructura principal)
-  const DepartmentSelection = () => <div>Department Selection Component</div>;
-  const BasicConfiguration = () => <div>Basic Configuration Component</div>;
-  const MetricsConfiguration = () => <div>Metrics Configuration Component</div>;
-  const ObjectivesAndTasks = () => <div>Objectives and Tasks Component</div>;
-  const Summary = () => <div>Summary Component</div>;
-
-  const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      const savedMeeting = await saveMeetingToDatabase();
-      onComplete(savedMeeting);
-      alert('¡Reunión estratégica creada exitosamente! 🎉');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al crear la reunión. Inténtalo de nuevo.');
-    }
-  };
-
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1: return meetingData.type !== '';
-      case 2: return meetingData.department !== '';
-      case 3: return meetingData.date !== '' && meetingData.participants.length > 0;
-      case 4: return Object.keys(meetingData.metrics).length > 0;
-      case 5: return meetingData.objectives.length > 0 || meetingData.tasks.length > 0;
-      case 6: return true;
-      default: return false;
-    }
-  };
-
-  if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      zIndex: 9999,
-      overflow: 'auto'
-    }}>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          {/* Header */}
+    <div
+      onClick={onClick}
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: `2px solid ${statusColors[department.status]}20`,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease'
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0, 0, 0, 0.15)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+        }
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            borderRadius: '12px',
-            padding: '24px',
-            color: 'white',
-            marginBottom: '32px',
-            position: 'relative'
+            padding: '10px',
+            borderRadius: '10px',
+            backgroundColor: `${department.color}20`
           }}>
-            <button
-              onClick={onClose}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                cursor: 'pointer',
-                color: 'white',
-                fontSize: '18px'
-              }}
-            >
-              ×
-            </button>
-            
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', margin: 0 }}>
-                  Sistema de Reuniones Estratégicas
-                </h1>
-                <p style={{ opacity: 0.9, margin: 0 }}>
-                  Configuración inteligente basada en tipo y departamento
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '14px', opacity: 0.75 }}>Paso</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                  {currentStep}/{totalSteps}
-                </div>
-              </div>
-            </div>
+            <Icon style={{ height: '24px', width: '24px', color: department.color }} />
           </div>
-
-          {/* Content */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-            marginBottom: '32px'
-          }}>
-            {currentStep === 1 && <TypeSelection />}
-            {currentStep === 2 && <DepartmentSelection />}
-            {currentStep === 3 && <BasicConfiguration />}
-            {currentStep === 4 && <MetricsConfiguration />}
-            {currentStep === 5 && <ObjectivesAndTasks />}
-            {currentStep === 6 && <Summary />}
-          </div>
-
-          {/* Navigation */}
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button
-              onClick={handlePrevious}
-              disabled={currentStep === 1}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: currentStep === 1 ? 'not-allowed' : 'pointer',
-                backgroundColor: currentStep === 1 ? '#f3f4f6' : '#e5e7eb',
-                color: currentStep === 1 ? '#9ca3af' : '#374151',
-                fontSize: '16px',
-                fontWeight: '500'
-              }}
-            >
-              <ArrowLeft style={{ height: '16px', width: '16px' }} />
-              Anterior
-            </button>
-
-            {currentStep < totalSteps ? (
-              <button
-                onClick={handleNext}
-                disabled={!canProceed()}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: canProceed() ? 'pointer' : 'not-allowed',
-                  backgroundColor: canProceed() ? '#3b82f6' : '#f3f4f6',
-                  color: canProceed() ? 'white' : '#9ca3af',
-                  fontSize: '16px',
-                  fontWeight: '500'
-                }}
-              >
-                Siguiente
-                <ChevronRight style={{ height: '16px', width: '16px' }} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  fontSize: '16px',
-                  fontWeight: '500'
-                }}
-              >
-                <Save style={{ height: '16px', width: '16px' }} />
-                Crear Reunión
-              </button>
-            )}
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              {department.name}
+            </h3>
+            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+              {department.manager}
+            </p>
           </div>
         </div>
+        
+        {department.criticalAlerts > 0 && (
+          <div style={{
+            padding: '4px 8px',
+            backgroundColor: '#fee2e2',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <AlertTriangle style={{ height: '12px', width: '12px', color: '#dc2626' }} />
+            <span style={{ fontSize: '11px', fontWeight: '500', color: '#dc2626' }}>
+              {department.criticalAlerts}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
+            Tareas Completadas
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: '600', color: department.color }}>
+            {department.tasksCompleted}/{department.totalTasks}
+          </span>
+        </div>
+        <div style={{
+          width: '100%',
+          height: '6px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '3px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: `${department.completionRate}%`,
+            height: '100%',
+            backgroundColor: statusColors[department.status],
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+        {department.keyMetrics.revenue && (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Ingresos</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              €{department.keyMetrics.revenue.toLocaleString()}
+            </p>
+          </div>
+        )}
+        {department.keyMetrics.customers && (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Clientes</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              {department.keyMetrics.customers}
+            </p>
+          </div>
+        )}
+        {department.keyMetrics.satisfaction && (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Satisfacción</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              {department.keyMetrics.satisfaction}/5
+            </p>
+          </div>
+        )}
+        {department.keyMetrics.efficiency && (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Eficiencia</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              {department.keyMetrics.efficiency}%
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#9ca3af' }}>
+        <span>Actualizado: {new Date(department.lastUpdate).toLocaleTimeString()}</span>
+        <span>{department.completionRate}% completado</span>
       </div>
     </div>
   );
 };
 
-// Modal para crear tarea
+// ====== COMPONENTE TARJETA DE CENTRO ======
+const CenterCard: React.FC<{
+  center: CenterKPI;
+  onClick?: () => void;
+}> = ({ center, onClick }) => {
+  const statusColors = {
+    'Activo': '#10b981',
+    'En Construcción': '#f59e0b',
+    'Suspendido': '#ef4444'
+  };
+
+  const typeColors = {
+    'Propio': '#3b82f6',
+    'Franquicia': '#8b5cf6'
+  };
+
+  const revenuePercentage = center.monthlyTarget > 0 ? (center.monthlyRevenue / center.monthlyTarget) * 100 : 0;
+  const memberPercentage = center.memberTarget > 0 ? (center.members / center.memberTarget) * 100 : 0;
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: `2px solid ${statusColors[center.status]}20`,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease'
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0, 0, 0, 0.15)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+        }
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            padding: '10px',
+            borderRadius: '10px',
+            backgroundColor: `${statusColors[center.status]}20`
+          }}>
+            <Building2 style={{ height: '24px', width: '24px', color: statusColors[center.status] }} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              {center.name}
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin style={{ height: '12px', width: '12px', color: '#6b7280' }} />
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>{center.city}</span>
+              <span style={{
+                fontSize: '10px',
+                padding: '2px 6px',
+                borderRadius: '8px',
+                backgroundColor: `${typeColors[center.type]}20`,
+                color: typeColors[center.type],
+                fontWeight: '500'
+              }}>
+                {center.type}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{
+          padding: '4px 8px',
+          backgroundColor: `${statusColors[center.status]}20`,
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: '500',
+          color: statusColors[center.status]
+        }}>
+          {center.status}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
+              Facturación
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: revenuePercentage >= 100 ? '#10b981' : '#f59e0b' }}>
+              {revenuePercentage.toFixed(0)}%
+            </span>
+          </div>
+          <div style={{
+            width: '100%',
+            height: '6px',
+            backgroundColor: '#f3f4f6',
+            borderRadius: '3px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${Math.min(revenuePercentage, 100)}%`,
+              height: '100%',
+              backgroundColor: revenuePercentage >= 100 ? '#10b981' : '#f59e0b',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
+            €{center.monthlyRevenue.toLocaleString()} / €{center.monthlyTarget.toLocaleString()}
+          </p>
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
+              Miembros
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: memberPercentage >= 100 ? '#10b981' : '#f59e0b' }}>
+              {memberPercentage.toFixed(0)}%
+            </span>
+          </div>
+          <div style={{
+            width: '100%',
+            height: '6px',
+            backgroundColor: '#f3f4f6',
+            borderRadius: '3px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${Math.min(memberPercentage, 100)}%`,
+              height: '100%',
+              backgroundColor: memberPercentage >= 100 ? '#10b981' : '#f59e0b',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
+            {center.members} / {center.memberTarget}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#9ca3af' }}>
+        <span>Manager: {center.manager.split(' ')[0]}</span>
+        {center.alerts > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#dc2626' }}>
+            <AlertTriangle style={{ height: '12px', width: '12px' }} />
+            <span>{center.alerts} alertas</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ====== MODAL CREAR TAREA ======
 const CreateTaskModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Task) => void;
-  meetingId?: string;
-}> = ({ isOpen, onClose, onSave, meetingId }) => {
-  const { employee } = useSession();
+}> = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState<Task>({
     titulo: '',
-    descripcion: '',
     asignado_a: '',
-    creado_por: employee?.email || '',
-    reunion_origen: meetingId,
+    creado_por: 'carlossuarezparra@gmail.com',
     prioridad: 'media',
     estado: 'pendiente',
     fecha_limite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -516,44 +474,30 @@ const CreateTaskModal: React.FC<{
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
+    if (!formData.titulo.trim() || !formData.asignado_a) {
+      alert('Por favor completa todos los campos requeridos');
+      return;
+    }
+
     setIsSubmitting(true);
     
-    try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .insert([{
-          ...formData,
-          creado_en: new Date().toISOString(),
-          actualizado_en: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      onSave(data as Task);
+    setTimeout(() => {
+      onSave({ ...formData, id: Date.now().toString() });
       onClose();
+      setIsSubmitting(false);
       
       // Reset form
       setFormData({
         titulo: '',
-        descripcion: '',
         asignado_a: '',
-        creado_por: employee?.email || '',
-        reunion_origen: meetingId,
+        creado_por: 'carlossuarezparra@gmail.com',
         prioridad: 'media',
         estado: 'pendiente',
         fecha_limite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         verificacion_requerida: true
       });
-    } catch (error) {
-      console.error('Error creating task:', error);
-      alert('Error al crear la tarea. Inténtalo de nuevo.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    }, 1000);
   };
 
   if (!isOpen) return null;
@@ -583,21 +527,29 @@ const CreateTaskModal: React.FC<{
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            Nueva Tarea {meetingId && '(desde reunión)'}
+            Nueva Tarea Ejecutiva
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button 
+            onClick={onClose} 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px'
+            }}
+          >
             <X style={{ height: '24px', width: '24px', color: '#6b7280' }} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <div>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
-              Título *
+              Título de la Tarea *
             </label>
             <input
               type="text"
-              required
               value={formData.titulo}
               onChange={(e) => setFormData(prev => ({ ...prev, titulo: e.target.value }))}
               style={{
@@ -608,7 +560,7 @@ const CreateTaskModal: React.FC<{
                 fontSize: '14px',
                 boxSizing: 'border-box'
               }}
-              placeholder="Ej: Preparar presentación trimestral"
+              placeholder="Ej: Revisar KPIs trimestrales"
             />
           </div>
 
@@ -618,7 +570,6 @@ const CreateTaskModal: React.FC<{
                 Asignado a *
               </label>
               <select
-                required
                 value={formData.asignado_a}
                 onChange={(e) => setFormData(prev => ({ ...prev, asignado_a: e.target.value }))}
                 style={{
@@ -642,8 +593,8 @@ const CreateTaskModal: React.FC<{
               </label>
               <select
                 value={formData.prioridad}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
                   prioridad: e.target.value as 'baja' | 'media' | 'alta' | 'critica'
                 }))}
                 style={{
@@ -662,9 +613,27 @@ const CreateTaskModal: React.FC<{
             </div>
           </div>
 
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+              Fecha Límite
+            </label>
+            <input
+              type="date"
+              value={formData.fecha_limite}
+              onChange={(e) => setFormData(prev => ({ ...prev, fecha_limite: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
-              type="button"
               onClick={onClose}
               style={{
                 padding: '10px 20px',
@@ -679,7 +648,7 @@ const CreateTaskModal: React.FC<{
               Cancelar
             </button>
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={isSubmitting}
               style={{
                 padding: '10px 20px',
@@ -694,66 +663,342 @@ const CreateTaskModal: React.FC<{
                 gap: '8px'
               }}
             >
-              {isSubmitting && <Loader2 style={{ height: '16px', width: '16px', animation: 'spin 1s linear infinite' }} />}
+              {isSubmitting && (
+                <Loader2 style={{
+                  width: '16px',
+                  height: '16px',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              )}
               {!isSubmitting && <Target style={{ height: '16px', width: '16px' }} />}
               {isSubmitting ? 'Creando...' : 'Crear Tarea'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
-// Dashboard ejecutivo con props
+// ====== MODAL CREAR REUNIÓN ======
+const CreateMeetingModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (meeting: Meeting) => void;
+}> = ({ isOpen, onClose, onSave }) => {
+  const [formData, setFormData] = useState<Meeting>({
+    titulo: '',
+    fecha: new Date().toISOString().split('T')[0],
+    hora_inicio: '09:00',
+    hora_fin: '10:00',
+    tipo: 'estrategica',
+    estado: 'programada',
+    participantes: [],
+    creado_por: 'carlossuarezparra@gmail.com'
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = () => {
+    if (!formData.titulo.trim() || formData.participantes.length === 0) {
+      alert('Por favor completa todos los campos requeridos');
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    setTimeout(() => {
+      onSave({ ...formData, id: Date.now().toString() });
+      onClose();
+      setIsSubmitting(false);
+      
+      // Reset form
+      setFormData({
+        titulo: '',
+        fecha: new Date().toISOString().split('T')[0],
+        hora_inicio: '09:00',
+        hora_fin: '10:00',
+        tipo: 'estrategica',
+        estado: 'programada',
+        participantes: [],
+        creado_por: 'carlossuarezparra@gmail.com'
+      });
+    }, 1000);
+  };
+
+  const handleParticipantToggle = (participantId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      participantes: prev.participantes.includes(participantId)
+        ? prev.participantes.filter(id => id !== participantId)
+        : [...prev.participantes, participantId]
+    }));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: '24px',
+        width: '100%',
+        maxWidth: '500px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        maxHeight: '90vh',
+        overflowY: 'auto'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+            Nueva Reunión Ejecutiva
+          </h2>
+          <button 
+            onClick={onClose} 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px'
+            }}
+          >
+            <X style={{ height: '24px', width: '24px', color: '#6b7280' }} />
+          </button>
+        </div>
+
+        <div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+              Título de la Reunión *
+            </label>
+            <input
+              type="text"
+              value={formData.titulo}
+              onChange={(e) => setFormData(prev => ({ ...prev, titulo: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+              placeholder="Ej: Reunión estratégica mensual"
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Fecha *
+              </label>
+              <input
+                type="date"
+                value={formData.fecha}
+                onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Inicio
+              </label>
+              <input
+                type="time"
+                value={formData.hora_inicio}
+                onChange={(e) => setFormData(prev => ({ ...prev, hora_inicio: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+                Fin
+              </label>
+              <input
+                type="time"
+                value={formData.hora_fin}
+                onChange={(e) => setFormData(prev => ({ ...prev, hora_fin: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+              Tipo de Reunión
+            </label>
+            <select
+              value={formData.tipo}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                tipo: e.target.value as 'estrategica' | 'operativa'
+              }))}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="estrategica">Estratégica</option>
+              <option value="operativa">Operativa</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+              Participantes *
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {LEADERSHIP_TEAM.map(member => (
+                <label
+                  key={member.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    backgroundColor: formData.participantes.includes(member.id) ? '#f0f9ff' : 'white'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.participantes.includes(member.id)}
+                    onChange={() => handleParticipantToggle(member.id)}
+                    style={{ margin: 0 }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#374151' }}>
+                    {member.name} - {member.role}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '10px 20px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              style={{
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '6px',
+                backgroundColor: isSubmitting ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {isSubmitting && (
+                <Loader2 style={{
+                  width: '16px',
+                  height: '16px',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              )}
+              {!isSubmitting && <Calendar style={{ height: '16px', width: '16px' }} />}
+              {isSubmitting ? 'Programando...' : 'Programar Reunión'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ====== DASHBOARD EJECUTIVO ======
 const ExecutiveDashboard: React.FC<{
-  showStrategicMeeting?: boolean;
-  setShowStrategicMeeting?: (show: boolean) => void;
-  showTaskModal?: boolean;
-  setShowTaskModal?: (show: boolean) => void;
-  showMarketingSystem?: boolean;
-  setShowMarketingSystem?: (show: boolean) => void;
-  handleMeetingCreated?: (meeting: Meeting) => void;
-  handleTaskCreated?: (task: Task) => void;
-}> = ({
-  showStrategicMeeting = false,
-  setShowStrategicMeeting = () => {},
-  showTaskModal = false,
-  setShowTaskModal = () => {},
-  showMarketingSystem = false,
-  setShowMarketingSystem = () => {},
-  handleMeetingCreated = () => {},
-  handleTaskCreated = () => {}
-}) => {
+  onShowTaskModal?: () => void;
+  onShowMeetingModal?: () => void;
+}> = ({ onShowTaskModal, onShowMeetingModal }) => {
   const [loading, setLoading] = useState(true);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [objectives, setObjectives] = useState<Objective[]>([]);
 
   useEffect(() => {
-    loadExecutiveData();
-  }, []);
-
-  const loadExecutiveData = async () => {
-    setLoading(true);
-    
-    try {
-      // Simulamos carga de datos
-      setTimeout(() => {
-        setMeetings([{
-          id: 'demo1',
+    setTimeout(() => {
+      setMeetings([
+        {
+          id: 'meeting1',
           titulo: 'Reunión Estratégica Semanal',
           fecha: '2025-08-12',
           hora_inicio: '09:00',
           hora_fin: '10:00',
           tipo: 'estrategica',
           estado: 'programada',
-          participantes: ['carlossuarezparra@gmail.com'],
+          participantes: ['carlossuarezparra@gmail.com', 'beni.jungla@gmail.com'],
           creado_por: 'system'
-        }]);
-        
-        setTasks([{
-          id: 'demo1',
+        },
+        {
+          id: 'meeting2',
+          titulo: 'Revisión KPIs Centros',
+          fecha: '2025-08-13',
+          hora_inicio: '15:00',
+          hora_fin: '16:00',
+          tipo: 'operativa',
+          estado: 'programada',
+          participantes: ['lajunglacentral@gmail.com'],
+          creado_por: 'carlossuarezparra@gmail.com'
+        }
+      ]);
+      
+      setTasks([
+        {
+          id: 'task1',
           titulo: 'Revisar KPIs del mes',
           asignado_a: 'carlossuarezparra@gmail.com',
           creado_por: 'system',
@@ -761,31 +1006,46 @@ const ExecutiveDashboard: React.FC<{
           estado: 'pendiente',
           fecha_limite: '2025-08-15',
           verificacion_requerida: false
-        }]);
-        
-        setObjectives([]);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error loading data:', error);
+        },
+        {
+          id: 'task2',
+          titulo: 'Preparar presentación inversores',
+          asignado_a: 'beni.jungla@gmail.com',
+          creado_por: 'carlossuarezparra@gmail.com',
+          prioridad: 'critica',
+          estado: 'en_progreso',
+          fecha_limite: '2025-08-18',
+          verificacion_requerida: true
+        }
+      ]);
+      
       setLoading(false);
-    }
-  };
+    }, 1000);
+  }, []);
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
         <div style={{ textAlign: 'center' }}>
-          <Loader2 style={{ height: '48px', width: '48px', animation: 'spin 1s linear infinite', color: '#3b82f6', margin: '0 auto 16px' }} />
+          <Loader2 style={{
+            width: '48px',
+            height: '48px',
+            color: '#3b82f6',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
           <p style={{ color: '#6b7280', fontSize: '16px' }}>Cargando sistema ejecutivo...</p>
         </div>
       </div>
     );
   }
 
+  const pendingTasks = tasks.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso');
+  const criticalTasks = tasks.filter(t => t.prioridad === 'critica');
+
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header ejecutivo */}
+      {/* Header Principal */}
       <div style={{
         background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%)',
         borderRadius: '16px',
@@ -810,15 +1070,15 @@ const ExecutiveDashboard: React.FC<{
           <span style={{ fontSize: '14px', fontWeight: '500' }}>Sistema IA</span>
         </div>
         
-        <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          Sistema Ejecutivo Inteligente 🧠
+        <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+          🧠 Sistema Ejecutivo Inteligente
         </h2>
-        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
+        <p style={{ fontSize: '18px', opacity: 0.9, margin: 0 }}>
           Dashboard predictivo con IA - Carlos, Benito y Vicente - La Jungla Ibérica
         </p>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs Principales */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -838,34 +1098,7 @@ const ExecutiveDashboard: React.FC<{
               borderRadius: '12px',
               backgroundColor: '#3b82f620'
             }}>
-              <Target style={{ height: '24px', width: '24px', color: '#3b82f6' }} />
-            </div>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', marginBottom: '4px' }}>
-            Objetivos Activos
-          </h3>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
-            {objectives.length}
-          </p>
-          <p style={{ fontSize: '12px', color: '#9ca3af' }}>
-            objetivos en seguimiento
-          </p>
-        </div>
-
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <div style={{
-              padding: '12px',
-              borderRadius: '12px',
-              backgroundColor: '#10b98120'
-            }}>
-              <Brain style={{ height: '24px', width: '24px', color: '#10b981' }} />
+              <Calendar style={{ height: '24px', width: '24px', color: '#3b82f6' }} />
             </div>
           </div>
           <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', marginBottom: '4px' }}>
@@ -874,20 +1107,9 @@ const ExecutiveDashboard: React.FC<{
           <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
             {meetings.length}
           </p>
-          <div style={{
-            padding: '8px 12px',
-            backgroundColor: '#f0f9ff',
-            borderRadius: '8px',
-            border: '1px solid #0ea5e9',
-            marginTop: '8px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar style={{ height: '14px', width: '14px', color: '#0ea5e9' }} />
-              <span style={{ fontSize: '12px', color: '#0369a1', fontWeight: '500' }}>
-                Sistema funcionando
-              </span>
-            </div>
-          </div>
+          <p style={{ fontSize: '12px', color: '#9ca3af' }}>
+            próximas reuniones estratégicas
+          </p>
         </div>
 
         <div style={{
@@ -910,15 +1132,192 @@ const ExecutiveDashboard: React.FC<{
             Tareas Pendientes
           </h3>
           <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
-            {tasks.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').length}
+            {pendingTasks.length}
           </p>
           <p style={{ fontSize: '12px', color: '#9ca3af' }}>
-            tareas activas
+            {criticalTasks.length} críticas
           </p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{
+              padding: '12px',
+              borderRadius: '12px',
+              backgroundColor: '#10b98120'
+            }}>
+              <Brain style={{ height: '24px', width: '24px', color: '#10b981' }} />
+            </div>
+          </div>
+          <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', marginBottom: '4px' }}>
+            Estado Sistema
+          </h3>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            100%
+          </p>
+          <div style={{
+            padding: '8px 12px',
+            backgroundColor: '#f0f9ff',
+            borderRadius: '8px',
+            border: '1px solid #0ea5e9',
+            marginTop: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle style={{ height: '14px', width: '14px', color: '#0ea5e9' }} />
+              <span style={{ fontSize: '12px', color: '#0369a1', fontWeight: '500' }}>
+                Todos los sistemas operativos
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Acciones rápidas */}
+      {/* Lista de Próximas Reuniones */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '32px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+          Próximas Reuniones
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {meetings.slice(0, 3).map(meeting => (
+            <div
+              key={meeting.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#f9fafb'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  padding: '8px',
+                  borderRadius: '8px',
+                  backgroundColor: meeting.tipo === 'estrategica' ? '#3b82f620' : '#f59e0b20'
+                }}>
+                  <Calendar style={{
+                    height: '16px',
+                    width: '16px',
+                    color: meeting.tipo === 'estrategica' ? '#3b82f6' : '#f59e0b'
+                  }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
+                    {meeting.titulo}
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    {new Date(meeting.fecha).toLocaleDateString()} • {meeting.hora_inicio} - {meeting.hora_fin}
+                  </p>
+                </div>
+              </div>
+              <div style={{
+                padding: '4px 8px',
+                borderRadius: '12px',
+                backgroundColor: meeting.tipo === 'estrategica' ? '#dbeafe' : '#fef3c7',
+                fontSize: '11px',
+                fontWeight: '500',
+                color: meeting.tipo === 'estrategica' ? '#1d4ed8' : '#92400e'
+              }}>
+                {meeting.tipo === 'estrategica' ? 'Estratégica' : 'Operativa'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista de Tareas Pendientes */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '32px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+          Tareas Pendientes
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {tasks.filter(t => t.estado !== 'completada').slice(0, 4).map(task => {
+            const priorityColor = PRIORITY_LEVELS.find(p => p.value === task.prioridad)?.color || '#6b7280';
+            const assignedUser = LEADERSHIP_TEAM.find(m => m.id === task.asignado_a);
+            
+            return (
+              <div
+                key={task.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: '#f9fafb'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    padding: '8px',
+                    borderRadius: '8px',
+                    backgroundColor: `${priorityColor}20`
+                  }}>
+                    <Target style={{
+                      height: '16px',
+                      width: '16px',
+                      color: priorityColor
+                    }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
+                      {task.titulo}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                      Asignado a: {assignedUser?.name.split(' ')[0]} • Vence: {new Date(task.fecha_limite).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: `${priorityColor}20`,
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    color: priorityColor
+                  }}>
+                    {PRIORITY_LEVELS.find(p => p.value === task.prioridad)?.label}
+                  </div>
+                  <div style={{
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: task.estado === 'en_progreso' ? '#fbbf2420' : '#e5e7eb',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    color: task.estado === 'en_progreso' ? '#92400e' : '#6b7280'
+                  }}>
+                    {task.estado === 'pendiente' ? 'Pendiente' : 'En Progreso'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Botones de Acción */}
       <div style={{
         display: 'flex',
         gap: '16px',
@@ -926,49 +1325,9 @@ const ExecutiveDashboard: React.FC<{
         flexWrap: 'wrap'
       }}>
         <button
-          onClick={() => setShowStrategicMeeting(true)}
+          onClick={onShowTaskModal}
           style={{
-            padding: '12px 24px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Calendar style={{ height: '20px', width: '20px' }} />
-          Nueva Reunión Estratégica
-        </button>
-        
-        <button
-          onClick={() => setShowMarketingSystem(true)}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#ec4899',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Video style={{ height: '20px', width: '20px' }} />
-          Sistema Marketing
-        </button>
-        
-        <button
-          onClick={() => setShowTaskModal(true)}
-          style={{
-            padding: '12px 24px',
+            padding: '14px 28px',
             backgroundColor: '#10b981',
             color: 'white',
             border: 'none',
@@ -978,57 +1337,1039 @@ const ExecutiveDashboard: React.FC<{
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            transition: 'all 0.2s ease'
           }}
         >
           <Target style={{ height: '20px', width: '20px' }} />
-          Nueva Tarea
+          Nueva Tarea Ejecutiva
+        </button>
+
+        <button
+          onClick={onShowMeetingModal}
+          style={{
+            padding: '14px 28px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Calendar style={{ height: '20px', width: '20px' }} />
+          Programar Reunión
+        </button>
+
+        <button
+          onClick={() => alert('Marketing Intelligence disponible próximamente')}
+          style={{
+            padding: '14px 28px',
+            backgroundColor: '#ec4899',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Video style={{ height: '20px', width: '20px' }} />
+          Marketing Intelligence
         </button>
       </div>
     </div>
   );
 };
 
-// Dashboard SuperAdmin
-const SuperAdminDashboard: React.FC = () => {
+// ====== VISTA DEPARTAMENTOS ======
+const DepartmentsView: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredDepartments = DEPARTMENTS_DATA.filter(dept => 
+    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dept.manager.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div>
+      <div style={{
+        background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        color: 'white',
+        marginBottom: '32px'
+      }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+          📊 Control de Departamentos
+        </h1>
+        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
+          Vista ejecutiva del estado de todos los departamentos en tiempo real
+        </p>
+      </div>
+
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px'
+      }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '20px',
+            width: '20px',
+            color: '#6b7280'
+          }} />
+          <input
+            type="text"
+            placeholder="Buscar departamento o manager..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 44px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '12px 20px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <RefreshCw style={{ height: '16px', width: '16px' }} />
+          Actualizar
+        </button>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: '24px'
+      }}>
+        {filteredDepartments.map((department) => (
+          <DepartmentCard 
+            key={department.id} 
+            department={department}
+            onClick={() => alert(`Detalles de ${department.name}`)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ====== VISTA CENTROS ======
+const CentersView: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCenters = CENTERS_DATA.filter(center => 
+    center.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    center.city.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalRevenue = CENTERS_DATA.reduce((sum, center) => sum + center.monthlyRevenue, 0);
+  const totalMembers = CENTERS_DATA.reduce((sum, center) => sum + center.members, 0);
+
+  return (
+    <div>
+      <div style={{
+        background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        color: 'white',
+        marginBottom: '32px'
+      }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+          🏢 Control de Centros
+        </h1>
+        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
+          Monitoreo en tiempo real de todos los centros La Jungla Ibérica
+        </p>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <DollarSign style={{ height: '24px', width: '24px', color: '#10b981', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            €{totalRevenue.toLocaleString()}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Facturación Total</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Users style={{ height: '24px', width: '24px', color: '#3b82f6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {totalMembers.toLocaleString()}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Miembros Totales</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Building2 style={{ height: '24px', width: '24px', color: '#8b5cf6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {CENTERS_DATA.filter(c => c.status === 'Activo').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Centros Activos</p>
+        </div>
+      </div>
+
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ position: 'relative' }}>
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '20px',
+            width: '20px',
+            color: '#6b7280'
+          }} />
+          <input
+            type="text"
+            placeholder="Buscar centro o ciudad..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 44px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+        gap: '24px'
+      }}>
+        {filteredCenters.map((center) => (
+          <CenterCard 
+            key={center.id} 
+            center={center}
+            onClick={() => alert(`Detalles de ${center.name}`)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ====== VISTA TAREAS ======
+const TasksView: React.FC<{
+  onShowTaskModal?: () => void;
+}> = ({ onShowTaskModal }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [tasks, setTasks] = useState<Task[]>([
+    {
+      id: 'task1',
+      titulo: 'Revisar KPIs del mes',
+      asignado_a: 'carlossuarezparra@gmail.com',
+      creado_por: 'system',
+      prioridad: 'alta',
+      estado: 'pendiente',
+      fecha_limite: '2025-08-15',
+      verificacion_requerida: false
+    },
+    {
+      id: 'task2',
+      titulo: 'Preparar presentación inversores',
+      asignado_a: 'beni.jungla@gmail.com',
+      creado_por: 'carlossuarezparra@gmail.com',
+      prioridad: 'critica',
+      estado: 'en_progreso',
+      fecha_limite: '2025-08-18',
+      verificacion_requerida: true
+    },
+    {
+      id: 'task3',
+      titulo: 'Análisis competencia Q3',
+      asignado_a: 'lajunglacentral@gmail.com',
+      creado_por: 'carlossuarezparra@gmail.com',
+      prioridad: 'media',
+      estado: 'completada',
+      fecha_limite: '2025-08-10',
+      verificacion_requerida: true
+    }
+  ]);
+
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      LEADERSHIP_TEAM.find(m => m.id === task.asignado_a)?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || task.estado === filterStatus;
+    const matchesPriority = filterPriority === 'all' || task.prioridad === filterPriority;
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  const handleTaskStatusChange = (taskId: string, newStatus: Task['estado']) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId ? { ...task, estado: newStatus } : task
+    ));
+  };
+
+  return (
+    <div>
+      <div style={{
+        background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        color: 'white',
+        marginBottom: '32px'
+      }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+          🎯 Gestión de Tareas
+        </h1>
+        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
+          Control y seguimiento de todas las tareas del equipo ejecutivo
+        </p>
+      </div>
+
+      {/* Estadísticas de Tareas */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Target style={{ height: '24px', width: '24px', color: '#3b82f6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {tasks.length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Tareas</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Flag style={{ height: '24px', width: '24px', color: '#f59e0b', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {tasks.filter(t => t.estado === 'pendiente').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Pendientes</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Loader2 style={{ height: '24px', width: '24px', color: '#8b5cf6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {tasks.filter(t => t.estado === 'en_progreso').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>En Progreso</p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <CheckCircle style={{ height: '24px', width: '24px', color: '#10b981', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {tasks.filter(t => t.estado === 'completada').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Completadas</p>
+        </div>
+      </div>
+
+      {/* Filtros y Búsqueda */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto auto auto',
+        gap: '16px',
+        alignItems: 'center'
+      }}>
+        <div style={{ position: 'relative' }}>
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '20px',
+            width: '20px',
+            color: '#6b7280'
+          }} />
+          <input
+            type="text"
+            placeholder="Buscar tarea o asignado..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 44px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={{
+            padding: '12px',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '14px',
+            backgroundColor: 'white'
+          }}
+        >
+          <option value="all">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="en_progreso">En Progreso</option>
+          <option value="completada">Completada</option>
+        </select>
+
+        <select
+          value={filterPriority}
+          onChange={(e) => setFilterPriority(e.target.value)}
+          style={{
+            padding: '12px',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '14px',
+            backgroundColor: 'white'
+          }}
+        >
+          <option value="all">Todas las prioridades</option>
+          <option value="critica">Crítica</option>
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select>
+
+        <button
+          onClick={onShowTaskModal}
+          style={{
+            padding: '12px 20px',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Target style={{ height: '16px', width: '16px' }} />
+          Nueva Tarea
+        </button>
+      </div>
+
+      {/* Lista de Tareas */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {filteredTasks.map(task => {
+            const priorityColor = PRIORITY_LEVELS.find(p => p.value === task.prioridad)?.color || '#6b7280';
+            const assignedUser = LEADERSHIP_TEAM.find(m => m.id === task.asignado_a);
+            const createdUser = LEADERSHIP_TEAM.find(m => m.id === task.creado_por);
+            
+            return (
+              <div
+                key={task.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  backgroundColor: '#f9fafb'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      padding: '8px',
+                      borderRadius: '8px',
+                      backgroundColor: `${priorityColor}20`
+                    }}>
+                      <Target style={{
+                        height: '20px',
+                        width: '20px',
+                        color: priorityColor
+                      }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                        {task.titulo}
+                      </h3>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        Creado por: {createdUser?.name} • Vence: {new Date(task.fecha_limite).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: `${priorityColor}20`,
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      color: priorityColor
+                    }}>
+                      {PRIORITY_LEVELS.find(p => p.value === task.prioridad)?.label}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(assignedUser?.name || '')}&background=059669&color=fff`}
+                      alt={assignedUser?.name}
+                      style={{ height: '32px', width: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
+                        {assignedUser?.name}
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        {assignedUser?.role}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <select
+                      value={task.estado}
+                      onChange={(e) => handleTaskStatusChange(task.id!, e.target.value as Task['estado'])}
+                      style={{
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="en_progreso">En Progreso</option>
+                      <option value="completada">Completada</option>
+                    </select>
+                    
+                    {task.verificacion_requerida && (
+                      <div style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#fef3c7',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: '500',
+                        color: '#92400e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <AlertTriangle style={{ height: '12px', width: '12px' }} />
+                        Verificación
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ====== VISTA REUNIONES ======
+const MeetingsView: React.FC<{
+  onShowMeetingModal?: () => void;
+}> = ({ onShowMeetingModal }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [meetings, setMeetings] = useState<Meeting[]>([
+    {
+      id: 'meeting1',
+      titulo: 'Reunión Estratégica Semanal',
+      fecha: '2025-08-12',
+      hora_inicio: '09:00',
+      hora_fin: '10:00',
+      tipo: 'estrategica',
+      estado: 'programada',
+      participantes: ['carlossuarezparra@gmail.com', 'beni.jungla@gmail.com'],
+      creado_por: 'system'
+    },
+    {
+      id: 'meeting2',
+      titulo: 'Revisión KPIs Centros',
+      fecha: '2025-08-13',
+      hora_inicio: '15:00',
+      hora_fin: '16:00',
+      tipo: 'operativa',
+      estado: 'programada',
+      participantes: ['lajunglacentral@gmail.com'],
+      creado_por: 'carlossuarezparra@gmail.com'
+    },
+    {
+      id: 'meeting3',
+      titulo: 'Planificación Q4',
+      fecha: '2025-08-08',
+      hora_inicio: '10:00',
+      hora_fin: '12:00',
+      tipo: 'estrategica',
+      estado: 'finalizada',
+      participantes: ['carlossuarezparra@gmail.com', 'beni.jungla@gmail.com', 'lajunglacentral@gmail.com'],
+      creado_por: 'carlossuarezparra@gmail.com'
+    }
+  ]);
+
+  const filteredMeetings = meetings.filter(meeting => {
+    const matchesSearch = meeting.titulo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || meeting.tipo === filterType;
+    
+    return matchesSearch && matchesType;
+  });
+
+  return (
+    <div>
+      <div style={{
+        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        color: 'white',
+        marginBottom: '32px'
+      }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+          📅 Gestión de Reuniones
+        </h1>
+        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
+          Programación y seguimiento de reuniones del equipo ejecutivo
+        </p>
+      </div>
+
+      {/* Estadísticas de Reuniones */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Calendar style={{ height: '24px', width: '24px', color: '#3b82f6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {meetings.length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Reuniones</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Clock style={{ height: '24px', width: '24px', color: '#f59e0b', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {meetings.filter(m => m.estado === 'programada').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Programadas</p>
+        </div>
+        
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Crown style={{ height: '24px', width: '24px', color: '#8b5cf6', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {meetings.filter(m => m.tipo === 'estrategica').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Estratégicas</p>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <CheckCircle style={{ height: '24px', width: '24px', color: '#10b981', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+            {meetings.filter(m => m.estado === 'finalizada').length}
+          </p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Finalizadas</p>
+        </div>
+      </div>
+
+      {/* Filtros y Búsqueda */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto auto',
+        gap: '16px',
+        alignItems: 'center'
+      }}>
+        <div style={{ position: 'relative' }}>
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '20px',
+            width: '20px',
+            color: '#6b7280'
+          }} />
+          <input
+            type="text"
+            placeholder="Buscar reunión..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 44px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          style={{
+            padding: '12px',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '14px',
+            backgroundColor: 'white'
+          }}
+        >
+          <option value="all">Todos los tipos</option>
+          <option value="estrategica">Estratégica</option>
+          <option value="operativa">Operativa</option>
+        </select>
+
+        <button
+          onClick={onShowMeetingModal}
+          style={{
+            padding: '12px 20px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Calendar style={{ height: '16px', width: '16px' }} />
+          Nueva Reunión
+        </button>
+      </div>
+
+      {/* Lista de Reuniones */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {filteredMeetings.map(meeting => {
+            const createdUser = LEADERSHIP_TEAM.find(m => m.id === meeting.creado_por);
+            
+            return (
+              <div
+                key={meeting.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  backgroundColor: '#f9fafb'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      padding: '8px',
+                      borderRadius: '8px',
+                      backgroundColor: meeting.tipo === 'estrategica' ? '#3b82f620' : '#f59e0b20'
+                    }}>
+                      <Calendar style={{
+                        height: '20px',
+                        width: '20px',
+                        color: meeting.tipo === 'estrategica' ? '#3b82f6' : '#f59e0b'
+                      }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                        {meeting.titulo}
+                      </h3>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        {new Date(meeting.fecha).toLocaleDateString()} • {meeting.hora_inicio} - {meeting.hora_fin} • Creado por: {createdUser?.name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: meeting.tipo === 'estrategica' ? '#dbeafe' : '#fef3c7',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      color: meeting.tipo === 'estrategica' ? '#1d4ed8' : '#92400e'
+                    }}>
+                      {meeting.tipo === 'estrategica' ? 'Estratégica' : 'Operativa'}
+                    </div>
+                    <div style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: meeting.estado === 'finalizada' ? '#dcfce7' : '#fef3c7',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      color: meeting.estado === 'finalizada' ? '#166534' : '#92400e'
+                    }}>
+                      {meeting.estado === 'programada' ? 'Programada' : 'Finalizada'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
+                    Participantes:
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {meeting.participantes.slice(0, 3).map(participantId => {
+                      const participant = LEADERSHIP_TEAM.find(m => m.id === participantId);
+                      return (
+                        <img
+                          key={participantId}
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant?.name || '')}&background=059669&color=fff`}
+                          alt={participant?.name}
+                          title={participant?.name}
+                          style={{ height: '24px', width: '24px', borderRadius: '50%', objectFit: 'cover' }}
+                        />
+                      );
+                    })}
+                    {meeting.participantes.length > 3 && (
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        padding: '2px 6px',
+                        backgroundColor: '#f3f4f6',
+                        borderRadius: '12px'
+                      }}>
+                        +{meeting.participantes.length - 3}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ====== SISTEMA COMPLETO CON NAVEGACIÓN ======
+const RoleDashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('executive');
-  const [showStrategicMeeting, setShowStrategicMeeting] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showMarketingSystem, setShowMarketingSystem] = useState(false);
-
-  const { employee } = useSession();
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
 
   const menuItems = [
     { id: 'executive', label: 'Dashboard Ejecutivo', icon: Crown },
-    { id: 'employees', label: 'Empleados', icon: Users },
-    { id: 'centers', label: 'Centros', icon: Building2 },
+    { id: 'departments', label: 'Control Departamentos', icon: Users },
+    { id: 'centers', label: 'Control Centros', icon: Building2 },
+    { id: 'tasks', label: 'Gestión Tareas', icon: Target },
+    { id: 'meetings', label: 'Reuniones', icon: Calendar },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Configuración', icon: Settings }
   ];
 
-  const handleMeetingCreated = (meeting: Meeting) => {
-    console.log('🎯 Reunión creada desde SuperAdmin:', meeting);
+  const handleTaskCreated = (task: Task) => {
+    console.log('🎯 Nueva tarea creada:', task);
+    const assignedUser = LEADERSHIP_TEAM.find(m => m.id === task.asignado_a);
+    alert(`¡Tarea "${task.titulo}" creada exitosamente para ${assignedUser?.name}!`);
   };
 
-  const handleTaskCreated = (task: Task) => {
-    console.log('🎯 Tarea creada desde SuperAdmin:', task);
+  const handleMeetingCreated = (meeting: Meeting) => {
+    console.log('📅 Nueva reunión creada:', meeting);
+    alert(`¡Reunión "${meeting.titulo}" programada exitosamente!`);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'executive':
+        return (
+          <ExecutiveDashboard 
+            onShowTaskModal={() => setShowTaskModal(true)}
+            onShowMeetingModal={() => setShowMeetingModal(true)}
+          />
+        );
+      case 'departments':
+        return <DepartmentsView />;
+      case 'centers':
+        return <CentersView />;
+      case 'tasks':
+        return <TasksView onShowTaskModal={() => setShowTaskModal(true)} />;
+      case 'meetings':
+        return <MeetingsView onShowMeetingModal={() => setShowMeetingModal(true)} />;
+      case 'analytics':
+      case 'settings':
+        return (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
+              {activeTab === 'analytics' && 'Analytics Avanzados'}
+              {activeTab === 'settings' && 'Configuración del Sistema'}
+            </h2>
+            <p style={{ color: '#6b7280' }}>
+              Esta funcionalidad estará disponible próximamente.
+            </p>
+          </div>
+        );
+      default:
+        return (
+          <ExecutiveDashboard 
+            onShowTaskModal={() => setShowTaskModal(true)}
+            onShowMeetingModal={() => setShowMeetingModal(true)}
+          />
+        );
+    }
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#f9fafb', 
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
       display: 'flex',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? '256px' : '80px',
+        width: sidebarOpen ? '280px' : '80px',
         backgroundColor: 'white',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
         transition: 'width 0.3s ease',
-        flexShrink: 0
+        flexShrink: 0,
+        borderRight: '1px solid #e5e7eb'
       }}>
         <div style={{ padding: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1041,7 +2382,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Jungla Ibérica</h1>
+                <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>La Jungla Ibérica</h1>
                 <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Sistema Ejecutivo</p>
               </div>
             )}
@@ -1058,21 +2399,104 @@ const SuperAdminDashboard: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                padding: '12px 16px',
+                padding: '14px 16px',
                 borderRadius: '12px',
                 border: 'none',
                 marginBottom: '8px',
                 cursor: 'pointer',
                 backgroundColor: activeTab === item.id ? '#d1fae5' : 'transparent',
                 color: activeTab === item.id ? '#047857' : '#6b7280',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                fontSize: '14px',
+                fontWeight: '500'
               }}
             >
               <item.icon style={{ height: '20px', width: '20px' }} />
-              {sidebarOpen && <span style={{ fontWeight: '500' }}>{item.label}</span>}
+              {sidebarOpen && <span>{item.label}</span>}
             </button>
           ))}
         </nav>
+
+        {/* Mini dashboard en sidebar */}
+        {sidebarOpen && (
+          <div style={{ padding: '16px', marginTop: '24px' }}>
+            <div style={{
+              backgroundColor: '#f8fafc',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                Vista Rápida
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>Departamentos</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#10b981'
+                    }}></div>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                      {DEPARTMENTS_DATA.filter(d => d.status === 'excellent' || d.status === 'good').length}/{DEPARTMENTS_DATA.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>Centros Activos</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#3b82f6'
+                    }}></div>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                      {CENTERS_DATA.filter(c => c.status === 'Activo').length}/{CENTERS_DATA.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>Alertas Críticas</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: DEPARTMENTS_DATA.reduce((sum, d) => sum + d.criticalAlerts, 0) > 0 ? '#ef4444' : '#10b981'
+                    }}></div>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                      {DEPARTMENTS_DATA.reduce((sum, d) => sum + d.criticalAlerts, 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab('departments')}
+                style={{
+                  width: '100%',
+                  marginTop: '12px',
+                  padding: '8px 12px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Ver Detalle
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -1105,29 +2529,51 @@ const SuperAdminDashboard: React.FC = () => {
               <div>
                 <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
                   {activeTab === 'executive' && 'Dashboard Ejecutivo'}
-                  {activeTab === 'employees' && 'Gestión de Empleados'}
-                  {activeTab === 'centers' && 'Gestión de Centros'}
-                  {activeTab === 'analytics' && 'Analytics'}
-                  {activeTab === 'settings' && 'Configuración'}
+                  {activeTab === 'departments' && 'Control de Departamentos'}
+                  {activeTab === 'centers' && 'Control de Centros'}
+                  {activeTab === 'tasks' && 'Gestión de Tareas'}
+                  {activeTab === 'meetings' && 'Gestión de Reuniones'}
+                  {activeTab === 'analytics' && 'Analytics Avanzados'}
+                  {activeTab === 'settings' && 'Configuración del Sistema'}
                 </h1>
                 <p style={{ color: '#6b7280', margin: 0 }}>
-                  Sistema integrado con Supabase - Datos en tiempo real
+                  Sistema integrado con datos en tiempo real - Carlos Suárez Parra
                 </p>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button style={{
+                position: 'relative',
+                padding: '8px',
+                border: 'none',
+                borderRadius: '8px',
+                backgroundColor: '#f3f4f6',
+                cursor: 'pointer'
+              }}>
+                <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
+                <span style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#ef4444',
+                  borderRadius: '50%'
+                }}></span>
+              </button>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img 
-                  src={employee?.imagen_de_perfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee?.name || 'Usuario')}&background=059669&color=fff`}
-                  alt={employee?.name || 'Usuario'} 
-                  style={{ height: '40px', width: '40px', borderRadius: '50%', objectFit: 'cover' }} 
+                <img
+                  src="https://ui-avatars.com/api/?name=Carlos+Suarez&background=059669&color=fff"
+                  alt="Carlos Suárez"
+                  style={{ height: '40px', width: '40px', borderRadius: '50%', objectFit: 'cover' }}
                 />
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
-                    {employee?.name || 'SuperAdmin'}
+                    Carlos Suárez Parra
                   </p>
-                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Sistema Ejecutivo</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>CEO - Sistema Ejecutivo</p>
                 </div>
               </div>
             </div>
@@ -1136,343 +2582,24 @@ const SuperAdminDashboard: React.FC = () => {
 
         {/* Content */}
         <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
-          {activeTab === 'executive' && (
-            <ExecutiveDashboard 
-              showStrategicMeeting={showStrategicMeeting}
-              setShowStrategicMeeting={setShowStrategicMeeting}
-              showTaskModal={showTaskModal}
-              setShowTaskModal={setShowTaskModal}
-              showMarketingSystem={showMarketingSystem}
-              setShowMarketingSystem={setShowMarketingSystem}
-              handleMeetingCreated={handleMeetingCreated}
-              handleTaskCreated={handleTaskCreated}
-            />
-          )}
-          {activeTab === 'employees' && (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
-                Gestión de Empleados
-              </h2>
-              <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-                Funcionalidad disponible próximamente.
-              </p>
-              <button
-                onClick={() => setActiveTab('executive')}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                Ir al Dashboard Ejecutivo
-              </button>
-            </div>
-          )}
-          {(activeTab === 'centers' || activeTab === 'analytics' || activeTab === 'settings') && (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
-                {activeTab === 'centers' && 'Gestión de Centros'}
-                {activeTab === 'analytics' && 'Analytics Avanzados'}
-                {activeTab === 'settings' && 'Configuración del Sistema'}
-              </h2>
-              <p style={{ color: '#6b7280' }}>
-                Esta funcionalidad estará disponible próximamente.
-              </p>
-            </div>
-          )}
+          {renderContent()}
         </main>
       </div>
 
-      {/* Modales para SuperAdmin */}
-      <StrategicMeetingSystem
-        isOpen={showStrategicMeeting}
-        onClose={() => setShowStrategicMeeting(false)}
-        onComplete={(meetingData) => {
-          handleMeetingCreated(meetingData);
-          setShowStrategicMeeting(false);
-        }}
-      />
-      
-      {showMarketingSystem && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          zIndex: 9999,
-          overflow: 'auto'
-        }}>
-          <div style={{ position: 'relative', minHeight: '100vh' }}>
-            <MarketingPublicationSystem />
-            <button
-              onClick={() => setShowMarketingSystem(false)}
-              style={{
-                position: 'fixed',
-                top: '20px',
-                right: '20px',
-                background: 'white',
-                border: '2px solid #3b82f6',
-                borderRadius: '50%',
-                width: '44px',
-                height: '44px',
-                cursor: 'pointer',
-                fontSize: '20px',
-                color: '#3b82f6',
-                zIndex: 10000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-              }}
-              title="Cerrar Sistema Marketing"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-      
-      <CreateTaskModal 
-        isOpen={showTaskModal} 
+      {/* Modales */}
+      <CreateTaskModal
+        isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
-        onSave={(task) => {
-          handleTaskCreated(task);
-          setShowTaskModal(false);
-        }}
+        onSave={handleTaskCreated}
+      />
+
+      <CreateMeetingModal
+        isOpen={showMeetingModal}
+        onClose={() => setShowMeetingModal(false)}
+        onSave={handleMeetingCreated}
       />
     </div>
   );
 };
-
-// ========== COMPONENTE PRINCIPAL FINAL ==========
-const RoleDashboard: React.FC = () => {
-  // Estados para modales (declarados aquí para evitar errores de hooks)
-  const [showStrategicMeeting, setShowStrategicMeeting] = useState(false);
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showMarketingSystem, setShowMarketingSystem] = useState(false);
-  
-  const { employee, userRole, dashboardConfig } = useSession();
-
-  const handleMeetingCreated = (meeting: Meeting) => {
-    console.log('🎯 Reunión creada desde equipo directivo:', meeting);
-  };
-
-  const handleTaskCreated = (task: Task) => {
-    console.log('🎯 Tarea creada desde equipo directivo:', task);
-  };
-
-  if (!employee || !userRole || !dashboardConfig) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #f3f4f6',
-            borderTop: '4px solid #059669',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }}></div>
-          <p style={{ color: '#6b7280' }}>Cargando sistema ejecutivo...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Verificar permisos específicos
-  const isCarlos = employee.email === 'carlossuarezparra@gmail.com';
-  const isBenito = employee.email === 'beni.jungla@gmail.com';
-  const isVicente = employee.email === 'lajunglacentral@gmail.com';
-  const isExecutiveTeam = isCarlos || isBenito || isVicente;
-  
-  // Solo Carlos es SuperAdmin con acceso completo
-  const shouldShowSuperAdmin = userRole === 'superadmin' || isCarlos;
-  
-  // Vicente y Benito tienen acceso al dashboard ejecutivo sin sidebar admin
-  const shouldShowExecutiveDashboard = isExecutiveTeam;
-
-  if (shouldShowSuperAdmin) {
-    return <SuperAdminDashboard />;
-  }
-
-  if (shouldShowExecutiveDashboard) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        padding: '24px',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        {/* Header para el equipo directivo */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '32px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
-                Dashboard Ejecutivo - La Jungla Ibérica
-              </h1>
-              <p style={{ color: '#6b7280', margin: 0 }}>
-                Sistema de gestión para el equipo directivo
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img 
-                src={employee?.imagen_de_perfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee?.name || 'Usuario')}&background=059669&color=fff`}
-                alt={employee?.name || 'Usuario'} 
-                style={{ height: '40px', width: '40px', borderRadius: '50%', objectFit: 'cover' }} 
-              />
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
-                  {employee?.name || 'Director'}
-                </p>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                  {isCarlos ? 'CEO' : isBenito ? 'Director' : isVicente ? 'Director' : 'Equipo Directivo'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard ejecutivo para el equipo directivo */}
-        <ExecutiveDashboard 
-          showStrategicMeeting={showStrategicMeeting}
-          setShowStrategicMeeting={setShowStrategicMeeting}
-          showTaskModal={showTaskModal}
-          setShowTaskModal={setShowTaskModal}
-          showMarketingSystem={showMarketingSystem}
-          setShowMarketingSystem={setShowMarketingSystem}
-          handleMeetingCreated={handleMeetingCreated}
-          handleTaskCreated={handleTaskCreated}
-        />
-
-        {/* Modales para el equipo directivo */}
-        <StrategicMeetingSystem
-          isOpen={showStrategicMeeting}
-          onClose={() => setShowStrategicMeeting(false)}
-          onComplete={(meetingData) => {
-            handleMeetingCreated(meetingData);
-            setShowStrategicMeeting(false);
-          }}
-        />
-        
-        {/* Sistema Marketing para equipo directivo */}
-        {showMarketingSystem && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            zIndex: 9999,
-            overflow: 'auto'
-          }}>
-            <div style={{ position: 'relative', minHeight: '100vh' }}>
-              <MarketingPublicationSystem />
-              <button
-                onClick={() => setShowMarketingSystem(false)}
-                style={{
-                  position: 'fixed',
-                  top: '20px',
-                  right: '20px',
-                  background: 'white',
-                  border: '2px solid #3b82f6',
-                  borderRadius: '50%',
-                  width: '44px',
-                  height: '44px',
-                  cursor: 'pointer',
-                  fontSize: '20px',
-                  color: '#3b82f6',
-                  zIndex: 10000,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }}
-                title="Cerrar Sistema Marketing"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-        
-        <CreateTaskModal 
-          isOpen={showTaskModal} 
-          onClose={() => setShowTaskModal(false)}
-          onSave={(task) => {
-            handleTaskCreated(task);
-            setShowTaskModal(false);
-          }}
-        />
-      </div>
-    );
-  }
-
-  // Fallback para otros roles
-  return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      padding: '24px'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '24px'
-      }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
-          Dashboard: {userRole}
-        </h1>
-        <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-          ¡Bienvenido, {employee.name}! ({employee.role})
-        </p>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          border: '1px solid #0ea5e9',
-          borderRadius: '8px',
-          marginBottom: '16px'
-        }}>
-          <p style={{ fontSize: '14px', color: '#0369a1', margin: 0 }}>
-            ✅ Sistema ejecutivo disponible para el equipo directivo
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-console.log('📁 RoleDashboard: Archivo cargado completamente');
 
 export default RoleDashboard;
