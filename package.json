@@ -12,7 +12,7 @@
   "dependencies": {
     "@mantine/core": "^8.2.3",
     "@mantine/hooks": "^8.2.3",
-    "@supabase/supabase-js": "^2.53.0",
+    "@supabase/supabase-js": "^2.55.0",
     "@tabler/icons-react": "^3.34.1",
     "lucide-react": "^0.536.0",
     "react": "^19.1.0",
