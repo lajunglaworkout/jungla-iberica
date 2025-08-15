@@ -1,55 +1,73 @@
-// ========================================================================
-// INTERFAZ CENTRAL DEL EMPLEADO
-// Esta es la pieza principal que conecta la autenticación con los perfiles.
-// ========================================================================
+// ============ INTERFAZ COMPLETA DE EMPLEADO - TODOS LOS CAMPOS DE LA JUNGLA ============
 
-// 1. Definimos los roles que existen en tu base de datos para que TypeScript los conozca.
-export type UserRole = 'SUPERADMIN' | 'Director' | 'Empleado' | 'Administrador' | 'Encargado' | 'Proveedor';
-
-// 2. Esta es la interfaz principal para un empleado. Refleja la estructura de tu tabla "public.employees".
 export interface Employee {
-  id: number;                   // El ID numérico de la tabla
-  user_id: string;              // El UUID de la tabla 'auth.users'
-  name: string;
+  // Datos Personales
+  id: string;
+  nombre: string;
+  apellidos: string;
   email: string;
-  role: UserRole;               // El rol, usando nuestro tipo de arriba
-  position: string | null;      // El cargo específico (ej: 'Director de Marketing')
-  center_id: number | null;     // El ID del centro al que pertenece (o null si es corporativo)
-  department_id: number | null; // El ID del departamento al que pertenece (o null si es de centro)
-  is_active: boolean;
-  created_at: string;
+  telefono: string;
+  dni: string;
+  fecha_nacimiento: Date;
+  direccion: string;
+  ciudad: string;
+  codigo_postal: string;
+  
+  // Datos Laborales
+  center_id: string;
+  centro_nombre?: string;
+  fecha_alta: Date;
+  fecha_baja?: Date;
+  tipo_contrato: 'Indefinido' | 'Temporal' | 'Prácticas' | 'Media Jornada' | 'Jornada Completa';
+  jornada: 'Completa' | 'Parcial' | '20h' | '30h' | '40h';
+  salario_bruto_anual: number;
+  salario_neto_mensual?: number;
+  rol: 'employee' | 'manager' | 'admin' | 'superadmin';
+  departamento: string;
+  cargo: string;
+  
+  // Datos Bancarios
+  numero_cuenta: string;
+  iban?: string;
+  banco?: string;
+  
+  // Datos Académicos
+  nivel_estudios: 'ESO' | 'Bachillerato' | 'FP Medio' | 'FP Superior' | 'Universitario' | 'Máster' | 'Doctorado';
+  titulacion?: string;
+  especialidad?: string;
+  
+  // Uniformes
+  talla_camiseta: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+  talla_pantalon: string; // 36, 38, 40, 42, 44, 46, 48, 50
+  talla_chaqueton: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+  
+  // Otros
+  foto_perfil?: string;
+  activo: boolean;
+  observaciones?: string;
+  
+  // Documentos
+  tiene_contrato_firmado: boolean;
+  tiene_alta_ss: boolean;
+  tiene_formacion_riesgos: boolean;
+  
+  // Timestamps
+  created_at: Date;
+  updated_at: Date;
 }
 
+// ============ INTERFACES AUXILIARES ============
 
-// ========================================================================
-// MÓDULOS DE RECURSOS HUMANOS (Tu código original)
-// Todas las interfaces y tipos que ya habías diseñado.
-// ========================================================================
-
-export interface WorkSchedule {
+export interface LeaveRequest {
   id: string;
   employeeId: string;
-  name: string;
-  mondayStart?: string;
-  mondayEnd?: string;
-  tuesdayStart?: string;
-  tuesdayEnd?: string;
-  wednesdayStart?: string;
-  wednesdayEnd?: string;
-  thursdayStart?: string;
-  thursdayEnd?: string;
-  fridayStart?: string;
-  fridayEnd?: string;
-  saturdayStart?: string;
-  saturdayEnd?: string;
-  sundayStart?: string;
-  sundayEnd?: string;
-  weeklyHours: number;
-  isActive: boolean;
-  effectiveFrom: string;
-  effectiveUntil?: string;
-  createdAt: string;
-  updatedAt: string;
+  employeeName: string;
+  type: 'vacaciones' | 'enfermedad' | 'personal' | 'maternidad';
+  startDate: string;
+  endDate: string;
+  days: number;
+  status: 'pendiente' | 'aprobada' | 'rechazada';
+  reason?: string;
 }
 
 export interface TimeEntry {
@@ -58,118 +76,76 @@ export interface TimeEntry {
   date: string;
   clockIn?: string;
   clockOut?: string;
-  breakStart?: string;
-  breakEnd?: string;
   totalHours?: number;
-  overtimeHours: number;
-  status: 'present' | 'late' | 'absent' | 'partial';
-  notes?: string;
-  location?: string;
-  ipAddress?: string;
-  createdAt: string;
-  updatedAt: string;
+  status: 'presente' | 'tarde' | 'ausente';
 }
 
-export interface LeaveRequest {
+export interface Payroll {
   id: string;
   employeeId: string;
-  type: 'vacation' | 'sick_leave' | 'personal' | 'maternity' | 'paternity' | 'bereavement' | 'unpaid';
-  startDate: string;
-  endDate: string;
-  daysRequested: number;
-  reason?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
+  employeeName: string;
+  period: string;
+  baseSalary: number;
+  bonuses: number;
+  deductions: number;
+  netSalary: number;
+  status: 'pendiente' | 'procesada' | 'pagada';
 }
 
-export interface Absence {
-  id: string;
-  employeeId: string;
-  date: string;
-  type: 'sick' | 'unauthorized' | 'late' | 'early_leave' | 'no_show';
-  hoursMissed?: number;
-  reason?: string;
-  documented: boolean;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// ============ CONSTANTES Y ETIQUETAS ============
 
-export interface Shift {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  centerId?: string;
-  color: string;
-  isActive: boolean;
-  createdAt: string;
-}
+export const DEPARTAMENTOS = [
+  'Dirección',
+  'RRHH y Procedimientos', 
+  'Logística y Operaciones',
+  'Marketing',
+  'Ventas',
+  'Contabilidad',
+  'Eventos',
+  'Online',
+  'Entrenamiento',
+  'Recepción'
+] as const;
 
-export interface EmployeeContract {
-  id: string;
-  employeeId: string;
-  contractNumber?: string;
-  startDate: string;
-  endDate?: string;
-  annualSalary?: number;
-  hourlyRate?: number;
-  vacationDaysPerYear: number;
-  vacationDaysUsed: number;
-  sickDaysPerYear: number;
-  sickDaysUsed: number;
-  workScheduleId?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export const CENTROS = [
+  { id: '1', nombre: 'Sevilla' },
+  { id: '2', nombre: 'Jerez' },
+  { id: '3', nombre: 'Puerto' },
+  { id: '0', nombre: 'Oficina Central' }
+] as const;
 
-export interface EmployeeStats {
-  totalHoursThisMonth: number;
-  overtimeHoursThisMonth: number;
-  vacationDaysRemaining: number;
-  sickDaysRemaining: number;
-  attendanceRate: number;
-  averageHoursPerDay: number;
-}
+export const TALLAS_ROPA = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
+export const TALLAS_PANTALON = ['36', '38', '40', '42', '44', '46', '48', '50', '52'] as const;
 
+export const TIPOS_CONTRATO = [
+  'Indefinido',
+  'Temporal', 
+  'Prácticas',
+  'Media Jornada',
+  'Jornada Completa'
+] as const;
 
-// ========================================================================
-// ETIQUETAS Y CONSTANTES (Tu código original)
-// ========================================================================
+export const JORNADAS = [
+  'Completa',
+  'Parcial',
+  '20h',
+  '30h', 
+  '40h'
+] as const;
 
-export const LeaveTypeLabels = {
-  vacation: 'Vacaciones',
-  sick_leave: 'Baja médica',
-  personal: 'Asunto personal',
-  maternity: 'Maternidad',
-  paternity: 'Paternidad',
-  bereavement: 'Luto',
-  unpaid: 'Sin sueldo'
-};
+export const NIVELES_ESTUDIOS = [
+  'ESO',
+  'Bachillerato',
+  'FP Medio',
+  'FP Superior',
+  'Universitario',
+  'Máster',
+  'Doctorado'
+] as const;
 
-export const LeaveStatusLabels = {
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  rejected: 'Rechazada',
-  cancelled: 'Cancelada'
-};
-
-export const AbsenceTypeLabels = {
-  sick: 'Enfermedad',
-  unauthorized: 'No autorizada',
-  late: 'Retraso',
-  early_leave: 'Salida temprana',
-  no_show: 'No presentado'
-};
-
-export const TimeEntryStatusLabels = {
-  present: 'Presente',
-  late: 'Tarde',
-  absent: 'Ausente',
-  partial: 'Parcial'
-};
+export const ROLES_SISTEMA = [
+  'employee',
+  'manager', 
+  'admin',
+  'superadmin'
+] as const;

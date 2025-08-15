@@ -209,7 +209,7 @@ const RoleDashboard: React.FC = () => {
         Control de Centros
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-        {['Sevilla Este', 'Sevilla Centro', 'Mairena del Aljarafe'].map(center => (
+        {['Sevilla', 'Jerez', 'Puerto'].map(center => (
           <div key={center} style={{
             padding: '16px',
             border: '1px solid #e5e7eb',

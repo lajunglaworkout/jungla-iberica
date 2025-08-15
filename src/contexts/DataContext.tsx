@@ -3,6 +3,13 @@ import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Center, Employee } from '../types/database';
 
+// CENTROS REALES - Solo estos 3 centros autorizados
+const CENTROS_REALES = [
+  { id: '1', nombre: 'Sevilla', direccion: 'Sevilla', activo: true },
+  { id: '2', nombre: 'Jerez', direccion: 'Jerez de la Frontera', activo: true },
+  { id: '3', nombre: 'Puerto', direccion: 'El Puerto de Santa María', activo: true }
+];
+
 interface DataContextProps {
   centers: Center[];
   employees: Employee[];
@@ -22,13 +29,33 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: centersData, error: centersError } = await supabase.from('centers').select('*');
-        if (centersError) throw centersError;
+        // Cargar solo los 3 centros reales: Sevilla, Jerez, Puerto
+        const { data: centersData, error: centersError } = await supabase
+          .from('centers')
+          .select('*')
+          .or('name.eq.Sevilla,name.eq.Jerez,name.eq.Puerto')
+          .eq('status', 'Activo');
+        
+        if (centersError) {
+          console.error('Error cargando centros:', centersError);
+          throw centersError;
+        }
+        
         setCenters(centersData || []);
+        console.log('✅ Centros cargados:', centersData?.map(c => c.name));
 
-        const { data: employeesData, error: employeesError } = await supabase.from('employees').select('*');
-        if (employeesError) throw employeesError;
+        // Cargar empleados desde la tabla correcta
+        const { data: employeesData, error: employeesError } = await supabase
+          .from('employees')
+          .select('*');
+        
+        if (employeesError) {
+          console.error('Error cargando empleados:', employeesError);
+          throw employeesError;
+        }
+        
         setEmployees(employeesData || []);
+        console.log('✅ Empleados cargados:', employeesData?.length);
         
         setError(null);
       } catch (err: any) {

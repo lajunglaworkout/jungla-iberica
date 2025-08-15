@@ -60,12 +60,10 @@ const CATEGORIAS = [
   { value: 'colaboraciones', label: 'Colaboraciones', icon: '🤝', color: '#ec4899' }
 ];
 
-const CENTROS = [
-  'Sevilla Este',
-  'Sevilla Centro', 
-  'Mairena del Aljarafe',
-  'Dos Hermanas',
-  'Alcalá de Guadaíra'
+const CENTROS_DISPONIBLES = [
+  'Sevilla',
+  'Jerez',
+  'Puerto'
 ];
 
 const FILMMAKERS: Filmmaker[] = [
@@ -79,11 +77,9 @@ const CONTACT_PERSONS: ContactPerson[] = [
   { id: 'contact1', name: 'Carlos Suárez', role: 'CEO', centro: 'Marca', phone: '+34 600 000 001' },
   { id: 'contact2', name: 'Benito Morales', role: 'Director', centro: 'Marca', phone: '+34 600 000 002' },
   { id: 'contact3', name: 'Vicente Benítez', role: 'Director', centro: 'Marca', phone: '+34 600 000 003' },
-  { id: 'contact4', name: 'Manager Sevilla Este', role: 'Manager', centro: 'Sevilla Este', phone: '+34 600 000 004' },
-  { id: 'contact5', name: 'Manager Sevilla Centro', role: 'Manager', centro: 'Sevilla Centro', phone: '+34 600 000 005' },
-  { id: 'contact6', name: 'Manager Mairena', role: 'Manager', centro: 'Mairena del Aljarafe', phone: '+34 600 000 006' },
-  { id: 'contact7', name: 'Manager Dos Hermanas', role: 'Manager', centro: 'Dos Hermanas', phone: '+34 600 000 007' },
-  { id: 'contact8', name: 'Manager Alcalá', role: 'Manager', centro: 'Alcalá de Guadaíra', phone: '+34 600 000 008' }
+  { id: 'contact4', name: 'Manager Sevilla', role: 'Manager', centro: 'Sevilla', phone: '+34 600 000 004' },
+  { id: 'contact5', name: 'Manager Jerez', role: 'Manager', centro: 'Jerez', phone: '+34 600 000 005' },
+  { id: 'contact6', name: 'Manager Puerto', role: 'Manager', centro: 'Puerto', phone: '+34 600 000 006' }
 ];
 
 // ============ COMPONENTE PRINCIPAL ============
@@ -146,7 +142,7 @@ const MarketingPublicationSystem: React.FC = () => {
         titulo: 'Testimonio Cliente - Transformación 6 meses',
         categoria: 'cliente_comunidad',
         perfil_ig: 'centro_especifico',
-        centro_especifico: 'Sevilla Este',
+        centro_especifico: 'Sevilla',
         fecha_limite: '2025-08-12',
         categoria_publicacion: 'feed',
         personas_contacto: ['contact4'],
@@ -1097,7 +1093,7 @@ const MarketingPublicationSystem: React.FC = () => {
                   }}
                 >
                   <option value="">Seleccionar centro...</option>
-                  {CENTROS.map(centro => (
+                  {CENTROS_DISPONIBLES.map((centro: string) => (
                     <option key={centro} value={centro}>{centro}</option>
                   ))}
                 </select>

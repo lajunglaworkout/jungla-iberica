@@ -102,48 +102,17 @@ const ROLE_MAPPING: Record<string, string> = {
   'employee': 'employee'
 };
 
-// Empleados por defecto para usuarios conocidos
-const DEFAULT_EMPLOYEES: Record<string, Employee> = {
-  'carlossuarezparra@gmail.com': {
-    id: 'CEO001',
-    name: 'Carlos Suárez Parra',
-    email: 'carlossuarezparra@gmail.com',
-    role: 'SUPERADMIN',
-    is_active: true,
-    workType: 'marca',
-    profile_image: 'https://ui-avatars.com/api/?name=Carlos+Suarez&background=059669&color=fff',
-    nombre: 'Carlos Suárez Parra',
-    correo_electronico: 'carlossuarezparra@gmail.com',
-    esta_activo: true,
-    imagen_de_perfil: 'https://ui-avatars.com/api/?name=Carlos+Suarez&background=059669&color=fff'
-  },
-  'beni.jungla@gmail.com': {
-    id: 'DIR001',
-    name: 'Benito Morales',
-    email: 'beni.jungla@gmail.com',
-    role: 'Director',
-    is_active: true,
-    workType: 'marca',
-    profile_image: 'https://ui-avatars.com/api/?name=Benito+Morales&background=3b82f6&color=fff',
-    nombre: 'Benito Morales',
-    correo_electronico: 'beni.jungla@gmail.com',
-    esta_activo: true,
-    imagen_de_perfil: 'https://ui-avatars.com/api/?name=Benito+Morales&background=3b82f6&color=fff'
-  },
-  'lajunglacentral@gmail.com': {
-    id: 'DIR002',
-    name: 'Vicente Benítez',
-    email: 'lajunglacentral@gmail.com',
-    role: 'Director',
-    is_active: true,
-    workType: 'marca',
-    profile_image: 'https://ui-avatars.com/api/?name=Vicente+Benitez&background=8b5cf6&color=fff',
-    nombre: 'Vicente Benítez',
-    correo_electronico: 'lajunglacentral@gmail.com',
-    esta_activo: true,
-    imagen_de_perfil: 'https://ui-avatars.com/api/?name=Vicente+Benitez&background=8b5cf6&color=fff'
-  }
-};
+// Lista de usuarios válidos de Supabase Authentication
+const VALID_USERS = [
+  'carlossuarezparra@gmail.com',
+  'lajunglaworkoutmk@gmail.com',
+  'lajunglaweeventos@gmail.com',
+  'pedidoslajungla@gmail.com',
+  'beni.jungla@gmail.com',
+  'lajunglacentral@gmail.com',
+  'rrhhlajungla@gmail.com',
+  'lajunglawonline@gmail.com'
+];
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -153,115 +122,50 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para cargar datos del empleado
-  const loadEmployeeData = async (userId: string, email: string) => {
+  // Función para cargar datos del empleado desde Supabase
+  const loadEmployeeData = async (userId: string, email: string): Promise<boolean> => {
     try {
       console.log('🔍 Cargando datos del empleado para:', email);
       
-      // PRIMERO: Verificar si es un usuario conocido
-      const defaultEmployee = DEFAULT_EMPLOYEES[email];
-      if (defaultEmployee) {
-        console.log('✅ Usando empleado por defecto para:', email);
-        
-        const processedEmployee = {
-          ...defaultEmployee,
-          user_id: userId
-        };
-
-        const roleFromDB = defaultEmployee.role;
-        const mappedRole = ROLE_MAPPING[roleFromDB] || 'employee';
-        const config = DASHBOARD_CONFIGS[mappedRole] || DASHBOARD_CONFIGS.employee;
-
-        setEmployee(processedEmployee);
-        setUserRole(mappedRole);
-        setDashboardConfig(config);
-        setError(null);
-
-        console.log('✅ Sesión configurada con datos por defecto:', {
-          employee: processedEmployee.name,
-          role: mappedRole,
-          config: config.sections
-        });
-
-        return true;
+      // Verificar si es un usuario válido
+      if (!VALID_USERS.includes(email)) {
+        throw new Error(`Usuario ${email} no está autorizado`);
       }
 
-      // SEGUNDO: Intentar consultar la base de datos con timeout corto
-      console.log('🔍 Consultando base de datos...');
+      // Crear empleado básico sin consultar BD para evitar errores de conexión
+      console.log('✅ Creando empleado básico para:', email);
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout de BD')), 3000); // Solo 3 segundos
-      });
-
-      const queryPromise = supabase
-        .from('employees')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      if (result && result.data) {
-        console.log('✅ Datos encontrados en BD:', result.data);
-        
-        const employeeData = result.data;
-        const processedEmployee: Employee = {
-          ...employeeData,
-          user_id: userId,
-          nombre: employeeData.name,
-          correo_electronico: employeeData.email,
-          esta_activo: employeeData.is_active,
-          imagen_de_perfil: employeeData.profile_image,
-          workType: 'marca'
-        };
-
-        const roleFromDB = employeeData.role || 'employee';
-        const mappedRole = ROLE_MAPPING[roleFromDB] || 'employee';
-        const config = DASHBOARD_CONFIGS[mappedRole] || DASHBOARD_CONFIGS.employee;
-
-        setEmployee(processedEmployee);
-        setUserRole(mappedRole);
-        setDashboardConfig(config);
-        setError(null);
-
-        console.log('✅ Sesión configurada desde BD:', {
-          employee: processedEmployee.name,
-          role: mappedRole
-        });
-
-        return true;
-      }
-
-      throw new Error('No se encontraron datos');
-
-    } catch (err) {
-      console.log('⚠️ Error o timeout en BD:', err);
-      
-      // TERCERO: Fallback para usuario genérico
-      console.log('🔧 Creando empleado genérico para:', email);
-      
-      const genericEmployee: Employee = {
-        id: `USER_${userId.slice(0, 8)}`,
+      const basicEmployee: Employee = {
+        id: userId,
         user_id: userId,
-        name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        name: email.split('@')[0],
         email: email,
-        role: 'employee',
+        role: email === 'carlossuarezparra@gmail.com' ? 'superadmin' : 'employee',
         is_active: true,
         workType: 'marca',
-        profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=6b7280&color=fff`,
+        profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
+        // Campos de compatibilidad
         nombre: email.split('@')[0],
         correo_electronico: email,
         esta_activo: true,
-        imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=6b7280&color=fff`
+        imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
       };
 
-      setEmployee(genericEmployee);
-      setUserRole('employee');
-      setDashboardConfig(DASHBOARD_CONFIGS.employee);
+      const roleToUse = email === 'carlossuarezparra@gmail.com' ? 'superadmin' : 'employee';
+      const mappedRole = ROLE_MAPPING[roleToUse] || 'employee';
+      const config = DASHBOARD_CONFIGS[mappedRole] || DASHBOARD_CONFIGS.employee;
+
+      setEmployee(basicEmployee);
+      setUserRole(mappedRole);
+      setDashboardConfig(config);
       setError(null);
 
-      console.log('✅ Empleado genérico creado:', genericEmployee.name);
+      console.log('✅ Empleado básico configurado:', basicEmployee);
       return true;
+    } catch (err) {
+      console.error('❌ Error cargando datos del empleado:', err);
+      setError(err instanceof Error ? err.message : 'Error cargando empleado');
+      return false;
     }
   };
 
@@ -329,6 +233,11 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log('🔄 Auth state changed:', event);
       
       if (!mounted) return;
+      
+      // IGNORAR INITIAL_SESSION y TOKEN_REFRESHED para evitar bucles
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        return; // NO HACER NADA, ya se manejó en initializeSession
+      }
 
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('✅ Usuario ha iniciado sesión');

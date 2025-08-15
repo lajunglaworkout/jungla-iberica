@@ -49,7 +49,7 @@ const ExecutiveDashboard: React.FC = () => {
         .eq('activo', true);
       
       const { data: empleados } = await supabase
-        .from('empleados')
+        .from('employees')
         .select('count')
         .eq('activo', true);
       */
@@ -197,11 +197,9 @@ const ExecutiveDashboard: React.FC = () => {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { name: 'Sevilla Este', value: 85, color: '#10b981' },
-              { name: 'Sevilla Centro', value: 78, color: '#3b82f6' },
-              { name: 'Mairena', value: 72, color: '#f59e0b' },
-              { name: 'Dos Hermanas', value: 69, color: '#8b5cf6' },
-              { name: 'Alcalá', value: 65, color: '#ef4444' }
+              { name: 'Sevilla', value: 85, color: '#10b981' },
+              { name: 'Jerez', value: 78, color: '#3b82f6' },
+              { name: 'Puerto', value: 72, color: '#f59e0b' }
             ].map((centro, index) => (
               <div key={index}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
