@@ -1,5 +1,6 @@
 // src/App.tsx - VERSIÓN COMPLETA INTEGRADA
 import React, { useState, useEffect } from 'react';
+import { CreateCenterModal } from './components/CreateCenterModal';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { DataProvider } from './contexts/DataContext';
 import LoginForm from './components/LoginForm';
@@ -10,11 +11,12 @@ import {
   MapPin, AlertTriangle, DollarSign, Globe, Shield,
   Loader2, RefreshCw, Clock, Heart, Briefcase, ClipboardList,
   TrendingUp, Activity, Package, ChevronRight, Star, LogOut,
-  Plus, Edit, Trash2, Eye, Filter, Download, Upload, Home
+  Plus, Edit, Trash2, Eye, Filter, Download, Upload, Home, History
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
 import ChecklistCompleteSystem from './components/ChecklistCompleteSystem';
+import ChecklistHistory from './components/ChecklistHistory';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import MarketingPublicationSystem from './components/MarketingPublicationSystem';
 import HRManagementSystem from './components/HRManagementSystem';
@@ -26,11 +28,18 @@ import StrategicMeetingSystem from './components/StrategicMeetingSystem';
 const NavigationDashboard: React.FC = () => {
   const { employee, signOut, userRole } = useSession();
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
+  const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
+  
+  // Estados para el sistema de centros mejorado
+  const [showCreateCenterModal, setShowCreateCenterModal] = useState(false);
+  const [showChecklistHistory, setShowChecklistHistory] = useState(false);
+  const [selectedCenterForHistory, setSelectedCenterForHistory] = useState<string | null>(null);
+  const [showChecklist, setShowChecklist] = useState(false);
 
-  // Sistema de módulos dinámicos según rol
+  // Sistema de módulos reorganizado según especificaciones
   const getAvailableModules = () => {
     const isExecutive = ['superadmin', 'admin'].includes(userRole || '');
     const isManager = userRole === 'manager';
@@ -40,87 +49,62 @@ const NavigationDashboard: React.FC = () => {
       {
         id: 'dashboard',
         title: 'Dashboard Ejecutivo',
-        description: 'Panel de control principal',
+        description: 'Tarjetas de todos los departamentos con datos reales',
         icon: Crown,
-        color: '#1e40af',
+        color: '#059669',
         component: ExecutiveDashboard,
         available: isExecutive || isManager
       },
       {
         id: 'intelligent',
         title: 'Dashboard Inteligente',
-        description: 'Sistema con IA predictiva',
+        description: 'Sistema con IA predictiva (mantener como está)',
         icon: Brain,
-        color: '#7c3aed',
+        color: '#059669',
         component: IntelligentExecutiveDashboard,
         available: isExecutive
       },
       {
-        id: 'checklist',
-        title: 'Checklist Operativo',
-        description: 'Control diario de tareas',
-        icon: ClipboardList,
-        color: '#059669',
-        component: ChecklistCompleteSystem,
-        available: true // Disponible para todos
-      },
-      {
         id: 'hr',
         title: 'Gestión RRHH',
-        description: 'Recursos humanos completo',
+        description: 'HRManagementSystem.tsx con empleados reales de Supabase',
         icon: Users,
-        color: '#dc2626',
+        color: '#059669',
         component: HRManagementSystem,
         available: isExecutive || isManager
       },
       {
+        id: 'centers',
+        title: 'Centros',
+        description: 'Sevilla, Jerez, Puerto con ChecklistCompleteSystem',
+        icon: Building2,
+        color: '#059669',
+        component: null, // Componente especial para centros
+        available: true,
+        hasSubmenu: true
+      },
+      {
         id: 'marketing',
-        title: 'Marketing Digital',
-        description: 'Gestión de contenido y publicaciones',
+        title: 'Marketing',
+        description: 'Fusión de contenido y publicaciones',
         icon: Globe,
-        color: '#ec4899',
-        component: null, // Usa modal
+        color: '#059669',
+        component: null, // Componente fusionado
         available: isExecutive || isManager,
         onClick: () => setShowMarketingModal(true)
       },
       {
-        id: 'publications',
-        title: 'Publicaciones',
-        description: 'Cola de publicaciones para redes',
-        icon: Video,
-        color: '#f59e0b',
-        component: MarketingPublicationSystem,
-        available: isExecutive || isManager
-      },
-      {
         id: 'meetings',
         title: 'Reuniones Estratégicas',
-        description: 'Sistema de reuniones y objetivos',
+        description: 'Sidebar siempre visible',
         icon: Calendar,
-        color: '#3b82f6',
-        component: null, // Usa modal
+        color: '#059669',
+        component: null,
         available: isExecutive,
-        onClick: () => setShowMeetingModal(true)
-      },
-      {
-        id: 'analytics',
-        title: 'Analytics',
-        description: 'Métricas y análisis avanzado',
-        icon: BarChart3,
-        color: '#10b981',
-        component: null,
-        available: isExecutive
-      },
-      {
-        id: 'settings',
-        title: 'Configuración',
-        description: 'Ajustes del sistema',
-        icon: Settings,
-        color: '#6b7280',
-        component: null,
-        available: isExecutive
+        onClick: () => setShowMeetingModal(true),
+        alwaysVisible: true
       }
-    ].filter(m => m.available);
+    ].filter(module => module.available);
   };
 
   const modules = getAvailableModules();
@@ -147,20 +131,314 @@ const NavigationDashboard: React.FC = () => {
 
   // Renderizar el módulo seleccionado
   const renderModule = () => {
-    if (!selectedModule) {
-      return <ExecutiveDashboard />;
-    }
-
     const module = modules.find(m => m.id === selectedModule);
     if (!module) return null;
 
-    // Si el módulo tiene componente, renderizarlo
+    // Manejo especial para el módulo de centros MEJORADO
+    if (module.id === 'centers') {
+      return (
+        <div style={{ padding: '24px' }}>
+          {/* Header con botón Nuevo Centro */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '32px' 
+          }}>
+            <div>
+              <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0, marginBottom: '8px' }}>
+                🏢 Gestión de Centros
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+                Administra los centros deportivos y sus operaciones diarias
+              </p>
+            </div>
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => setShowCreateCenterModal(true)}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#047857';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#059669';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <Plus style={{ height: '18px', width: '18px' }} />
+              Nuevo Centro
+            </button>
+          </div>
+
+          {/* Grid de centros mejorado */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '24px' }}>
+            {[
+              { name: 'Sevilla', type: 'Propio', status: 'Activo', responsable: 'María García', lastChecklist: '2025-01-13' },
+              { name: 'Jerez', type: 'Propio', status: 'Activo', responsable: 'Carlos Ruiz', lastChecklist: '2025-01-13' },
+              { name: 'Puerto', type: 'Propio', status: 'Activo', responsable: 'Ana Martín', lastChecklist: '2025-01-12' }
+            ].map(center => (
+              <div
+                key={center.name}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  border: selectedCenter === center.name ? '2px solid #059669' : '1px solid #e5e7eb',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setSelectedCenter(center.name)}
+                onMouseOver={(e) => {
+                  if (selectedCenter !== center.name) {
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (selectedCenter !== center.name) {
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                {/* Header del centro con badges */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Building2 style={{ color: '#059669', height: '28px', width: '28px' }} />
+                    <div>
+                      <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: 0 }}>
+                        Centro {center.name}
+                      </h3>
+                      <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+                        {center.responsable}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Badges de tipo y estado */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: center.type === 'Propio' ? '#dcfce7' : '#dbeafe',
+                      color: center.type === 'Propio' ? '#059669' : '#2563eb'
+                    }}>
+                      {center.type === 'Propio' ? '🏢' : '🏪'} {center.type}
+                    </span>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: center.status === 'Activo' ? '#dcfce7' : '#fef3c7',
+                      color: center.status === 'Activo' ? '#059669' : '#d97706'
+                    }}>
+                      {center.status === 'Activo' ? '✅' : '⚠️'} {center.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Información del centro */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <Clock style={{ height: '16px', width: '16px', color: '#6b7280' }} />
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Último checklist: {center.lastChecklist}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Target style={{ height: '16px', width: '16px', color: '#6b7280' }} />
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Operaciones diarias activas
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botones de acción */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <button
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      padding: '10px 16px',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('🎯 Abriendo checklist para centro:', center.name);
+                      console.log('🎯 Estado showChecklist ANTES:', showChecklist);
+                      console.log('📊 Centro seleccionado ANTES:', selectedCenter);
+                      console.log('🔍 Componente ChecklistCompleteSystem existe?', !!ChecklistCompleteSystem);
+                      
+                      setSelectedCenter(center.name);
+                      setShowChecklist(true);
+                      setSelectedModule('checklist');
+                      
+                      // Logs después del cambio de estado
+                      setTimeout(() => {
+                        console.log('🎯 Estado showChecklist DESPUÉS:', true);
+                        console.log('📊 Centro seleccionado DESPUÉS:', center.name);
+                      }, 100);
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#047857';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = '#059669';
+                    }}
+                  >
+                    <CheckCircle style={{ height: '16px', width: '16px' }} />
+                    Abrir Checklist
+                  </button>
+                  
+                  <button
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      padding: '10px 16px',
+                      backgroundColor: 'white',
+                      color: '#6b7280',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('📋 Abriendo historial para centro:', center.name);
+                      console.log('📋 Estado showChecklistHistory ANTES:', showChecklistHistory);
+                      console.log('🏢 Centro para historial ANTES:', selectedCenterForHistory);
+                      console.log('🔍 Componente ChecklistHistory existe?', !!ChecklistHistory);
+                      
+                      setSelectedCenterForHistory(center.name);
+                      setShowChecklistHistory(true);
+                      
+                      // Logs después del cambio de estado
+                      setTimeout(() => {
+                        console.log('📋 Estado showChecklistHistory DESPUÉS:', true);
+                        console.log('🏢 Centro para historial DESPUÉS:', center.name);
+                      }, 100);
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.borderColor = '#059669';
+                      e.currentTarget.style.color = '#059669';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                  >
+                    <History style={{ height: '16px', width: '16px' }} />
+                    Ver Historial
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modal de crear centro */}
+          <CreateCenterModal
+            isOpen={showCreateCenterModal}
+            onClose={() => setShowCreateCenterModal(false)}
+            onCenterCreated={() => {
+              console.log('✅ Centro creado, recargando lista...');
+              // Aquí se recargaría la lista de centros desde Supabase
+            }}
+          />
+
+          {/* Modal de historial de checklists */}
+          {showChecklistHistory && selectedCenterForHistory && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: 'rgba(0, 0, 0, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}>
+              <div style={{
+                background: 'white',
+                padding: '32px',
+                borderRadius: '16px',
+                width: '900px',
+                maxWidth: '90vw',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+                    📋 Historial de Checklists - {selectedCenterForHistory}
+                  </h3>
+                  <button
+                    onClick={() => setShowChecklistHistory(false)}
+                    style={{
+                      padding: '8px',
+                      backgroundColor: '#f3f4f6',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X style={{ height: '20px', width: '20px', color: '#6b7280' }} />
+                  </button>
+                </div>
+                
+                <div style={{ color: '#6b7280', textAlign: 'center', padding: '40px' }}>
+                  <History style={{ height: '48px', width: '48px', margin: '0 auto 16px', color: '#d1d5db' }} />
+                  <p style={{ fontSize: '16px', margin: 0 }}>
+                    Sistema de historial de checklists en desarrollo...
+                  </p>
+                  <p style={{ fontSize: '14px', margin: '8px 0 0 0' }}>
+                    Próximamente: Lista completa de checklists por fecha, estado y responsable
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (module.component) {
       const Component = module.component;
       return <Component />;
     }
 
-    // Si no tiene componente, mostrar estado vacío
     return (
       <EmptyState 
         title={`${module.title} - En Desarrollo`} 
@@ -215,18 +493,10 @@ const NavigationDashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              padding: '8px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#6b7280'
-            }}
-          >
-            <Menu style={{ height: '20px', width: '20px' }} />
-          </button>
+          {/* Sidebar siempre visible - botón deshabilitado */}
+          <div style={{ padding: '8px' }}>
+            <Menu style={{ height: '20px', width: '20px', color: '#059669' }} />
+          </div>
         </div>
 
         {/* Perfil del usuario */}
@@ -430,6 +700,108 @@ const NavigationDashboard: React.FC = () => {
           setShowMeetingModal(false);
         }}
       />
+
+      {/* MODAL CRÍTICO: ChecklistCompleteSystem */}
+      {showChecklist && selectedCenter && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '1200px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => {
+                console.log('🔒 Cerrando modal de checklist');
+                setShowChecklist(false);
+              }}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                fontSize: '24px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#6b7280',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+            
+            <ChecklistCompleteSystem />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CRÍTICO: Historial de Checklists */}
+      {showChecklistHistory && selectedCenterForHistory && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '80%',
+            maxWidth: '800px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => {
+                console.log('🔒 Cerrando modal de historial');
+                setShowChecklistHistory(false);
+              }}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                fontSize: '24px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#6b7280',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
+            
+            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '24px' }}>
+              📋 Historial de Checklists - {selectedCenterForHistory}
+            </h2>
+            
+            <ChecklistHistory centerName={selectedCenterForHistory} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

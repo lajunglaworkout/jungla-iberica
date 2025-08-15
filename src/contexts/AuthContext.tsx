@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadEmployeeData = async (email: string) => {
     try {
       const { data, error } = await supabase
-        .from('empleados')
+        .from('employees')
         .select(`
           *,
           centro:centros(*)

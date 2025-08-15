@@ -74,12 +74,10 @@ const CATEGORIES: CategoryConfig[] = [
   { value: 'postureo', label: 'Postureo', icon: TrendingUp, color: '#ea580c', description: 'Instalaciones y equipo' }
 ];
 
-const CENTROS: string[] = [
-  'Sevilla Este',
-  'Sevilla Centro', 
-  'Mairena del Aljarafe',
-  'Dos Hermanas',
-  'Alcalá de Guadaíra'
+const CENTROS_DISPONIBLES = [
+  'Sevilla',
+  'Jerez',
+  'Puerto'
 ];
 
 const MARKETING_TEAM: TeamMember[] = [
@@ -747,7 +745,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                   }}
                 >
                   <option value="">Seleccionar centro...</option>
-                  {CENTROS.map(centro => (
+                  {CENTROS_DISPONIBLES.map((centro: string) => (
                     <option key={centro} value={centro}>{centro}</option>
                   ))}
                 </select>
