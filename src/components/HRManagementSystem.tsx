@@ -1,9 +1,11 @@
+// src/components/HRManagementSystem.tsx - Sistema de RRHH con Dashboard Integrado
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Users, AlertCircle, Plus, Edit, Search, UserCheck
+  Users, AlertCircle, Plus, Edit, Search, UserCheck, ArrowLeft, Home
 } from 'lucide-react';
 import EmployeeForm from './EmployeeForm';
 import EmployeeDetail from './EmployeeDetail';
+import HRDashboard from './hr/HRDashboard';
 import { Employee } from '../types/Employee';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
@@ -13,7 +15,7 @@ import { useData } from '../contexts/DataContext';
 
 const HRHeader: React.FC<{ employeeCount: number; activeCount: number }> = ({ employeeCount, activeCount }) => (
   <div style={{ marginBottom: '24px' }}>
-    <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827' }}>Gestión de Recursos Humanos</h1>
+    <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827' }}>Gestión de Empleados</h1>
     <p style={{ fontSize: '16px', color: '#6b7280' }}>Administra la información y el estado de tu equipo.</p>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
       <div style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -43,209 +45,249 @@ const Filters: React.FC<{
   setSearchTerm: (term: string) => void;
   filterCenter: string;
   setFilterCenter: (center: string) => void;
-  centers: { id: string; name: string }[];
+  centerOptions: { id: string; name: string }[];
   onNewEmployee: () => void;
-  onCreateCenterEmployees?: () => void;
   userRole?: string;
-}> = ({ searchTerm, setSearchTerm, filterCenter, setFilterCenter, centers, onNewEmployee, onCreateCenterEmployees, userRole }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-      <div style={{ position: 'relative' }}>
-        <Search size={20} style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} />
-        <input
-          type="text"
-          placeholder="Buscar por nombre, email, cargo..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #d1d5db', width: '300px' }}
-        />
+}> = ({ searchTerm, setSearchTerm, filterCenter, setFilterCenter, centerOptions, onNewEmployee, userRole }) => (
+  <div style={{ 
+    backgroundColor: 'white', 
+    padding: '20px', 
+    borderRadius: '12px', 
+    marginBottom: '24px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+  }}>
+    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ flex: '1', minWidth: '200px' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+          <input
+            type="text"
+            placeholder="Buscar empleados..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 40px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
       </div>
+      
       <select
         value={filterCenter}
         onChange={(e) => setFilterCenter(e.target.value)}
-        style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: 'white' }}
+        style={{
+          padding: '12px',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '14px',
+          minWidth: '150px'
+        }}
       >
-        {centers.map(center => (
+        {centerOptions.map(center => (
           <option key={center.id} value={center.id}>{center.name}</option>
         ))}
       </select>
-    </div>
-    <div style={{ display: 'flex', gap: '12px' }}>
-      <button 
-        onClick={onNewEmployee} 
-        style={{ 
-          backgroundColor: '#059669', color: 'white', border: 'none', 
-          padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', 
-          display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' 
+
+      <button
+        onClick={onNewEmployee}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 20px',
+          backgroundColor: '#059669',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '500'
         }}
       >
-        <Plus size={18} />
+        <Plus size={16} />
         Nuevo Empleado
       </button>
-
     </div>
   </div>
 );
 
-const EmployeeCard: React.FC<{ employee: Employee; onEdit: (employee: Employee) => void; onView: (employee: Employee) => void }> = ({ employee, onEdit, onView }) => {
-  const getRoleBadgeStyle = (role: string): React.CSSProperties => {
-    const base = { padding: '4px 10px', borderRadius: '16px', fontSize: '12px', fontWeight: '500' };
-    switch (role) {
-      case 'superadmin': return { ...base, backgroundColor: '#fef2f2', color: '#991b1b' };
-      case 'admin': return { ...base, backgroundColor: '#fffbeb', color: '#b45309' };
-      case 'manager': return { ...base, backgroundColor: '#ecfdf5', color: '#065f46' };
-      default: return { ...base, backgroundColor: '#f3f4f6', color: '#4b5563' };
-    }
-  };
+const EmployeeCard: React.FC<{
+  employee: Employee;
+  onEdit: (employee: Employee) => void;
+  onView: (employee: Employee) => void;
+}> = ({ employee, onEdit, onView }) => (
+  <div style={{
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '20px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    border: '1px solid #e5e7eb',
+    transition: 'all 0.2s ease'
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+      <div style={{
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        backgroundColor: '#059669',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: '18px',
+        fontWeight: 'bold'
+      }}>
+        {employee.nombre.charAt(0)}{employee.apellidos.charAt(0)}
+      </div>
+      <div style={{ flex: 1 }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#111827' }}>
+          {employee.nombre} {employee.apellidos}
+        </h3>
+        <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+          {employee.cargo} • {employee.centro_nombre}
+        </p>
+      </div>
+      <div style={{
+        padding: '4px 8px',
+        borderRadius: '12px',
+        fontSize: '12px',
+        fontWeight: '500',
+        backgroundColor: employee.activo ? '#10b98120' : '#ef444420',
+        color: employee.activo ? '#10b981' : '#ef4444'
+      }}>
+        {employee.activo ? '✅ Activo' : '❌ Inactivo'}
+      </div>
+    </div>
+
+    <div style={{ marginBottom: '16px' }}>
+      <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
+        📧 {employee.email}
+      </p>
+      <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
+        📞 {employee.telefono}
+      </p>
+      <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
+        🏢 {employee.departamento}
+      </p>
+    </div>
+
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <button
+        onClick={() => onEdit(employee)}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          padding: '8px 12px',
+          backgroundColor: '#f3f4f6',
+          border: '1px solid #d1d5db',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          color: '#374151'
+        }}
+      >
+        <Edit size={14} />
+        Editar
+      </button>
+      <button
+        onClick={() => onView(employee)}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          padding: '8px 12px',
+          backgroundColor: '#059669',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          color: 'white'
+        }}
+      >
+        👁️ Ver detalles
+      </button>
+    </div>
+  </div>
+);
+
+const EmployeeList: React.FC<{
+  employees: Employee[];
+  onEdit: (employee: Employee) => void;
+  onView: (employee: Employee) => void;
+}> = ({ employees, onEdit, onView }) => {
+  if (employees.length === 0) {
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '48px',
+        textAlign: 'center',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <Users size={48} style={{ color: '#6b7280', margin: '0 auto 16px' }} />
+        <h3 style={{ fontSize: '18px', color: '#111827', marginBottom: '8px' }}>
+          No se encontraron empleados
+        </h3>
+        <p style={{ color: '#6b7280' }}>
+          Ajusta los filtros de búsqueda o agrega un nuevo empleado.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ 
-      backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', 
-      padding: '16px', display: 'flex', alignItems: 'center', gap: '16px',
-      transition: 'box-shadow 0.2s ease-in-out'
-    }} onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.05)'} onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}>
-      <img
-        src={employee.foto_perfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.nombre)}+${encodeURIComponent(employee.apellidos)}&background=059669&color=fff`}
-        alt={`Foto de ${employee.nombre}`}
-        style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
-      />
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', alignItems: 'center', gap: '16px' }}>
-        <div>
-          <div style={{ fontWeight: '600', color: '#111827' }}>{employee.nombre} {employee.apellidos}</div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>{employee.email}</div>
-        </div>
-        <div>
-          <div style={{ fontWeight: '500', color: '#374151' }}>{employee.cargo}</div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>{employee.departamento}</div>
-        </div>
-        <div>
-          <span style={getRoleBadgeStyle(employee.rol)}>{employee.rol}</span>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <button onClick={() => onEdit(employee)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px' }}>
-            <Edit size={18} />
-          </button>
-        </div>
-      </div>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+      gap: '20px'
+    }}>
+      {employees.map((employee) => (
+        <EmployeeCard
+          key={employee.id}
+          employee={employee}
+          onEdit={onEdit}
+          onView={onView}
+        />
+      ))}
     </div>
   );
 };
 
-const EmployeeList: React.FC<{ employees: Employee[]; onEdit: (employee: Employee) => void; onView: (employee: Employee) => void }> = ({ employees, onEdit, onView }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-    {employees.length > 0 ? (
-      employees.map(employee => (
-        <EmployeeCard key={employee.id} employee={employee} onEdit={onEdit} onView={onView} />
-      ))
-    ) : (
-      <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', border: '2px dashed #e5e7eb', borderRadius: '12px', backgroundColor: 'white' }}>
-        <Users size={48} style={{ marginBottom: '16px', color: '#9ca3af' }} />
-        <h3 style={{ fontSize: '18px', margin: 0, fontWeight: '600', color: '#374151' }}>No se encontraron empleados</h3>
-        <p style={{ fontSize: '14px', marginTop: '8px' }}>Intenta ajustar los filtros o crear un nuevo empleado.</p>
-      </div>
-    )}
-  </div>
-);
-
 // ============ COMPONENTE PRINCIPAL ============
-const HRManagementSystem = () => {
-  const { user, userRole } = useSession();
+const HRManagementSystem: React.FC = () => {
+  const { employee, userRole } = useSession();
   const { centers: dataCenters } = useData();
+  
+  // Estados principales
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCenter, setFilterCenter] = useState('all'); // 'all', '9', '10', '11', '0'
-  const [isLoading, setIsLoading] = useState(true);
+  const [filterCenter, setFilterCenter] = useState('all');
+  
+  // Estados para navegación del dashboard
+  const [currentView, setCurrentView] = useState<string>('dashboard');
 
-  const getEmployeeTableName = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
-      .in('table_name', ['employees', 'empleados']);
-
-    if (error) {
-      console.error('Error checking for employee table:', error);
-      return null;
-    }
-    return data?.[0]?.table_name || null;
-  }, []);
-  const [error, setError] = useState<string | null>(null);
-
-  // Función de diagnóstico completa
-  const diagnosticarSistema = useCallback(async () => {
-    console.log('🔍 === DIAGNÓSTICO COMPLETO DEL SISTEMA ===');
-    
-    try {
-      // 1. Verificar centros
-      console.log('\n📍 PASO 1: Verificando centros...');
-      const { data: centros, error: errorCentros } = await supabase
-        .from('centers')
-        .select('*');
-      
-      if (errorCentros) {
-        console.error('❌ Error cargando centros:', errorCentros);
-      } else {
-        console.log('✅ Centros encontrados:', centros?.length);
-        centros?.forEach(c => {
-          console.log(`  - ${c.name} (ID: ${c.id})`);
-        });
-      }
-      
-      // 2. Verificar TODOS los empleados sin filtros
-      console.log('\n👥 PASO 2: Verificando TODOS los empleados...');
-      const { data: todosEmpleados, error: errorTodos } = await supabase
-        .from('employees')
-        .select('*');
-      
-      if (errorTodos) {
-        console.error('❌ Error cargando empleados:', errorTodos);
-      } else {
-        console.log('✅ Total empleados en BD:', todosEmpleados?.length);
-        
-        // Agrupar por center_id
-        const porCentro = todosEmpleados?.reduce((acc: Record<string, string[]>, emp: any) => {
-          const key = emp.center_id || 'Oficina Central';
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(emp.nombre || emp.name || emp.email);
-          return acc;
-        }, {});
-        
-        console.log('\n📊 Distribución de empleados:');
-        Object.entries(porCentro || {}).forEach(([centroId, empleados]: [string, string[]]) => {
-          console.log(`  Centro ${centroId}: ${empleados.length} empleados`);
-          empleados.forEach((emp: string) => console.log(`    - ${emp}`));
-        });
-      }
-      
-      // 3. Buscar empleados específicos de los centros
-      console.log('\n🔍 PASO 3: Buscando empleados específicos de centros...');
-      const empleadosEsperados = [
-        'Francisco Giráldez',
-        'Iván Fernández González', 
-        'Israel Torres'
-      ];
-      
-      for (const nombre of empleadosEsperados) {
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*')
-          .or(`nombre.ilike.%${nombre}%,name.ilike.%${nombre}%`);
-        
-        if (data && data.length > 0) {
-          console.log(`✅ ${nombre}: EXISTE (Centro ID: ${data[0].center_id})`);
-        } else {
-          console.log(`❌ ${nombre}: NO EXISTE`);
-        }
-      }
-      
-    } catch (error) {
-      console.error('❌ Error en diagnóstico:', error);
-    }
-    
-    console.log('\n=== FIN DEL DIAGNÓSTICO ===\n');
-  }, []);
+  // Opciones de centros para filtros
+  const centerOptions = [
+    { id: 'all', name: 'Todos los Centros' },
+    { id: '9', name: 'Sevilla' },
+    { id: '10', name: 'Jerez' },
+    { id: '11', name: 'El Puerto' },
+    { id: '0', name: 'Oficina Central' },
+  ];
 
   const loadEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -352,25 +394,23 @@ const HRManagementSystem = () => {
   }, []);
 
   useEffect(() => {
-    diagnosticarSistema();
-    loadEmployees();
-  }, [diagnosticarSistema, loadEmployees]);
+    if (currentView === 'employees') {
+      loadEmployees();
+    }
+  }, [currentView, loadEmployees]);
 
   const handleSaveEmployee = async (employeeData: Partial<Employee>) => {
     setIsLoading(true);
     setError(null);
     try {
-      const tableName = await getEmployeeTableName();
-      if (!tableName) throw new Error("No se pudo determinar la tabla de empleados.");
-
       if (selectedEmployee) {
         console.log(`💾 Actualizando empleado con ID: ${selectedEmployee.id}`);
-        const { error } = await supabase.from(tableName).update(employeeData).eq('id', selectedEmployee.id);
+        const { error } = await supabase.from('employees').update(employeeData).eq('id', selectedEmployee.id);
         if (error) throw error;
         console.log('✅ Empleado actualizado');
       } else {
         console.log('➕ Creando nuevo empleado...');
-        const { error } = await supabase.from(tableName).insert([employeeData]);
+        const { error } = await supabase.from('employees').insert([employeeData]);
         if (error) throw error;
         console.log('✅ Empleado creado');
       }
@@ -399,116 +439,28 @@ const HRManagementSystem = () => {
     setViewingEmployee(employee);
   };
 
-  // Función para crear los 18 empleados de centros si no existen
-  const crearEmpleadosCentros = useCallback(async () => {
-    console.log('🚀 Creando los 18 empleados de centros...');
+  const handleNavigate = (module: string) => {
+    console.log('🧭 Navegando a:', module);
+    setCurrentView(module);
     
-    try {
-      // Obtener IDs de centros
-      const { data: centers } = await supabase
-        .from('centers')
-        .select('id, name');
-      
-      const sevillaId = centers?.find(c => c.name === 'Sevilla')?.id;
-      const jerezId = centers?.find(c => c.name === 'Jerez')?.id;
-      const puertoId = centers?.find(c => c.name === 'Puerto')?.id;
-      
-      console.log('IDs de centros:', { sevillaId, jerezId, puertoId });
-      
-      // Empleados de Sevilla
-      const empleadosSevilla = [
-        { nombre: 'Francisco', apellidos: 'Giráldez', email: 'francisco.giraldez@lajungla.com', cargo: 'Encargado de Centro', center_id: sevillaId },
-        { nombre: 'Salvador', apellidos: 'Cabrera', email: 'salvador.cabrera@lajungla.com', cargo: 'Segundo Encargado', center_id: sevillaId },
-        { nombre: 'Javier', apellidos: 'Surián', email: 'javier.surian@lajungla.com', cargo: 'Entrenador', center_id: sevillaId },
-        { nombre: 'Jesús', apellidos: 'Arias', email: 'jesus.arias@lajungla.com', cargo: 'Entrenador', center_id: sevillaId },
-        { nombre: 'Jesús', apellidos: 'Rosado', email: 'jesus.rosado@lajungla.com', cargo: 'Entrenador', center_id: sevillaId },
-        { nombre: 'Santiago', apellidos: 'Frías', email: 'santiago.frias@lajungla.com', cargo: 'Entrenador', center_id: sevillaId }
-      ];
-      
-      // Empleados de Jerez
-      const empleadosJerez = [
-        { nombre: 'Iván', apellidos: 'Fernández González', email: 'ivan.fernandez@lajungla.com', cargo: 'Encargado de Centro', center_id: jerezId },
-        { nombre: 'Pablo', apellidos: 'Benítez Macarro', email: 'pablo.benitez@lajungla.com', cargo: 'Segundo Encargado', center_id: jerezId },
-        { nombre: 'Mario', apellidos: 'Muñoz Díaz', email: 'mario.munoz@lajungla.com', cargo: 'Entrenador', center_id: jerezId },
-        { nombre: 'José Luis', apellidos: 'Rodríguez Muñoz', email: 'joseluis.rodriguez@lajungla.com', cargo: 'Entrenador', center_id: jerezId },
-        { nombre: 'Antonio Jesús', apellidos: 'Durán', email: 'antonio.duran@lajungla.com', cargo: 'Entrenador', center_id: jerezId },
-        { nombre: 'Francisco', apellidos: 'Estepa Crespo', email: 'francisco.estepa@lajungla.com', cargo: 'Entrenador', center_id: jerezId }
-      ];
-      
-      // Empleados del Puerto
-      const empleadosPuerto = [
-        { nombre: 'Israel', apellidos: 'Torres', email: 'israel.torres@lajungla.com', cargo: 'Encargado de Centro', center_id: puertoId },
-        { nombre: 'Guillermo', apellidos: 'Bermúdez', email: 'guillermo.bermudez@lajungla.com', cargo: 'Segundo Encargado', center_id: puertoId },
-        { nombre: 'José', apellidos: 'Figueroa', email: 'jose.figueroa@lajungla.com', cargo: 'Entrenador', center_id: puertoId },
-        { nombre: 'Adrián', apellidos: 'Jiménez', email: 'adrian.jimenez@lajungla.com', cargo: 'Entrenador', center_id: puertoId },
-        { nombre: 'Manuel', apellidos: 'Bella', email: 'manuel.bella@lajungla.com', cargo: 'Entrenador', center_id: puertoId },
-        { nombre: 'Jonathan', apellidos: 'Padilla', email: 'jonathan.padilla@lajungla.com', cargo: 'Entrenador', center_id: puertoId }
-      ];
-      
-      // Combinar todos
-      const todosLosEmpleados = [
-        ...empleadosSevilla,
-        ...empleadosJerez,
-        ...empleadosPuerto
-      ];
-      
-      // Crear cada empleado
-      for (const emp of todosLosEmpleados) {
-        const empleadoCompleto = {
-          ...emp,
-          telefono: '600' + Math.floor(Math.random() * 1000000),
-          dni: Math.random().toString(36).substring(7).toUpperCase() + 'A',
-          rol: emp.cargo.includes('Encargado') ? 'manager' : 'employee',
-          activo: true,
-          fecha_alta: new Date('2023-01-15').toISOString(),
-          tipo_contrato: 'Indefinido',
-          departamento: 'Operaciones',
-          jornada: 'Completa',
-          salario_bruto_anual: emp.cargo.includes('Encargado') ? 25000 : 20000,
-          nivel_estudios: 'FP Superior',
-          talla_camiseta: 'L',
-          talla_pantalon: '42',
-          talla_chaqueton: 'L',
-          tiene_contrato_firmado: true,
-          tiene_alta_ss: true,
-          tiene_formacion_riesgos: true
-        };
-        
-        const { data, error } = await supabase
-          .from('employees')
-          .upsert(empleadoCompleto, { 
-            onConflict: 'email',
-            ignoreDuplicates: false 
-          })
-          .select();
-        
-        if (error) {
-          console.error(`❌ Error creando ${emp.nombre} ${emp.apellidos}:`, error);
-        } else {
-          console.log(`✅ Creado: ${emp.nombre} ${emp.apellidos}`);
-        }
-      }
-      
-      // Recargar empleados
-      await loadEmployees();
-      console.log('🎉 ¡Empleados de centros creados exitosamente!');
-      
-    } catch (error) {
-      console.error('❌ Error creando empleados:', error);
-    }
-  }, [loadEmployees]);
+    // Resetear estados cuando se navega
+    setShowEmployeeForm(false);
+    setSelectedEmployee(null);
+    setViewingEmployee(null);
+    setSearchTerm('');
+    setFilterCenter('all');
+  };
 
-  const centers = [
-    { id: 'all', name: 'Todos los Centros' },
-    { id: '9', name: 'Sevilla' },
-    { id: '10', name: 'Jerez' },
-    { id: '11', name: 'El Puerto' },
-    { id: '0', name: 'Oficina Central' },
-  ];
+  const handleBackToDashboard = () => {
+    setCurrentView('dashboard');
+    setShowEmployeeForm(false);
+    setSelectedEmployee(null);
+    setViewingEmployee(null);
+  };
 
   const filteredEmployees = employees.filter(employee => {
     const searchTermLower = searchTerm.toLowerCase();
-        const matchesSearch = 
+    const matchesSearch = 
       (employee.nombre || '').toLowerCase().includes(searchTermLower) ||
       (employee.apellidos || '').toLowerCase().includes(searchTermLower) ||
       employee.email.toLowerCase().includes(searchTermLower) ||
@@ -520,46 +472,161 @@ const HRManagementSystem = () => {
     return matchesSearch && matchesCenter;
   });
 
-  if (isLoading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Cargando empleados...</div>;
+  // Renderizado condicional basado en la vista actual
+  if (currentView === 'dashboard') {
+    return <HRDashboard onNavigate={handleNavigate} />;
   }
 
-  if (error) {
+  if (currentView === 'employees') {
+    if (isLoading) {
+      return <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Cargando empleados...</div>;
+    }
+
+    if (error) {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
+          <AlertCircle style={{ marginBottom: '10px', margin: 'auto' }}/>
+          <p style={{ fontWeight: 'bold' }}>Error al cargar los datos</p>
+          <p>{error}</p>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
-        <AlertCircle style={{ marginBottom: '10px', margin: 'auto' }}/>
-        <p style={{ fontWeight: 'bold' }}>Error al cargar los datos</p>
-        <p>{error}</p>
+      <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+        {viewingEmployee ? (
+          <EmployeeDetail employee={viewingEmployee} onBack={() => setViewingEmployee(null)} />
+        ) : showEmployeeForm ? (
+          <EmployeeForm
+            employee={selectedEmployee}
+            onSave={handleSaveEmployee}
+            onCancel={() => setShowEmployeeForm(false)}
+          />
+        ) : (
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Breadcrumbs */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '24px',
+              fontSize: '14px',
+              color: '#6b7280'
+            }}>
+              <button
+                onClick={handleBackToDashboard}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}
+              >
+                <ArrowLeft size={14} />
+                Dashboard RRHH
+              </button>
+              <span>›</span>
+              <span style={{ color: '#059669', fontWeight: '500' }}>Base de Datos</span>
+            </div>
+
+            <HRHeader employeeCount={employees.length} activeCount={employees.filter(e => e.activo).length} />
+            <Filters 
+              searchTerm={searchTerm} 
+              setSearchTerm={setSearchTerm} 
+              filterCenter={filterCenter} 
+              setFilterCenter={setFilterCenter} 
+              centerOptions={centerOptions} 
+              onNewEmployee={handleNewEmployee}
+              userRole={userRole || undefined}
+            />
+            <EmployeeList employees={filteredEmployees} onEdit={handleEditEmployee} onView={handleViewEmployee} />
+          </div>
+        )}
       </div>
     );
   }
 
+  // Para otros módulos en desarrollo
   return (
     <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
-      {viewingEmployee ? (
-        <EmployeeDetail employee={viewingEmployee} onBack={() => setViewingEmployee(null)} />
-      ) : showEmployeeForm ? (
-        <EmployeeForm
-          employee={selectedEmployee}
-          onSave={handleSaveEmployee}
-          onCancel={() => setShowEmployeeForm(false)}
-        />
-      ) : (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <HRHeader employeeCount={employees.length} activeCount={employees.filter(e => e.activo).length} />
-          <Filters 
-            searchTerm={searchTerm} 
-            setSearchTerm={setSearchTerm} 
-            filterCenter={filterCenter} 
-            setFilterCenter={setFilterCenter} 
-            centers={centers} 
-            onNewEmployee={handleNewEmployee}
-            onCreateCenterEmployees={crearEmpleadosCentros}
-            userRole={userRole || undefined}
-          />
-          <EmployeeList employees={filteredEmployees} onEdit={handleEditEmployee} onView={handleViewEmployee} />
+      <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+        {/* Breadcrumbs */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '32px',
+          fontSize: '14px',
+          color: '#6b7280'
+        }}>
+          <button
+            onClick={handleBackToDashboard}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              backgroundColor: 'white',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              color: '#374151'
+            }}
+          >
+            <ArrowLeft size={14} />
+            Dashboard RRHH
+          </button>
+          <span>›</span>
+          <span style={{ color: '#059669', fontWeight: '500' }}>
+            {currentView === 'time-tracking' && 'Fichajes'}
+            {currentView === 'shifts' && 'Turnos'}
+            {currentView === 'evaluations' && 'Evaluaciones'}
+            {currentView === 'training' && 'Formación'}
+            {currentView === 'documents' && 'Documentos'}
+            {currentView === 'reports' && 'Informes'}
+            {currentView === 'vacations' && 'Vacaciones'}
+          </span>
         </div>
-      )}
+
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '48px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🚧</div>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '16px' }}>
+            Módulo en Desarrollo
+          </h2>
+          <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '32px', lineHeight: '1.6' }}>
+            Este módulo está siendo implementado como parte del sistema integral de RRHH. 
+            Estará disponible en las próximas versiones del sistema.
+          </p>
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#f3f4f6',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}>
+            <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+              <strong>Módulo:</strong> {currentView === 'time-tracking' && 'Sistema de Fichajes'}
+              {currentView === 'shifts' && 'Gestión de Turnos'}
+              {currentView === 'evaluations' && 'Evaluaciones de Desempeño'}
+              {currentView === 'training' && 'Formación y Cursos'}
+              {currentView === 'documents' && 'Gestión Documental'}
+              {currentView === 'reports' && 'Informes y Reportes'}
+              {currentView === 'vacations' && 'Gestión de Vacaciones'}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
