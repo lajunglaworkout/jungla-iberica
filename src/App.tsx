@@ -16,13 +16,14 @@ import {
 
 // Importar todos los componentes del sistema
 import ChecklistCompleteSystem from './components/ChecklistCompleteSystem';
-import ChecklistHistory from './components/ChecklistHistory';
-import MarketingContentSystem from './components/MarketingContentSystem';
-import MarketingPublicationSystem from './components/MarketingPublicationSystem';
+import RoleDashboard from './components/RoleDashboard';
 import HRManagementSystem from './components/HRManagementSystem';
+import MarketingPublicationSystem from './components/MarketingPublicationSystem';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
 import IntelligentExecutiveDashboard from './components/IntelligentExecutiveDashboard';
 import StrategicMeetingSystem from './components/StrategicMeetingSystem';
+import MarketingContentSystem from './components/MarketingContentSystem';
+import ChecklistHistory from './components/ChecklistHistory';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {

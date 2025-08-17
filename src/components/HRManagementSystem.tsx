@@ -6,6 +6,8 @@ import {
 import EmployeeForm from './EmployeeForm';
 import EmployeeDetail from './EmployeeDetail';
 import HRDashboard from './hr/HRDashboard';
+import ShiftManagementSystem from './hr/ShiftManagementSystem';
+import DatabaseVerification from './DatabaseVerification';
 import { Employee } from '../types/Employee';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
@@ -475,6 +477,47 @@ const HRManagementSystem: React.FC = () => {
   // Renderizado condicional basado en la vista actual
   if (currentView === 'dashboard') {
     return <HRDashboard onNavigate={handleNavigate} />;
+  }
+
+  if (currentView === 'shifts') {
+    return (
+      <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Breadcrumbs */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '24px',
+            fontSize: '14px',
+            color: '#6b7280'
+          }}>
+            <button
+              onClick={handleBackToDashboard}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                backgroundColor: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                color: '#374151'
+              }}
+            >
+              <ArrowLeft size={14} />
+              Dashboard RRHH
+            </button>
+            <span>›</span>
+            <span style={{ color: '#059669', fontWeight: '500' }}>Turnos</span>
+          </div>
+
+          <ShiftManagementSystem />
+        </div>
+      </div>
+    );
   }
 
   if (currentView === 'employees') {

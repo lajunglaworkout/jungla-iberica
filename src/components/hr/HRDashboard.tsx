@@ -131,11 +131,20 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
     {
       id: 'reports',
       title: 'Informes',
-      icon: <BarChart style={{ height: '48px', width: '48px' }} />,
+      icon: '📊',
       description: 'Reportes y estadísticas',
-      color: '#84cc16',
+      color: '#8b5cf6',
       count: 'Próximamente',
       status: 'coming-soon'
+    },
+    {
+      id: 'db-verify',
+      title: 'Verificar BD',
+      description: 'Comprobar tablas de turnos',
+      icon: '🔍',
+      color: '#059669',
+      status: 'active',
+      count: 'Temporal'
     },
     {
       id: 'vacations',
