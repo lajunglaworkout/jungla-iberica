@@ -6,7 +6,10 @@ import {
 import EmployeeForm from './EmployeeForm';
 import EmployeeDetail from './EmployeeDetail';
 import HRDashboard from './hr/HRDashboard';
-import ShiftManagementSystem from './hr/ShiftManagementSystem';
+import ShiftManagementSystemAdvanced from './hr/ShiftManagementSystemAdvanced';
+import ShiftAssignmentSystem from './hr/ShiftAssignmentSystem';
+import TimeclockDashboard from './hr/TimeclockDashboard';
+import MobileTimeClock from './hr/MobileTimeClock';
 import DatabaseVerification from './DatabaseVerification';
 import { Employee } from '../types/Employee';
 import { supabase } from '../lib/supabase';
@@ -281,6 +284,7 @@ const HRManagementSystem: React.FC = () => {
   
   // Estados para navegación del dashboard
   const [currentView, setCurrentView] = useState<string>('dashboard');
+  const [currentModule, setCurrentModule] = useState<string>('dashboard');
 
   // Opciones de centros para filtros
   const centerOptions = [
@@ -298,19 +302,19 @@ const HRManagementSystem: React.FC = () => {
       console.log('🔍 Cargando TODOS los empleados...');
       
       // Cargar empleados de forma simple
-      const { data: empleadosData, error: empleadosError } = await supabase
+      const { data: activeEmployeesData, error: activeError } = await supabase
         .from('employees')
         .select('*');
       
-      if (empleadosError) {
-        console.error('❌ Error cargando empleados:', empleadosError);
-        setError(`Error al cargar empleados: ${empleadosError.message}`);
+      if (activeError) {
+        console.error('❌ Error cargando empleados:', activeError);
+        setError(`Error al cargar empleados: ${activeError.message}`);
         return;
       }
       
-      console.log('📊 Empleados cargados de BD:', empleadosData?.length);
+      console.log('📊 Empleados cargados de BD:', activeEmployeesData?.length);
       
-      if (!empleadosData || empleadosData.length === 0) {
+      if (!activeEmployeesData || activeEmployeesData.length === 0) {
         console.log('⚠️ No se encontraron empleados en la base de datos');
         setEmployees([]);
         return;
@@ -322,7 +326,7 @@ const HRManagementSystem: React.FC = () => {
         .select('*');
       
       // Mapear empleados de forma más simple y robusta
-      const empleadosMapeados = empleadosData.map((emp: any) => {
+      const empleadosMapeados = activeEmployeesData.map((emp: any) => {
         const centro = centersData?.find(c => c.id === emp.center_id);
         
         // Crear objeto Employee con valores por defecto seguros
@@ -444,6 +448,7 @@ const HRManagementSystem: React.FC = () => {
   const handleNavigate = (module: string) => {
     console.log('🧭 Navegando a:', module);
     setCurrentView(module);
+    setCurrentModule(module);
     
     // Resetear estados cuando se navega
     setShowEmployeeForm(false);
@@ -455,6 +460,7 @@ const HRManagementSystem: React.FC = () => {
 
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
+    setCurrentModule('dashboard');
     setShowEmployeeForm(false);
     setSelectedEmployee(null);
     setViewingEmployee(null);
@@ -480,44 +486,15 @@ const HRManagementSystem: React.FC = () => {
   }
 
   if (currentView === 'shifts') {
-    return (
-      <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          {/* Breadcrumbs */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '24px',
-            fontSize: '14px',
-            color: '#6b7280'
-          }}>
-            <button
-              onClick={handleBackToDashboard}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                backgroundColor: 'white',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: '#374151'
-              }}
-            >
-              <ArrowLeft size={14} />
-              Dashboard RRHH
-            </button>
-            <span>›</span>
-            <span style={{ color: '#059669', fontWeight: '500' }}>Turnos</span>
-          </div>
+    return <ShiftAssignmentSystem />;
+  }
 
-          <ShiftManagementSystem />
-        </div>
-      </div>
-    );
+  if (currentView === 'timeclock') {
+    return <TimeclockDashboard />;
+  }
+
+  if (currentView === 'mobile-timeclock') {
+    return <MobileTimeClock />;
   }
 
   if (currentView === 'employees') {
