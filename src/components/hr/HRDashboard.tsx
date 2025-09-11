@@ -73,68 +73,95 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
     }
   };
 
-  const cards: DashboardCard[] = [
+  const dashboardCards: DashboardCard[] = [
     {
       id: 'employees',
-      title: 'Base de Datos',
-      icon: <Database style={{ height: '48px', width: '48px' }} />,
-      description: 'Gestión completa de empleados',
+      title: 'Gestión de Empleados',
+      icon: <Users size={32} />,
+      description: 'Administrar empleados, contratos y datos personales',
       color: '#059669',
-      count: `${stats.totalEmployees} empleados`,
+      count: stats.totalEmployees,
       status: 'active'
     },
     {
-      id: 'time-tracking',
-      title: 'Fichajes',
-      icon: <Clock style={{ height: '48px', width: '48px' }} />,
-      description: 'Control de entrada y salida',
-      color: '#dc2626',
-      count: `${stats.presentToday} presentes hoy`,
-      status: 'development'
+      id: 'shifts',
+      title: 'Gestión de Turnos',
+      icon: <Clock size={32} />,
+      description: 'Crear y asignar turnos de trabajo',
+      color: '#0ea5e9',
+      count: stats.activeShifts,
+      status: 'active'
     },
     {
-      id: 'shifts',
-      title: 'Turnos',
-      icon: <Calendar style={{ height: '48px', width: '48px' }} />,
-      description: 'Gestión de horarios y turnos',
-      color: '#2563eb',
-      count: `${stats.activeShifts} turnos activos`,
-      status: 'development'
+      id: 'timeclock',
+      title: 'Sistema de Fichajes',
+      icon: <UserCheck size={32} />,
+      description: 'Fichajes con QR dinámico y control horario',
+      color: '#8b5cf6',
+      count: stats.presentToday,
+      status: 'active'
+    },
+    {
+      id: 'mobile-timeclock',
+      title: 'Fichaje Móvil',
+      icon: <MapPin size={32} />,
+      description: 'Escaneo QR desde móvil para empleados',
+      color: '#059669',
+      count: 'QR Activo',
+      status: 'active'
+    },
+    {
+      id: 'attendance',
+      title: 'Asistencia',
+      icon: <Calendar size={32} />,
+      description: 'Registro de asistencia y ausencias',
+      color: '#f59e0b',
+      count: '85%',
+      status: 'coming-soon'
+    },
+    {
+      id: 'vacations',
+      title: 'Vacaciones',
+      icon: <Palmtree size={32} />,
+      description: 'Gestión de vacaciones y permisos',
+      color: '#10b981',
+      count: '12 pendientes',
+      status: 'coming-soon'
     },
     {
       id: 'evaluations',
       title: 'Evaluaciones',
-      icon: <Award style={{ height: '48px', width: '48px' }} />,
-      description: 'Desempeño y objetivos',
-      color: '#7c3aed',
-      count: 'Próximamente',
+      icon: <Award size={32} />,
+      description: 'Evaluaciones de desempeño',
+      color: '#ef4444',
+      count: '3 pendientes',
       status: 'coming-soon'
     },
     {
       id: 'training',
       title: 'Formación',
-      icon: <BookOpen style={{ height: '48px', width: '48px' }} />,
-      description: 'Cursos y certificaciones',
-      color: '#ea580c',
-      count: 'Próximamente',
+      icon: <BookOpen size={32} />,
+      description: 'Cursos y formación del personal',
+      color: '#6366f1',
+      count: '5 cursos',
       status: 'coming-soon'
     },
     {
       id: 'documents',
       title: 'Documentos',
-      icon: <FileText style={{ height: '48px', width: '48px' }} />,
-      description: 'Contratos y documentación',
-      color: '#0891b2',
-      count: `${stats.pendingDocuments} pendientes`,
+      icon: <FileText size={32} />,
+      description: 'Gestión documental y contratos',
+      color: '#84cc16',
+      count: stats.pendingDocuments,
       status: 'coming-soon'
     },
     {
       id: 'reports',
-      title: 'Informes',
-      icon: '📊',
-      description: 'Reportes y estadísticas',
-      color: '#8b5cf6',
-      count: 'Próximamente',
+      title: 'Reportes',
+      icon: <BarChart size={32} />,
+      description: 'Informes y estadísticas de RRHH',
+      color: '#f97316',
+      count: 'Nuevo',
       status: 'coming-soon'
     },
     {
@@ -405,7 +432,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        {cards.map((card) => (
+        {dashboardCards.map((card: DashboardCard) => (
           <div
             key={card.id}
             onClick={() => handleCardClick(card.id, card.status)}

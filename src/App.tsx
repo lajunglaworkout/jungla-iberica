@@ -24,6 +24,8 @@ import IntelligentExecutiveDashboard from './components/IntelligentExecutiveDash
 import StrategicMeetingSystem from './components/StrategicMeetingSystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
+import LogisticsManagementSystem from './components/LogisticsManagementSystem';
+import IncidentManagementSystem from './components/incidents/IncidentManagementSystem';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -95,6 +97,24 @@ const NavigationDashboard: React.FC = () => {
         onClick: () => setShowMarketingModal(true)
       },
       {
+        id: 'logistics',
+        title: 'Logística',
+        description: 'Gestión de vestuario y pedidos',
+        icon: Package,
+        color: '#059669',
+        component: null, // Componente de logística
+        available: isExecutive || isManager || userRole === 'logistics'
+      },
+      {
+        id: 'incidents',
+        title: 'Incidencias y Peticiones',
+        description: 'Ausencias, vacaciones y solicitudes',
+        icon: ClipboardList,
+        color: '#059669',
+        component: null, // Sistema de incidencias
+        available: true // Todos los empleados pueden crear peticiones
+      },
+      {
         id: 'meetings',
         title: 'Reuniones Estratégicas',
         description: 'Sidebar siempre visible',
@@ -130,10 +150,19 @@ const NavigationDashboard: React.FC = () => {
     </div>
   );
 
-  // Renderizar el módulo seleccionado
+    // Renderizar el módulo seleccionado
   const renderModule = () => {
     const module = modules.find(m => m.id === selectedModule);
     if (!module) return null;
+
+    // Manejo especial para módulos específicos
+    if (module.id === 'logistics') {
+      return <LogisticsManagementSystem />;
+    }
+
+    if (module.id === 'incidents') {
+      return <IncidentManagementSystem />;
+    }
 
     // Manejo especial para el módulo de centros MEJORADO
     if (module.id === 'centers') {
