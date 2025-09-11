@@ -1,5 +1,5 @@
 import React from 'react';
-import { Employee } from '../types/Employee';
+import { Employee } from '../types/employee';
 import { ArrowLeft, User, Briefcase, Banknote, GraduationCap, Shirt, FileText } from 'lucide-react';
 
 // Sub-componente para una fila de información

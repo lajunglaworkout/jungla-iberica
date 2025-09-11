@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
-import { Employee } from '../types/Employee';
+import { Employee } from '../types/employee';
 import { supabase } from '../lib/supabase';
 
 interface EmployeeFormProps {
