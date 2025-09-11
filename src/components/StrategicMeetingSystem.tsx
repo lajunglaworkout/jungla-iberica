@@ -69,7 +69,7 @@ const MEETING_TYPES_CONFIG: Record<string, MeetingTypeConfig> = {
     description: 'Seguimiento operativo y táctico',
     duration: '1-2 horas',
     frequency: 'Cada lunes',
-    color: '#3b82f6',
+    color: '#059669',
     icon: Clock
   },
   mensual: {
@@ -77,17 +77,17 @@ const MEETING_TYPES_CONFIG: Record<string, MeetingTypeConfig> = {
     description: 'Revisión estratégica y planificación',
     duration: '2-3 horas',
     frequency: 'Primer lunes del mes',
-    color: '#8b5cf6',
+    color: '#047857',
     icon: Calendar
   }
 };
 
 const DEPARTMENTS: DepartmentConfig[] = [
-  { id: 'direccion', name: 'Dirección', icon: Building2, color: '#1f2937' },
-  { id: 'marketing', name: 'Marketing', icon: Globe, color: '#3b82f6' },
-  { id: 'rrhh', name: 'RRHH', icon: Users, color: '#10b981' },
-  { id: 'operaciones', name: 'Operaciones', icon: Briefcase, color: '#f59e0b' },
-  { id: 'wellness', name: 'Wellness', icon: Heart, color: '#ef4444' }
+  { id: 'direccion', name: 'Dirección', icon: Building2, color: '#059669' },
+  { id: 'marketing', name: 'Marketing', icon: Globe, color: '#047857' },
+  { id: 'rrhh', name: 'RRHH', icon: Users, color: '#059669' },
+  { id: 'operaciones', name: 'Operaciones', icon: Briefcase, color: '#047857' },
+  { id: 'wellness', name: 'Wellness', icon: Heart, color: '#059669' }
 ];
 
 const METRICS_CONFIG: Record<string, MetricConfig[]> = {
@@ -223,12 +223,12 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
               style={{
                 padding: '24px',
                 borderRadius: '12px',
-                border: `2px solid ${meetingData.type === key ? '#3b82f6' : '#e5e7eb'}`,
-                backgroundColor: meetingData.type === key ? '#f0f9ff' : 'white',
+                border: `2px solid ${meetingData.type === key ? '#059669' : '#e5e7eb'}`,
+                backgroundColor: meetingData.type === key ? '#f0fdf4' : 'white',
                 textAlign: 'left',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                boxShadow: meetingData.type === key ? '0 10px 25px -5px rgba(59, 130, 246, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                boxShadow: meetingData.type === key ? '0 10px 25px -5px rgba(5, 150, 105, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
@@ -288,8 +288,8 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
               style={{
                 padding: '24px',
                 borderRadius: '12px',
-                border: `2px solid ${meetingData.department === dept.id ? '#3b82f6' : '#e5e7eb'}`,
-                backgroundColor: meetingData.department === dept.id ? '#f0f9ff' : 'white',
+                border: `2px solid ${meetingData.department === dept.id ? '#059669' : '#e5e7eb'}`,
+                backgroundColor: meetingData.department === dept.id ? '#f0fdf4' : 'white',
                 textAlign: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
@@ -540,7 +540,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           marginBottom: '24px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <Target style={{ height: '20px', width: '20px', color: '#3b82f6' }} />
+            <Target style={{ height: '20px', width: '20px', color: '#059669' }} />
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
               Objetivos Estratégicos
             </h3>
@@ -565,7 +565,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
               onClick={addObjective}
               style={{
                 padding: '12px 16px',
-                backgroundColor: '#3b82f6',
+                backgroundColor: '#059669',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -620,7 +620,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           padding: '20px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <CheckCircle style={{ height: '20px', width: '20px', color: '#10b981' }} />
+            <CheckCircle style={{ height: '20px', width: '20px', color: '#059669' }} />
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
               Tareas Específicas
             </h3>
@@ -689,7 +689,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                 onClick={addTask}
                 style={{
                   padding: '10px 12px',
-                  backgroundColor: '#10b981',
+                  backgroundColor: '#059669',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
@@ -912,15 +912,27 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      zIndex: 9999,
-      overflow: 'auto'
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      zIndex: 1000,
+      overflow: 'auto',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
     }}>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ 
+        backgroundColor: '#f9fafb', 
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        width: '100%',
+        maxWidth: '1200px',
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
+        <div style={{ padding: '24px' }}>
           {/* Header */}
           <div style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
             borderRadius: '12px',
             padding: '24px',
             color: 'white',
@@ -933,14 +945,27 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                 position: 'absolute',
                 top: '16px',
                 right: '16px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
+                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                border: '2px solid rgba(255, 255, 255, 0.5)',
                 borderRadius: '50%',
-                width: '40px',
-                height: '40px',
+                width: '48px',
+                height: '48px',
                 cursor: 'pointer',
                 color: 'white',
-                fontSize: '18px'
+                fontSize: '20px',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+                e.currentTarget.style.transform = 'scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
               ×
@@ -977,7 +1002,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
             <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '10px', height: '8px' }}>
               <div 
                 style={{
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: '#059669',
                   height: '8px',
                   borderRadius: '10px',
                   transition: 'width 0.3s ease',
@@ -1037,7 +1062,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                   borderRadius: '8px',
                   border: 'none',
                   cursor: canProceed() ? 'pointer' : 'not-allowed',
-                  backgroundColor: canProceed() ? '#3b82f6' : '#f3f4f6',
+                  backgroundColor: canProceed() ? '#059669' : '#f3f4f6',
                   color: canProceed() ? 'white' : '#9ca3af',
                   fontSize: '16px',
                   fontWeight: '500'
@@ -1057,7 +1082,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                   borderRadius: '8px',
                   border: 'none',
                   cursor: 'pointer',
-                  backgroundColor: '#10b981',
+                  backgroundColor: '#059669',
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '500'
