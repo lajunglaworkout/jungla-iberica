@@ -11,7 +11,7 @@ import ShiftAssignmentSystem from './hr/ShiftAssignmentSystem';
 import TimeclockDashboard from './hr/TimeclockDashboard';
 import MobileTimeClock from './hr/MobileTimeClock';
 import DatabaseVerification from './DatabaseVerification';
-import { Employee } from '../types/Employee';
+import { Employee } from '../types/employee';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
 import { useData } from '../contexts/DataContext';
