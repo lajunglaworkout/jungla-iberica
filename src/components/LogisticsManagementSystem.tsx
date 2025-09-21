@@ -118,6 +118,8 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showSupplierDetailModal, setShowSupplierDetailModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [showProductSelectorModal, setShowProductSelectorModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
     type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
@@ -824,6 +826,36 @@ const LogisticsManagementSystem: React.FC = () => {
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
     }));
+  };
+
+  const addProductToOrder = (product: InventoryItem, quantity: number, unitPrice: number) => {
+    const newItem = {
+      product_id: product.id,
+      product_name: product.name,
+      quantity: quantity,
+      unit_price: unitPrice
+    };
+
+    setNewOrder(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+
+    setShowProductSelectorModal(false);
+  };
+
+  // Obtener categorías únicas
+  const getUniqueCategories = () => {
+    const categories = [...new Set(inventoryItems.map(item => item.category))];
+    return categories.sort();
+  };
+
+  // Filtrar productos por categoría
+  const getFilteredProducts = () => {
+    if (selectedCategory === 'all') {
+      return inventoryItems;
+    }
+    return inventoryItems.filter(item => item.category === selectedCategory);
   };
 
   return (
@@ -1956,61 +1988,48 @@ const LogisticsManagementSystem: React.FC = () => {
 
               {/* Añadir productos */}
               <div style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: '600' }}>Añadir Productos</h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Producto</label>
-                    <select
-                      id="product-select"
-                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                    >
-                      <option value="">Seleccionar producto</option>
-                      {inventoryItems.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} - Stock: {item.quantity}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Cantidad</label>
-                    <input
-                      id="item-quantity"
-                      type="number"
-                      min="1"
-                      defaultValue="1"
-                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Precio Unit. (€)</label>
-                    <input
-                      id="item-price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                    />
-                  </div>
-
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>Productos del Pedido</h3>
                   <button
-                    onClick={addItemToOrder}
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setShowProductSelectorModal(true);
+                    }}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
                       padding: '0.75rem 1rem',
                       backgroundColor: '#059669',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
                     }}
                   >
-                    Añadir
+                    <Plus size={16} />
+                    Añadir Productos
                   </button>
                 </div>
+                
+                {newOrder.items.length === 0 ? (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '2rem', 
+                    color: '#6b7280',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '2px dashed #d1d5db'
+                  }}>
+                    <Package size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                      No hay productos añadidos.<br />
+                      Click en "Añadir Productos" para seleccionar por categorías.
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               {/* Lista de productos añadidos */}
@@ -2105,7 +2124,235 @@ const LogisticsManagementSystem: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Modal Selector de Productos */}
+        {showProductSelectorModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>📦 Seleccionar Productos</h2>
+                <button
+                  onClick={() => setShowProductSelectorModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Filtro por categorías */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600' }}>Filtrar por Categoría</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setSelectedCategory('all')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: selectedCategory === 'all' ? '#059669' : '#f3f4f6',
+                      color: selectedCategory === 'all' ? 'white' : '#374151',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '500'
+                    }}
+                  >
+                    🔍 Todos
+                  </button>
+                  {getUniqueCategories().map(category => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: selectedCategory === category ? '#059669' : '#f3f4f6',
+                        color: selectedCategory === category ? 'white' : '#374151',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {category === 'Vestuario' ? '👕' : 
+                       category === 'Material Deportivo' ? '🏋️' :
+                       category === 'Merchandising' ? '🎁' :
+                       category === 'Consumibles' ? '🧽' : '📦'} {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lista de productos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                {getFilteredProducts().map(product => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onAddToOrder={addProductToOrder}
+                    isAlreadyAdded={newOrder.items.some(item => item.product_id === product.id)}
+                  />
+                ))}
+              </div>
+
+              {getFilteredProducts().length === 0 && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                  <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                  <p style={{ margin: 0, fontSize: '1rem' }}>
+                    No hay productos en esta categoría
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button
+                  onClick={() => setShowProductSelectorModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+};
+
+// Componente para cada producto
+const ProductCard: React.FC<{
+  product: InventoryItem;
+  onAddToOrder: (product: InventoryItem, quantity: number, unitPrice: number) => void;
+  isAlreadyAdded: boolean;
+}> = ({ product, onAddToOrder, isAlreadyAdded }) => {
+  const [quantity, setQuantity] = useState(1);
+  const [unitPrice, setUnitPrice] = useState(product.sale_price || product.purchase_price || 0);
+
+  const getStockStatusColor = () => {
+    if (product.status === 'out_of_stock') return '#dc2626';
+    if (product.status === 'low_stock') return '#d97706';
+    return '#059669';
+  };
+
+  const getStockStatusText = () => {
+    if (product.status === 'out_of_stock') return '❌ Sin Stock';
+    if (product.status === 'low_stock') return '⚠️ Stock Bajo';
+    return '✅ En Stock';
+  };
+
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      border: '1px solid #e5e7eb',
+      borderRadius: '12px',
+      padding: '1.5rem',
+      position: 'relative'
+    }}>
+      {isAlreadyAdded && (
+        <div style={{
+          position: 'absolute',
+          top: '0.5rem',
+          right: '0.5rem',
+          backgroundColor: '#059669',
+          color: 'white',
+          padding: '0.25rem 0.5rem',
+          borderRadius: '4px',
+          fontSize: '0.75rem',
+          fontWeight: '600'
+        }}>
+          ✓ Añadido
+        </div>
+      )}
+
+      <div style={{ marginBottom: '1rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
+          {product.name}
+        </h4>
+        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+          {product.category} • {product.size} • {product.supplier}
+        </div>
+        <div style={{ 
+          fontSize: '0.875rem', 
+          color: getStockStatusColor(),
+          fontWeight: '600',
+          marginBottom: '0.5rem'
+        }}>
+          {getStockStatusText()} ({product.quantity} disponibles)
+        </div>
+        <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+          Precio: €{product.sale_price?.toFixed(2) || product.purchase_price?.toFixed(2) || '0.00'}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '500', marginBottom: '0.25rem' }}>
+            Cantidad
+          </label>
+          <input
+            type="number"
+            min="1"
+            max={product.quantity}
+            value={quantity}
+            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '0.875rem'
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '500', marginBottom: '0.25rem' }}>
+            Precio €
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={unitPrice}
+            onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '0.875rem'
+            }}
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={() => onAddToOrder(product, quantity, unitPrice)}
+        disabled={isAlreadyAdded || product.quantity === 0 || quantity > product.quantity}
+        style={{
+          width: '100%',
+          padding: '0.75rem',
+          backgroundColor: isAlreadyAdded || product.quantity === 0 || quantity > product.quantity ? '#9ca3af' : '#059669',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: isAlreadyAdded || product.quantity === 0 || quantity > product.quantity ? 'not-allowed' : 'pointer',
+          fontWeight: '600',
+          fontSize: '0.875rem'
+        }}
+      >
+        {isAlreadyAdded ? 'Ya Añadido' : 
+         product.quantity === 0 ? 'Sin Stock' :
+         quantity > product.quantity ? 'Cantidad Excesiva' :
+         `Añadir (€${(quantity * unitPrice).toFixed(2)})`}
+      </button>
     </div>
   );
 };
