@@ -117,6 +117,21 @@ const LogisticsManagementSystem: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [showSupplierDetailModal, setShowSupplierDetailModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    supplier_id: '',
+    type: 'brand_to_supplier' as 'brand_to_supplier' | 'center_to_brand',
+    from: 'La Jungla Central',
+    to: '',
+    expected_delivery: '',
+    notes: '',
+    items: [] as Array<{
+      product_id: number;
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+    }>
+  });
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Vestuario',
@@ -694,6 +709,105 @@ const LogisticsManagementSystem: React.FC = () => {
     setShowSupplierDetailModal(true);
   };
 
+  const handleCreateOrder = () => {
+    if (!newOrder.supplier_id || newOrder.items.length === 0) {
+      alert('Por favor, selecciona un proveedor y añade al menos un producto');
+      return;
+    }
+
+    const totalAmount = newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const newOrderId = `PED-2025-${String(orders.length + 1).padStart(3, '0')}`;
+    
+    const orderToAdd: Order = {
+      id: newOrderId,
+      type: newOrder.type,
+      from: newOrder.from,
+      to: newOrder.to,
+      date: new Date().toISOString().split('T')[0],
+      delivery_date: newOrder.expected_delivery,
+      estimated_delivery: newOrder.expected_delivery,
+      amount: totalAmount,
+      status: 'pending',
+      created_by: currentUser.name,
+      items: newOrder.items.map(item => ({
+        ...item,
+        total_price: item.quantity * item.unit_price,
+        available_stock: inventoryItems.find(inv => inv.id === item.product_id)?.quantity || 0,
+        has_sufficient_stock: (inventoryItems.find(inv => inv.id === item.product_id)?.quantity || 0) >= item.quantity
+      })),
+      notes: newOrder.notes
+    };
+
+    setOrders(prev => [...prev, orderToAdd]);
+    
+    // Añadir notificación
+    const notification: Notification = {
+      id: `notif-${Date.now()}`,
+      type: 'new_order',
+      title: '📦 Nuevo Pedido Creado',
+      message: `Pedido ${newOrderId} creado para ${newOrder.to} - €${totalAmount.toFixed(2)}`,
+      order_id: newOrderId,
+      created_at: new Date().toISOString(),
+      read: false,
+      urgent: false
+    };
+    
+    setNotifications(prev => [notification, ...prev]);
+    
+    // Resetear formulario
+    setNewOrder({
+      supplier_id: '',
+      type: 'brand_to_supplier',
+      from: 'La Jungla Central',
+      to: '',
+      expected_delivery: '',
+      notes: '',
+      items: []
+    });
+    
+    setShowNewOrderModal(false);
+    alert(`Pedido ${newOrderId} creado exitosamente`);
+  };
+
+  const addItemToOrder = () => {
+    const productSelect = document.getElementById('product-select') as HTMLSelectElement;
+    const quantityInput = document.getElementById('item-quantity') as HTMLInputElement;
+    const priceInput = document.getElementById('item-price') as HTMLInputElement;
+    
+    const selectedProduct = inventoryItems.find(item => item.id === parseInt(productSelect?.value || '0'));
+    const quantity = parseInt(quantityInput?.value || '1');
+    const unitPrice = parseFloat(priceInput?.value || '0');
+    
+    if (!selectedProduct || quantity <= 0 || unitPrice <= 0) {
+      alert('Por favor, completa todos los campos del producto');
+      return;
+    }
+
+    const newItem = {
+      product_id: selectedProduct.id,
+      product_name: selectedProduct.name,
+      quantity: quantity,
+      unit_price: unitPrice
+    };
+
+    setNewOrder(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+
+    // Limpiar campos
+    if (productSelect) productSelect.value = '';
+    if (quantityInput) quantityInput.value = '1';
+    if (priceInput) priceInput.value = '';
+  };
+
+  const removeItemFromOrder = (index: number) => {
+    setNewOrder(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', padding: '2rem', borderRadius: '0 0 24px 24px', marginBottom: '2rem' }}>
@@ -897,7 +1011,7 @@ const LogisticsManagementSystem: React.FC = () => {
                 if (activeTab === 'inventory') {
                   setShowNewProductModal(true);
                 } else if (activeTab === 'orders') {
-                  alert('Funcionalidad de nuevo pedido próximamente');
+                  setShowNewOrderModal(true);
                 } else {
                   alert('Funcionalidad de nuevo proveedor próximamente');
                 }
@@ -1014,7 +1128,7 @@ const LogisticsManagementSystem: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>Gestión de Pedidos</h2>
               <button
-                onClick={() => alert('Funcionalidad de nuevo pedido próximamente')}
+                onClick={() => setShowNewOrderModal(true)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1697,6 +1811,200 @@ const LogisticsManagementSystem: React.FC = () => {
               <button onClick={() => setShowSupplierDetailModal(false)} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                 Cerrar
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Nuevo Pedido */}
+        {showNewOrderModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700' }}>🛒 Crear Nuevo Pedido</h2>
+                <button
+                  onClick={() => setShowNewOrderModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Información del pedido */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Proveedor *</label>
+                  <select
+                    value={newOrder.supplier_id}
+                    onChange={(e) => {
+                      const selectedSupplier = suppliers.find(s => s.id.toString() === e.target.value);
+                      setNewOrder(prev => ({
+                        ...prev,
+                        supplier_id: e.target.value,
+                        to: selectedSupplier?.name || ''
+                      }));
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  >
+                    <option value="">Seleccionar proveedor</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name} - {supplier.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Fecha de Entrega</label>
+                  <input
+                    type="date"
+                    value={newOrder.expected_delivery}
+                    onChange={(e) => setNewOrder(prev => ({ ...prev, expected_delivery: e.target.value }))}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+
+              {/* Añadir productos */}
+              <div style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: '600' }}>Añadir Productos</h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Producto</label>
+                    <select
+                      id="product-select"
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    >
+                      <option value="">Seleccionar producto</option>
+                      {inventoryItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} - Stock: {item.quantity}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Cantidad</label>
+                    <input
+                      id="item-quantity"
+                      type="number"
+                      min="1"
+                      defaultValue="1"
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Precio Unit. (€)</label>
+                    <input
+                      id="item-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={addItemToOrder}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Añadir
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de productos añadidos */}
+              {newOrder.items.length > 0 && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: '600' }}>Productos en el Pedido</h3>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', backgroundColor: '#f9fafb', padding: '0.75rem', fontWeight: '600', fontSize: '0.875rem' }}>
+                      <div>Producto</div>
+                      <div>Cantidad</div>
+                      <div>Precio Unit.</div>
+                      <div>Total</div>
+                      <div></div>
+                    </div>
+                    {newOrder.items.map((item, index) => (
+                      <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', padding: '0.75rem', borderTop: '1px solid #f3f4f6', alignItems: 'center' }}>
+                        <div style={{ fontSize: '0.875rem' }}>{item.product_name}</div>
+                        <div style={{ fontSize: '0.875rem' }}>{item.quantity}</div>
+                        <div style={{ fontSize: '0.875rem' }}>€{item.unit_price.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>€{(item.quantity * item.unit_price).toFixed(2)}</div>
+                        <button
+                          onClick={() => removeItemFromOrder(index)}
+                          style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1.2rem' }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', padding: '0.75rem', borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb', fontWeight: '700' }}>
+                      <div></div>
+                      <div></div>
+                      <div>TOTAL:</div>
+                      <div>€{newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</div>
+                      <div></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Notas */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Notas del Pedido</label>
+                <textarea
+                  value={newOrder.notes}
+                  onChange={(e) => setNewOrder(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Instrucciones especiales, comentarios..."
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Botones */}
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowNewOrderModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateOrder}
+                  disabled={!newOrder.supplier_id || newOrder.items.length === 0}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: newOrder.supplier_id && newOrder.items.length > 0 ? '#059669' : '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: newOrder.supplier_id && newOrder.items.length > 0 ? 'pointer' : 'not-allowed',
+                    fontWeight: '600'
+                  }}
+                >
+                  Crear Pedido
+                </button>
+              </div>
             </div>
           </div>
         )}
