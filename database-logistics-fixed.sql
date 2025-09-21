@@ -1,5 +1,5 @@
 -- =====================================================
--- SISTEMA DE LOGÍSTICA - LA JUNGLA CRM
+-- SISTEMA DE LOGÍSTICA - LA JUNGLA CRM (VERSIÓN CORREGIDA)
 -- Base de datos para gestión de inventario y pedidos
 -- =====================================================
 
@@ -116,37 +116,6 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Tabla de solicitudes de vestuario (extendida)
-CREATE TABLE IF NOT EXISTS uniform_requests (
-    id BIGSERIAL PRIMARY KEY,
-    employee_id BIGINT NOT NULL,
-    employee_name VARCHAR(200) NOT NULL,
-    employee_email VARCHAR(100) NOT NULL,
-    center_id BIGINT,
-    center_name VARCHAR(100),
-    inventory_item_id BIGINT REFERENCES inventory_items(id),
-    clothing_type VARCHAR(100) NOT NULL,
-    clothing_size VARCHAR(20) NOT NULL,
-    quantity INTEGER NOT NULL DEFAULT 1,
-    priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')),
-    description TEXT,
-    justification TEXT,
-    requested_date DATE DEFAULT CURRENT_DATE,
-    approved_by BIGINT,
-    approved_at TIMESTAMP WITH TIME ZONE,
-    fulfilled_by BIGINT,
-    fulfilled_at TIMESTAMP WITH TIME ZONE,
-    rejection_reason TEXT,
-    delivery_address TEXT,
-    delivery_date DATE,
-    cost_per_unit DECIMAL(10,2),
-    total_cost DECIMAL(10,2),
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Tabla de alertas de stock
 CREATE TABLE IF NOT EXISTS stock_alerts (
     id BIGSERIAL PRIMARY KEY,
@@ -170,8 +139,6 @@ CREATE INDEX IF NOT EXISTS idx_inventory_items_quantity ON inventory_items(quant
 CREATE INDEX IF NOT EXISTS idx_supplier_orders_status ON supplier_orders(status);
 CREATE INDEX IF NOT EXISTS idx_supplier_orders_supplier ON supplier_orders(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_orders_date ON supplier_orders(order_date);
-CREATE INDEX IF NOT EXISTS idx_uniform_requests_status ON uniform_requests(status);
-CREATE INDEX IF NOT EXISTS idx_uniform_requests_employee ON uniform_requests(employee_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_item ON inventory_movements(inventory_item_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_movements_type ON inventory_movements(movement_type);
 CREATE INDEX IF NOT EXISTS idx_stock_alerts_resolved ON stock_alerts(is_resolved);
@@ -267,32 +234,64 @@ CREATE TRIGGER trigger_generate_order_number
 -- DATOS INICIALES
 -- =====================================================
 
--- Categorías de productos
-INSERT INTO product_categories (name, description) VALUES
-('Camisetas', 'Camisetas deportivas y casuales'),
-('Pantalones', 'Pantalones cortos y largos'),
-('Chaquetas', 'Chaquetas y chaquetones'),
-('Calzado', 'Zapatillas y calzado deportivo'),
-('Accesorios', 'Gorras, calcetines y otros accesorios'),
-('Material Deportivo', 'Equipamiento para entrenamientos');
+-- Insertar categorías solo si no existen
+INSERT INTO product_categories (name, description) 
+SELECT 'Camisetas', 'Camisetas deportivas y casuales'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Camisetas');
 
--- Proveedores
-INSERT INTO suppliers (name, contact_person, email, phone, address, city, postal_code) VALUES
-('Textiles Deportivos SL', 'María García', 'pedidos@textiles-deportivos.com', '954123456', 'Calle Industria 15', 'Sevilla', '41010'),
-('Deportes Andalucía', 'Juan Martínez', 'ventas@deportes-andalucia.es', '956789012', 'Av. Constitución 45', 'Jerez de la Frontera', '11402'),
-('Ropa Técnica Pro', 'Ana López', 'info@ropatecnicapro.com', '956345678', 'Polígono Industrial 8', 'El Puerto de Santa María', '11500'),
-('Calzado Sport Plus', 'Carlos Ruiz', 'pedidos@calzadosport.es', '954567890', 'Calle Comercio 23', 'Sevilla', '41003');
+INSERT INTO product_categories (name, description) 
+SELECT 'Pantalones', 'Pantalones cortos y largos'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Pantalones');
 
--- Items de inventario iniciales
-INSERT INTO inventory_items (name, description, category_id, supplier_id, sku, size, color, quantity, min_stock, max_stock, cost_per_unit, selling_price, location) VALUES
-('Camiseta La Jungla - Negra', 'Camiseta técnica con logo La Jungla', 1, 1, 'CAM-LJ-NEG-M', 'M', 'Negro', 25, 10, 50, 15.50, 25.00, 'Almacén Principal - A1'),
-('Camiseta La Jungla - Negra', 'Camiseta técnica con logo La Jungla', 1, 1, 'CAM-LJ-NEG-L', 'L', 'Negro', 20, 10, 50, 15.50, 25.00, 'Almacén Principal - A1'),
-('Camiseta La Jungla - Negra', 'Camiseta técnica con logo La Jungla', 1, 1, 'CAM-LJ-NEG-XL', 'XL', 'Negro', 15, 10, 50, 15.50, 25.00, 'Almacén Principal - A1'),
-('Pantalón Corto La Jungla', 'Pantalón corto deportivo', 2, 2, 'PAN-LJ-COR-L', 'L', 'Negro', 5, 10, 30, 22.00, 35.00, 'Almacén Principal - B2'),
-('Pantalón Corto La Jungla', 'Pantalón corto deportivo', 2, 2, 'PAN-LJ-COR-XL', 'XL', 'Negro', 8, 10, 30, 22.00, 35.00, 'Almacén Principal - B2'),
-('Chaquetón Invierno', 'Chaquetón técnico para invierno', 3, 3, 'CHA-LJ-INV-XL', 'XL', 'Negro', 0, 5, 20, 45.00, 75.00, 'Almacén Principal - C1'),
-('Gorra La Jungla', 'Gorra con logo bordado', 5, 1, 'GOR-LJ-001', 'Única', 'Negro', 30, 15, 60, 8.50, 15.00, 'Almacén Principal - D1'),
-('Calcetines Deportivos', 'Pack 3 pares calcetines', 5, 2, 'CAL-DEP-3P', 'M', 'Blanco', 50, 20, 100, 6.00, 12.00, 'Almacén Principal - D2');
+INSERT INTO product_categories (name, description) 
+SELECT 'Chaquetas', 'Chaquetas y chaquetones'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Chaquetas');
+
+INSERT INTO product_categories (name, description) 
+SELECT 'Calzado', 'Zapatillas y calzado deportivo'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Calzado');
+
+INSERT INTO product_categories (name, description) 
+SELECT 'Accesorios', 'Gorras, calcetines y otros accesorios'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Accesorios');
+
+INSERT INTO product_categories (name, description) 
+SELECT 'Material Deportivo', 'Equipamiento para entrenamientos'
+WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE name = 'Material Deportivo');
+
+-- Insertar proveedores solo si no existen
+INSERT INTO suppliers (name, contact_person, email, phone, address, city, postal_code) 
+SELECT 'Textiles Deportivos SL', 'María García', 'pedidos@textiles-deportivos.com', '954123456', 'Calle Industria 15', 'Sevilla', '41010'
+WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE name = 'Textiles Deportivos SL');
+
+INSERT INTO suppliers (name, contact_person, email, phone, address, city, postal_code) 
+SELECT 'Deportes Andalucía', 'Juan Martínez', 'ventas@deportes-andalucia.es', '956789012', 'Av. Constitución 45', 'Jerez de la Frontera', '11402'
+WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE name = 'Deportes Andalucía');
+
+INSERT INTO suppliers (name, contact_person, email, phone, address, city, postal_code) 
+SELECT 'Ropa Técnica Pro', 'Ana López', 'info@ropatecnicapro.com', '956345678', 'Polígono Industrial 8', 'El Puerto de Santa María', '11500'
+WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE name = 'Ropa Técnica Pro');
+
+INSERT INTO suppliers (name, contact_person, email, phone, address, city, postal_code) 
+SELECT 'Calzado Sport Plus', 'Carlos Ruiz', 'pedidos@calzadosport.es', '954567890', 'Calle Comercio 23', 'Sevilla', '41003'
+WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE name = 'Calzado Sport Plus');
+
+-- Insertar items de inventario solo si no existen
+INSERT INTO inventory_items (name, description, category_id, supplier_id, sku, size, color, quantity, min_stock, max_stock, cost_per_unit, selling_price, location) 
+SELECT 'Camiseta La Jungla - Negra M', 'Camiseta técnica con logo La Jungla', 1, 1, 'CAM-LJ-NEG-M', 'M', 'Negro', 25, 10, 50, 15.50, 25.00, 'Almacén Principal - A1'
+WHERE NOT EXISTS (SELECT 1 FROM inventory_items WHERE sku = 'CAM-LJ-NEG-M');
+
+INSERT INTO inventory_items (name, description, category_id, supplier_id, sku, size, color, quantity, min_stock, max_stock, cost_per_unit, selling_price, location) 
+SELECT 'Camiseta La Jungla - Negra L', 'Camiseta técnica con logo La Jungla', 1, 1, 'CAM-LJ-NEG-L', 'L', 'Negro', 20, 10, 50, 15.50, 25.00, 'Almacén Principal - A1'
+WHERE NOT EXISTS (SELECT 1 FROM inventory_items WHERE sku = 'CAM-LJ-NEG-L');
+
+INSERT INTO inventory_items (name, description, category_id, supplier_id, sku, size, color, quantity, min_stock, max_stock, cost_per_unit, selling_price, location) 
+SELECT 'Pantalón Corto La Jungla L', 'Pantalón corto deportivo', 2, 2, 'PAN-LJ-COR-L', 'L', 'Negro', 5, 10, 30, 22.00, 35.00, 'Almacén Principal - B2'
+WHERE NOT EXISTS (SELECT 1 FROM inventory_items WHERE sku = 'PAN-LJ-COR-L');
+
+INSERT INTO inventory_items (name, description, category_id, supplier_id, sku, size, color, quantity, min_stock, max_stock, cost_per_unit, selling_price, location) 
+SELECT 'Gorra La Jungla', 'Gorra con logo bordado', 5, 1, 'GOR-LJ-001', 'Única', 'Negro', 30, 15, 60, 8.50, 15.00, 'Almacén Principal - D1'
+WHERE NOT EXISTS (SELECT 1 FROM inventory_items WHERE sku = 'GOR-LJ-001');
 
 -- =====================================================
 -- VISTAS ÚTILES
@@ -328,28 +327,6 @@ LEFT JOIN product_categories pc ON ii.category_id = pc.id
 LEFT JOIN suppliers s ON ii.supplier_id = s.id
 WHERE ii.status = 'active';
 
--- Vista de pedidos con detalles
-CREATE OR REPLACE VIEW orders_summary AS
-SELECT 
-    so.id,
-    so.order_number,
-    so.status,
-    so.order_date,
-    so.expected_delivery,
-    so.actual_delivery,
-    so.total_amount,
-    s.name as supplier_name,
-    s.email as supplier_email,
-    s.phone as supplier_phone,
-    COUNT(soi.id) as total_items,
-    SUM(soi.quantity) as total_quantity,
-    so.notes,
-    so.created_at
-FROM supplier_orders so
-LEFT JOIN suppliers s ON so.supplier_id = s.id
-LEFT JOIN supplier_order_items soi ON so.id = soi.order_id
-GROUP BY so.id, s.name, s.email, s.phone;
-
 -- Vista de alertas activas
 CREATE OR REPLACE VIEW active_alerts AS
 SELECT 
@@ -374,13 +351,10 @@ ORDER BY sa.created_at DESC;
 -- 1. Gestión de inventario con categorías y proveedores
 -- 2. Sistema de pedidos a proveedores con items detallados
 -- 3. Seguimiento de movimientos de inventario
--- 4. Solicitudes de vestuario integradas
--- 5. Sistema de alertas automáticas de stock
--- 6. Triggers para automatizar cálculos y actualizaciones
--- 7. Vistas optimizadas para consultas frecuentes
+-- 4. Sistema de alertas automáticas de stock
+-- 5. Triggers para automatizar cálculos y actualizaciones
+-- 6. Vistas optimizadas para consultas frecuentes
+-- 7. Datos iniciales de ejemplo para testing
 
--- Para usar este sistema:
--- 1. Ejecutar este script en Supabase
--- 2. Configurar las políticas RLS según los roles de usuario
--- 3. Actualizar el componente React para usar las nuevas tablas
--- 4. Implementar las funciones de CRUD en el frontend
+-- VERSIÓN CORREGIDA: Sin cláusulas ON CONFLICT problemáticas
+-- Usa INSERT ... WHERE NOT EXISTS para evitar duplicados
