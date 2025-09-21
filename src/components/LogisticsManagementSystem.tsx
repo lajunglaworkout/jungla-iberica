@@ -120,9 +120,10 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
-    type: 'brand_to_supplier' as 'brand_to_supplier' | 'center_to_brand',
-    from: 'La Jungla Central',
-    to: '',
+    type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
+    from: '',
+    to: 'La Jungla Central',
+    center_id: '',
     expected_delivery: '',
     notes: '',
     items: [] as Array<{
@@ -709,14 +710,30 @@ const LogisticsManagementSystem: React.FC = () => {
     setShowSupplierDetailModal(true);
   };
 
+  // Datos de los centros
+  const centers = [
+    { id: 'sevilla', name: 'Centro Sevilla', address: 'Calle Ejemplo 123, Sevilla' },
+    { id: 'jerez', name: 'Centro Jerez', address: 'Av. Principal 456, Jerez de la Frontera' },
+    { id: 'puerto', name: 'Centro Puerto', address: 'Plaza Mayor 789, El Puerto de Santa María' }
+  ];
+
   const handleCreateOrder = () => {
-    if (!newOrder.supplier_id || newOrder.items.length === 0) {
-      alert('Por favor, selecciona un proveedor y añade al menos un producto');
-      return;
+    // Validación según tipo de pedido
+    if (newOrder.type === 'center_to_brand') {
+      if (!newOrder.center_id || newOrder.items.length === 0) {
+        alert('Por favor, selecciona un centro y añade al menos un producto');
+        return;
+      }
+    } else {
+      if (!newOrder.supplier_id || newOrder.items.length === 0) {
+        alert('Por favor, selecciona un proveedor y añade al menos un producto');
+        return;
+      }
     }
 
     const totalAmount = newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    const newOrderId = `PED-2025-${String(orders.length + 1).padStart(3, '0')}`;
+    const orderPrefix = newOrder.type === 'center_to_brand' ? 'REQ' : 'PED';
+    const newOrderId = `${orderPrefix}-2025-${String(orders.length + 1).padStart(3, '0')}`;
     
     const orderToAdd: Order = {
       id: newOrderId,
@@ -744,12 +761,12 @@ const LogisticsManagementSystem: React.FC = () => {
     const notification: Notification = {
       id: `notif-${Date.now()}`,
       type: 'new_order',
-      title: '📦 Nuevo Pedido Creado',
-      message: `Pedido ${newOrderId} creado para ${newOrder.to} - €${totalAmount.toFixed(2)}`,
+      title: newOrder.type === 'center_to_brand' ? '🏪 Nueva Solicitud de Centro' : '📦 Nuevo Pedido a Proveedor',
+      message: `${newOrderId} creado: ${newOrder.from} → ${newOrder.to} - €${totalAmount.toFixed(2)}`,
       order_id: newOrderId,
       created_at: new Date().toISOString(),
       read: false,
-      urgent: false
+      urgent: totalAmount > 500 // Marcar como urgente si es > €500
     };
     
     setNotifications(prev => [notification, ...prev]);
@@ -757,16 +774,17 @@ const LogisticsManagementSystem: React.FC = () => {
     // Resetear formulario
     setNewOrder({
       supplier_id: '',
-      type: 'brand_to_supplier',
-      from: 'La Jungla Central',
-      to: '',
+      type: 'center_to_brand',
+      from: '',
+      to: 'La Jungla Central',
+      center_id: '',
       expected_delivery: '',
       notes: '',
       items: []
     });
     
     setShowNewOrderModal(false);
-    alert(`Pedido ${newOrderId} creado exitosamente`);
+    alert(`${newOrder.type === 'center_to_brand' ? 'Solicitud' : 'Pedido'} ${newOrderId} creado exitosamente`);
   };
 
   const addItemToOrder = () => {
@@ -1829,33 +1847,103 @@ const LogisticsManagementSystem: React.FC = () => {
                 </button>
               </div>
 
+              {/* Tipo de pedido */}
+              <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #0ea5e9' }}>
+                <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600' }}>Tipo de Pedido</label>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="orderType"
+                      value="center_to_brand"
+                      checked={newOrder.type === 'center_to_brand'}
+                      onChange={(e) => setNewOrder(prev => ({ 
+                        ...prev, 
+                        type: e.target.value as 'center_to_brand' | 'brand_to_supplier',
+                        supplier_id: '',
+                        center_id: '',
+                        from: '',
+                        to: e.target.value === 'center_to_brand' ? 'La Jungla Central' : ''
+                      }))}
+                    />
+                    <span style={{ fontWeight: '600', color: '#0369a1' }}>📥 Centro → Marca</span>
+                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>(Solicitud interna)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="orderType"
+                      value="brand_to_supplier"
+                      checked={newOrder.type === 'brand_to_supplier'}
+                      onChange={(e) => setNewOrder(prev => ({ 
+                        ...prev, 
+                        type: e.target.value as 'center_to_brand' | 'brand_to_supplier',
+                        supplier_id: '',
+                        center_id: '',
+                        from: e.target.value === 'brand_to_supplier' ? 'La Jungla Central' : '',
+                        to: ''
+                      }))}
+                    />
+                    <span style={{ fontWeight: '600', color: '#059669' }}>📤 Marca → Proveedor</span>
+                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>(Para registro)</span>
+                  </label>
+                </div>
+              </div>
+
               {/* Información del pedido */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Proveedor *</label>
-                  <select
-                    value={newOrder.supplier_id}
-                    onChange={(e) => {
-                      const selectedSupplier = suppliers.find(s => s.id.toString() === e.target.value);
-                      setNewOrder(prev => ({
-                        ...prev,
-                        supplier_id: e.target.value,
-                        to: selectedSupplier?.name || ''
-                      }));
-                    }}
-                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                  >
-                    <option value="">Seleccionar proveedor</option>
-                    {suppliers.map(supplier => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.name} - {supplier.city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {newOrder.type === 'center_to_brand' ? (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Centro Solicitante *</label>
+                    <select
+                      value={newOrder.center_id}
+                      onChange={(e) => {
+                        const selectedCenter = centers.find(c => c.id === e.target.value);
+                        setNewOrder(prev => ({
+                          ...prev,
+                          center_id: e.target.value,
+                          from: selectedCenter?.name || ''
+                        }));
+                      }}
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    >
+                      <option value="">Seleccionar centro</option>
+                      {centers.map(center => (
+                        <option key={center.id} value={center.id}>
+                          {center.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Proveedor *</label>
+                    <select
+                      value={newOrder.supplier_id}
+                      onChange={(e) => {
+                        const selectedSupplier = suppliers.find(s => s.id.toString() === e.target.value);
+                        setNewOrder(prev => ({
+                          ...prev,
+                          supplier_id: e.target.value,
+                          to: selectedSupplier?.name || ''
+                        }));
+                      }}
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    >
+                      <option value="">Seleccionar proveedor</option>
+                      {suppliers.map(supplier => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name} - {supplier.city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Fecha de Entrega</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+                    {newOrder.type === 'center_to_brand' ? 'Fecha Necesaria' : 'Fecha de Entrega'}
+                  </label>
                   <input
                     type="date"
                     value={newOrder.expected_delivery}
@@ -1991,18 +2079,27 @@ const LogisticsManagementSystem: React.FC = () => {
                 </button>
                 <button
                   onClick={handleCreateOrder}
-                  disabled={!newOrder.supplier_id || newOrder.items.length === 0}
+                  disabled={
+                    (newOrder.type === 'center_to_brand' && (!newOrder.center_id || newOrder.items.length === 0)) ||
+                    (newOrder.type === 'brand_to_supplier' && (!newOrder.supplier_id || newOrder.items.length === 0))
+                  }
                   style={{
                     padding: '0.75rem 1.5rem',
-                    backgroundColor: newOrder.supplier_id && newOrder.items.length > 0 ? '#059669' : '#9ca3af',
+                    backgroundColor: 
+                      ((newOrder.type === 'center_to_brand' && newOrder.center_id && newOrder.items.length > 0) ||
+                       (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
+                      ? '#059669' : '#9ca3af',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: newOrder.supplier_id && newOrder.items.length > 0 ? 'pointer' : 'not-allowed',
+                    cursor: 
+                      ((newOrder.type === 'center_to_brand' && newOrder.center_id && newOrder.items.length > 0) ||
+                       (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
+                      ? 'pointer' : 'not-allowed',
                     fontWeight: '600'
                   }}
                 >
-                  Crear Pedido
+                  {newOrder.type === 'center_to_brand' ? 'Crear Solicitud' : 'Crear Pedido'}
                 </button>
               </div>
             </div>
