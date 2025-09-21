@@ -120,6 +120,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [showProductSelectorModal, setShowProductSelectorModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
     type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
@@ -850,12 +851,28 @@ const LogisticsManagementSystem: React.FC = () => {
     return categories.sort();
   };
 
-  // Filtrar productos por categoría
+  // Filtrar productos por categoría y búsqueda
   const getFilteredProducts = () => {
-    if (selectedCategory === 'all') {
-      return inventoryItems;
+    let filtered = inventoryItems;
+    
+    // Filtrar por categoría
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(item => item.category === selectedCategory);
     }
-    return inventoryItems.filter(item => item.category === selectedCategory);
+    
+    // Filtrar por término de búsqueda
+    if (productSearchTerm.trim()) {
+      const searchLower = productSearchTerm.toLowerCase().trim();
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(searchLower) ||
+        item.category.toLowerCase().includes(searchLower) ||
+        item.supplier.toLowerCase().includes(searchLower) ||
+        item.size.toLowerCase().includes(searchLower) ||
+        (item.location && item.location.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return filtered;
   };
 
   return (
@@ -1993,6 +2010,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <button
                     onClick={() => {
                       setSelectedCategory('all');
+                      setProductSearchTerm('');
                       setShowProductSelectorModal(true);
                     }}
                     style={{
@@ -2139,16 +2157,77 @@ const LogisticsManagementSystem: React.FC = () => {
                 </button>
               </div>
 
+              {/* Buscador de productos */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Buscar Productos</label>
+                <div style={{ position: 'relative' }}>
+                  <Search 
+                    size={20} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: '0.75rem', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      color: '#6b7280' 
+                    }} 
+                  />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, categoría, proveedor, talla..."
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      outline: 'none'
+                    }}
+                  />
+                  {productSearchTerm && (
+                    <button
+                      onClick={() => setProductSearchTerm('')}
+                      style={{
+                        position: 'absolute',
+                        right: '0.75rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '1.2rem'
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {productSearchTerm && (
+                  <div style={{ 
+                    marginTop: '0.5rem', 
+                    fontSize: '0.875rem', 
+                    color: '#6b7280' 
+                  }}>
+                    {getFilteredProducts().length} producto(s) encontrado(s)
+                  </div>
+                )}
+              </div>
+
               {/* Filtro por categorías */}
               <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600' }}>Filtrar por Categoría</label>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => setSelectedCategory('all')}
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setProductSearchTerm('');
+                    }}
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: selectedCategory === 'all' ? '#059669' : '#f3f4f6',
-                      color: selectedCategory === 'all' ? 'white' : '#374151',
+                      backgroundColor: selectedCategory === 'all' && !productSearchTerm ? '#059669' : '#f3f4f6',
+                      color: selectedCategory === 'all' && !productSearchTerm ? 'white' : '#374151',
                       border: 'none',
                       borderRadius: '8px',
                       cursor: 'pointer',
@@ -2161,11 +2240,14 @@ const LogisticsManagementSystem: React.FC = () => {
                   {getUniqueCategories().map(category => (
                     <button
                       key={category}
-                      onClick={() => setSelectedCategory(category)}
+                      onClick={() => {
+                        setSelectedCategory(category);
+                        setProductSearchTerm('');
+                      }}
                       style={{
                         padding: '0.5rem 1rem',
-                        backgroundColor: selectedCategory === category ? '#059669' : '#f3f4f6',
-                        color: selectedCategory === category ? 'white' : '#374151',
+                        backgroundColor: selectedCategory === category && !productSearchTerm ? '#059669' : '#f3f4f6',
+                        color: selectedCategory === category && !productSearchTerm ? 'white' : '#374151',
                         border: 'none',
                         borderRadius: '8px',
                         cursor: 'pointer',
@@ -2180,6 +2262,18 @@ const LogisticsManagementSystem: React.FC = () => {
                     </button>
                   ))}
                 </div>
+                {productSearchTerm && (
+                  <div style={{ 
+                    marginTop: '0.75rem', 
+                    padding: '0.5rem', 
+                    backgroundColor: '#fef3c7', 
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    color: '#92400e'
+                  }}>
+                    💡 Búsqueda activa: "{productSearchTerm}". Los filtros de categoría están deshabilitados.
+                  </div>
+                )}
               </div>
 
               {/* Lista de productos */}
@@ -2197,9 +2291,17 @@ const LogisticsManagementSystem: React.FC = () => {
               {getFilteredProducts().length === 0 && (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
                   <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                  <p style={{ margin: 0, fontSize: '1rem' }}>
-                    No hay productos en esta categoría
+                  <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
+                    {productSearchTerm ? 
+                      `No se encontraron productos para "${productSearchTerm}"` :
+                      `No hay productos en esta categoría`
+                    }
                   </p>
+                  {productSearchTerm && (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>
+                      Intenta con otros términos de búsqueda o selecciona una categoría diferente
+                    </p>
+                  )}
                 </div>
               )}
 
