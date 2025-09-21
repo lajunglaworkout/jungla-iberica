@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Package, Plus, Eye, Truck, BarChart3 } from 'lucide-react';
+import { Package, Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, CheckCircle, Clock, Truck, X, Bell } from 'lucide-react';
 
 interface InventoryItem {
   id: number;
@@ -81,8 +81,8 @@ interface LogisticsStats {
 interface User {
   id: string;
   name: string;
-  role: 'center_manager' | 'logistics_director' | 'admin';
-  center?: 'sevilla' | 'jerez' | 'puerto' | 'central';
+  role: 'center_manager' | 'logistics_director' | 'admin' | 'ceo';
+  center: string;
 }
 
 interface Notification {
@@ -110,7 +110,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Beni García', role: 'logistics_director', center: 'central' });
+  const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Beni García', role: 'ceo', center: 'central' });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -885,39 +885,72 @@ const LogisticsManagementSystem: React.FC = () => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* Selector de Usuario (para demo) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <select
+                value={currentUser.role}
+                onChange={(e) => {
+                  const roles: Record<string, User> = {
+                    'ceo': { id: '1', name: 'Beni García (CEO)', role: 'ceo' as const, center: 'central' },
+                    'logistics_director': { id: '2', name: 'Ana López (Dir. Logística)', role: 'logistics_director' as const, center: 'central' },
+                    'center_manager': { id: '3', name: 'Carlos Ruiz (Encargado)', role: 'center_manager' as const, center: 'sevilla' }
+                  };
+                  setCurrentUser(roles[e.target.value]);
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '8px',
+                  padding: '0.5rem',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
+                }}
+              >
+                <option value="ceo" style={{ color: '#374151' }}>👑 CEO</option>
+                <option value="logistics_director" style={{ color: '#374151' }}>📊 Director Logística</option>
+                <option value="center_manager" style={{ color: '#374151' }}>🏪 Encargado Centro</option>
+              </select>
+            </div>
+
             {/* Información del Usuario */}
             <div style={{ color: 'white', textAlign: 'right' }}>
               <div style={{ fontWeight: '600' }}>{currentUser.name}</div>
               <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>
-                {currentUser.role === 'logistics_director' ? '👨‍💼 Director de Logística' : '👤 Encargado de Centro'}
+                {currentUser.role === 'ceo' ? '👑 CEO' :
+                 currentUser.role === 'logistics_director' ? '📊 Director de Logística' : 
+                 '🏪 Encargado de Centro'}
               </div>
             </div>
-            
-            {/* Botón de Notificaciones */}
+
+            {/* Notificaciones */}
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 style={{
+                  position: 'relative',
                   background: 'rgba(255, 255, 255, 0.2)',
                   border: 'none',
-                  borderRadius: '12px',
-                  padding: '0.75rem',
-                  color: 'white',
-                  cursor: 'pointer',
-                  position: 'relative'
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
                 }}
               >
-                🔔
+                <Bell size={20} style={{ color: 'white' }} />
                 {getUnreadNotifications().length > 0 && (
                   <span style={{
                     position: 'absolute',
-                    top: '-5px',
-                    right: '-5px',
-                    backgroundColor: '#ef4444',
+                    top: '-2px',
+                    right: '-2px',
+                    backgroundColor: '#dc2626',
                     color: 'white',
                     borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
+                    width: '18px',
+                    height: '18px',
                     fontSize: '0.75rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -2284,6 +2317,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     product={product} 
                     onAddToOrder={addProductToOrder}
                     isAlreadyAdded={newOrder.items.some(item => item.product_id === product.id)}
+                    userRole={currentUser.role}
                   />
                 ))}
               </div>
@@ -2334,9 +2368,13 @@ const ProductCard: React.FC<{
   product: InventoryItem;
   onAddToOrder: (product: InventoryItem, quantity: number, unitPrice: number) => void;
   isAlreadyAdded: boolean;
-}> = ({ product, onAddToOrder, isAlreadyAdded }) => {
+  userRole: string;
+}> = ({ product, onAddToOrder, isAlreadyAdded, userRole }) => {
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(product.sale_price || product.purchase_price || 0);
+  
+  // Verificar si el usuario puede modificar precios
+  const canEditPrice = userRole === 'ceo' || userRole === 'logistics_director' || userRole === 'admin';
 
   const getStockStatusColor = () => {
     if (product.status === 'out_of_stock') return '#dc2626';
@@ -2416,22 +2454,36 @@ const ProductCard: React.FC<{
         </div>
         <div>
           <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '500', marginBottom: '0.25rem' }}>
-            Precio €
+            Precio € {!canEditPrice && <span style={{ color: '#6b7280' }}>(Fijo)</span>}
           </label>
           <input
             type="number"
             step="0.01"
             min="0"
             value={unitPrice}
-            onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+            onChange={(e) => canEditPrice && setUnitPrice(parseFloat(e.target.value) || 0)}
+            readOnly={!canEditPrice}
             style={{
               width: '100%',
               padding: '0.5rem',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
-              fontSize: '0.875rem'
+              fontSize: '0.875rem',
+              backgroundColor: canEditPrice ? 'white' : '#f9fafb',
+              color: canEditPrice ? '#374151' : '#6b7280',
+              cursor: canEditPrice ? 'text' : 'not-allowed'
             }}
           />
+          {!canEditPrice && (
+            <div style={{ 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.25rem',
+              fontStyle: 'italic'
+            }}>
+              💼 Solo directivos pueden modificar precios
+            </div>
+          )}
         </div>
       </div>
 
