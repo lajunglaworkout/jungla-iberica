@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Package, Plus, Eye, Truck, BarChart3 } from 'lucide-react';
+import { Package, Plus, Search, Bell, X } from 'lucide-react';
+import logisticsService from '../services/logisticsService';
 
 interface InventoryItem {
   id: number;
@@ -131,7 +132,25 @@ const LogisticsManagementSystem: React.FC = () => {
     location: ''
   });
 
+  // Función para intentar cargar datos desde Supabase
+  const tryLoadFromSupabase = async () => {
+    try {
+      console.log('🔄 Intentando cargar datos desde Supabase...');
+      const inventory = await logisticsService.inventory.getAll();
+      if (inventory && inventory.length > 0) {
+        console.log('✅ Datos encontrados en Supabase, cargando...');
+        // Aquí se podría transformar y cargar los datos reales
+        // Por ahora solo mostramos el mensaje
+      }
+    } catch (error) {
+      console.log('📦 Supabase no disponible, usando datos mock');
+    }
+  };
+
   useEffect(() => {
+    // Intentar cargar desde Supabase primero
+    tryLoadFromSupabase();
+    
     setInventoryItems([
       { id: 1, name: 'Camiseta La Jungla', category: 'Vestuario', size: 'M', quantity: 25, min_stock: 10, max_stock: 50, purchase_price: 12.50, sale_price: 25.00, supplier: 'Textiles SL', center: 'sevilla', location: 'A1', last_updated: new Date().toISOString(), status: 'in_stock' },
       { id: 2, name: 'Mancuernas 5kg', category: 'Material Deportivo', size: '-', quantity: 3, min_stock: 5, max_stock: 25, purchase_price: 28.00, sale_price: 45.00, supplier: 'Deportes Pro', center: 'jerez', location: 'D1', last_updated: new Date().toISOString(), status: 'low_stock' },
