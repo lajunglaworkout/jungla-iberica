@@ -110,7 +110,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Beni García', role: 'ceo', center: 'central' });
+  const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Carlos Suárez', role: 'ceo', center: 'central' });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -891,9 +891,9 @@ const LogisticsManagementSystem: React.FC = () => {
                 value={currentUser.role}
                 onChange={(e) => {
                   const roles: Record<string, User> = {
-                    'ceo': { id: '1', name: 'Beni García (CEO)', role: 'ceo' as const, center: 'central' },
-                    'logistics_director': { id: '2', name: 'Ana López (Dir. Logística)', role: 'logistics_director' as const, center: 'central' },
-                    'center_manager': { id: '3', name: 'Carlos Ruiz (Encargado)', role: 'center_manager' as const, center: 'sevilla' }
+                    'ceo': { id: '1', name: 'Carlos Suárez (CEO)', role: 'ceo' as const, center: 'central' },
+                    'logistics_director': { id: '2', name: 'Benito Morales (Dir. Logística)', role: 'logistics_director' as const, center: 'central' },
+                    'center_manager': { id: '3', name: 'Ana García (Encargada)', role: 'center_manager' as const, center: 'sevilla' }
                   };
                   setCurrentUser(roles[e.target.value]);
                 }}
@@ -907,9 +907,9 @@ const LogisticsManagementSystem: React.FC = () => {
                   fontWeight: '500'
                 }}
               >
-                <option value="ceo" style={{ color: '#374151' }}>👑 CEO</option>
-                <option value="logistics_director" style={{ color: '#374151' }}>📊 Director Logística</option>
-                <option value="center_manager" style={{ color: '#374151' }}>🏪 Encargado Centro</option>
+                <option value="ceo" style={{ color: '#374151' }}>👑 Carlos Suárez (CEO)</option>
+                <option value="logistics_director" style={{ color: '#374151' }}>📊 Benito Morales (Director)</option>
+                <option value="center_manager" style={{ color: '#374151' }}>🏪 Ana García (Encargada)</option>
               </select>
             </div>
 
