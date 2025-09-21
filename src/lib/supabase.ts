@@ -15,6 +15,346 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
+      // ===== TABLAS DE LOGÍSTICA =====
+      product_categories: {
+        Row: {
+          id: number
+          name: string
+          description?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          description?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          description?: string
+          updated_at?: string
+        }
+      }
+      suppliers: {
+        Row: {
+          id: number
+          name: string
+          contact_person?: string
+          email?: string
+          phone?: string
+          address?: string
+          city?: string
+          postal_code?: string
+          tax_id?: string
+          payment_terms: number
+          is_active: boolean
+          notes?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          contact_person?: string
+          email?: string
+          phone?: string
+          address?: string
+          city?: string
+          postal_code?: string
+          tax_id?: string
+          payment_terms?: number
+          is_active?: boolean
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          contact_person?: string
+          email?: string
+          phone?: string
+          address?: string
+          city?: string
+          postal_code?: string
+          tax_id?: string
+          payment_terms?: number
+          is_active?: boolean
+          notes?: string
+          updated_at?: string
+        }
+      }
+      inventory_items: {
+        Row: {
+          id: number
+          name: string
+          description?: string
+          category_id?: number
+          supplier_id?: number
+          sku?: string
+          size?: string
+          color?: string
+          quantity: number
+          min_stock: number
+          max_stock: number
+          cost_per_unit: number
+          selling_price: number
+          location?: string
+          barcode?: string
+          status: string
+          last_restock_date?: string
+          expiry_date?: string
+          notes?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          description?: string
+          category_id?: number
+          supplier_id?: number
+          sku?: string
+          size?: string
+          color?: string
+          quantity?: number
+          min_stock?: number
+          max_stock?: number
+          cost_per_unit?: number
+          selling_price?: number
+          location?: string
+          barcode?: string
+          status?: string
+          last_restock_date?: string
+          expiry_date?: string
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          description?: string
+          category_id?: number
+          supplier_id?: number
+          sku?: string
+          size?: string
+          color?: string
+          quantity?: number
+          min_stock?: number
+          max_stock?: number
+          cost_per_unit?: number
+          selling_price?: number
+          location?: string
+          barcode?: string
+          status?: string
+          last_restock_date?: string
+          expiry_date?: string
+          notes?: string
+          updated_at?: string
+        }
+      }
+      supplier_orders: {
+        Row: {
+          id: number
+          order_number: string
+          supplier_id: number
+          status: string
+          order_date: string
+          expected_delivery?: string
+          actual_delivery?: string
+          total_amount: number
+          tax_amount: number
+          shipping_cost: number
+          discount_amount: number
+          created_by?: number
+          approved_by?: number
+          received_by?: number
+          notes?: string
+          tracking_number?: string
+          invoice_number?: string
+          payment_status: string
+          payment_date?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          order_number?: string
+          supplier_id: number
+          status?: string
+          order_date?: string
+          expected_delivery?: string
+          actual_delivery?: string
+          total_amount?: number
+          tax_amount?: number
+          shipping_cost?: number
+          discount_amount?: number
+          created_by?: number
+          approved_by?: number
+          received_by?: number
+          notes?: string
+          tracking_number?: string
+          invoice_number?: string
+          payment_status?: string
+          payment_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          order_number?: string
+          supplier_id?: number
+          status?: string
+          order_date?: string
+          expected_delivery?: string
+          actual_delivery?: string
+          total_amount?: number
+          tax_amount?: number
+          shipping_cost?: number
+          discount_amount?: number
+          created_by?: number
+          approved_by?: number
+          received_by?: number
+          notes?: string
+          tracking_number?: string
+          invoice_number?: string
+          payment_status?: string
+          payment_date?: string
+          updated_at?: string
+        }
+      }
+      supplier_order_items: {
+        Row: {
+          id: number
+          order_id: number
+          inventory_item_id?: number
+          item_name: string
+          item_description?: string
+          size?: string
+          color?: string
+          quantity: number
+          unit_cost: number
+          total_cost: number
+          received_quantity: number
+          notes?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          order_id: number
+          inventory_item_id?: number
+          item_name: string
+          item_description?: string
+          size?: string
+          color?: string
+          quantity: number
+          unit_cost: number
+          received_quantity?: number
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          order_id?: number
+          inventory_item_id?: number
+          item_name?: string
+          item_description?: string
+          size?: string
+          color?: string
+          quantity?: number
+          unit_cost?: number
+          received_quantity?: number
+          notes?: string
+          updated_at?: string
+        }
+      }
+      inventory_movements: {
+        Row: {
+          id: number
+          inventory_item_id: number
+          movement_type: string
+          quantity: number
+          previous_quantity: number
+          new_quantity: number
+          unit_cost?: number
+          reference_type?: string
+          reference_id?: number
+          reason?: string
+          performed_by?: number
+          location_from?: string
+          location_to?: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          inventory_item_id: number
+          movement_type: string
+          quantity: number
+          previous_quantity: number
+          new_quantity: number
+          unit_cost?: number
+          reference_type?: string
+          reference_id?: number
+          reason?: string
+          performed_by?: number
+          location_from?: string
+          location_to?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          inventory_item_id?: number
+          movement_type?: string
+          quantity?: number
+          previous_quantity?: number
+          new_quantity?: number
+          unit_cost?: number
+          reference_type?: string
+          reference_id?: number
+          reason?: string
+          performed_by?: number
+          location_from?: string
+          location_to?: string
+        }
+      }
+      stock_alerts: {
+        Row: {
+          id: number
+          inventory_item_id: number
+          alert_type: string
+          message: string
+          is_resolved: boolean
+          resolved_by?: number
+          resolved_at?: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          inventory_item_id: number
+          alert_type: string
+          message: string
+          is_resolved?: boolean
+          resolved_by?: number
+          resolved_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          inventory_item_id?: number
+          alert_type?: string
+          message?: string
+          is_resolved?: boolean
+          resolved_by?: number
+          resolved_at?: string
+        }
+      }
+      // ===== TABLAS EXISTENTES =====
       empleados: {
         Row: {
           id: string
