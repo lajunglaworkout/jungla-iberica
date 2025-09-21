@@ -184,7 +184,7 @@ const IncidentManagementSystem: React.FC = () => {
         .select(`
           *,
           incident_types(name, description, approver_role, requires_dates, requires_clothing_details),
-          employees(name, email, position)
+          employees!incidents_employee_id_fkey(name, email, position)
         `)
         .order('created_at', { ascending: false });
 

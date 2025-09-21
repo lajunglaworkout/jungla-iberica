@@ -174,8 +174,8 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
       count: 'Temporal'
     },
     {
-      id: 'vacations',
-      title: 'Vacaciones',
+      id: 'absence-management',
+      title: 'Gestión Ausencias',
       icon: <Palmtree style={{ height: '48px', width: '48px' }} />,
       description: 'Gestión de ausencias',
       color: '#eab308',

@@ -6,12 +6,32 @@ import { DataProvider } from './contexts/DataContext';
 import LoginForm from './components/LoginForm';
 import { supabase } from './lib/supabase';
 import {
-  Crown, Users, Building2, BarChart3, Settings, Menu, Bell, X,
-  Target, Flag, Brain, CheckCircle, Calendar, Video, Search,
-  MapPin, AlertTriangle, DollarSign, Globe, Shield,
-  Loader2, RefreshCw, Clock, Heart, Briefcase, ClipboardList,
-  TrendingUp, Activity, Package, ChevronRight, Star, LogOut,
-  Plus, Edit, Trash2, Eye, Filter, Download, Upload, Home, History
+  Calendar,
+  Users,
+  Settings,
+  BarChart3,
+  CheckCircle,
+  Clock,
+  Globe,
+  Package,
+  ClipboardList,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Bell,
+  FileText,
+  Crown,
+  Building2,
+  Brain,
+  Target,
+  History,
+  X,
+  Menu,
+  LogOut,
+  Loader2,
+  AlertTriangle,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
@@ -22,19 +42,24 @@ import MarketingPublicationSystem from './components/MarketingPublicationSystem'
 import ExecutiveDashboard from './components/ExecutiveDashboard';
 import IntelligentExecutiveDashboard from './components/IntelligentExecutiveDashboard';
 import StrategicMeetingSystem from './components/StrategicMeetingSystem';
+import MeetingHistorySystem from './components/MeetingHistorySystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
 import LogisticsManagementSystem from './components/LogisticsManagementSystem';
 import IncidentManagementSystem from './components/incidents/IncidentManagementSystem';
+import CEODashboard from './components/CEODashboard';
+import PendingTasksSystem from './components/PendingTasksSystem';
+import DashboardPage from './pages/DashboardPage';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
   const { employee, signOut, userRole } = useSession();
-  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<string | null>('main-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showMeetingHistoryModal, setShowMeetingHistoryModal] = useState(false);
   
   // Estados para el sistema de centros mejorado
   const [showCreateCenterModal, setShowCreateCenterModal] = useState(false);
@@ -42,90 +67,141 @@ const NavigationDashboard: React.FC = () => {
   const [selectedCenterForHistory, setSelectedCenterForHistory] = useState<string | null>(null);
   const [showChecklist, setShowChecklist] = useState(false);
 
-  // Sistema de módulos reorganizado según especificaciones
+  // Sistema de módulos optimizado por roles
   const getAvailableModules = () => {
-    const isExecutive = ['superadmin', 'admin'].includes(userRole || '');
+    const isCEO = ['superadmin', 'admin'].includes(userRole || '');
     const isManager = userRole === 'manager';
-    const isEmployee = userRole === 'employee';
     
-    return [
+    // Módulos base para todos los roles
+    const baseModules = [
       {
-        id: 'dashboard',
-        title: 'Dashboard Ejecutivo',
-        description: 'Tarjetas de todos los departamentos con datos reales',
-        icon: Crown,
-        color: '#059669',
-        component: ExecutiveDashboard,
-        available: isExecutive || isManager
+        id: 'main-dashboard',
+        title: 'Dashboard',
+        description: 'Vista principal con calendario, tareas y alertas',
+        icon: LayoutDashboard,
+        color: '#1976d2',
+        component: DashboardPage,
+        available: true,
+        isDefault: true
       },
+      {
+        id: 'meetings',
+        title: 'Reuniones',
+        description: 'Gestión de reuniones y calendario',
+        icon: Calendar,
+        color: '#059669',
+        component: null,
+        available: true,
+        onClick: () => setShowMeetingModal(true)
+      }
+    ];
+
+    // Módulos específicos para CEO
+    const ceoModules = [
       {
         id: 'intelligent',
         title: 'Dashboard Inteligente',
-        description: 'Sistema con IA predictiva (mantener como está)',
+        description: 'Sistema con IA predictiva y KPIs críticos',
         icon: Brain,
-        color: '#059669',
+        color: '#7c3aed',
         component: IntelligentExecutiveDashboard,
-        available: isExecutive
+        available: true
       },
       {
         id: 'hr',
-        title: 'Gestión RRHH',
-        description: 'HRManagementSystem.tsx con empleados reales de Supabase',
+        title: 'RRHH y Procedimientos',
+        description: 'Gestión de empleados y procedimientos',
         icon: Users,
         color: '#059669',
         component: HRManagementSystem,
-        available: isExecutive || isManager
-      },
-      {
-        id: 'centers',
-        title: 'Centros',
-        description: 'Sevilla, Jerez, Puerto con ChecklistCompleteSystem',
-        icon: Building2,
-        color: '#059669',
-        component: null, // Componente especial para centros
-        available: true,
-        hasSubmenu: true
-      },
-      {
-        id: 'marketing',
-        title: 'Marketing',
-        description: 'Fusión de contenido y publicaciones',
-        icon: Globe,
-        color: '#059669',
-        component: null, // Componente fusionado
-        available: isExecutive || isManager,
-        onClick: () => setShowMarketingModal(true)
+        available: true
       },
       {
         id: 'logistics',
         title: 'Logística',
         description: 'Gestión de vestuario y pedidos',
         icon: Package,
-        color: '#059669',
-        component: null, // Componente de logística
-        available: isExecutive || isManager || userRole === 'logistics'
+        color: '#ea580c',
+        component: null,
+        available: true
+      },
+      {
+        id: 'marketing',
+        title: 'Marketing',
+        description: 'Contenido y publicaciones',
+        icon: Globe,
+        color: '#dc2626',
+        component: null,
+        available: true,
+        onClick: () => setShowMarketingModal(true)
+      },
+      {
+        id: 'centers',
+        title: 'Centros',
+        description: 'Gestión de centros deportivos',
+        icon: Building2,
+        color: '#0891b2',
+        component: null,
+        available: true,
+        hasSubmenu: true
       },
       {
         id: 'incidents',
-        title: 'Incidencias y Peticiones',
+        title: 'Incidencias',
         description: 'Ausencias, vacaciones y solicitudes',
         icon: ClipboardList,
-        color: '#059669',
-        component: null, // Sistema de incidencias
-        available: true // Todos los empleados pueden crear peticiones
-      },
-      {
-        id: 'meetings',
-        title: 'Reuniones Estratégicas',
-        description: 'Sidebar siempre visible',
-        icon: Calendar,
-        color: '#059669',
+        color: '#7c2d12',
         component: null,
-        available: isExecutive,
-        onClick: () => setShowMeetingModal(true),
-        alwaysVisible: true
+        available: true
       }
-    ].filter(module => module.available);
+    ];
+
+    // Módulos específicos por departamento
+    const departmentModules = {
+      'marketing': [
+        {
+          id: 'marketing',
+          title: 'Marketing',
+          description: 'Contenido y publicaciones',
+          icon: Globe,
+          color: '#dc2626',
+          component: null,
+          available: true,
+          onClick: () => setShowMarketingModal(true)
+        }
+      ],
+      'hr': [
+        {
+          id: 'hr',
+          title: 'RRHH',
+          description: 'Gestión de empleados',
+          icon: Users,
+          color: '#059669',
+          component: HRManagementSystem,
+          available: true
+        }
+      ],
+      'logistics': [
+        {
+          id: 'logistics',
+          title: 'Logística',
+          description: 'Gestión de vestuario y pedidos',
+          icon: Package,
+          color: '#ea580c',
+          component: null,
+          available: true
+        }
+      ]
+    };
+
+    // Construir módulos según el rol
+    if (isCEO) {
+      return [...baseModules, ...ceoModules];
+    } else {
+      // Para otros roles, solo dashboard + reuniones + su módulo específico
+      const userDepartmentModules = departmentModules[userRole as keyof typeof departmentModules] || [];
+      return [...baseModules, ...userDepartmentModules];
+    }
   };
 
   const modules = getAvailableModules();
@@ -153,15 +229,26 @@ const NavigationDashboard: React.FC = () => {
     // Renderizar el módulo seleccionado
   const renderModule = () => {
     const module = modules.find(m => m.id === selectedModule);
-    if (!module) return null;
+    if (!module) {
+      // Si no hay módulo seleccionado, mostrar el dashboard principal
+      return <DashboardPage />;
+    }
 
     // Manejo especial para módulos específicos
+    if (module.id === 'main-dashboard') {
+      return <DashboardPage />;
+    }
+
     if (module.id === 'logistics') {
       return <LogisticsManagementSystem />;
     }
 
     if (module.id === 'incidents') {
       return <IncidentManagementSystem />;
+    }
+
+    if (module.id === 'pending-tasks') {
+      return <PendingTasksSystem />;
     }
 
     // Manejo especial para el módulo de centros MEJORADO
@@ -478,17 +565,25 @@ const NavigationDashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', width: '100%' }}>
       {/* Sidebar */}
       <div style={{
         width: sidebarOpen ? '280px' : '80px',
+        minWidth: sidebarOpen ? '280px' : '80px',
         backgroundColor: 'white',
         borderRight: '1px solid #e5e7eb',
         transition: 'width 0.3s ease',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '4px 0 6px -1px rgba(0, 0, 0, 0.1)'
+        boxShadow: '4px 0 6px -1px rgba(0, 0, 0, 0.1)',
+        position: 'fixed',
+        zIndex: 10,
+        overflowY: 'auto',
+        height: '100vh',
+        left: 0,
+        top: 0
       }}>
+        {/* Contenido del sidebar */}
         {/* Logo y toggle */}
         <div style={{
           padding: '20px',
@@ -571,8 +666,9 @@ const NavigationDashboard: React.FC = () => {
               <button
                 key={module.id}
                 onClick={() => {
-                  if (module.onClick) {
-                    module.onClick();
+                  const moduleWithClick = module as any;
+                  if (moduleWithClick.onClick && typeof moduleWithClick.onClick === 'function') {
+                    moduleWithClick.onClick();
                   } else {
                     setSelectedModule(module.id);
                   }
@@ -659,57 +755,72 @@ const NavigationDashboard: React.FC = () => {
       </div>
 
       {/* Área de contenido principal */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Header del contenido */}
-        <div style={{
-          backgroundColor: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-              {modules.find(m => m.id === selectedModule)?.title || 'Dashboard Ejecutivo'}
-            </h2>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-              {new Date().toLocaleDateString('es-ES', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button style={{
-              padding: '8px',
-              backgroundColor: '#f3f4f6',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              position: 'relative'
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        marginLeft: sidebarOpen ? '280px' : '80px',
+        transition: 'margin-left 0.3s ease',
+        backgroundColor: '#f9fafb',
+        minHeight: '100vh'
+      }}>
+        {selectedModule === 'main-dashboard' ? (
+          // Para el dashboard principal, mostrar sin padding ni header adicional
+          renderModule()
+        ) : (
+          // Para otros módulos, mantener la estructura original
+          <>
+            {/* Header del contenido */}
+            <div style={{
+              backgroundColor: 'white',
+              borderBottom: '1px solid #e5e7eb',
+              padding: '16px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
             }}>
-              <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
-              <span style={{
-                position: 'absolute',
-                top: '4px',
-                right: '4px',
-                width: '8px',
-                height: '8px',
-                backgroundColor: '#ef4444',
-                borderRadius: '50%'
-              }} />
-            </button>
-          </div>
-        </div>
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                  {modules.find(m => m.id === selectedModule)?.title || 'Dashboard Ejecutivo'}
+                </h2>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  {new Date().toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button style={{
+                  padding: '8px',
+                  backgroundColor: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}>
+                  <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
+                  <span style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: '#ef4444',
+                    borderRadius: '50%'
+                  }} />
+                </button>
+              </div>
+            </div>
 
-        {/* Contenido del módulo */}
-        <div style={{ padding: '24px' }}>
-          {renderModule()}
-        </div>
+            {/* Contenido del módulo */}
+            <div style={{ padding: '24px' }}>
+              {renderModule()}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Modales del sistema */}
@@ -722,14 +833,23 @@ const NavigationDashboard: React.FC = () => {
         }}
       />
       
-      <StrategicMeetingSystem
-        isOpen={showMeetingModal}
-        onClose={() => setShowMeetingModal(false)}
-        onComplete={(data) => {
-          console.log('Meeting data:', data);
-          setShowMeetingModal(false);
-        }}
-      />
+      {showMeetingModal && (
+        <StrategicMeetingSystem
+          isOpen={showMeetingModal}
+          onClose={() => setShowMeetingModal(false)}
+          onComplete={() => {
+            setShowMeetingModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {showMeetingHistoryModal && (
+        <MeetingHistorySystem
+          isOpen={showMeetingHistoryModal}
+          onClose={() => setShowMeetingHistoryModal(false)}
+        />
+      )}
 
       {/* MODAL CRÍTICO: ChecklistCompleteSystem */}
       {showChecklist && selectedCenter && (

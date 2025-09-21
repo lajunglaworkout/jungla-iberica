@@ -17,6 +17,7 @@
     "@types/qrcode": "^1.5.5",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.536.0",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
