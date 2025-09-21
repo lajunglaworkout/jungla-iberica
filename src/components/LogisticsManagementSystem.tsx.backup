@@ -1,0 +1,1539 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useSession } from '../contexts/SessionContext';
+import { 
+  Package, 
+  Truck, 
+  ClipboardList, 
+  Users, 
+  BarChart3,
+  Plus,
+  Search,
+  Filter,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Shirt,
+  ShoppingCart,
+  FileText
+} from 'lucide-react';
+
+interface UniformRequest {
+  id: number;
+  employee_name: string;
+  employee_email: string;
+  center_name: string;
+  clothing_type: string;
+  clothing_size: string;
+  quantity: number;
+  status: string;
+  priority: string;
+  created_at: string;
+  description: string;
+}
+
+interface InventoryItem {
+  id: number;
+  name: string;
+  category: string;
+  size: string;
+  quantity: number;
+  min_stock: number;
+  max_stock: number;
+  cost_per_unit: number;
+  supplier: string;
+  location: string;
+  last_updated: string;
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+}
+
+interface SupplierOrder {
+  id: number;
+  order_number: string;
+  supplier_name: string;
+  supplier_contact: string;
+  items: OrderItem[];
+  total_amount: number;
+  status: 'draft' | 'sent' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  order_date: string;
+  expected_delivery: string;
+  notes: string;
+}
+
+interface OrderItem {
+  id: number;
+  item_name: string;
+  category: string;
+  size: string;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+}
+
+interface Supplier {
+  id: number;
+  name: string;
+  contact_person: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  type: 'local' | 'nacional' | 'internacional';
+  categories: string[];
+  rating: number;
+  payment_terms: string;
+  delivery_time: string;
+  notes: string;
+  active: boolean;
+}
+
+interface LogisticsStats {
+  pendingRequests: number;
+  approvedRequests: number;
+  totalRequests: number;
+  urgentRequests: number;
+  totalInventoryItems: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+  pendingOrders: number;
+  totalInventoryValue: number;
+}
+
+const LogisticsManagementSystem: React.FC = () => {
+  const { employee, userRole } = useSession();
+  const [activeTab, setActiveTab] = useState('uniform-requests');
+  const [uniformRequests, setUniformRequests] = useState<UniformRequest[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [supplierOrders, setSupplierOrders] = useState<SupplierOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [stats, setStats] = useState<LogisticsStats>({
+    pendingRequests: 0,
+    approvedRequests: 0,
+    totalRequests: 0,
+    urgentRequests: 0,
+    totalInventoryItems: 0,
+    lowStockItems: 0,
+    outOfStockItems: 0,
+    pendingOrders: 0,
+    totalInventoryValue: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [showNewItemForm, setShowNewItemForm] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [showNewOrderForm, setShowNewOrderForm] = useState(false);
+
+  // userRole ya viene de useSession()
+  const isLogistics = userRole === 'logistics' || userRole === 'manager' || userRole === 'admin';
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        loadUniformRequests(),
+        loadInventoryItems(),
+        loadSupplierOrders(),
+        loadSuppliers(),
+        loadStats()
+      ]);
+    } catch (error) {
+      console.error('Error loading logistics data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInventoryItems = async () => {
+    try {
+      // Mock data expandido con todas las categorías
+      const mockInventory: InventoryItem[] = [
+        // Vestuario
+        {
+          id: 1,
+          name: 'Camiseta La Jungla - Negra',
+          category: 'Vestuario',
+          size: 'M',
+          quantity: 25,
+          min_stock: 10,
+          max_stock: 50,
+          cost_per_unit: 15.50,
+          supplier: 'Textiles Deportivos SL',
+          location: 'Almacén Principal - A1',
+          last_updated: new Date().toISOString(),
+          status: 'in_stock'
+        },
+        {
+          id: 2,
+          name: 'Pantalón Corto La Jungla',
+          category: 'Vestuario',
+          size: 'L',
+          quantity: 5,
+          min_stock: 10,
+          max_stock: 30,
+          cost_per_unit: 22.00,
+          supplier: 'Deportes Andalucía',
+          location: 'Almacén Principal - B2',
+          last_updated: new Date().toISOString(),
+          status: 'low_stock'
+        },
+        // Material Deportivo
+        {
+          id: 3,
+          name: 'Mancuernas 5kg (Par)',
+          category: 'Material Deportivo',
+          size: '-',
+          quantity: 15,
+          min_stock: 8,
+          max_stock: 25,
+          cost_per_unit: 35.00,
+          supplier: 'Deportes Pro',
+          location: 'Almacén Principal - D1',
+          last_updated: new Date().toISOString(),
+          status: 'in_stock'
+        },
+        {
+          id: 4,
+          name: 'Gomas Elásticas Set',
+          category: 'Material Deportivo',
+          size: 'Variado',
+          quantity: 3,
+          min_stock: 5,
+          max_stock: 20,
+          cost_per_unit: 12.50,
+          supplier: 'FitEquip',
+          location: 'Almacén Principal - D2',
+          last_updated: new Date().toISOString(),
+          status: 'low_stock'
+        },
+        // Instalaciones
+        {
+          id: 5,
+          name: 'Espejo Gimnasio 2x1m',
+          category: 'Instalaciones',
+          size: '2x1m',
+          quantity: 0,
+          min_stock: 2,
+          max_stock: 8,
+          cost_per_unit: 85.00,
+          supplier: 'Cristalería Sevilla',
+          location: 'Almacén Principal - E1',
+          last_updated: new Date().toISOString(),
+          status: 'out_of_stock'
+        },
+        {
+          id: 6,
+          name: 'Suelo Goma Gimnasio m²',
+          category: 'Instalaciones',
+          size: '1m²',
+          quantity: 45,
+          min_stock: 20,
+          max_stock: 100,
+          cost_per_unit: 25.00,
+          supplier: 'Pavimentos Deportivos',
+          location: 'Almacén Principal - E2',
+          last_updated: new Date().toISOString(),
+          status: 'in_stock'
+        },
+        // Consumibles
+        {
+          id: 7,
+          name: 'Desinfectante Multiusos 5L',
+          category: 'Consumibles',
+          size: '5L',
+          quantity: 8,
+          min_stock: 12,
+          max_stock: 30,
+          cost_per_unit: 18.50,
+          supplier: 'Limpieza Pro',
+          location: 'Almacén Principal - F1',
+          last_updated: new Date().toISOString(),
+          status: 'low_stock'
+        },
+        {
+          id: 8,
+          name: 'Papel Higiénico Industrial',
+          category: 'Consumibles',
+          size: 'Pack 12',
+          quantity: 25,
+          min_stock: 15,
+          max_stock: 50,
+          cost_per_unit: 22.00,
+          supplier: 'Distribuciones Andalucía',
+          location: 'Almacén Principal - F2',
+          last_updated: new Date().toISOString(),
+          status: 'in_stock'
+        }
+      ];
+      setInventoryItems(mockInventory);
+    } catch (error) {
+      console.error('Error loading inventory:', error);
+    }
+  };
+
+  const loadSupplierOrders = async () => {
+    try {
+      // Mock data for now - replace with actual Supabase query
+      const mockOrders: SupplierOrder[] = [
+        {
+          id: 1,
+          order_number: 'ORD-2024-001',
+          supplier_name: 'Textiles Deportivos SL',
+          supplier_contact: 'pedidos@textiles-deportivos.com',
+          items: [
+            {
+              id: 1,
+              item_name: 'Camiseta La Jungla - Negra',
+              category: 'Camisetas',
+              size: 'M',
+              quantity: 30,
+              unit_cost: 15.50,
+              total_cost: 465.00
+            }
+          ],
+          total_amount: 465.00,
+          status: 'sent',
+          order_date: new Date().toISOString(),
+          expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          notes: 'Pedido urgente para reposición de stock'
+        }
+      ];
+      setSupplierOrders(mockOrders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const mockSuppliers: Supplier[] = [
+        // Proveedores Locales (Andalucía)
+        {
+          id: 1,
+          name: 'Textiles Deportivos SL',
+          contact_person: 'María González',
+          email: 'pedidos@textiles-deportivos.com',
+          phone: '+34 954 123 456',
+          address: 'Calle Industria, 45',
+          city: 'Sevilla',
+          postal_code: '41015',
+          type: 'local',
+          categories: ['Vestuario'],
+          rating: 4.5,
+          payment_terms: '30 días',
+          delivery_time: '3-5 días',
+          notes: 'Especialistas en ropa deportiva personalizada',
+          active: true
+        },
+        {
+          id: 2,
+          name: 'Deportes Andalucía',
+          contact_person: 'Carlos Ruiz',
+          email: 'ventas@deportes-andalucia.es',
+          phone: '+34 956 789 012',
+          address: 'Polígono Industrial Sur, Nave 12',
+          city: 'Jerez de la Frontera',
+          postal_code: '11407',
+          type: 'local',
+          categories: ['Vestuario', 'Material Deportivo'],
+          rating: 4.2,
+          payment_terms: '45 días',
+          delivery_time: '2-4 días',
+          notes: 'Proveedor de confianza con amplio catálogo',
+          active: true
+        },
+        {
+          id: 3,
+          name: 'Cristalería Sevilla',
+          contact_person: 'Antonio López',
+          email: 'info@cristaleria-sevilla.com',
+          phone: '+34 954 567 890',
+          address: 'Avenida de la Paz, 78',
+          city: 'Sevilla',
+          postal_code: '41018',
+          type: 'local',
+          categories: ['Instalaciones'],
+          rating: 4.8,
+          payment_terms: '15 días',
+          delivery_time: '5-7 días',
+          notes: 'Especialistas en espejos para gimnasios',
+          active: true
+        },
+        {
+          id: 4,
+          name: 'Limpieza Pro Andalucía',
+          contact_person: 'Isabel Martín',
+          email: 'pedidos@limpieza-pro.es',
+          phone: '+34 955 234 567',
+          address: 'Calle Comercio, 23',
+          city: 'El Puerto de Santa María',
+          postal_code: '11500',
+          type: 'local',
+          categories: ['Consumibles'],
+          rating: 4.3,
+          payment_terms: '30 días',
+          delivery_time: '1-2 días',
+          notes: 'Productos de limpieza profesional',
+          active: true
+        },
+        // Proveedores Nacionales
+        {
+          id: 5,
+          name: 'FitEquip España',
+          contact_person: 'Roberto Fernández',
+          email: 'comercial@fitequip.es',
+          phone: '+34 913 456 789',
+          address: 'Calle Mayor, 156',
+          city: 'Madrid',
+          postal_code: '28013',
+          type: 'nacional',
+          categories: ['Material Deportivo'],
+          rating: 4.6,
+          payment_terms: '60 días',
+          delivery_time: '7-10 días',
+          notes: 'Líder nacional en equipamiento deportivo',
+          active: true
+        },
+        {
+          id: 6,
+          name: 'Pavimentos Deportivos Nacional',
+          contact_person: 'Laura Sánchez',
+          email: 'info@pavimentos-deportivos.com',
+          phone: '+34 932 678 901',
+          address: 'Polígono Industrial Can Buxeres',
+          city: 'Barcelona',
+          postal_code: '08191',
+          type: 'nacional',
+          categories: ['Instalaciones'],
+          rating: 4.4,
+          payment_terms: '45 días',
+          delivery_time: '10-15 días',
+          notes: 'Especialistas en suelos deportivos',
+          active: true
+        },
+        {
+          id: 7,
+          name: 'Distribuciones Nacionales SA',
+          contact_person: 'Miguel Torres',
+          email: 'ventas@distribuciones-nacionales.es',
+          phone: '+34 963 789 012',
+          address: 'Avenida del Puerto, 89',
+          city: 'Valencia',
+          postal_code: '46024',
+          type: 'nacional',
+          categories: ['Consumibles', 'Vestuario'],
+          rating: 4.1,
+          payment_terms: '30 días',
+          delivery_time: '5-8 días',
+          notes: 'Gran variedad de productos',
+          active: true
+        },
+        // Proveedores Internacionales
+        {
+          id: 8,
+          name: 'European Fitness Solutions',
+          contact_person: 'Hans Mueller',
+          email: 'sales@european-fitness.de',
+          phone: '+49 30 123 4567',
+          address: 'Industriestraße 45',
+          city: 'Berlín',
+          postal_code: '10115',
+          type: 'internacional',
+          categories: ['Material Deportivo', 'Instalaciones'],
+          rating: 4.7,
+          payment_terms: '90 días',
+          delivery_time: '15-20 días',
+          notes: 'Equipamiento premium europeo',
+          active: true
+        }
+      ];
+      setSuppliers(mockSuppliers);
+    } catch (error) {
+      console.error('Error loading suppliers:', error);
+    }
+  };
+
+  const loadUniformRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('incidents_with_details')
+        .select('*')
+        .eq('approver_role', 'logistics')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setUniformRequests(data);
+    } catch (error) {
+      console.error('Error loading uniform requests:', error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('status, priority')
+        .eq('incident_type_id', 5); // Assuming uniform requests have type_id 5-8
+
+      if (error) throw error;
+      
+      const pending = data?.filter(item => item.status === 'pending').length || 0;
+      const approved = data?.filter(item => item.status === 'approved').length || 0;
+      const urgent = data?.filter(item => item.priority === 'urgent').length || 0;
+      
+      // Calculate inventory stats
+      const totalItems = inventoryItems.length;
+      const lowStock = inventoryItems.filter(item => item.status === 'low_stock').length;
+      const outOfStock = inventoryItems.filter(item => item.status === 'out_of_stock').length;
+      const totalValue = inventoryItems.reduce((sum, item) => sum + (item.quantity * item.cost_per_unit), 0);
+      const pendingOrdersCount = supplierOrders.filter(order => order.status === 'sent' || order.status === 'confirmed').length;
+      
+      setStats({
+        pendingRequests: pending,
+        approvedRequests: approved,
+        totalRequests: data?.length || 0,
+        urgentRequests: urgent,
+        totalInventoryItems: totalItems,
+        lowStockItems: lowStock,
+        outOfStockItems: outOfStock,
+        pendingOrders: pendingOrdersCount,
+        totalInventoryValue: totalValue
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
+  const updateRequestStatus = async (requestId: number, status: string, rejectionReason?: string) => {
+    try {
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('email', employee?.email)
+        .single();
+
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (status === 'approved') {
+        updateData.approved_by = currentEmployee?.id;
+        updateData.approved_at = new Date().toISOString();
+      } else if (status === 'rejected' && rejectionReason) {
+        updateData.rejection_reason = rejectionReason;
+      }
+
+      const { error } = await supabase
+        .from('incidents')
+        .update(updateData)
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      await loadData();
+      alert(`Solicitud ${status === 'approved' ? 'aprobada' : 'rechazada'} correctamente`);
+      
+    } catch (error) {
+      console.error('Error updating request:', error);
+      alert('Error al actualizar la solicitud');
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'rejected': return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      case 'pending': return <Clock className="w-5 h-5 text-yellow-500" />;
+      default: return <Clock className="w-5 h-5 text-gray-500" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'normal': return 'bg-blue-100 text-blue-800';
+      case 'low': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const filteredRequests = uniformRequests.filter(request => {
+    const matchesSearch = request.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.clothing_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.center_name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || request.priority === priorityFilter;
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#059669]"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      {/* Header moderno */}
+      <div style={{
+        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+        padding: '2rem',
+        borderRadius: '0 0 24px 24px',
+        marginBottom: '2rem',
+        boxShadow: '0 10px 25px rgba(5, 150, 105, 0.2)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            padding: '0.75rem',
+            borderRadius: '12px',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <Package size={28} style={{ color: 'white' }} />
+          </div>
+          <div>
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: '2.25rem', 
+              fontWeight: '700', 
+              color: 'white',
+              textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              Centro Logístico
+            </h1>
+            <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem' }}>
+              Gestión Inteligente de Vestuario y Distribución
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '0 2rem' }}>
+
+        {/* Estadísticas modernas */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '20px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #fef3c7 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                backgroundColor: '#fef3c7',
+                padding: '0.75rem',
+                borderRadius: '12px'
+              }}>
+                <Clock size={24} style={{ color: '#d97706' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                Pendientes
+              </h3>
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#d97706', marginBottom: '0.25rem' }}>
+              {stats.pendingRequests}
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '500' }}>Solicitudes</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '20px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                backgroundColor: '#dbeafe',
+                padding: '0.75rem',
+                borderRadius: '12px'
+              }}>
+                <Package size={24} style={{ color: '#2563eb' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                Inventario
+              </h3>
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#2563eb', marginBottom: '0.25rem' }}>
+              {stats.totalInventoryItems}
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '500' }}>Artículos</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '20px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #fee2e2 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                backgroundColor: '#fee2e2',
+                padding: '0.75rem',
+                borderRadius: '12px'
+              }}>
+                <AlertTriangle size={24} style={{ color: '#dc2626' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                Stock Bajo
+              </h3>
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626', marginBottom: '0.25rem' }}>
+              {stats.lowStockItems}
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '500' }}>Alertas</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '20px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #dcfce7 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                backgroundColor: '#dcfce7',
+                padding: '0.75rem',
+                borderRadius: '12px'
+              }}>
+                <Truck size={24} style={{ color: '#059669' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                Pedidos
+              </h3>
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#059669', marginBottom: '0.25rem' }}>
+              {stats.pendingOrders}
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '500' }}>Pendientes</div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '20px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f3e8ff 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                backgroundColor: '#f3e8ff',
+                padding: '0.75rem',
+                borderRadius: '12px'
+              }}>
+                <BarChart3 size={24} style={{ color: '#7c3aed' }} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                Valor Total
+              </h3>
+            </div>
+            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#7c3aed', marginBottom: '0.25rem' }}>
+              €{(stats.totalInventoryValue / 1000).toFixed(0)}K
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '500' }}>Inventario</div>
+          </div>
+        </div>
+
+        {/* Tabs modernos */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.5rem', 
+            backgroundColor: 'white',
+            padding: '0.5rem',
+            borderRadius: '16px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #e5e7eb',
+            overflowX: 'auto'
+          }}>
+            {[
+              { key: 'uniform-requests', label: 'Solicitudes', icon: '👕' },
+              { key: 'inventory', label: 'Inventario', icon: '📦' },
+              { key: 'orders', label: 'Pedidos', icon: '🛒' },
+              { key: 'suppliers', label: 'Proveedores', icon: '🏪' },
+              { key: 'reports', label: 'Reportes', icon: '📊' }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.25rem',
+                  border: 'none',
+                  backgroundColor: activeTab === tab.key ? '#059669' : 'transparent',
+                  color: activeTab === tab.key ? 'white' : '#6b7280',
+                  fontWeight: activeTab === tab.key ? '600' : '500',
+                  cursor: 'pointer',
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.875rem'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab.key) {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.color = '#374151';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab.key) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#6b7280';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '1rem' }}>{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+      {/* Contenido de la pestaña activa */}
+      {activeTab === 'uniform-requests' && (
+        <div>
+          {/* Barra de herramientas moderna */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar solicitudes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '0.875rem',
+                    backgroundColor: 'white',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}
+                />
+              </div>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  backgroundColor: 'white',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pendiente</option>
+                <option value="approved">Aprobado</option>
+                <option value="rejected">Rechazado</option>
+              </select>
+              
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  backgroundColor: 'white',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <option value="all">Todas las prioridades</option>
+                <option value="urgent">Urgente</option>
+                <option value="high">Alta</option>
+                <option value="normal">Normal</option>
+                <option value="low">Baja</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lista de solicitudes */}
+          <div style={{ display: 'grid', gap: '24px' }}>
+            {filteredRequests.map(request => (
+              <div key={request.id} style={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}>
+                
+                {/* Header con título y badges */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <div style={{
+                      padding: '8px',
+                      backgroundColor: '#f0fdf4',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Shirt style={{ width: '20px', height: '20px', color: '#059669' }} />
+                    </div>
+                    
+                    <div>
+                      <h3 style={{ 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#111827', 
+                        margin: 0,
+                        marginBottom: '4px'
+                      }}>
+                        {request.clothing_type}
+                      </h3>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        color: '#6b7280', 
+                        margin: 0,
+                        fontWeight: '500'
+                      }}>
+                        Solicitado por: {request.employee_name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: request.status === 'approved' ? '#dcfce7' :
+                                     request.status === 'rejected' ? '#fef2f2' :
+                                     request.status === 'pending' ? '#fef3c7' : '#f3f4f6',
+                      color: request.status === 'approved' ? '#166534' :
+                             request.status === 'rejected' ? '#dc2626' :
+                             request.status === 'pending' ? '#d97706' : '#6b7280'
+                    }}>
+                      {request.status === 'pending' ? '⏳ Pendiente' : 
+                       request.status === 'approved' ? '✅ Aprobado' : 
+                       request.status === 'rejected' ? '❌ Rechazado' : request.status}
+                    </span>
+                    
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: request.priority === 'urgent' ? '#fef2f2' :
+                                     request.priority === 'high' ? '#fff7ed' :
+                                     request.priority === 'normal' ? '#eff6ff' : '#f9fafb',
+                      color: request.priority === 'urgent' ? '#dc2626' :
+                             request.priority === 'high' ? '#ea580c' :
+                             request.priority === 'normal' ? '#2563eb' : '#6b7280'
+                    }}>
+                      {request.priority === 'urgent' ? '🔥 Urgente' :
+                       request.priority === 'high' ? '⚡ Alta' :
+                       request.priority === 'normal' ? '📋 Normal' : '📝 Baja'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Información del centro y empleado */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
+                    <Users style={{ width: '16px', height: '16px' }} />
+                    <span style={{ fontWeight: '500' }}>{request.center_name}</span>
+                    <span>•</span>
+                    <span>{request.employee_email}</span>
+                  </div>
+                </div>
+                
+                {/* Descripción */}
+                <p style={{ color: '#374151', marginBottom: '16px', fontSize: '14px', lineHeight: '1.5' }}>
+                  {request.description}
+                </p>
+                
+                {/* Detalles del producto */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#6b7280' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Package style={{ width: '16px', height: '16px' }} />
+                      <span>Talla: <strong>{request.clothing_size}</strong></span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>Cantidad: <strong>{request.quantity}</strong></span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Footer con fecha y botones */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                    <span>Solicitado: {new Date(request.created_at).toLocaleDateString('es-ES')}</span>
+                  </div>
+                  
+                  {/* Botones de acción */}
+                  {request.status === 'pending' && isLogistics && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => updateRequestStatus(request.id, 'approved')}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#059669',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#047857';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#059669';
+                        }}
+                      >
+                        ✅ Aprobar
+                      </button>
+                      <button
+                        onClick={() => {
+                          const reason = prompt('Motivo del rechazo:');
+                          if (reason) updateRequestStatus(request.id, 'rejected', reason);
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#b91c1c';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                        }}
+                      >
+                        ❌ Rechazar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {filteredRequests.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+                <div style={{
+                  padding: '24px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '16px',
+                  display: 'inline-block',
+                  marginBottom: '16px'
+                }}>
+                  <Package style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto' }} />
+                </div>
+                <h3 style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600', 
+                  color: '#111827', 
+                  marginBottom: '8px',
+                  margin: 0
+                }}>
+                  No hay solicitudes de vestuario
+                </h3>
+                <p style={{ 
+                  color: '#6b7280', 
+                  fontSize: '14px',
+                  margin: 0
+                }}>
+                  No se encontraron solicitudes que coincidan con los filtros seleccionados.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pestaña Inventario */}
+      {activeTab === 'inventory' && (
+        <div>
+          {/* Barra de herramientas moderna */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar productos por nombre, categoría o proveedor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '0.875rem',
+                    backgroundColor: 'white',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}
+                />
+              </div>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  backgroundColor: 'white',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="in_stock">En Stock</option>
+                <option value="low_stock">Stock Bajo</option>
+                <option value="out_of_stock">Sin Stock</option>
+              </select>
+
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  backgroundColor: 'white',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <option value="all">Todas las categorías</option>
+                <option value="Vestuario">👕 Vestuario</option>
+                <option value="Material Deportivo">🏋️ Material Deportivo</option>
+                <option value="Instalaciones">🏢 Instalaciones</option>
+                <option value="Consumibles">🧴 Consumibles</option>
+              </select>
+              
+              <button
+                onClick={() => setShowNewItemForm(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#047857';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <Plus size={16} />
+                Nuevo Artículo
+              </button>
+            </div>
+          </div>
+
+          {/* Tabla de inventario estilo Excel */}
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 100px',
+              backgroundColor: '#f9fafb',
+              padding: '1rem',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div>Artículo</div>
+              <div>Categoría</div>
+              <div>Stock</div>
+              <div>Mín.</div>
+            </div>
+            <h3 style={{ 
+              fontSize: '18px', 
+              fontWeight: '600', 
+              color: '#111827', 
+              marginBottom: '8px',
+              margin: 0
+            }}>
+              No hay solicitudes de vestuario
+            </h3>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '14px',
+              margin: 0
+            }}>
+              No se encontraron solicitudes que coincidan con los filtros seleccionados.
+            </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de pedidos */}
+          <div className="space-y-6">
+            {supplierOrders
+              .filter(order => {
+                const matchesSearch = order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                   order.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+                return matchesSearch && matchesStatus;
+              })
+              .map(order => (
+                <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <ShoppingCart className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{order.order_number}</h3>
+                        <p className="text-sm text-gray-600">{order.supplier_name}</p>
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                      order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'confirmed' ? 'bg-purple-100 text-purple-800' :
+                      order.status === 'sent' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {order.status === 'delivered' ? '✅ Entregado' :
+                       order.status === 'shipped' ? '🚚 Enviado' :
+                       order.status === 'confirmed' ? '✔️ Confirmado' :
+                       order.status === 'sent' ? '📤 Enviado' :
+                       '📝 Borrador'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Contacto: {order.supplier_contact}</p>
+                      <p className="text-sm text-gray-600 mb-2">Fecha pedido: {new Date(order.order_date).toLocaleDateString('es-ES')}</p>
+                      <p className="text-sm text-gray-600">Entrega esperada: {new Date(order.expected_delivery).toLocaleDateString('es-ES')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#059669]">€{order.total_amount.toFixed(2)}</p>
+                      <p className="text-sm text-gray-600">{order.items.length} artículos</p>
+                    </div>
+                  </div>
+                  
+                  {order.notes && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700">{order.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                      👁️ Ver Detalles
+                    </button>
+                    <button className="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
+                      ✏️ Editar
+                    </button>
+                    <button className="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+                      📧 Contactar Proveedor
+                    </button>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Pestaña Proveedores */}
+      {activeTab === 'suppliers' && (
+        <div>
+          {/* Filtros */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+              <input
+                type="text"
+                placeholder="Buscar proveedores..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  backgroundColor: 'white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              />
+            </div>
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '0.75rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '12px',
+                backgroundColor: 'white',
+                fontSize: '0.875rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}
+            >
+              <option value="all">Todos los tipos</option>
+              <option value="local">🏠 Local</option>
+              <option value="nacional">🇪🇸 Nacional</option>
+              <option value="internacional">🌍 Internacional</option>
+            </select>
+          </div>
+
+          {/* Lista de proveedores */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+            {suppliers
+              .filter(supplier => {
+                const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                   supplier.city.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesType = statusFilter === 'all' || supplier.type === statusFilter;
+                return matchesSearch && matchesType && supplier.active;
+              })
+              .map(supplier => (
+                <div key={supplier.id} style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700', color: '#111827' }}>
+                        {supplier.name}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                        {supplier.contact_person}
+                      </p>
+                    </div>
+                    
+                    <span style={{
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      backgroundColor: supplier.type === 'local' ? '#dcfce7' : 
+                                     supplier.type === 'nacional' ? '#dbeafe' : '#f3e8ff',
+                      color: supplier.type === 'local' ? '#166534' : 
+                             supplier.type === 'nacional' ? '#1e40af' : '#7c3aed'
+                    }}>
+                      {supplier.type === 'local' ? '🏠 Local' : 
+                       supplier.type === 'nacional' ? '🇪🇸 Nacional' : '🌍 Internacional'}
+                    </span>
+                  </div>
+                  
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                    📍 {supplier.city} • ⭐ {supplier.rating}/5
+                  </div>
+                  
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+                    📧 {supplier.email} • 📞 {supplier.phone}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {supplier.categories.map(category => (
+                      <span key={category} style={{
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500'
+                      }}>
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                    💰 {supplier.payment_terms} • 🚚 {supplier.delivery_time}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pestaña Reportes */}
+      {activeTab === 'reports' && (
+        <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Resumen de inventario */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-[#059669]" />
+                Resumen de Inventario
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Total de productos:</span>
+                  <span className="font-semibold">{stats.totalInventoryItems}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Productos con stock bajo:</span>
+                  <span className="font-semibold text-yellow-600">{stats.lowStockItems}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Productos sin stock:</span>
+                  <span className="font-semibold text-red-600">{stats.outOfStockItems}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-gray-600">Valor total del inventario:</span>
+                  <span className="font-bold text-[#059669]">€{stats.totalInventoryValue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Resumen de pedidos */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Truck className="w-5 h-5 text-[#059669]" />
+                Resumen de Pedidos
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Pedidos pendientes:</span>
+                  <span className="font-semibold">{stats.pendingOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Total pedidos este mes:</span>
+                  <span className="font-semibold">{supplierOrders.length}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-gray-600">Valor total pedidos:</span>
+                  <span className="font-bold text-[#059669]">€{supplierOrders.reduce((sum, order) => sum + order.total_amount, 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Productos más solicitados */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Shirt className="w-5 h-5 text-[#059669]" />
+                Productos Más Solicitados
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Camiseta La Jungla - Negra</span>
+                  <span className="font-semibold">15 solicitudes</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Pantalón Corto La Jungla</span>
+                  <span className="font-semibold">8 solicitudes</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Chaquetón Invierno</span>
+                  <span className="font-semibold">5 solicitudes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Proveedores */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#059669]" />
+                Proveedores Principales
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Textiles Deportivos SL</span>
+                  <span className="font-semibold">€465.00</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Deportes Andalucía</span>
+                  <span className="font-semibold">€110.00</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <span className="text-gray-700">Ropa Técnica Pro</span>
+                  <span className="font-semibold">€0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+};
+
+export default LogisticsManagementSystem;
