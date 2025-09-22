@@ -69,7 +69,8 @@ const NavigationDashboard: React.FC = () => {
 
   // Sistema de módulos optimizado por roles
   const getAvailableModules = () => {
-    const isCEO = ['superadmin', 'admin'].includes(userRole || '');
+    const isCEO = userRole === 'superadmin'; // Solo Carlos tiene acceso total
+    const isAdmin = userRole === 'admin'; // Directores con acceso limitado
     const isManager = userRole === 'manager';
     
     // Módulos base para todos los roles
@@ -196,7 +197,67 @@ const NavigationDashboard: React.FC = () => {
 
     // Construir módulos según el rol
     if (isCEO) {
+      // Solo Carlos (CEO) tiene acceso a TODOS los módulos
       return [...baseModules, ...ceoModules];
+    } else if (isAdmin) {
+      // Directores (admin) solo tienen acceso a SU módulo específico
+      const adminModules = [];
+      
+      // Determinar módulo específico por email del empleado
+      if (employee?.email === 'beni.jungla@gmail.com') {
+        adminModules.push({
+          id: 'logistics',
+          title: 'Logística',
+          description: 'Gestión de vestuario y pedidos',
+          icon: Package,
+          color: '#ea580c',
+          component: null,
+          available: true
+        });
+      } else if (employee?.email === 'vicente@lajungla.es') {
+        adminModules.push({
+          id: 'hr',
+          title: 'RRHH y Procedimientos',
+          description: 'Gestión de empleados y procedimientos',
+          icon: Users,
+          color: '#059669',
+          component: HRManagementSystem,
+          available: true
+        });
+      } else if (employee?.email === 'diego@lajungla.es') {
+        adminModules.push({
+          id: 'marketing',
+          title: 'Marketing',
+          description: 'Contenido y publicaciones',
+          icon: Globe,
+          color: '#dc2626',
+          component: null,
+          available: true,
+          onClick: () => setShowMarketingModal(true)
+        });
+      } else if (employee?.email === 'jonathan@lajungla.es') {
+        adminModules.push({
+          id: 'online',
+          title: 'Online',
+          description: 'Gestión de contenido online',
+          icon: Globe,
+          color: '#2563eb',
+          component: null,
+          available: true
+        });
+      } else if (employee?.email === 'antonio@lajungla.es') {
+        adminModules.push({
+          id: 'events',
+          title: 'Eventos',
+          description: 'Gestión de eventos y actividades',
+          icon: Calendar,
+          color: '#7c2d12',
+          component: null,
+          available: true
+        });
+      }
+      
+      return [...baseModules, ...adminModules];
     } else {
       // Para otros roles, solo dashboard + reuniones + su módulo específico
       const userDepartmentModules = departmentModules[userRole as keyof typeof departmentModules] || [];
