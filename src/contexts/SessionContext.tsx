@@ -140,15 +140,15 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (email === 'carlossuarezparra@gmail.com') {
         roleToUse = 'superadmin';
       } else if (email === 'beni.jungla@gmail.com') {
-        roleToUse = 'logistics';
+        roleToUse = 'admin'; // Beni es admin con acceso a logística
       } else if (email === 'vicente@lajungla.es') {
-        roleToUse = 'hr';
+        roleToUse = 'admin'; // Vicente es admin con acceso a RRHH
       } else if (email === 'diego@lajungla.es') {
-        roleToUse = 'marketing';
+        roleToUse = 'admin'; // Diego es admin con acceso a marketing
       } else if (email === 'jonathan@lajungla.es') {
-        roleToUse = 'online';
+        roleToUse = 'admin'; // Jonathan es admin con acceso a online
       } else if (email === 'antonio@lajungla.es') {
-        roleToUse = 'events';
+        roleToUse = 'admin'; // Antonio es admin con acceso a eventos
       }
 
       const basicEmployee: Employee = {
@@ -156,7 +156,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         user_id: userId,
         name: email.split('@')[0],
         email: email,
-        role: roleToUse === 'superadmin' ? 'superadmin' : 'employee',
+        role: roleToUse === 'superadmin' ? 'superadmin' : roleToUse === 'admin' ? 'admin' : 'employee',
         is_active: true,
         workType: 'marca',
         profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
