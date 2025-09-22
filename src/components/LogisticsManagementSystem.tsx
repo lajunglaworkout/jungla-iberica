@@ -84,6 +84,16 @@ interface User {
   role: 'ceo' | 'logistics_director' | 'hr_director' | 'online_director' | 'events_director' | 'marketing_director' | 'center_manager' | 'trainer' | 'employee';
   center: 'central' | 'sevilla' | 'jerez' | 'puerto';
   permissions: {
+    // Módulos principales
+    canAccessLogistics: boolean;
+    canAccessMaintenance: boolean;
+    canAccessAccounting: boolean;
+    canAccessMarketing: boolean;
+    canAccessHR: boolean;
+    canAccessOnline: boolean;
+    canAccessEvents: boolean;
+    
+    // Permisos específicos de logística
     canViewReports: boolean;
     canManageInventory: boolean;
     canCreateOrders: boolean;
@@ -92,7 +102,17 @@ interface User {
     canManageTools: boolean;
     canViewAllCenters: boolean;
     canModifyPrices: boolean;
+    
+    // Permisos de empleados
+    canViewOwnCenter: boolean;
+    canUseTimeTracking: boolean;
+    canUseChecklist: boolean;
+    canMessageHR: boolean;
+    
+    // Permisos administrativos
+    canManageUsers: boolean;
   };
+  customPermissions?: string[]; // Permisos personalizados asignados manualmente
 }
 
 interface Notification {
