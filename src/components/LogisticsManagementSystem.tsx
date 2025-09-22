@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, CheckCircle, Clock, Truck, X, Bell } from 'lucide-react';
+import { Package, Search, Filter, Plus, Edit, Eye, Trash2, X, Settings, Bell, AlertTriangle, Clock, MapPin, BarChart3, ShoppingCart, Building } from 'lucide-react';
 
 interface InventoryItem {
   id: number;
@@ -86,14 +86,17 @@ interface User {
 }
 
 interface Notification {
-  id: string;
-  type: 'new_order' | 'low_stock' | 'order_update';
+  id: number;
+  type: 'new_order' | 'low_stock' | 'order_update' | 'order_request' | 'stock_alert' | 'checklist_incident' | 'maintenance_due';
   title: string;
   message: string;
-  order_id?: string;
-  created_at: string;
+  timestamp: string;
   read: boolean;
+  priority: 'low' | 'medium' | 'high';
+  from: string;
   urgent?: boolean;
+  order_id?: string;
+  created_at?: string;
 }
 
 interface Tool {
@@ -138,7 +141,7 @@ interface ToolMovement {
 }
 
 const LogisticsManagementSystem: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('inventory');
+  const [activeTab, setActiveTab] = useState('reports');
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -152,7 +155,48 @@ const LogisticsManagementSystem: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Carlos Suárez', role: 'ceo', center: 'central' });
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: 1,
+      type: 'order_request',
+      title: 'Nuevo pedido desde Centro Sevilla',
+      message: 'REQ-2025-003: Solicitud de 20 toallas y 5 desinfectantes',
+      timestamp: new Date().toISOString(),
+      read: false,
+      priority: 'high',
+      from: 'Centro Sevilla'
+    },
+    {
+      id: 2,
+      type: 'stock_alert',
+      title: 'Stock crítico detectado',
+      message: 'Desinfectante en Centro Puerto: 0 unidades (mínimo: 5)',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      read: false,
+      priority: 'high',
+      from: 'Sistema'
+    },
+    {
+      id: 3,
+      type: 'checklist_incident',
+      title: 'Incidencia reportada en check-list',
+      message: 'Centro Jerez: Se rompió 1 goma elástica durante clase',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      read: true,
+      priority: 'medium',
+      from: 'Centro Jerez'
+    },
+    {
+      id: 4,
+      type: 'maintenance_due',
+      title: 'Mantenimiento de herramientas vencido',
+      message: 'Cinta de correr requiere mantenimiento desde hace 3 días',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+      read: false,
+      priority: 'medium',
+      from: 'Sistema'
+    }
+  ]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -187,6 +231,7 @@ const LogisticsManagementSystem: React.FC = () => {
     assigned_to: '',
     notes: ''
   });
+
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
     type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
@@ -651,31 +696,37 @@ const LogisticsManagementSystem: React.FC = () => {
     // Notificaciones de ejemplo para el director de logística
     setNotifications([
       {
-        id: 'notif-001',
+        id: 1,
         type: 'new_order',
         title: '🚨 Nuevo Pedido Urgente',
         message: 'Centro Sevilla solicita 20 Gomas Elásticas - Stock insuficiente',
         order_id: 'REQ-2025-003',
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        priority: 'high',
+        from: 'Centro Sevilla',
         read: false,
         urgent: true
       },
       {
-        id: 'notif-002',
+        id: 2,
         type: 'low_stock',
         title: '⚠️ Stock Bajo',
         message: 'Toallas en Centro Sevilla: Solo 2 unidades disponibles',
-        created_at: new Date(Date.now() - 3600000).toISOString(),
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        priority: 'medium',
+        from: 'Sistema',
         read: false,
         urgent: false
       },
       {
-        id: 'notif-003',
+        id: 3,
         type: 'order_update',
         title: '✅ Pedido Procesado',
         message: 'PED-2025-001 ha sido enviado a Textiles Deportivos SL',
         order_id: 'PED-2025-001',
-        created_at: new Date(Date.now() - 7200000).toISOString(),
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        priority: 'low',
+        from: 'Sistema',
         read: true,
         urgent: false
       }
@@ -933,9 +984,9 @@ const LogisticsManagementSystem: React.FC = () => {
     return { pendingOrders, sentOrders, pendingAmount };
   };
 
-  const markNotificationAsRead = (notificationId: string) => {
+  const markNotificationAsRead = (id: number) => {
     setNotifications(prev => prev.map(notif => 
-      notif.id === notificationId ? { ...notif, read: true } : notif
+      notif.id === id ? { ...notif, read: true } : notif
     ));
   };
 
@@ -951,24 +1002,28 @@ const LogisticsManagementSystem: React.FC = () => {
     
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
-      id: `notif-${Date.now()}`,
+      id: Date.now(),
       type: 'order_update',
       title: '🔄 Pedido en Proceso',
       message: `Pedido ${orderId} está siendo procesado`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: false
     };
     
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
-      id: `notif-${Date.now() + 1}`,
+      id: Date.now() + 1,
       type: 'order_update',
       title: '🔄 Tu Pedido está en Proceso',
       message: `Hola ${order.created_by.split(' - ')[0]}, tu pedido ${orderId} está siendo procesado por el equipo de logística`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'low',
+      from: 'Sistema',
       read: false,
       urgent: false
     };
@@ -988,24 +1043,28 @@ const LogisticsManagementSystem: React.FC = () => {
     
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
-      id: `notif-${Date.now()}`,
+      id: Date.now(),
       type: 'order_update',
       title: '🚚 Pedido Enviado',
       message: `Pedido ${orderId} ha sido enviado`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: false
     };
     
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
-      id: `notif-${Date.now() + 1}`,
+      id: Date.now() + 1,
       type: 'order_update',
       title: '🚚 Tu Pedido ha sido Enviado',
       message: `¡Buenas noticias ${order.created_by.split(' - ')[0]}! Tu pedido ${orderId} ha sido enviado y está en camino`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: false
     };
@@ -1030,24 +1089,28 @@ const LogisticsManagementSystem: React.FC = () => {
     
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
-      id: `notif-${Date.now()}`,
+      id: Date.now(),
       type: 'order_update',
       title: '❌ Pedido Cancelado',
       message: `Pedido ${orderId} cancelado: ${reason}`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: false
     };
     
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
-      id: `notif-${Date.now() + 1}`,
+      id: Date.now() + 1,
       type: 'order_update',
       title: '❌ Tu Pedido ha sido Cancelado',
       message: `Lamentamos informarte ${order.created_by.split(' - ')[0]} que tu pedido ${orderId} ha sido cancelado. Motivo: ${reason}`,
       order_id: orderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: true
     };
@@ -1115,12 +1178,14 @@ const LogisticsManagementSystem: React.FC = () => {
     
     // Añadir notificación
     const notification: Notification = {
-      id: `notif-${Date.now()}`,
+      id: Date.now(),
       type: 'new_order',
       title: newOrder.type === 'center_to_brand' ? '🏪 Nueva Solicitud de Centro' : '📦 Nuevo Pedido a Proveedor',
       message: `${newOrderId} creado: ${newOrder.from} → ${newOrder.to} - €${totalAmount.toFixed(2)}`,
       order_id: newOrderId,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      priority: 'medium',
+      from: 'Sistema',
       read: false,
       urgent: totalAmount > 500 // Marcar como urgente si es > €500
     };
@@ -1358,7 +1423,7 @@ const LogisticsManagementSystem: React.FC = () => {
                           {notification.message}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                          {new Date(notification.created_at).toLocaleString('es-ES')}
+                          {new Date(notification.timestamp).toLocaleString('es-ES')}
                         </div>
                       </div>
                     ))
@@ -1371,15 +1436,15 @@ const LogisticsManagementSystem: React.FC = () => {
       </div>
 
       <div style={{ padding: '0 2rem' }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem', borderRadius: '16px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)' }}>
+        {/* Navegación por pestañas */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
           {[
+            { id: 'reports', label: '📊 Reportes', icon: BarChart3 },
             { id: 'inventory', label: '📦 Inventario', icon: Package },
-            { id: 'orders', label: '🛒 Pedidos', icon: Truck },
-            { id: 'tools', label: '🔧 Herramientas', icon: Package },
-            { id: 'suppliers', label: '🏪 Proveedores', icon: Package },
-            { id: 'reports', label: '📊 Reportes', icon: Package }
-          ].map(tab => (
+            { id: 'orders', label: '🛒 Pedidos', icon: ShoppingCart },
+            { id: 'tools', label: '🔧 Herramientas', icon: Settings },
+            { id: 'suppliers', label: '🏪 Proveedores', icon: Building }
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1975,7 +2040,40 @@ const LogisticsManagementSystem: React.FC = () => {
         {/* Pestaña Reportes */}
         {activeTab === 'reports' && (
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>📊 Reportes y Análisis</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: '700', margin: 0 }}>📊 Reportes y Análisis</h1>
+              
+              {/* Panel de Notificaciones Críticas */}
+              {getUnreadNotifications().length > 0 && (
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1rem', maxWidth: '400px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <Bell size={20} style={{ color: '#dc2626' }} />
+                    <h3 style={{ margin: 0, color: '#dc2626', fontSize: '1rem' }}>
+                      {getUnreadNotifications().length} Notificación{getUnreadNotifications().length > 1 ? 'es' : ''} Pendiente{getUnreadNotifications().length > 1 ? 's' : ''}
+                    </h3>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#7f1d1d', marginBottom: '0.75rem' }}>
+                    {getUnreadNotifications().filter(n => n.priority === 'high').length > 0 && 
+                      `${getUnreadNotifications().filter(n => n.priority === 'high').length} crítica${getUnreadNotifications().filter(n => n.priority === 'high').length > 1 ? 's' : ''}`
+                    }
+                  </div>
+                  <button
+                    onClick={() => setShowNotifications(true)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    Ver Notificaciones
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Métricas Principales */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
