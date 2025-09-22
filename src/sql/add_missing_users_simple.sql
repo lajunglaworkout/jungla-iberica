@@ -10,6 +10,13 @@ VALUES
     ('Diego Montilla', 'diego@lajungla.es', 'Director', 'director', '9', ARRAY['marketing'], true)
 ON CONFLICT (email) DO NOTHING;
 
+-- Encargados Sevilla (usando center_id='9')
+INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+VALUES 
+    ('Francisco Giraldez', 'fran.giraldez@lajungla.es', 'Encargado', 'center_manager', '9', ARRAY[]::TEXT[], true),
+    ('Salvador Cabrera', 'salva.cabrera@lajungla.es', 'Encargado', 'center_manager', '9', ARRAY[]::TEXT[], true)
+ON CONFLICT (email) DO NOTHING;
+
 -- Entrenadores Sevilla (usando center_id='9')
 INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
 VALUES 
@@ -17,6 +24,13 @@ VALUES
     ('Jesús Rosado', 'jesus.rosado@lajungla.es', 'Empleado', 'trainer', '9', ARRAY[]::TEXT[], true),
     ('Jesús Arias', 'jesus.arias@lajungla.es', 'Empleado', 'trainer', '9', ARRAY[]::TEXT[], true),
     ('Santi Frías', 'santi.sevilla@lajungla.es', 'Empleado', 'trainer', '9', ARRAY[]::TEXT[], true)
+ON CONFLICT (email) DO NOTHING;
+
+-- Encargados Jerez (usando center_id='10')
+INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+VALUES 
+    ('Iván Fernández González', 'ivan.jerez@lajungla.es', 'Encargado', 'center_manager', '10', ARRAY[]::TEXT[], true),
+    ('Pablo Benítez Macarro', 'pablo.jerez@lajungla.es', 'Encargado', 'center_manager', '10', ARRAY[]::TEXT[], true)
 ON CONFLICT (email) DO NOTHING;
 
 -- Entrenadores Jerez (usando center_id='10')
@@ -28,13 +42,20 @@ VALUES
     ('Fran', 'fran.jerez@lajungla.es', 'Empleado', 'trainer', '10', ARRAY[]::TEXT[], true)
 ON CONFLICT (email) DO NOTHING;
 
--- Empleados Puerto (usando center_id='11')
+-- Encargados Puerto (usando center_id='11')
 INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
 VALUES 
-    ('José', 'jose.puerto@lajungla.es', 'Empleado', 'employee', '11', ARRAY[]::TEXT[], true),
-    ('Keko', 'keko.puerto@lajungla.es', 'Empleado', 'employee', '11', ARRAY[]::TEXT[], true),
-    ('Jonathan', 'jonathan.puerto@lajungla.es', 'Empleado', 'employee', '11', ARRAY[]::TEXT[], true),
-    ('Fran', 'fran.puerto@lajungla.es', 'Empleado', 'employee', '11', ARRAY[]::TEXT[], true)
+    ('Guillermo Bermúdez', 'guillermo.puerto@lajungla.es', 'Encargado', 'center_manager', '11', ARRAY[]::TEXT[], true),
+    ('Adrián', 'adrian.puerto@lajungla.es', 'Encargado', 'center_manager', '11', ARRAY[]::TEXT[], true)
+ON CONFLICT (email) DO NOTHING;
+
+-- Entrenadores Puerto (usando center_id='11')
+INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+VALUES 
+    ('José', 'jose.puerto@lajungla.es', 'Empleado', 'trainer', '11', ARRAY[]::TEXT[], true),
+    ('Keko', 'keko.puerto@lajungla.es', 'Empleado', 'trainer', '11', ARRAY[]::TEXT[], true),
+    ('Jonathan', 'jonathan.puerto@lajungla.es', 'Empleado', 'trainer', '11', ARRAY[]::TEXT[], true),
+    ('Fran', 'fran.puerto@lajungla.es', 'Empleado', 'trainer', '11', ARRAY[]::TEXT[], true)
 ON CONFLICT (email) DO NOTHING;
 
 -- Actualizar usuarios existentes que puedan tener roles incorrectos
