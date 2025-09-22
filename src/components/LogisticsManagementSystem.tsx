@@ -743,6 +743,26 @@ const LogisticsManagementSystem: React.FC = () => {
   alert('Producto creado exitosamente');
 };
 
+  // Función para obtener herramientas que necesitan mantenimiento
+  const getToolsNeedingMaintenance = () => {
+    const today = new Date();
+    return tools.filter(tool => {
+      if (!tool.next_maintenance) return false;
+      const maintenanceDate = new Date(tool.next_maintenance);
+      const daysUntilMaintenance = Math.ceil((maintenanceDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilMaintenance <= 30 && daysUntilMaintenance >= 0; // Próximos 30 días
+    });
+  };
+
+  const getOverdueMaintenanceTools = () => {
+    const today = new Date();
+    return tools.filter(tool => {
+      if (!tool.next_maintenance) return false;
+      const maintenanceDate = new Date(tool.next_maintenance);
+      return maintenanceDate < today; // Mantenimiento vencido
+    });
+  };
+
   const handleCreateTool = () => {
     if (!newTool.name || !newTool.brand || !newTool.model) {
       alert('Por favor, completa todos los campos obligatorios');
@@ -1291,8 +1311,8 @@ const LogisticsManagementSystem: React.FC = () => {
                 activeTab === 'tools' ? 'Buscar herramientas...' :
                 activeTab === 'suppliers' ? 'Buscar proveedores...' : 'Buscar...'
               }
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={activeTab === 'tools' ? toolSearchTerm : searchTerm}
+              onChange={(e) => activeTab === 'tools' ? setToolSearchTerm(e.target.value) : setSearchTerm(e.target.value)}
               style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}
             />
           </div>
@@ -1595,7 +1615,96 @@ const LogisticsManagementSystem: React.FC = () => {
 
         {/* Pestaña Herramientas */}
         {activeTab === 'tools' && (
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+          <div>
+            {/* Alertas de Mantenimiento */}
+            {(getOverdueMaintenanceTools().length > 0 || getToolsNeedingMaintenance().length > 0) && (
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+                {getOverdueMaintenanceTools().length > 0 && (
+                  <div style={{ 
+                    backgroundColor: '#fef2f2', 
+                    border: '1px solid #fecaca', 
+                    borderRadius: '8px', 
+                    padding: '1rem',
+                    flex: 1
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <AlertTriangle size={20} style={{ color: '#dc2626' }} />
+                      <h3 style={{ margin: 0, color: '#dc2626', fontSize: '1rem', fontWeight: '600' }}>
+                        Mantenimiento Vencido
+                      </h3>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#7f1d1d' }}>
+                      {getOverdueMaintenanceTools().length} herramienta(s) con mantenimiento vencido
+                    </p>
+                  </div>
+                )}
+                
+                {getToolsNeedingMaintenance().length > 0 && (
+                  <div style={{ 
+                    backgroundColor: '#fffbeb', 
+                    border: '1px solid #fed7aa', 
+                    borderRadius: '8px', 
+                    padding: '1rem',
+                    flex: 1
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <Clock size={20} style={{ color: '#d97706' }} />
+                      <h3 style={{ margin: 0, color: '#d97706', fontSize: '1rem', fontWeight: '600' }}>
+                        Mantenimiento Próximo
+                      </h3>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#92400e' }}>
+                      {getToolsNeedingMaintenance().length} herramienta(s) necesitan mantenimiento en 30 días
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+              {/* Contador de herramientas */}
+            <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Mostrando {tools.filter(tool => {
+                    const matchesSearch = toolSearchTerm === '' || 
+                      tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                      tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                      tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                      (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
+                      (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
+                    
+                    const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
+                    const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
+                    
+                    return matchesSearch && matchesStatus && matchesLocation;
+                  }).length} de {tools.length} herramientas
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {(toolSearchTerm || toolStatusFilter !== 'all' || toolLocationFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setToolSearchTerm('');
+                        setToolStatusFilter('all');
+                        setToolLocationFilter('all');
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        color: '#6b7280'
+                      }}
+                    >
+                      🔄 Limpiar filtros
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
               <div>Herramienta</div>
               <div>Categoría</div>
@@ -1606,7 +1715,21 @@ const LogisticsManagementSystem: React.FC = () => {
               <div>Acciones</div>
             </div>
             
-            {tools.map((tool: Tool) => (
+            {tools
+              .filter(tool => {
+                const matchesSearch = toolSearchTerm === '' || 
+                  tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
+                  (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
+                
+                const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
+                const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
+                
+                return matchesSearch && matchesStatus && matchesLocation;
+              })
+              .map((tool: Tool) => (
               <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '600' }}>{tool.name}</div>
@@ -1663,6 +1786,35 @@ const LogisticsManagementSystem: React.FC = () => {
                 </div>
               </div>
             ))}
+            
+            {tools
+              .filter(tool => {
+                const matchesSearch = toolSearchTerm === '' || 
+                  tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+                  (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
+                  (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
+                
+                const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
+                const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
+                
+                return matchesSearch && matchesStatus && matchesLocation;
+              }).length === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
+                  {toolSearchTerm ? 
+                    `No se encontraron herramientas para "${toolSearchTerm}"` :
+                    `No hay herramientas con los filtros seleccionados`
+                  }
+                </p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>
+                  Prueba a cambiar los filtros o crear una nueva herramienta
+                </p>
+              </div>
+            )}
+            </div>
           </div>
         )}
 
