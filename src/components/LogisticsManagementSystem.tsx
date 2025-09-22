@@ -81,8 +81,18 @@ interface LogisticsStats {
 interface User {
   id: string;
   name: string;
-  role: 'center_manager' | 'logistics_director' | 'admin' | 'ceo';
-  center: string;
+  role: 'ceo' | 'logistics_director' | 'hr_director' | 'online_director' | 'events_director' | 'marketing_director' | 'center_manager' | 'trainer' | 'employee';
+  center: 'central' | 'sevilla' | 'jerez' | 'puerto';
+  permissions: {
+    canViewReports: boolean;
+    canManageInventory: boolean;
+    canCreateOrders: boolean;
+    canProcessOrders: boolean;
+    canManageSuppliers: boolean;
+    canManageTools: boolean;
+    canViewAllCenters: boolean;
+    canModifyPrices: boolean;
+  };
 }
 
 interface Notification {
@@ -140,6 +150,261 @@ interface ToolMovement {
   status: 'pending' | 'completed' | 'overdue';
 }
 
+// Función para obtener permisos basados en el rol
+const getRolePermissions = (role: User['role']) => {
+  switch (role) {
+    case 'ceo':
+      return {
+        canViewReports: true,
+        canManageInventory: true,
+        canCreateOrders: true,
+        canProcessOrders: true,
+        canManageSuppliers: true,
+        canManageTools: true,
+        canViewAllCenters: true,
+        canModifyPrices: true
+      };
+    case 'logistics_director':
+      return {
+        canViewReports: true,
+        canManageInventory: true,
+        canCreateOrders: true,
+        canProcessOrders: true,
+        canManageSuppliers: true,
+        canManageTools: true,
+        canViewAllCenters: true,
+        canModifyPrices: true
+      };
+    case 'hr_director':
+    case 'online_director':
+    case 'events_director':
+    case 'marketing_director':
+      return {
+        canViewReports: true,
+        canManageInventory: false,
+        canCreateOrders: true,
+        canProcessOrders: false,
+        canManageSuppliers: false,
+        canManageTools: false,
+        canViewAllCenters: true,
+        canModifyPrices: false
+      };
+    case 'center_manager':
+      return {
+        canViewReports: true,
+        canManageInventory: true,
+        canCreateOrders: true,
+        canProcessOrders: false,
+        canManageSuppliers: false,
+        canManageTools: true,
+        canViewAllCenters: false,
+        canModifyPrices: false
+      };
+    case 'trainer':
+    case 'employee':
+      return {
+        canViewReports: false,
+        canManageInventory: false,
+        canCreateOrders: false,
+        canProcessOrders: false,
+        canManageSuppliers: false,
+        canManageTools: false,
+        canViewAllCenters: false,
+        canModifyPrices: false
+      };
+    default:
+      return {
+        canViewReports: false,
+        canManageInventory: false,
+        canCreateOrders: false,
+        canProcessOrders: false,
+        canManageSuppliers: false,
+        canManageTools: false,
+        canViewAllCenters: false,
+        canModifyPrices: false
+      };
+  }
+};
+
+// Datos reales del equipo La Jungla
+const laJunglaTeam: User[] = [
+  // Dirección
+  { 
+    id: '1', 
+    name: 'Carlos Suárez', 
+    role: 'ceo', 
+    center: 'central',
+    permissions: getRolePermissions('ceo')
+  },
+  { 
+    id: '2', 
+    name: 'Benito Morales', 
+    role: 'logistics_director', 
+    center: 'central',
+    permissions: getRolePermissions('logistics_director')
+  },
+  { 
+    id: '3', 
+    name: 'Vicente Corbaón', 
+    role: 'hr_director', 
+    center: 'central',
+    permissions: getRolePermissions('hr_director')
+  },
+  { 
+    id: '4', 
+    name: 'Jonathan Padilla', 
+    role: 'online_director', 
+    center: 'central',
+    permissions: getRolePermissions('online_director')
+  },
+  { 
+    id: '5', 
+    name: 'Antonio Durán', 
+    role: 'events_director', 
+    center: 'central',
+    permissions: getRolePermissions('events_director')
+  },
+  { 
+    id: '6', 
+    name: 'Diego Montilla', 
+    role: 'marketing_director', 
+    center: 'central',
+    permissions: getRolePermissions('marketing_director')
+  },
+  
+  // Centro Sevilla
+  { 
+    id: '7', 
+    name: 'Fran Giraldez', 
+    role: 'center_manager', 
+    center: 'sevilla',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '8', 
+    name: 'Salva Cabrera', 
+    role: 'center_manager', 
+    center: 'sevilla',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '9', 
+    name: 'Javier Surian', 
+    role: 'trainer', 
+    center: 'sevilla',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '10', 
+    name: 'Jesús Rosado', 
+    role: 'trainer', 
+    center: 'sevilla',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '11', 
+    name: 'Jesús Arias', 
+    role: 'trainer', 
+    center: 'sevilla',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '12', 
+    name: 'Santi Frías', 
+    role: 'trainer', 
+    center: 'sevilla',
+    permissions: getRolePermissions('trainer')
+  },
+  
+  // Centro Jerez
+  { 
+    id: '13', 
+    name: 'Iván Fernández', 
+    role: 'center_manager', 
+    center: 'jerez',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '14', 
+    name: 'Pablo Benítez', 
+    role: 'center_manager', 
+    center: 'jerez',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '15', 
+    name: 'Rodri', 
+    role: 'trainer', 
+    center: 'jerez',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '16', 
+    name: 'Mario', 
+    role: 'trainer', 
+    center: 'jerez',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '17', 
+    name: 'Antonio', 
+    role: 'trainer', 
+    center: 'jerez',
+    permissions: getRolePermissions('trainer')
+  },
+  { 
+    id: '18', 
+    name: 'Fran', 
+    role: 'trainer', 
+    center: 'jerez',
+    permissions: getRolePermissions('trainer')
+  },
+  
+  // Centro Puerto
+  { 
+    id: '19', 
+    name: 'Guillermo', 
+    role: 'center_manager', 
+    center: 'puerto',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '20', 
+    name: 'Adrián', 
+    role: 'center_manager', 
+    center: 'puerto',
+    permissions: getRolePermissions('center_manager')
+  },
+  { 
+    id: '21', 
+    name: 'José', 
+    role: 'employee', 
+    center: 'puerto',
+    permissions: getRolePermissions('employee')
+  },
+  { 
+    id: '22', 
+    name: 'Keko', 
+    role: 'employee', 
+    center: 'puerto',
+    permissions: getRolePermissions('employee')
+  },
+  { 
+    id: '23', 
+    name: 'Jonathan', 
+    role: 'employee', 
+    center: 'puerto',
+    permissions: getRolePermissions('employee')
+  },
+  { 
+    id: '24', 
+    name: 'Fran', 
+    role: 'employee', 
+    center: 'puerto',
+    permissions: getRolePermissions('employee')
+  }
+];
+
 const LogisticsManagementSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState('reports');
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -154,47 +419,47 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [currentUser, setCurrentUser] = useState<User>({ id: '1', name: 'Carlos Suárez', role: 'ceo', center: 'central' });
+  const [currentUser, setCurrentUser] = useState<User>(laJunglaTeam.find(user => user.name === 'Benito Morales') || laJunglaTeam[0]);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
       type: 'order_request',
-      title: 'Nuevo pedido desde Centro Sevilla',
-      message: 'REQ-2025-003: Solicitud de 20 toallas y 5 desinfectantes',
+      title: 'Pedido urgente desde Sevilla',
+      message: 'REQ-2025-003: Fran Giraldez solicita 20 toallas La Jungla y 5 desinfectantes',
       timestamp: new Date().toISOString(),
       read: false,
       priority: 'high',
-      from: 'Centro Sevilla'
+      from: 'Fran Giraldez - Sevilla'
     },
     {
       id: 2,
       type: 'stock_alert',
-      title: 'Stock crítico detectado',
-      message: 'Desinfectante en Centro Puerto: 0 unidades (mínimo: 5)',
+      title: 'Stock crítico en Puerto',
+      message: 'Desinfectante en Centro Puerto: 0 unidades (mínimo: 5) - Guillermo necesita reposición',
       timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       read: false,
       priority: 'high',
-      from: 'Sistema'
+      from: 'Sistema - Puerto'
     },
     {
       id: 3,
       type: 'checklist_incident',
-      title: 'Incidencia reportada en check-list',
-      message: 'Centro Jerez: Se rompió 1 goma elástica durante clase',
+      title: 'Incidencia reportada por Iván',
+      message: 'Centro Jerez: Se rompió 1 goma elástica durante clase de Rodri - Stock actualizado automáticamente',
       timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
       read: true,
       priority: 'medium',
-      from: 'Centro Jerez'
+      from: 'Iván Fernández - Jerez'
     },
     {
       id: 4,
       type: 'maintenance_due',
-      title: 'Mantenimiento de herramientas vencido',
-      message: 'Cinta de correr requiere mantenimiento desde hace 3 días',
+      title: 'Mantenimiento cinta de correr vencido',
+      message: 'Cinta Technogym en Sevilla requiere mantenimiento desde hace 3 días - Contactar técnico',
       timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
       read: false,
       priority: 'medium',
-      from: 'Sistema'
+      from: 'Sistema - Sevilla'
     }
   ]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -435,12 +700,134 @@ const LogisticsManagementSystem: React.FC = () => {
 
     // Datos de ejemplo para inventario
     setInventoryItems([
-      { id: 1, name: 'Camiseta La Jungla', category: 'Vestuario', size: 'M', quantity: 25, min_stock: 10, max_stock: 50, purchase_price: 12.50, sale_price: 25.00, supplier: 'Textiles SL', center: 'sevilla', location: 'A1', last_updated: new Date().toISOString(), status: 'in_stock' },
-      { id: 2, name: 'Mancuernas 5kg', category: 'Material Deportivo', size: '-', quantity: 3, min_stock: 5, max_stock: 25, purchase_price: 28.00, sale_price: 45.00, supplier: 'Deportes Pro', center: 'jerez', location: 'D1', last_updated: new Date().toISOString(), status: 'low_stock' },
-      { id: 3, name: 'Desinfectante', category: 'Consumibles', size: '5L', quantity: 0, min_stock: 2, max_stock: 15, purchase_price: 15.00, sale_price: 22.50, supplier: 'Limpieza', center: 'puerto', location: 'F1', last_updated: new Date().toISOString(), status: 'out_of_stock' },
-      { id: 4, name: 'Gomas Elásticas', category: 'Material Deportivo', size: 'Set', quantity: 15, min_stock: 8, max_stock: 30, purchase_price: 10.00, sale_price: 18.50, supplier: 'FitEquip', center: 'central', location: 'D2', last_updated: new Date().toISOString(), status: 'in_stock' },
-      { id: 5, name: 'Toallas', category: 'Vestuario', size: 'Grande', quantity: 2, min_stock: 5, max_stock: 20, purchase_price: 6.50, sale_price: 12.00, supplier: 'Textiles SL', center: 'sevilla', location: 'A2', last_updated: new Date().toISOString(), status: 'low_stock' },
-      { id: 6, name: 'Botella La Jungla', category: 'Merchandising', size: '750ml', quantity: 12, min_stock: 8, max_stock: 40, purchase_price: 4.50, sale_price: 9.99, supplier: 'Promo Items', center: 'central', location: 'M1', last_updated: new Date().toISOString(), status: 'in_stock' }
+      {
+        id: 1,
+        name: 'Camiseta La Jungla Negra',
+        category: 'Merchandising',
+        size: 'M',
+        quantity: 25,
+        min_stock: 10,
+        max_stock: 50,
+        purchase_price: 12.50,
+        sale_price: 25.00,
+        supplier: 'Serigrafía Sevilla',
+        center: 'sevilla',
+        location: 'Recepción - Vitrina',
+        status: 'in_stock',
+        last_updated: '2024-01-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        name: 'Mancuernas Hexagonales 5kg',
+        category: 'Material Deportivo',
+        size: '5kg',
+        quantity: 3,
+        min_stock: 5,
+        max_stock: 20,
+        purchase_price: 28.00,
+        sale_price: 45.00,
+        supplier: 'Decathlon Profesional',
+        center: 'jerez',
+        location: 'Zona Funcional',
+        status: 'low_stock',
+        last_updated: '2024-01-10T14:20:00Z'
+      },
+      {
+        id: 3,
+        name: 'Desinfectante Virucida',
+        category: 'Limpieza',
+        size: '5L',
+        quantity: 0,
+        min_stock: 5,
+        max_stock: 20,
+        purchase_price: 15.00,
+        sale_price: 22.50,
+        supplier: 'Químicas Cádiz',
+        center: 'puerto',
+        location: 'Almacén Limpieza',
+        status: 'out_of_stock',
+        last_updated: '2024-01-20T16:45:00Z'
+      },
+      {
+        id: 4,
+        name: 'Gomas Elásticas Theraband',
+        category: 'Material Deportivo',
+        size: 'Resistencia Media',
+        quantity: 15,
+        min_stock: 8,
+        max_stock: 25,
+        purchase_price: 10.00,
+        sale_price: 18.50,
+        supplier: 'Fisioterapia Andalucía',
+        center: 'central',
+        location: 'Almacén Central A-3',
+        status: 'in_stock',
+        last_updated: '2024-01-12T09:15:00Z'
+      },
+      {
+        id: 5,
+        name: 'Toallas La Jungla Microfibra',
+        category: 'Merchandising',
+        size: '70x140cm',
+        quantity: 2,
+        min_stock: 15,
+        max_stock: 40,
+        purchase_price: 8.50,
+        sale_price: 15.00,
+        supplier: 'Textiles Jerez',
+        center: 'sevilla',
+        location: 'Recepción',
+        status: 'low_stock',
+        last_updated: '2024-01-18T11:30:00Z'
+      },
+      {
+        id: 6,
+        name: 'Proteína Whey La Jungla',
+        category: 'Suplementos',
+        size: '2kg Vainilla',
+        quantity: 12,
+        min_stock: 8,
+        max_stock: 30,
+        purchase_price: 35.00,
+        sale_price: 59.90,
+        supplier: 'NutriSport España',
+        center: 'central',
+        location: 'Zona Suplementos',
+        status: 'in_stock',
+        last_updated: '2024-01-22T13:45:00Z'
+      },
+      {
+        id: 7,
+        name: 'Botella La Jungla 750ml',
+        category: 'Merchandising',
+        size: '750ml',
+        quantity: 8,
+        min_stock: 20,
+        max_stock: 100,
+        purchase_price: 4.50,
+        sale_price: 9.90,
+        supplier: 'Promocionales Andalucía',
+        center: 'jerez',
+        location: 'Mostrador',
+        status: 'low_stock',
+        last_updated: '2024-01-16T15:20:00Z'
+      },
+      {
+        id: 8,
+        name: 'Esterillas Yoga Premium',
+        category: 'Material Deportivo',
+        size: '6mm grosor',
+        quantity: 18,
+        min_stock: 10,
+        max_stock: 25,
+        purchase_price: 22.00,
+        sale_price: 39.90,
+        supplier: 'Yoga Equipment Spain',
+        center: 'sevilla',
+        location: 'Sala Actividades',
+        status: 'in_stock',
+        last_updated: '2024-01-14T08:00:00Z'
+      }
     ]);
 
     setSuppliers([
@@ -1309,9 +1696,27 @@ const LogisticsManagementSystem: React.FC = () => {
                 value={currentUser.role}
                 onChange={(e) => {
                   const roles: Record<string, User> = {
-                    'ceo': { id: '1', name: 'Carlos Suárez (CEO)', role: 'ceo' as const, center: 'central' },
-                    'logistics_director': { id: '2', name: 'Benito Morales (Dir. Logística)', role: 'logistics_director' as const, center: 'central' },
-                    'center_manager': { id: '3', name: 'Ana García (Encargada)', role: 'center_manager' as const, center: 'sevilla' }
+                    'ceo': { 
+                      id: '1', 
+                      name: 'Carlos Suárez (CEO)', 
+                      role: 'ceo' as const, 
+                      center: 'central',
+                      permissions: getRolePermissions('ceo')
+                    },
+                    'logistics_director': { 
+                      id: '2', 
+                      name: 'Benito Morales (Dir. Logística)', 
+                      role: 'logistics_director' as const, 
+                      center: 'central',
+                      permissions: getRolePermissions('logistics_director')
+                    },
+                    'center_manager': { 
+                      id: '7', 
+                      name: 'Fran Giraldez (Encargado Sevilla)', 
+                      role: 'center_manager' as const, 
+                      center: 'sevilla',
+                      permissions: getRolePermissions('center_manager')
+                    }
                   };
                   setCurrentUser(roles[e.target.value]);
                 }}
@@ -1439,12 +1844,12 @@ const LogisticsManagementSystem: React.FC = () => {
         {/* Navegación por pestañas */}
         <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
           {[
-            { id: 'reports', label: '📊 Reportes', icon: BarChart3 },
-            { id: 'inventory', label: '📦 Inventario', icon: Package },
-            { id: 'orders', label: '🛒 Pedidos', icon: ShoppingCart },
-            { id: 'tools', label: '🔧 Herramientas', icon: Settings },
-            { id: 'suppliers', label: '🏪 Proveedores', icon: Building }
-          ].map((tab) => (
+            { id: 'reports', label: '📊 Reportes', icon: BarChart3, permission: 'canViewReports' },
+            { id: 'inventory', label: '📦 Inventario', icon: Package, permission: 'canManageInventory' },
+            { id: 'orders', label: '🛒 Pedidos', icon: ShoppingCart, permission: 'canCreateOrders' },
+            { id: 'tools', label: '🔧 Herramientas', icon: Settings, permission: 'canManageTools' },
+            { id: 'suppliers', label: '🏪 Proveedores', icon: Building, permission: 'canManageSuppliers' }
+          ].filter(tab => currentUser.permissions[tab.permission as keyof typeof currentUser.permissions]).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1524,33 +1929,29 @@ const LogisticsManagementSystem: React.FC = () => {
             </select>
           )}
 
-          {/* Botones de acción */}
-          {(activeTab === 'inventory' || activeTab === 'orders' || activeTab === 'tools' || activeTab === 'suppliers') && (
+          {/* Botón de acción principal - Solo si tiene permisos */}
+          {((activeTab === 'inventory' && currentUser.permissions.canManageInventory) ||
+            (activeTab === 'orders' && currentUser.permissions.canCreateOrders) ||
+            (activeTab === 'tools' && currentUser.permissions.canManageTools) ||
+            (activeTab === 'suppliers' && currentUser.permissions.canManageSuppliers)) && (
             <button
               onClick={() => {
-                if (activeTab === 'inventory') {
-                  setShowNewProductModal(true);
-                } else if (activeTab === 'orders') {
-                  setShowNewOrderModal(true);
-                } else if (activeTab === 'tools') {
-                  setShowNewToolModal(true);
-                } else {
-                  alert('Funcionalidad próximamente');
-                }
+                if (activeTab === 'inventory') setShowNewProductModal(true);
+                else if (activeTab === 'orders') setShowNewOrderModal(true);
+                else if (activeTab === 'tools') setShowNewToolModal(true);
+                else if (activeTab === 'suppliers') setShowSupplierDetailModal(true);
               }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                padding: '0.75rem 1rem',
+                padding: '0.75rem 1.5rem',
                 backgroundColor: '#059669',
                 color: 'white',
                 border: 'none',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                whiteSpace: 'nowrap'
+                fontWeight: '600'
               }}
             >
               <Plus size={16} />
@@ -1562,8 +1963,19 @@ const LogisticsManagementSystem: React.FC = () => {
           )}
         </div>
 
+        {/* Mensaje de permisos insuficientes */}
+        {!currentUser.permissions.canViewReports && activeTab === 'reports' && (
+          <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '2rem', textAlign: 'center' }}>
+            <h3 style={{ color: '#dc2626', margin: '0 0 1rem 0' }}>🚫 Acceso Restringido</h3>
+            <p style={{ color: '#7f1d1d', margin: 0 }}>
+              Tu rol de <strong>{currentUser.role === 'trainer' ? 'Entrenador' : 'Empleado'}</strong> no tiene permisos para ver reportes.
+              <br />Solo los encargados y directores pueden acceder a esta información.
+            </p>
+          </div>
+        )}
+
         {/* Pestaña Inventario */}
-        {activeTab === 'inventory' && (
+        {activeTab === 'inventory' && currentUser.permissions.canManageInventory && (
           <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
               <div>Artículo</div>
