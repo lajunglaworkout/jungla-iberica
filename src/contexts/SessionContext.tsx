@@ -135,12 +135,28 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Crear empleado básico sin consultar BD para evitar errores de conexión
       console.log('✅ Creando empleado básico para:', email);
       
+      // Determinar rol específico por email
+      let roleToUse = 'employee';
+      if (email === 'carlossuarezparra@gmail.com') {
+        roleToUse = 'superadmin';
+      } else if (email === 'beni.jungla@gmail.com') {
+        roleToUse = 'logistics';
+      } else if (email === 'vicente@lajungla.es') {
+        roleToUse = 'hr';
+      } else if (email === 'diego@lajungla.es') {
+        roleToUse = 'marketing';
+      } else if (email === 'jonathan@lajungla.es') {
+        roleToUse = 'online';
+      } else if (email === 'antonio@lajungla.es') {
+        roleToUse = 'events';
+      }
+
       const basicEmployee: Employee = {
         id: userId,
         user_id: userId,
         name: email.split('@')[0],
         email: email,
-        role: email === 'carlossuarezparra@gmail.com' ? 'superadmin' : 'employee',
+        role: roleToUse === 'superadmin' ? 'superadmin' : 'employee',
         is_active: true,
         workType: 'marca',
         profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
@@ -150,8 +166,6 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         esta_activo: true,
         imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
       };
-
-      const roleToUse = email === 'carlossuarezparra@gmail.com' ? 'superadmin' : 'employee';
       const mappedRole = ROLE_MAPPING[roleToUse] || 'employee';
       const config = DASHBOARD_CONFIGS[mappedRole] || DASHBOARD_CONFIGS.employee;
 

@@ -565,7 +565,14 @@ const NavigationDashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', width: '100%' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb', 
+      display: 'flex', 
+      width: '100%',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
       {/* Sidebar */}
       <div style={{
         width: sidebarOpen ? '280px' : '80px',
@@ -758,10 +765,13 @@ const NavigationDashboard: React.FC = () => {
       <div style={{
         flex: 1,
         overflowY: 'auto',
+        overflowX: 'hidden',
         marginLeft: sidebarOpen ? '280px' : '80px',
         transition: 'margin-left 0.3s ease',
         backgroundColor: '#f9fafb',
-        minHeight: '100vh'
+        minHeight: '100vh',
+        maxHeight: '100vh',
+        width: `calc(100vw - ${sidebarOpen ? '280px' : '80px'})`
       }}>
         {selectedModule === 'main-dashboard' ? (
           // Para el dashboard principal, mostrar sin padding ni header adicional
