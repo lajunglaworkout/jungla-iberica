@@ -743,6 +743,26 @@ const LogisticsManagementSystem: React.FC = () => {
   alert('Producto creado exitosamente');
 };
 
+  // Función para filtrar herramientas con búsqueda avanzada
+  const getFilteredTools = () => {
+    return tools.filter(tool => {
+      const locationName = toolLocations.find(loc => loc.id === tool.current_location)?.name || '';
+      const matchesSearch = toolSearchTerm === '' || 
+        tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+        tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+        tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+        tool.category.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+        locationName.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
+        (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
+        (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
+      
+      const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
+      const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
+      
+      return matchesSearch && matchesStatus && matchesLocation;
+    });
+  };
+
   // Función para obtener herramientas que necesitan mantenimiento
   const getToolsNeedingMaintenance = () => {
     const today = new Date();
@@ -1308,7 +1328,7 @@ const LogisticsManagementSystem: React.FC = () => {
               placeholder={
                 activeTab === 'inventory' ? 'Buscar productos...' :
                 activeTab === 'orders' ? 'Buscar pedidos...' :
-                activeTab === 'tools' ? 'Buscar herramientas...' :
+                activeTab === 'tools' ? 'Buscar herramientas, ubicaciones, marcas...' :
                 activeTab === 'suppliers' ? 'Buscar proveedores...' : 'Buscar...'
               }
               value={activeTab === 'tools' ? toolSearchTerm : searchTerm}
@@ -1666,19 +1686,7 @@ const LogisticsManagementSystem: React.FC = () => {
             <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Mostrando {tools.filter(tool => {
-                    const matchesSearch = toolSearchTerm === '' || 
-                      tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                      tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                      tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                      (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
-                      (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
-                    
-                    const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
-                    const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
-                    
-                    return matchesSearch && matchesStatus && matchesLocation;
-                  }).length} de {tools.length} herramientas
+                  Mostrando {getFilteredTools().length} de {tools.length} herramientas
                 </span>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   {(toolSearchTerm || toolStatusFilter !== 'all' || toolLocationFilter !== 'all') && (
@@ -1715,21 +1723,7 @@ const LogisticsManagementSystem: React.FC = () => {
               <div>Acciones</div>
             </div>
             
-            {tools
-              .filter(tool => {
-                const matchesSearch = toolSearchTerm === '' || 
-                  tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
-                  (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
-                
-                const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
-                const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
-                
-                return matchesSearch && matchesStatus && matchesLocation;
-              })
-              .map((tool: Tool) => (
+            {getFilteredTools().map((tool: Tool) => (
               <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '600' }}>{tool.name}</div>
@@ -1787,20 +1781,7 @@ const LogisticsManagementSystem: React.FC = () => {
               </div>
             ))}
             
-            {tools
-              .filter(tool => {
-                const matchesSearch = toolSearchTerm === '' || 
-                  tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
-                  (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
-                  (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
-                
-                const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
-                const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
-                
-                return matchesSearch && matchesStatus && matchesLocation;
-              }).length === 0 && (
+            {getFilteredTools().length === 0 && (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
                 <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                 <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
