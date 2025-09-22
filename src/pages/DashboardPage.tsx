@@ -14,7 +14,8 @@ import {
   Package,
   Clock,
   AlertTriangle,
-  LayoutDashboard
+  LayoutDashboard,
+  Users
 } from 'lucide-react';
 import { Task } from '../types/dashboard';
 import { TaskFormModal } from '../components/dashboard/TaskFormModal';
@@ -614,6 +615,20 @@ const DashboardPage: React.FC = () => {
             <Package size={16} />
             Logística
           </button>
+
+          {/* Solo CEO puede ver gestión de usuarios */}
+          {employee?.email === 'carlossuarezparra@gmail.com' && (
+            <button 
+              className="btn btn-secondary"
+              onClick={() => {
+                // TODO: Implementar gestión de usuarios
+                alert('Módulo de Gestión de Usuarios - Próximamente');
+              }}
+            >
+              <Users size={16} />
+              Usuarios
+            </button>
+          )}
 
           <div className="view-toggle">
             <button 
