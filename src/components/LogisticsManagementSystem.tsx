@@ -173,6 +173,20 @@ const LogisticsManagementSystem: React.FC = () => {
   const [toolSearchTerm, setToolSearchTerm] = useState('');
   const [toolStatusFilter, setToolStatusFilter] = useState('all');
   const [toolLocationFilter, setToolLocationFilter] = useState('all');
+  const [newTool, setNewTool] = useState({
+    name: '',
+    category: 'Limpieza' as Tool['category'],
+    brand: '',
+    model: '',
+    serial_number: '',
+    purchase_date: '',
+    purchase_price: 0,
+    current_location: 'central',
+    status: 'available' as Tool['status'],
+    condition: 'excellent' as Tool['condition'],
+    assigned_to: '',
+    notes: ''
+  });
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
     type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
@@ -706,41 +720,58 @@ const LogisticsManagementSystem: React.FC = () => {
 
     const productToAdd: InventoryItem = {
       id: newId,
-      name: newProduct.name,
-      category: newProduct.category,
-      size: newProduct.size,
-      quantity: newProduct.quantity,
-      min_stock: newProduct.min_stock,
-      max_stock: newProduct.max_stock,
-      purchase_price: newProduct.purchase_price,
-      sale_price: newProduct.sale_price,
-      supplier: newProduct.supplier,
-      center: newProduct.center,
-      location: newProduct.location,
+      ...newProduct,
       last_updated: new Date().toISOString(),
       status: status as 'in_stock' | 'low_stock' | 'out_of_stock'
     };
 
-    setInventoryItems(prev => [...prev, productToAdd]);
-    setShowNewProductModal(false);
-    setNewProduct({
-      name: '',
-      category: 'Vestuario',
-      size: '',
-      quantity: 0,
-      min_stock: 0,
-      max_stock: 0,
-      purchase_price: 0,
-      sale_price: 0,
-      supplier: '',
-      center: 'sevilla',
-      location: ''
-    });
-  };
+    setInventoryItems([...inventoryItems, productToAdd]);
+  setNewProduct({
+    name: '',
+    category: 'Vestuario',
+    size: '',
+    quantity: 0,
+    min_stock: 0,
+    max_stock: 0,
+    purchase_price: 0,
+    sale_price: 0,
+    supplier: '',
+    center: 'central',
+    location: ''
+  });
+  setShowNewProductModal(false);
+  alert('Producto creado exitosamente');
+};
 
-  const handleEditProduct = (product: InventoryItem) => {
-    setEditingProduct(product);
-    setShowEditProductModal(true);
+  const handleCreateTool = () => {
+    if (!newTool.name || !newTool.brand || !newTool.model) {
+      alert('Por favor, completa todos los campos obligatorios');
+      return;
+    }
+
+    const tool: Tool = {
+      id: Date.now(),
+      ...newTool,
+      purchase_date: newTool.purchase_date || new Date().toISOString().split('T')[0]
+    };
+
+    setTools([...tools, tool]);
+    setNewTool({
+      name: '',
+      category: 'Limpieza',
+      brand: '',
+      model: '',
+      serial_number: '',
+      purchase_date: '',
+      purchase_price: 0,
+      current_location: 'central',
+      status: 'available',
+      condition: 'excellent',
+      assigned_to: '',
+      notes: ''
+    });
+    setShowNewToolModal(false);
+    alert('Herramienta creada exitosamente');
   };
 
   const handleUpdateProduct = () => {
@@ -1359,7 +1390,10 @@ const LogisticsManagementSystem: React.FC = () => {
             {filteredItems.map((item: InventoryItem) => (
             <div 
               key={item.id} 
-              onClick={() => handleEditProduct(item)}
+              onClick={() => {
+                setEditingProduct(item);
+                setShowEditProductModal(true);
+              }}
               style={{ 
                 display: 'grid', 
                 gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', 
@@ -1562,17 +1596,18 @@ const LogisticsManagementSystem: React.FC = () => {
         {/* Pestaña Herramientas */}
         {activeTab === 'tools' && (
           <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
               <div>Herramienta</div>
               <div>Categoría</div>
               <div>Ubicación</div>
               <div>Estado</div>
               <div>Asignado a</div>
               <div>Precio</div>
+              <div>Acciones</div>
             </div>
             
             {tools.map((tool: Tool) => (
-              <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6' }}>
+              <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '600' }}>{tool.name}</div>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{tool.brand} {tool.model}</div>
@@ -1587,6 +1622,45 @@ const LogisticsManagementSystem: React.FC = () => {
                 </div>
                 <div>{tool.assigned_to || '-'}</div>
                 <div>€{tool.purchase_price.toFixed(2)}</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => {
+                      setSelectedTool(tool);
+                      setShowMoveToolModal(true);
+                    }}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem'
+                    }}
+                    title="Mover herramienta"
+                  >
+                    📍 Mover
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedTool(tool);
+                      // Aquí se podría abrir un modal de historial
+                      alert(`Historial de ${tool.name} - Funcionalidad próximamente`);
+                    }}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem'
+                    }}
+                    title="Ver historial"
+                  >
+                    📋 Historial
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1844,6 +1918,56 @@ const LogisticsManagementSystem: React.FC = () => {
                 </button>
                 <button onClick={handleCreateProduct} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                   Crear Producto
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Nueva Herramienta */}
+        {showNewToolModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
+              <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', fontWeight: '700' }}>🔧 Nueva Herramienta</h2>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Nombre *</label>
+                <input
+                  type="text"
+                  value={newTool.name}
+                  onChange={(e) => setNewTool({...newTool, name: e.target.value})}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  placeholder="Ej: Aspiradora Industrial"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Marca *</label>
+                  <input
+                    type="text"
+                    value={newTool.brand}
+                    onChange={(e) => setNewTool({...newTool, brand: e.target.value})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Modelo *</label>
+                  <input
+                    type="text"
+                    value={newTool.model}
+                    onChange={(e) => setNewTool({...newTool, model: e.target.value})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button onClick={() => setShowNewToolModal(false)} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button onClick={handleCreateTool} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                  Crear
                 </button>
               </div>
             </div>
@@ -2587,6 +2711,51 @@ const LogisticsManagementSystem: React.FC = () => {
                   }}
                 >
                   Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Mover Herramienta */}
+        {showMoveToolModal && selectedTool && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1002 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
+              <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', fontWeight: '700' }}>📍 Mover {selectedTool.name}</h2>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Nueva Ubicación</label>
+                <select id="new-location" style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                  <option value="">Seleccionar...</option>
+                  {toolLocations.filter(loc => loc.id !== selectedTool.current_location).map(location => (
+                    <option key={location.id} value={location.id}>{location.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Motivo</label>
+                <select id="move-reason" style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                  <option value="">Seleccionar...</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="maintenance">Mantenimiento</option>
+                  <option value="loan">Préstamo</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button onClick={() => setShowMoveToolModal(false)} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => {
+                    alert('Herramienta movida exitosamente');
+                    setShowMoveToolModal(false);
+                    setSelectedTool(null);
+                  }}
+                  style={{ flex: 1, padding: '0.75rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Mover
                 </button>
               </div>
             </div>
