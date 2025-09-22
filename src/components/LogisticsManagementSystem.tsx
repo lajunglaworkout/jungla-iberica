@@ -93,7 +93,48 @@ interface Notification {
   order_id?: string;
   created_at: string;
   read: boolean;
-  urgent: boolean;
+  urgent?: boolean;
+}
+
+interface Tool {
+  id: number;
+  name: string;
+  category: 'Limpieza' | 'Mantenimiento' | 'Seguridad' | 'Deportivo' | 'Oficina' | 'Electrónico';
+  brand: string;
+  model: string;
+  serial_number?: string;
+  purchase_date: string;
+  purchase_price: number;
+  current_location: string;
+  status: 'available' | 'in_use' | 'maintenance' | 'lost' | 'damaged';
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+  last_maintenance?: string;
+  next_maintenance?: string;
+  assigned_to?: string;
+  notes?: string;
+}
+
+interface ToolLocation {
+  id: string;
+  name: string;
+  type: 'permanent' | 'temporary' | 'center' | 'storage';
+  address?: string;
+  contact_person?: string;
+  contact_phone?: string;
+  is_active: boolean;
+}
+
+interface ToolMovement {
+  id: string;
+  tool_id: number;
+  from_location: string;
+  to_location: string;
+  moved_by: string;
+  moved_at: string;
+  reason: 'transfer' | 'maintenance' | 'loan' | 'return' | 'lost' | 'found';
+  expected_return?: string;
+  notes?: string;
+  status: 'pending' | 'completed' | 'overdue';
 }
 
 const LogisticsManagementSystem: React.FC = () => {
@@ -121,6 +162,17 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showProductSelectorModal, setShowProductSelectorModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  
+  // Estados para herramientas
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [toolLocations, setToolLocations] = useState<ToolLocation[]>([]);
+  const [toolMovements, setToolMovements] = useState<ToolMovement[]>([]);
+  const [showNewToolModal, setShowNewToolModal] = useState(false);
+  const [showMoveToolModal, setShowMoveToolModal] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [toolSearchTerm, setToolSearchTerm] = useState('');
+  const [toolStatusFilter, setToolStatusFilter] = useState('all');
+  const [toolLocationFilter, setToolLocationFilter] = useState('all');
   const [newOrder, setNewOrder] = useState({
     supplier_id: '',
     type: 'center_to_brand' as 'brand_to_supplier' | 'center_to_brand',
@@ -176,6 +228,152 @@ const LogisticsManagementSystem: React.FC = () => {
     
     checkSupabaseConnection();
     
+    // Datos de ejemplo para ubicaciones de herramientas
+    setToolLocations([
+      { id: 'central', name: 'Almacén Central', type: 'permanent', address: 'Calle Principal 123', contact_person: 'Benito Morales', contact_phone: '666-111-222', is_active: true },
+      { id: 'sevilla', name: 'Centro Sevilla', type: 'center', address: 'Calle Ejemplo 123, Sevilla', contact_person: 'Ana García', contact_phone: '666-333-444', is_active: true },
+      { id: 'jerez', name: 'Centro Jerez', type: 'center', address: 'Av. Principal 456, Jerez', contact_person: 'Luis Martín', contact_phone: '666-555-666', is_active: true },
+      { id: 'puerto', name: 'Centro Puerto', type: 'center', address: 'Plaza Mayor 789, El Puerto', contact_person: 'María López', contact_phone: '666-777-888', is_active: true },
+      { id: 'taller', name: 'Taller Mantenimiento', type: 'temporary', address: 'Polígono Industrial', contact_person: 'José Ruiz', contact_phone: '666-999-000', is_active: true },
+      { id: 'storage', name: 'Almacén Temporal', type: 'storage', address: 'Nave 5, Polígono Sur', is_active: true }
+    ]);
+
+    // Datos de ejemplo para herramientas
+    setTools([
+      {
+        id: 1,
+        name: 'Aspiradora Industrial Kärcher',
+        category: 'Limpieza',
+        brand: 'Kärcher',
+        model: 'NT 70/2',
+        serial_number: 'KAR2023001',
+        purchase_date: '2023-01-15',
+        purchase_price: 450.00,
+        current_location: 'central',
+        status: 'available',
+        condition: 'excellent',
+        last_maintenance: '2024-01-15',
+        next_maintenance: '2024-07-15',
+        notes: 'Aspiradora de alta potencia para limpieza profunda'
+      },
+      {
+        id: 2,
+        name: 'Taladro Percutor Bosch',
+        category: 'Mantenimiento',
+        brand: 'Bosch',
+        model: 'GSB 13 RE',
+        serial_number: 'BSH2023002',
+        purchase_date: '2023-03-10',
+        purchase_price: 89.99,
+        current_location: 'sevilla',
+        status: 'in_use',
+        condition: 'good',
+        assigned_to: 'Ana García',
+        last_maintenance: '2024-02-01',
+        next_maintenance: '2024-08-01',
+        notes: 'En uso para mantenimiento general del centro'
+      },
+      {
+        id: 3,
+        name: 'Extintor CO2 5kg',
+        category: 'Seguridad',
+        brand: 'Cofem',
+        model: 'CO2-5',
+        serial_number: 'COF2023003',
+        purchase_date: '2023-02-20',
+        purchase_price: 65.00,
+        current_location: 'jerez',
+        status: 'available',
+        condition: 'excellent',
+        last_maintenance: '2024-02-20',
+        next_maintenance: '2025-02-20',
+        notes: 'Extintor para equipos eléctricos'
+      },
+      {
+        id: 4,
+        name: 'Cinta de Correr Reparación',
+        category: 'Deportivo',
+        brand: 'TechnoGym',
+        model: 'Run Race 1400',
+        serial_number: 'TG2022004',
+        purchase_date: '2022-11-05',
+        purchase_price: 2500.00,
+        current_location: 'taller',
+        status: 'maintenance',
+        condition: 'fair',
+        assigned_to: 'José Ruiz',
+        last_maintenance: '2024-01-10',
+        notes: 'En reparación - problema con motor'
+      },
+      {
+        id: 5,
+        name: 'Ordenador Portátil HP',
+        category: 'Oficina',
+        brand: 'HP',
+        model: 'EliteBook 840',
+        serial_number: 'HP2023005',
+        purchase_date: '2023-06-15',
+        purchase_price: 899.00,
+        current_location: 'puerto',
+        status: 'in_use',
+        condition: 'excellent',
+        assigned_to: 'María López',
+        notes: 'Portátil para gestión del centro'
+      },
+      {
+        id: 6,
+        name: 'Mopa Industrial',
+        category: 'Limpieza',
+        brand: 'Vileda',
+        model: 'UltraSpeed Pro',
+        purchase_date: '2023-04-01',
+        purchase_price: 25.50,
+        current_location: 'storage',
+        status: 'lost',
+        condition: 'good',
+        notes: 'Perdida desde hace 2 semanas - última vez vista en Centro Sevilla'
+      }
+    ]);
+
+    // Datos de ejemplo para movimientos de herramientas
+    setToolMovements([
+      {
+        id: 'mov001',
+        tool_id: 2,
+        from_location: 'central',
+        to_location: 'sevilla',
+        moved_by: 'Benito Morales',
+        moved_at: '2024-01-20T10:30:00Z',
+        reason: 'transfer',
+        notes: 'Transferido para mantenimiento del centro',
+        status: 'completed'
+      },
+      {
+        id: 'mov002',
+        tool_id: 4,
+        from_location: 'sevilla',
+        to_location: 'taller',
+        moved_by: 'Ana García',
+        moved_at: '2024-01-10T14:15:00Z',
+        reason: 'maintenance',
+        expected_return: '2024-02-10',
+        notes: 'Enviado para reparación de motor',
+        status: 'overdue'
+      },
+      {
+        id: 'mov003',
+        tool_id: 6,
+        from_location: 'central',
+        to_location: 'sevilla',
+        moved_by: 'Carlos Suárez',
+        moved_at: '2024-01-05T09:00:00Z',
+        reason: 'loan',
+        expected_return: '2024-01-15',
+        notes: 'Préstamo temporal para limpieza especial',
+        status: 'overdue'
+      }
+    ]);
+
     // Datos de ejemplo para inventario
     setInventoryItems([
       { id: 1, name: 'Camiseta La Jungla', category: 'Vestuario', size: 'M', quantity: 25, min_stock: 10, max_stock: 50, purchase_price: 12.50, sale_price: 25.00, supplier: 'Textiles SL', center: 'sevilla', location: 'A1', last_updated: new Date().toISOString(), status: 'in_stock' },
@@ -1021,29 +1219,30 @@ const LogisticsManagementSystem: React.FC = () => {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem', borderRadius: '16px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)' }}>
           {[
-            { key: 'inventory', label: 'Inventario', icon: '📦' },
-            { key: 'orders', label: 'Pedidos', icon: '🛒' },
-            { key: 'suppliers', label: 'Proveedores', icon: '🏪' },
-            { key: 'reports', label: 'Reportes', icon: '📊' }
+            { id: 'inventory', label: '📦 Inventario', icon: Package },
+            { id: 'orders', label: '🛒 Pedidos', icon: Truck },
+            { id: 'tools', label: '🔧 Herramientas', icon: Package },
+            { id: 'suppliers', label: '🏪 Proveedores', icon: Package },
+            { id: 'reports', label: '📊 Reportes', icon: Package }
           ].map(tab => (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.75rem 1.25rem',
                 border: 'none',
-                backgroundColor: activeTab === tab.key ? '#059669' : 'transparent',
-                color: activeTab === tab.key ? 'white' : '#6b7280',
-                fontWeight: activeTab === tab.key ? '600' : '500',
+                backgroundColor: activeTab === tab.id ? '#059669' : 'transparent',
+                color: activeTab === tab.id ? 'white' : '#6b7280',
+                fontWeight: activeTab === tab.id ? '600' : '500',
                 cursor: 'pointer',
                 borderRadius: '12px',
                 fontSize: '0.875rem'
               }}
             >
-              <span>{tab.icon}</span>
+              <tab.icon size={16} />
               {tab.label}
             </button>
           ))}
@@ -1058,6 +1257,7 @@ const LogisticsManagementSystem: React.FC = () => {
               placeholder={
                 activeTab === 'inventory' ? 'Buscar productos...' :
                 activeTab === 'orders' ? 'Buscar pedidos...' :
+                activeTab === 'tools' ? 'Buscar herramientas...' :
                 activeTab === 'suppliers' ? 'Buscar proveedores...' : 'Buscar...'
               }
               value={searchTerm}
@@ -1105,15 +1305,17 @@ const LogisticsManagementSystem: React.FC = () => {
           )}
 
           {/* Botones de acción */}
-          {(activeTab === 'inventory' || activeTab === 'orders' || activeTab === 'suppliers') && (
+          {(activeTab === 'inventory' || activeTab === 'orders' || activeTab === 'tools' || activeTab === 'suppliers') && (
             <button
               onClick={() => {
                 if (activeTab === 'inventory') {
                   setShowNewProductModal(true);
                 } else if (activeTab === 'orders') {
                   setShowNewOrderModal(true);
+                } else if (activeTab === 'tools') {
+                  setShowNewToolModal(true);
                 } else {
-                  alert('Funcionalidad de nuevo proveedor próximamente');
+                  alert('Funcionalidad próximamente');
                 }
               }}
               style={{
@@ -1134,6 +1336,7 @@ const LogisticsManagementSystem: React.FC = () => {
               <Plus size={16} />
               {activeTab === 'inventory' ? 'Nuevo Producto' :
                activeTab === 'orders' ? 'Nuevo Pedido' :
+               activeTab === 'tools' ? 'Nueva Herramienta' :
                'Nuevo Proveedor'}
             </button>
           )}
@@ -1253,25 +1456,23 @@ const LogisticsManagementSystem: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
               <input
                 type="text"
-                placeholder="Buscar por número, origen o destino..."
+                placeholder="Buscar pedidos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
               />
-              
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
               >
                 <option value="all">Todos los estados</option>
-                <option value="pending">⏳ Pendientes</option>
+                <option value="pending">⏳ Pendiente</option>
                 <option value="processing">🔄 En Proceso</option>
-                <option value="sent">🚚 Enviados</option>
-                <option value="delivered">✅ Entregados</option>
-                <option value="cancelled">❌ Cancelados</option>
+                <option value="sent">🚚 Enviado</option>
+                <option value="delivered">✅ Entregado</option>
+                <option value="cancelled">❌ Cancelado</option>
               </select>
-              
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -1354,6 +1555,39 @@ const LogisticsManagementSystem: React.FC = () => {
                 </span>
               </div>
             </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pestaña Herramientas */}
+        {activeTab === 'tools' && (
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
+              <div>Herramienta</div>
+              <div>Categoría</div>
+              <div>Ubicación</div>
+              <div>Estado</div>
+              <div>Asignado a</div>
+              <div>Precio</div>
+            </div>
+            
+            {tools.map((tool: Tool) => (
+              <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6' }}>
+                <div>
+                  <div style={{ fontWeight: '600' }}>{tool.name}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{tool.brand} {tool.model}</div>
+                </div>
+                <div>{tool.category}</div>
+                <div>{toolLocations.find(loc => loc.id === tool.current_location)?.name}</div>
+                <div style={{ color: tool.status === 'available' ? '#059669' : tool.status === 'lost' ? '#dc2626' : '#6b7280' }}>
+                  {tool.status === 'available' ? '✅ Disponible' :
+                   tool.status === 'in_use' ? '🔧 En Uso' :
+                   tool.status === 'maintenance' ? '⚙️ Mantenimiento' :
+                   tool.status === 'lost' ? '❌ Perdida' : '🔴 Dañada'}
+                </div>
+                <div>{tool.assigned_to || '-'}</div>
+                <div>€{tool.purchase_price.toFixed(2)}</div>
+              </div>
             ))}
           </div>
         )}
