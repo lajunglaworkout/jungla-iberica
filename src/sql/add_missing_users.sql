@@ -2,32 +2,40 @@
 -- Ejecutar en Supabase SQL Editor
 
 -- Verificar si Vicente existe, si no, añadirlo
-INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
-SELECT 'Vicente Corbaón', 'vicente@lajungla.es', 'Director RRHH', 'director', '1', ARRAY['hr'], true
-WHERE NOT EXISTS (
-    SELECT 1 FROM employees WHERE email = 'vicente@lajungla.es'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM employees WHERE email = 'vicente@lajungla.es') THEN
+        INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+        VALUES ('Vicente Corbaón', 'vicente@lajungla.es', 'Director RRHH', 'director', '1', ARRAY['hr'], true);
+    END IF;
+END $$;
 
 -- Verificar si Jonathan existe, si no, añadirlo
-INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
-SELECT 'Jonathan Padilla', 'jonathan@lajungla.es', 'Director Online', 'director', '1', ARRAY['online'], true
-WHERE NOT EXISTS (
-    SELECT 1 FROM employees WHERE email = 'jonathan@lajungla.es'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM employees WHERE email = 'jonathan@lajungla.es') THEN
+        INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+        VALUES ('Jonathan Padilla', 'jonathan@lajungla.es', 'Director Online', 'director', '1', ARRAY['online'], true);
+    END IF;
+END $$;
 
 -- Verificar si Antonio existe, si no, añadirlo
-INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
-SELECT 'Antonio Durán', 'antonio@lajungla.es', 'Director Eventos', 'director', '1', ARRAY['events'], true
-WHERE NOT EXISTS (
-    SELECT 1 FROM employees WHERE email = 'antonio@lajungla.es'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM employees WHERE email = 'antonio@lajungla.es') THEN
+        INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+        VALUES ('Antonio Durán', 'antonio@lajungla.es', 'Director Eventos', 'director', '1', ARRAY['events'], true);
+    END IF;
+END $$;
 
 -- Verificar si Diego existe, si no, añadirlo
-INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
-SELECT 'Diego Montilla', 'diego@lajungla.es', 'Director Marketing', 'director', '1', ARRAY['marketing'], true
-WHERE NOT EXISTS (
-    SELECT 1 FROM employees WHERE email = 'diego@lajungla.es'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM employees WHERE email = 'diego@lajungla.es') THEN
+        INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
+        VALUES ('Diego Montilla', 'diego@lajungla.es', 'Director Marketing', 'director', '1', ARRAY['marketing'], true);
+    END IF;
+END $$;
 
 -- Añadir más empleados de centros si no existen
 INSERT INTO employees (name, email, role, base_role, center_id, assigned_modules, is_active)
