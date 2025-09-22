@@ -54,10 +54,9 @@ const UserManagement: React.FC = () => {
 
   const getCenterName = (centerId?: string) => {
     const centers = {
-      '1': 'Central',
-      '2': 'Sevilla', 
-      '3': 'Jerez',
-      '4': 'Puerto'
+      '9': 'Sevilla',
+      '10': 'Jerez', 
+      '11': 'Puerto'
     };
     return centers[centerId as keyof typeof centers] || 'Sin asignar';
   };
@@ -121,10 +120,9 @@ const UserManagement: React.FC = () => {
             }}
           >
             <option value="all">Todos los centros</option>
-            <option value="1">🏢 Central</option>
-            <option value="2">🏪 Sevilla</option>
-            <option value="3">🏪 Jerez</option>
-            <option value="4">🏪 Puerto</option>
+            <option value="9">🏪 Sevilla</option>
+            <option value="10">🏪 Jerez</option>
+            <option value="11">🏪 Puerto</option>
           </select>
         </div>
 
