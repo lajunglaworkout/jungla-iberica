@@ -175,6 +175,16 @@ const getRolePermissions = (role: User['role']) => {
   switch (role) {
     case 'ceo':
       return {
+        // Módulos principales
+        canAccessLogistics: true,
+        canAccessMaintenance: true,
+        canAccessAccounting: true,
+        canAccessMarketing: true,
+        canAccessHR: true,
+        canAccessOnline: true,
+        canAccessEvents: true,
+        
+        // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
         canCreateOrders: true,
@@ -182,10 +192,29 @@ const getRolePermissions = (role: User['role']) => {
         canManageSuppliers: true,
         canManageTools: true,
         canViewAllCenters: true,
-        canModifyPrices: true
+        canModifyPrices: true,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: true
       };
     case 'logistics_director':
       return {
+        // Módulos principales
+        canAccessLogistics: true,
+        canAccessMaintenance: false,
+        canAccessAccounting: false,
+        canAccessMarketing: false,
+        canAccessHR: false,
+        canAccessOnline: false,
+        canAccessEvents: false,
+        
+        // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
         canCreateOrders: true,
@@ -193,24 +222,62 @@ const getRolePermissions = (role: User['role']) => {
         canManageSuppliers: true,
         canManageTools: true,
         canViewAllCenters: true,
-        canModifyPrices: true
+        canModifyPrices: true,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: false
       };
     case 'hr_director':
     case 'online_director':
     case 'events_director':
     case 'marketing_director':
       return {
+        // Módulos principales
+        canAccessLogistics: false,
+        canAccessMaintenance: false,
+        canAccessAccounting: false,
+        canAccessMarketing: false,
+        canAccessHR: false,
+        canAccessOnline: false,
+        canAccessEvents: false,
+        
+        // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: false,
         canCreateOrders: true,
         canProcessOrders: false,
         canManageSuppliers: false,
         canManageTools: false,
-        canViewAllCenters: true,
-        canModifyPrices: false
+        canViewAllCenters: false,
+        canModifyPrices: false,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: false
       };
     case 'center_manager':
       return {
+        // Módulos principales
+        canAccessLogistics: false,
+        canAccessMaintenance: false,
+        canAccessAccounting: false,
+        canAccessMarketing: false,
+        canAccessHR: false,
+        canAccessOnline: false,
+        canAccessEvents: false,
+        
+        // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
         canCreateOrders: true,
@@ -218,11 +285,30 @@ const getRolePermissions = (role: User['role']) => {
         canManageSuppliers: false,
         canManageTools: true,
         canViewAllCenters: false,
-        canModifyPrices: false
+        canModifyPrices: false,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: false
       };
     case 'trainer':
     case 'employee':
       return {
+        // Módulos principales
+        canAccessLogistics: false,
+        canAccessMaintenance: false,
+        canAccessAccounting: false,
+        canAccessMarketing: false,
+        canAccessHR: false,
+        canAccessOnline: false,
+        canAccessEvents: false,
+        
+        // Permisos específicos de logística
         canViewReports: false,
         canManageInventory: false,
         canCreateOrders: false,
@@ -230,10 +316,29 @@ const getRolePermissions = (role: User['role']) => {
         canManageSuppliers: false,
         canManageTools: false,
         canViewAllCenters: false,
-        canModifyPrices: false
+        canModifyPrices: false,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: false
       };
     default:
       return {
+        // Módulos principales
+        canAccessLogistics: false,
+        canAccessMaintenance: false,
+        canAccessAccounting: false,
+        canAccessMarketing: false,
+        canAccessHR: false,
+        canAccessOnline: false,
+        canAccessEvents: false,
+        
+        // Permisos específicos de logística
         canViewReports: false,
         canManageInventory: false,
         canCreateOrders: false,
@@ -241,7 +346,16 @@ const getRolePermissions = (role: User['role']) => {
         canManageSuppliers: false,
         canManageTools: false,
         canViewAllCenters: false,
-        canModifyPrices: false
+        canModifyPrices: false,
+        
+        // Permisos de empleados
+        canViewOwnCenter: true,
+        canUseTimeTracking: true,
+        canUseChecklist: true,
+        canMessageHR: true,
+        
+        // Permisos administrativos
+        canManageUsers: false
       };
   }
 };

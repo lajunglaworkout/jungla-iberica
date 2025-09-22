@@ -26,6 +26,7 @@ import { saveMeetingToSupabase, loadMeetingsFromSupabase, updateMeetingInSupabas
 import { canUserCreateMeetings } from '../config/departments';
 import LogisticsManagementSystem from '../components/LogisticsManagementSystem';
 import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
+import UserManagement from '../components/UserManagement';
 import '../styles/dashboard.css';
 
 // Datos de ejemplo para mostrar funcionalidad completa
@@ -215,6 +216,7 @@ const DashboardPage: React.FC = () => {
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
   const [showMeetingHistory, setShowMeetingHistory] = useState(false);
   const [showLogistics, setShowLogistics] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Cargar reuniones desde Supabase al inicializar
@@ -621,8 +623,13 @@ const DashboardPage: React.FC = () => {
             <button 
               className="btn btn-secondary"
               onClick={() => {
-                // TODO: Implementar gestión de usuarios
-                alert('Módulo de Gestión de Usuarios - Próximamente');
+                setShowUserManagement(!showUserManagement);
+                setShowLogistics(false);
+                setShowMeetingHistory(false);
+              }}
+              style={{ 
+                backgroundColor: showUserManagement ? '#059669' : undefined,
+                color: showUserManagement ? 'white' : undefined
               }}
             >
               <Users size={16} />
@@ -666,8 +673,12 @@ const DashboardPage: React.FC = () => {
         {showLogistics && (
           <LogisticsManagementSystem />
         )}
+
+        {showUserManagement && (
+          <UserManagement />
+        )}
         
-        {!showMeetingHistory && !showLogistics && (
+        {!showMeetingHistory && !showLogistics && !showUserManagement && (
           <>
             {(currentView === 'week' ? renderWeekView() : renderMonthView())}
             {renderAlertsPanel()}
