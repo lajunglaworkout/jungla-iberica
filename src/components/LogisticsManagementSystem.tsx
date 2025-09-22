@@ -2101,6 +2101,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     value={newTool.brand}
                     onChange={(e) => setNewTool({...newTool, brand: e.target.value})}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    placeholder="Ej: Kärcher"
                   />
                 </div>
                 <div>
@@ -2110,6 +2111,66 @@ const LogisticsManagementSystem: React.FC = () => {
                     value={newTool.model}
                     onChange={(e) => setNewTool({...newTool, model: e.target.value})}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    placeholder="Ej: NT 70/2"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Categoría</label>
+                  <select
+                    value={newTool.category}
+                    onChange={(e) => setNewTool({...newTool, category: e.target.value as Tool['category']})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  >
+                    <option value="Limpieza">🧽 Limpieza</option>
+                    <option value="Mantenimiento">🔧 Mantenimiento</option>
+                    <option value="Seguridad">🛡️ Seguridad</option>
+                    <option value="Deportivo">🏋️ Deportivo</option>
+                    <option value="Oficina">💻 Oficina</option>
+                    <option value="Electrónico">⚡ Electrónico</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Ubicación Inicial *</label>
+                  <select
+                    value={newTool.current_location}
+                    onChange={(e) => setNewTool({...newTool, current_location: e.target.value})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  >
+                    {toolLocations.map(location => (
+                      <option key={location.id} value={location.id}>
+                        {location.type === 'permanent' ? '🏢' :
+                         location.type === 'center' ? '🏪' :
+                         location.type === 'temporary' ? '🔧' : '📦'} {location.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Precio de Compra (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newTool.purchase_price}
+                    onChange={(e) => setNewTool({...newTool, purchase_price: parseFloat(e.target.value) || 0})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Número de Serie</label>
+                  <input
+                    type="text"
+                    value={newTool.serial_number}
+                    onChange={(e) => setNewTool({...newTool, serial_number: e.target.value})}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    placeholder="Opcional"
                   />
                 </div>
               </div>
