@@ -48,7 +48,9 @@ const UserManagement: React.FC = () => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.base_role === filterRole;
-    const matchesCenter = filterCenter === 'all' || user.center_id === filterCenter;
+    const matchesCenter = filterCenter === 'all' || 
+                         (filterCenter === '' && (!user.center_id || user.center_id === '')) ||
+                         user.center_id === filterCenter;
     return matchesSearch && matchesRole && matchesCenter;
   });
 
@@ -58,7 +60,7 @@ const UserManagement: React.FC = () => {
       '10': 'Jerez', 
       '11': 'Puerto'
     };
-    return centers[centerId as keyof typeof centers] || 'Sin asignar';
+    return centers[centerId as keyof typeof centers] || 'Marca/Central';
   };
 
   return (
@@ -120,6 +122,7 @@ const UserManagement: React.FC = () => {
             }}
           >
             <option value="all">Todos los centros</option>
+            <option value="">🏢 Marca/Central</option>
             <option value="9">🏪 Sevilla</option>
             <option value="10">🏪 Jerez</option>
             <option value="11">🏪 Puerto</option>
@@ -168,10 +171,10 @@ const UserManagement: React.FC = () => {
                   padding: '0.25rem 0.75rem',
                   borderRadius: '6px',
                   fontSize: '0.75rem',
-                  backgroundColor: user.center_id === '1' ? '#7c3aed' : '#059669',
+                  backgroundColor: (!user.center_id || user.center_id === '') ? '#7c3aed' : '#059669',
                   color: 'white'
                 }}>
-                  {user.center_id === '1' ? '🏢' : '🏪'} {getCenterName(user.center_id)}
+                  {(!user.center_id || user.center_id === '') ? '🏢' : '🏪'} {getCenterName(user.center_id)}
                 </span>
               </td>
               <td style={{ padding: '1rem' }}>
