@@ -153,7 +153,8 @@ const UserManagement: React.FC = () => {
                   fontSize: '0.75rem',
                   backgroundColor: user.base_role === 'ceo' ? '#7c3aed' : 
                                  user.base_role === 'director' ? '#059669' : 
-                                 user.base_role === 'center_manager' ? '#dc2626' : '#6b7280',
+                                 user.base_role === 'center_manager' ? '#dc2626' : 
+                                 user.base_role === 'trainer' ? '#f59e0b' : '#6b7280',
                   color: 'white'
                 }}>
                   {user.base_role === 'ceo' ? 'CEO' : 
