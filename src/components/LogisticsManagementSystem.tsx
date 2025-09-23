@@ -717,6 +717,7 @@ const LogisticsManagementSystem: React.FC = () => {
     loadInventoryFromSupabase();
   }, []);
 
+  useEffect(() => {
     // Datos de ejemplo para herramientas
     setTools([
       {
@@ -1282,6 +1283,21 @@ const LogisticsManagementSystem: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesType = categoryFilter === 'all' || order.type === categoryFilter;
     return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = categoryFilter === 'all' || supplier.type === categoryFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const filteredTools = tools.filter(tool => {
+    const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         tool.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         tool.current_location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || tool.category === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
 
   const handleCreateProduct = () => {
