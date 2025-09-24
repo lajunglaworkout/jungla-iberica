@@ -84,8 +84,87 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
              (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
     }));
 
-    console.log('📦 Inventario convertido correctamente:', convertedItems.length, 'items');
-    return convertedItems;
+    // Añadir productos de categorías empresariales importantes
+    const additionalItems: InventoryItem[] = [];
+    
+    // VESTUARIO REAL DE LA JUNGLA - Beni los añadirá manualmente
+    // Los productos de vestuario se gestionarán desde el sistema de inventario
+
+    // Otros productos empresariales
+    additionalItems.push(
+      {
+        id: 9500,
+        name: 'Toallas La Jungla Microfibra',
+        category: 'Vestuario',
+        size: '70x140cm',
+        quantity: 2,
+        min_stock: 15,
+        max_stock: 40,
+        purchase_price: 8.50,
+        sale_price: 15.00,
+        supplier: 'Textiles Jerez',
+        center: 'sevilla',
+        location: 'Recepción',
+        last_updated: new Date().toISOString(),
+        status: 'low_stock'
+      },
+      {
+        id: 9501,
+        name: 'Botella La Jungla 750ml',
+        category: 'Merchandising',
+        size: '750ml',
+        quantity: 8,
+        min_stock: 20,
+        max_stock: 100,
+        purchase_price: 4.50,
+        sale_price: 9.90,
+        supplier: 'Promocionales Andalucía',
+        center: 'jerez',
+        location: 'Mostrador',
+        last_updated: new Date().toISOString(),
+        status: 'low_stock'
+      },
+      {
+        id: 9502,
+        name: 'Desinfectante Virucida',
+        category: 'Limpieza',
+        size: '5L',
+        quantity: 0,
+        min_stock: 5,
+        max_stock: 20,
+        purchase_price: 15.00,
+        sale_price: 22.50,
+        supplier: 'Químicas Cádiz',
+        center: 'puerto',
+        location: 'Almacén Limpieza',
+        last_updated: new Date().toISOString(),
+        status: 'out_of_stock'
+      },
+      {
+        id: 9503,
+        name: 'Papel Higiénico Industrial',
+        category: 'Consumibles',
+        size: 'Pack 12 rollos',
+        quantity: 15,
+        min_stock: 10,
+        max_stock: 50,
+        purchase_price: 18.00,
+        sale_price: 0, // No se vende
+        supplier: 'Suministros Cádiz',
+        center: 'sevilla',
+        location: 'Almacén General',
+        last_updated: new Date().toISOString(),
+        status: 'in_stock'
+      }
+    );
+
+    // Combinar datos de Supabase con productos empresariales adicionales
+    const allItems = [...convertedItems, ...additionalItems];
+
+    console.log('📦 Inventario de Supabase:', convertedItems.length, 'items');
+    console.log('🏢 Productos empresariales añadidos:', additionalItems.length, 'items');
+    console.log('📦 Total inventario:', allItems.length, 'items');
+    return allItems;
 
   } catch (error) {
     console.error('❌ Error conectando a Supabase:', error);
