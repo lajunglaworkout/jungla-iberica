@@ -990,103 +990,230 @@ const LogisticsManagementSystem: React.FC = () => {
     loadInventoryFromSupabase();
   }, []);
 
-  useEffect(() => {
-    // Datos de ejemplo para herramientas
-    setTools([
+  // Función para cargar pedidos desde Supabase
+  const loadOrdersFromSupabase = async () => {
+    try {
+      console.log('🔍 CARGANDO PEDIDOS DESDE SUPABASE...');
+      const { supabase } = await import('../lib/supabase');
+      
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('order_date', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error cargando pedidos:', error);
+        // Si hay error, usar datos de ejemplo como fallback
+        loadFallbackOrders();
+        return;
+      }
+
+      if (ordersData && ordersData.length > 0) {
+        // Convertir datos de Supabase al formato esperado por el componente
+        const formattedOrders = ordersData.map(order => ({
+          id: order.id,
+          type: order.type,
+          from: order.from_location,
+          to: order.to_location,
+          date: order.order_date,
+          delivery_date: order.delivery_date,
+          estimated_delivery: order.estimated_delivery,
+          status: order.status,
+          amount: order.amount,
+          created_by: order.created_by,
+          processed_date: order.processed_date,
+          sent_date: order.sent_date,
+          notes: order.notes,
+          items: [] // Los items se cargarían por separado si fuera necesario
+        }));
+
+        setOrders(formattedOrders);
+        console.log(`✅ ${formattedOrders.length} pedidos cargados desde Supabase`);
+      } else {
+        console.log('📭 No se encontraron pedidos en Supabase, cargando datos de ejemplo');
+        loadFallbackOrders();
+      }
+    } catch (error) {
+      console.error('❌ Error en loadOrdersFromSupabase:', error);
+      loadFallbackOrders();
+    }
+  };
+
+  // Función de fallback para cargar datos de ejemplo si Supabase falla
+  const loadFallbackOrders = () => {
+    setOrders([
       {
-        id: 1,
-        name: 'Aspiradora Industrial Kärcher',
-        category: 'Limpieza',
-        brand: 'Kärcher',
-        model: 'NT 70/2',
-        serial_number: 'KAR2023001',
-        purchase_date: '2023-01-15',
-        purchase_price: 450.00,
-        current_location: 'central',
-        status: 'available',
-        condition: 'excellent',
-        last_maintenance: '2024-01-15',
-        next_maintenance: '2024-07-15',
-        notes: 'Aspiradora de alta potencia para limpieza profunda'
+        id: 'PED-2025-001',
+        type: 'brand_to_supplier',
+        from: 'La Jungla Central',
+        to: 'Textiles Deportivos SL',
+        date: '2025-01-10',
+        delivery_date: '2025-01-15',
+        estimated_delivery: '2025-01-15',
+        status: 'delivered',
+        amount: 465.00,
+        created_by: 'Beni Morales',
+        items: [
+          { 
+            product_id: 1, 
+            product_name: 'Camisetas La Jungla', 
+            quantity: 15, 
+            unit_price: 31.00, 
+            total_price: 465.00,
+            available_stock: 25,
+            has_sufficient_stock: true
+          }
+        ],
+        processed_date: '2025-01-10',
+        sent_date: '2025-01-11'
       },
       {
-        id: 2,
-        name: 'Taladro Percutor Bosch',
-        category: 'Mantenimiento',
-        brand: 'Bosch',
-        model: 'GSB 13 RE',
-        serial_number: 'BSH2023002',
-        purchase_date: '2023-03-10',
-        purchase_price: 89.99,
-        current_location: 'sevilla',
-        status: 'in_use',
-        condition: 'good',
-        assigned_to: 'Ana García',
-        last_maintenance: '2024-02-01',
-        next_maintenance: '2024-08-01',
-        notes: 'En uso para mantenimiento general del centro'
+        id: 'PED-2025-002',
+        type: 'brand_to_supplier',
+        from: 'La Jungla Central',
+        to: 'FitEquip España',
+        date: '2025-01-12',
+        delivery_date: '2025-01-25',
+        estimated_delivery: '2025-01-25',
+        status: 'delivered',
+        amount: 875.00,
+        created_by: 'María López',
+        items: [
+          { 
+            product_id: 3, 
+            product_name: 'Mancuernas 5kg', 
+            quantity: 25, 
+            unit_price: 35.00, 
+            total_price: 875.00,
+            available_stock: 3,
+            has_sufficient_stock: false
+          }
+        ],
+        processed_date: '2025-01-11',
+        sent_date: '2025-01-12'
       },
       {
-        id: 3,
-        name: 'Extintor CO2 5kg',
-        category: 'Seguridad',
-        brand: 'Cofem',
-        model: 'CO2-5',
-        serial_number: 'COF2023003',
-        purchase_date: '2023-02-20',
-        purchase_price: 65.00,
-        current_location: 'jerez',
-        status: 'available',
-        condition: 'excellent',
-        last_maintenance: '2024-02-20',
-        next_maintenance: '2025-02-20',
-        notes: 'Extintor para equipos eléctricos'
-      },
-      {
-        id: 4,
-        name: 'Cinta de Correr Reparación',
-        category: 'Deportivo',
-        brand: 'TechnoGym',
-        model: 'Run Race 1400',
-        serial_number: 'TG2022004',
-        purchase_date: '2022-11-05',
-        purchase_price: 2500.00,
-        current_location: 'taller',
-        status: 'maintenance',
-        condition: 'fair',
-        assigned_to: 'José Ruiz',
-        last_maintenance: '2024-01-10',
-        notes: 'En reparación - problema con motor'
-      },
-      {
-        id: 5,
-        name: 'Ordenador Portátil HP',
-        category: 'Oficina',
-        brand: 'HP',
-        model: 'EliteBook 840',
-        serial_number: 'HP2023005',
-        purchase_date: '2023-06-15',
-        purchase_price: 899.00,
-        current_location: 'puerto',
-        status: 'in_use',
-        condition: 'excellent',
-        assigned_to: 'María López',
-        notes: 'Portátil para gestión del centro'
-      },
-      {
-        id: 6,
-        name: 'Mopa Industrial',
-        category: 'Limpieza',
-        brand: 'Vileda',
-        model: 'UltraSpeed Pro',
-        purchase_date: '2023-04-01',
-        purchase_price: 25.50,
-        current_location: 'storage',
-        status: 'lost',
-        condition: 'good',
-        notes: 'Perdida desde hace 2 semanas - última vez vista en Centro Sevilla'
+        id: 'REQ-2025-001',
+        type: 'center_to_brand',
+        from: 'Centro Sevilla',
+        to: 'La Jungla Central',
+        date: new Date().toISOString(),
+        delivery_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+        estimated_delivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'sent',
+        amount: 175.00,
+        created_by: 'Pedro Martín',
+        items: [
+          { 
+            product_id: 3, 
+            product_name: 'Mancuernas 5kg', 
+            quantity: 5, 
+            unit_price: 35.00, 
+            total_price: 175.00,
+            available_stock: 3,
+            has_sufficient_stock: false
+          }
+        ],
+        processed_date: '2025-01-20',
+        sent_date: '2025-01-20'
       }
     ]);
+  };
+
+  // Función para cargar proveedores desde Supabase
+  const loadSuppliersFromSupabase = async () => {
+    try {
+      console.log('🔍 CARGANDO PROVEEDORES DESDE SUPABASE...');
+      const { supabase } = await import('../lib/supabase');
+      
+      const { data: suppliersData, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error cargando proveedores:', error);
+        return;
+      }
+
+      if (suppliersData && suppliersData.length > 0) {
+        const formattedSuppliers = suppliersData.map(supplier => ({
+          id: supplier.id,
+          name: supplier.name,
+          contact_person: supplier.contact_person,
+          email: supplier.email,
+          phone: supplier.phone,
+          address: supplier.address,
+          city: supplier.city,
+          postal_code: supplier.postal_code,
+          country: supplier.country || 'España',
+          type: supplier.type || 'local',
+          category: supplier.category || [],
+          rating: supplier.rating || 0,
+          total_orders: supplier.total_orders || 0,
+          total_amount: supplier.total_amount || 0,
+          last_order_date: supplier.last_order_date,
+          payment_terms: supplier.payment_terms || '30 días',
+          delivery_time: supplier.delivery_time || '3-5 días',
+          active: supplier.active !== false,
+          website: supplier.website,
+          tax_id: supplier.tax_id,
+          notes: supplier.notes
+        }));
+
+        setSuppliers(formattedSuppliers);
+        console.log(`✅ ${formattedSuppliers.length} proveedores cargados desde Supabase`);
+      }
+    } catch (error) {
+      console.error('❌ Error en loadSuppliersFromSupabase:', error);
+    }
+  };
+
+  // Función para cargar herramientas desde Supabase
+  const loadToolsFromSupabase = async () => {
+    try {
+      console.log('🔍 CARGANDO HERRAMIENTAS DESDE SUPABASE...');
+      const { supabase } = await import('../lib/supabase');
+      
+      const { data: toolsData, error } = await supabase
+        .from('tools')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error cargando herramientas:', error);
+        return;
+      }
+
+      if (toolsData && toolsData.length > 0) {
+        const formattedTools = toolsData.map(tool => ({
+          id: tool.id,
+          name: tool.name,
+          category: tool.category,
+          brand: tool.brand,
+          model: tool.model,
+          serial_number: tool.serial_number,
+          purchase_date: tool.purchase_date,
+          purchase_price: tool.purchase_price || 0,
+          current_location: tool.current_location,
+          status: tool.status || 'available',
+          condition: tool.condition || 'excellent',
+          assigned_to: tool.assigned_to,
+          last_maintenance: tool.last_maintenance,
+          next_maintenance: tool.next_maintenance,
+          notes: tool.notes
+        }));
+
+        setTools(formattedTools);
+        console.log(`✅ ${formattedTools.length} herramientas cargadas desde Supabase`);
+      }
+    } catch (error) {
+      console.error('❌ Error en loadToolsFromSupabase:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Las herramientas se cargan desde Supabase en el useEffect principal
 
     // Datos de ejemplo para movimientos de herramientas
     setToolMovements([
@@ -1259,255 +1386,16 @@ const LogisticsManagementSystem: React.FC = () => {
       }
     ]);
 
-    setSuppliers([
-      {
-        id: 1,
-        name: 'Textiles Deportivos SL',
-        contact_person: 'María García Ruiz',
-        email: 'maria.garcia@textiles-deportivos.com',
-        phone: '+34 954 123 456',
-        address: 'Calle Industria, 45',
-        city: 'Sevilla',
-        postal_code: '41015',
-        country: 'España',
-        type: 'local',
-        category: ['Vestuario', 'Merchandising'],
-        rating: 4.8,
-        total_orders: 156,
-        total_amount: 89450.50,
-        last_order_date: '2025-01-15',
-        payment_terms: '30 días',
-        delivery_time: '3-5 días',
-        active: true,
-        website: 'www.textiles-deportivos.com',
-        tax_id: 'B41234567',
-        notes: 'Proveedor principal de textiles. Excelente calidad y puntualidad.'
-      },
-      {
-        id: 2,
-        name: 'Equipos Fitness Pro SA',
-        contact_person: 'Juan Carlos Pérez',
-        email: 'comercial@fitness-pro.es',
-        phone: '+34 915 987 654',
-        address: 'Polígono Industrial Las Rozas, Nave 12',
-        city: 'Madrid',
-        postal_code: '28232',
-        country: 'España',
-        type: 'nacional',
-        category: ['Equipamiento', 'Maquinaria'],
-        rating: 4.5,
-        total_orders: 89,
-        total_amount: 234750.00,
-        last_order_date: '2025-01-18',
-        payment_terms: '60 días',
-        delivery_time: '7-10 días',
-        active: true,
-        website: 'www.fitness-pro.es',
-        tax_id: 'A28987654',
-        notes: 'Especialistas en equipamiento pesado. Buen servicio técnico.'
-      },
-      {
-        id: 3,
-        name: 'Global Sports International',
-        contact_person: 'Mike Johnson',
-        email: 'europe@globalsports.com',
-        phone: '+44 20 7123 4567',
-        address: '123 Sports Avenue',
-        city: 'London',
-        postal_code: 'SW1A 1AA',
-        country: 'Reino Unido',
-        type: 'internacional',
-        category: ['Equipamiento', 'Tecnología'],
-        rating: 4.2,
-        total_orders: 34,
-        total_amount: 145320.75,
-        last_order_date: '2025-01-10',
-        payment_terms: '45 días',
-        delivery_time: '14-21 días',
-        active: true,
-        website: 'www.globalsports.com',
-        tax_id: 'GB123456789',
-        notes: 'Proveedor internacional. Productos innovadores pero tiempos de entrega largos.'
-      },
-      {
-        id: 4,
-        name: 'Suplementos Andaluces',
-        contact_person: 'Carmen López',
-        email: 'info@suplementos-and.com',
-        phone: '+34 956 456 789',
-        address: 'Avenida del Puerto, 78',
-        city: 'Cádiz',
-        postal_code: '11006',
-        country: 'España',
-        type: 'local',
-        category: ['Suplementos', 'Nutrición'],
-        rating: 4.7,
-        total_orders: 67,
-        total_amount: 23450.25,
-        last_order_date: '2025-01-20',
-        payment_terms: '15 días',
-        delivery_time: '1-2 días',
-        active: true,
-        website: 'www.suplementos-andaluces.com',
-        tax_id: 'B11456789'
-      },
-      {
-        id: 5,
-        name: 'Limpieza Industrial Jerez',
-        contact_person: 'Antonio Martín',
-        email: 'antonio@limpiezajerez.es',
-        phone: '+34 956 789 123',
-        address: 'Calle Comercio, 23',
-        city: 'Jerez de la Frontera',
-        postal_code: '11403',
-        country: 'España',
-        type: 'local',
-        category: ['Limpieza', 'Mantenimiento'],
-        rating: 4.3,
-        total_orders: 123,
-        total_amount: 15670.80,
-        last_order_date: '2025-01-19',
-        payment_terms: '30 días',
-        delivery_time: '2-3 días',
-        active: true,
-        tax_id: 'B11789123',
-        notes: 'Proveedor local de confianza para productos de limpieza.'
-      }
-    ]);
+    // Los proveedores se cargan desde Supabase en el useEffect principal
 
-    setOrders([
-      {
-        id: 'PED-2025-001',
-        type: 'brand_to_supplier',
-        from: 'La Jungla Central',
-        to: 'Textiles Deportivos SL',
-        date: '2025-01-15',
-        delivery_date: '2025-01-20',
-        estimated_delivery: '2025-01-20',
-        status: 'sent',
-        amount: 465.00,
-        created_by: 'Ana García',
-        items: [
-          { 
-            product_id: 1, 
-            product_name: 'Camiseta La Jungla - Negra', 
-            quantity: 30, 
-            unit_price: 15.50, 
-            total_price: 465.00,
-            available_stock: 25,
-            has_sufficient_stock: false
-          }
-        ],
-        notes: 'Pedido urgente para reposición',
-        sent_date: '2025-01-16'
-      },
-      {
-        id: 'REQ-2025-001',
-        type: 'center_to_brand',
-        from: 'Centro Sevilla',
-        to: 'La Jungla Central',
-        date: '2025-01-18',
-        delivery_date: '2025-01-22',
-        estimated_delivery: '2025-01-22',
-        status: 'pending',
-        amount: 250.00,
-        created_by: 'Carlos Ruiz',
-        items: [
-          { 
-            product_id: 2, 
-            product_name: 'Toallas', 
-            quantity: 10, 
-            unit_price: 8.50, 
-            total_price: 85.00,
-            available_stock: 2,
-            has_sufficient_stock: false
-          },
-          { 
-            product_id: 5, 
-            product_name: 'Desinfectante', 
-            quantity: 20, 
-            unit_price: 8.25, 
-            total_price: 165.00,
-            available_stock: 0,
-            has_sufficient_stock: false
-          }
-        ]
-      },
-      {
-        id: 'PED-2025-002',
-        type: 'brand_to_supplier',
-        from: 'La Jungla Central',
-        to: 'FitEquip España',
-        date: '2025-01-10',
-        delivery_date: '2025-01-25',
-        estimated_delivery: '2025-01-25',
-        status: 'delivered',
-        amount: 875.00,
-        created_by: 'María López',
-        items: [
-          { 
-            product_id: 3, 
-            product_name: 'Mancuernas 5kg', 
-            quantity: 25, 
-            unit_price: 35.00, 
-            total_price: 875.00,
-            available_stock: 3,
-            has_sufficient_stock: false
-          }
-        ],
-        processed_date: '2025-01-11',
-        sent_date: '2025-01-12'
-      },
-      {
-        id: 'REQ-2025-002',
-        type: 'center_to_brand',
-        from: 'Centro Jerez',
-        to: 'La Jungla Central',
-        date: '2025-01-19',
-        delivery_date: '2025-01-23',
-        estimated_delivery: '2025-01-23',
-        status: 'sent',
-        amount: 175.00,
-        created_by: 'Pedro Martín',
-        items: [
-          { 
-            product_id: 3, 
-            product_name: 'Mancuernas 5kg', 
-            quantity: 5, 
-            unit_price: 35.00, 
-            total_price: 175.00,
-            available_stock: 3,
-            has_sufficient_stock: false
-          }
-        ],
-        processed_date: '2025-01-20',
-        sent_date: '2025-01-20'
-      },
-      {
-        id: 'REQ-2025-003',
-        type: 'center_to_brand',
-        from: 'Centro Sevilla',
-        to: 'La Jungla Central',
-        date: new Date().toISOString(),
-        delivery_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        estimated_delivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'pending',
-        amount: 700.00,
-        created_by: 'Carlos Ruiz - Encargado Sevilla',
-        items: [
-          { 
-            product_id: 4, 
-            product_name: 'Gomas Elásticas', 
-            quantity: 20, 
-            unit_price: 35.00, 
-            total_price: 700.00,
-            available_stock: 15,
-            has_sufficient_stock: false
-          }
-        ],
-        notes: 'Pedido urgente - Stock insuficiente en centro'
-      }
-    ]);
+    // Cargar pedidos desde Supabase
+    loadOrdersFromSupabase();
+    
+    // Cargar proveedores desde Supabase
+    loadSuppliersFromSupabase();
+    
+    // Cargar herramientas desde Supabase
+    loadToolsFromSupabase();
 
     // Notificaciones de ejemplo para el director de logística
     setNotifications([
