@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Package, ShoppingCart, Settings, Building, Activity, FileText, AlertTriangle, Edit, Save, X, RefreshCw, User, Calendar, Clock, MapPin, Phone, Mail, Star, TrendingUp, TrendingDown, Minus, Trash2, Bell } from 'lucide-react';
+import { Package, Search, Filter, Plus, Edit, Eye, Trash2, X, Settings, Bell, AlertTriangle, Clock, MapPin, BarChart3, ShoppingCart, Building, Activity, FileText } from 'lucide-react';
 import InventoryKPIDashboard from './logistics/InventoryKPIDashboard';
 import RealInventoryTable from './logistics/RealInventoryTable';
 import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystem';
@@ -550,8 +550,8 @@ const LogisticsManagementSystem: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [centerFilter, setCenterFilter] = useState('all');
-  const [selectedCenterForInventory, setSelectedCenterForInventory] = useState<number | 'all'>('all');
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
@@ -601,7 +601,6 @@ const LogisticsManagementSystem: React.FC = () => {
     }
   ]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showSupplierDetailModal, setShowSupplierDetailModal] = useState(false);
@@ -651,279 +650,25 @@ const LogisticsManagementSystem: React.FC = () => {
       unit_price: number;
     }>
   });
-
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Vestuario',
     size: '',
     quantity: 0,
-    min_stock: 5,
-    max_stock: 50,
+    min_stock: 0,
+    max_stock: 0,
     purchase_price: 0,
     sale_price: 0,
     supplier: '',
-    center: 'sevilla' as 'central' | 'sevilla' | 'jerez' | 'puerto',
+    center: 'sevilla' as 'sevilla' | 'jerez' | 'puerto' | 'central',
     location: ''
   });
 
-  const [selectedProductType, setSelectedProductType] = useState('');
-  const [productMode, setProductMode] = useState<'predefined' | 'custom'>('predefined');
-
-  // Función para eliminar item del inventario
-  const handleDeleteItem = async (itemId: number) => {
-    try {
-      // Si es un item de prueba (ID > 99000), solo eliminar del estado local
-      if (itemId >= 99000) {
-        setInventoryItems(prevItems => {
-          const updatedItems = prevItems.filter(item => item.id !== itemId);
-          console.log(`🗑️ Item de prueba ${itemId} eliminado localmente. Items restantes: ${updatedItems.length}`);
-          return updatedItems;
-        });
-        return;
-      }
-
-      // Para items reales, eliminar de Supabase
-      const { supabase } = await import('../lib/supabase');
-      const { error } = await supabase
-        .from('inventory_items')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) {
-        console.error('❌ Error eliminando item de Supabase:', error);
-        alert('Error al eliminar el item. Por favor, inténtalo de nuevo.');
-        return;
-      }
-
-      // Si se eliminó correctamente de Supabase, actualizar estado local
-      setInventoryItems(prevItems => {
-        const updatedItems = prevItems.filter(item => item.id !== itemId);
-        console.log(`🗑️ Item ${itemId} eliminado de Supabase y estado local. Items restantes: ${updatedItems.length}`);
-        return updatedItems;
-      });
-
-    } catch (error) {
-      console.error('❌ Error en handleDeleteItem:', error);
-      alert('Error al eliminar el item. Por favor, inténtalo de nuevo.');
-    }
-  };
-
-  // Función para eliminar pedido
-  const handleDeleteOrder = async (orderId: string) => {
-    try {
-      const { supabase } = await import('../lib/supabase');
-      
-      // Eliminar de la tabla orders en Supabase
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', orderId);
-
-      if (error) {
-        console.error('❌ Error eliminando pedido de Supabase:', error);
-        alert('Error al eliminar el pedido. Por favor, inténtalo de nuevo.');
-        return;
-      }
-
-      // Si se eliminó correctamente de Supabase, actualizar estado local
-      setOrders(prevOrders => {
-        const updatedOrders = prevOrders.filter(order => order.id !== orderId);
-        console.log(`🗑️ Pedido ${orderId} eliminado de Supabase y estado local. Pedidos restantes: ${updatedOrders.length}`);
-        return updatedOrders;
-      });
-
-    } catch (error) {
-      console.error('❌ Error en handleDeleteOrder:', error);
-      alert('Error al eliminar el pedido. Por favor, inténtalo de nuevo.');
-    }
-  };
-
-  // Función para eliminar proveedor
-  const handleDeleteSupplier = async (supplierId: number) => {
-    try {
-      const { supabase } = await import('../lib/supabase');
-      
-      // Eliminar de la tabla suppliers en Supabase
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', supplierId);
-
-      if (error) {
-        console.error('❌ Error eliminando proveedor de Supabase:', error);
-        alert('Error al eliminar el proveedor. Por favor, inténtalo de nuevo.');
-        return;
-      }
-
-      // Si se eliminó correctamente de Supabase, actualizar estado local
-      setSuppliers(prevSuppliers => {
-        const updatedSuppliers = prevSuppliers.filter(supplier => supplier.id !== supplierId);
-        console.log(`🗑️ Proveedor ${supplierId} eliminado de Supabase y estado local. Proveedores restantes: ${updatedSuppliers.length}`);
-        return updatedSuppliers;
-      });
-
-    } catch (error) {
-      console.error('❌ Error en handleDeleteSupplier:', error);
-      alert('Error al eliminar el proveedor. Por favor, inténtalo de nuevo.');
-    }
-  };
-
-  // Función para eliminar herramienta
-  const handleDeleteTool = async (toolId: number) => {
-    try {
-      const { supabase } = await import('../lib/supabase');
-      
-      // Intentar eliminar de la tabla tools en Supabase (si existe)
-      const { error } = await supabase
-        .from('tools')
-        .delete()
-        .eq('id', toolId);
-
-      if (error && !error.message.includes('relation "tools" does not exist')) {
-        console.error('❌ Error eliminando herramienta de Supabase:', error);
-        alert('Error al eliminar la herramienta. Por favor, inténtalo de nuevo.');
-        return;
-      }
-
-      // Si se eliminó correctamente de Supabase o la tabla no existe, actualizar estado local
-      setTools(prevTools => {
-        const updatedTools = prevTools.filter(tool => tool.id !== toolId);
-        console.log(`🗑️ Herramienta ${toolId} eliminada. Herramientas restantes: ${updatedTools.length}`);
-        return updatedTools;
-      });
-
-    } catch (error) {
-      console.error('❌ Error en handleDeleteTool:', error);
-      // Aún así eliminar del estado local
-      setTools(prevTools => {
-        const updatedTools = prevTools.filter(tool => tool.id !== toolId);
-        console.log(`🗑️ Herramienta ${toolId} eliminada localmente. Herramientas restantes: ${updatedTools.length}`);
-        return updatedTools;
-      });
-    }
-  };
-
-  // Productos predefinidos por categoría
-  const productsByCategory = {
-    'Vestuario': [
-      { name: 'CHÁNDAL', sizes: ['S', 'M', 'L', 'XL'], price: 35.00 },
-      { name: 'SUDADERA FRÍO', sizes: ['S', 'M', 'L', 'XL'], price: 28.00 },
-      { name: 'CHALECO FRÍO', sizes: ['S', 'M', 'L', 'XL'], price: 25.00 },
-      { name: 'PANTALÓN CORTO', sizes: ['S', 'M', 'L', 'XL'], price: 20.00 },
-      { name: 'POLO VERDE', sizes: ['S', 'M', 'L', 'XL'], price: 18.00 },
-      { name: 'CAMISETA ENTRENAMIENTO PERSONAL', sizes: ['S', 'M', 'L', 'XL'], price: 15.00 },
-      { name: 'TOALLAS MICROFIBRA', sizes: ['70x140cm'], price: 8.50 }
-    ],
-    'Mancuernas': [
-      { name: 'Mancuernas Hexagonales', sizes: ['1kg', '2kg', '3kg', '4kg', '5kg', '6kg', '7kg', '8kg', '9kg', '10kg'], price: 28.00 },
-      { name: 'Mancuernas Ajustables', sizes: ['5-25kg', '10-40kg'], price: 150.00 }
-    ],
-    'Cardio': [
-      { name: 'Cinta de Correr', sizes: ['Profesional'], price: 2500.00 },
-      { name: 'Bicicleta Estática', sizes: ['Spinning', 'Reclinada'], price: 800.00 },
-      { name: 'Elíptica', sizes: ['Profesional'], price: 1200.00 }
-    ],
-    'Gomas': [
-      { name: 'Gomas Elásticas', sizes: ['Resistencia Baja', 'Resistencia Media', 'Resistencia Alta'], price: 10.00 },
-      { name: 'Bandas de Resistencia', sizes: ['Set Completo'], price: 25.00 }
-    ],
-    'Kettlebells': [
-      { name: 'Kettlebell', sizes: ['8kg', '12kg', '16kg', '20kg', '24kg', '28kg', '32kg'], price: 45.00 }
-    ],
-    'Merchandising': [
-      { name: 'Botella La Jungla', sizes: ['500ml', '750ml', '1L'], price: 4.50 },
-      { name: 'Toalla La Jungla', sizes: ['Pequeña', 'Grande'], price: 12.00 }
-    ],
-    'Consumibles': [
-      { name: 'Papel Higiénico', sizes: ['Pack 12 rollos'], price: 18.00 },
-      { name: 'Jabón de Manos', sizes: ['5L'], price: 15.00 },
-      { name: 'Desinfectante', sizes: ['1L', '5L'], price: 12.00 }
-    ],
-    'Limpieza': [
-      { name: 'Desinfectante Virucida', sizes: ['1L', '5L'], price: 15.00 },
-      { name: 'Limpiador Multiusos', sizes: ['5L'], price: 12.00 },
-      { name: 'Bayetas Microfibra', sizes: ['Pack 10'], price: 8.00 }
-    ],
-    'Discos': [
-      { name: 'Discos Olímpicos', sizes: ['1.25kg', '2.5kg', '5kg', '10kg', '15kg', '20kg', '25kg'], price: 35.00 },
-      { name: 'Discos Bumper', sizes: ['5kg', '10kg', '15kg', '20kg', '25kg'], price: 45.00 },
-      { name: 'Discos Funcionales', sizes: ['1.25kg', '2.5kg', '5kg'], price: 25.00 }
-    ],
-    'Barras': [
-      { name: 'Barra Olímpica', sizes: ['20kg', '15kg'], price: 180.00 },
-      { name: 'Barra Funcional', sizes: ['10kg', '15kg'], price: 120.00 },
-      { name: 'Barra EZ', sizes: ['Estándar'], price: 85.00 }
-    ],
-    'Pelotas': [
-      { name: 'Pelota Medicinal', sizes: ['3kg', '5kg', '7kg', '9kg', '10kg', '12kg', '15kg'], price: 35.00 },
-      { name: 'Pelota Pilates', sizes: ['55cm', '65cm', '75cm'], price: 15.00 },
-      { name: 'Pelota Slam', sizes: ['6kg', '8kg', '10kg', '12kg'], price: 40.00 }
-    ],
-    'Sacos': [
-      { name: 'Saco Búlgaro', sizes: ['10kg', '15kg', '20kg', '25kg'], price: 65.00 },
-      { name: 'Saco de Arena', sizes: ['15kg', '20kg', '30kg'], price: 45.00 }
-    ],
-    'Funcional': [
-      { name: 'TRX Suspension', sizes: ['Profesional', 'Home'], price: 180.00 },
-      { name: 'Bosu Ball', sizes: ['Estándar'], price: 150.00 },
-      { name: 'Paralelas', sizes: ['Bajas', 'Altas'], price: 85.00 },
-      { name: 'Escaleras Agilidad', sizes: ['4m', '6m'], price: 35.00 }
-    ],
-    'Accesorios': [
-      { name: 'Esterillas Yoga', sizes: ['6mm', '8mm', '10mm'], price: 25.00 },
-      { name: 'Rodillos Foam', sizes: ['30cm', '45cm', '60cm'], price: 18.00 },
-      { name: 'Combas', sizes: ['Básica', 'Profesional', 'Con Peso'], price: 12.00 },
-      { name: 'Guantes Entrenamiento', sizes: ['S', 'M', 'L', 'XL'], price: 15.00 }
-    ],
-    'Instalaciones': [
-      { name: 'Espejo Gimnasio', sizes: ['1x2m', '2x3m'], price: 120.00 },
-      { name: 'Suelo Caucho', sizes: ['m²'], price: 35.00 },
-      { name: 'Rack Multiestación', sizes: ['Básico', 'Profesional'], price: 1500.00 }
-    ]
-  };
-
   useEffect(() => {
+    // Cargar inventario real desde Supabase
     const loadInventoryFromSupabase = async () => {
       try {
-        console.log('🔍 INICIANDO CARGA DE INVENTARIO DESDE SUPABASE...');
-        
-        // PRIMERO: Añadir items de prueba para Central
-        const testCentralItems = [
-          {
-            id: 99001,
-            name: 'CHÁNDAL LA JUNGLA - CENTRAL',
-            category: 'Vestuario',
-            size: 'M',
-            quantity: 50,
-            min_stock: 10,
-            max_stock: 100,
-            purchase_price: 35.00,
-            sale_price: 60.00,
-            supplier: 'Textiles Deportivos Central',
-            center: 'central' as const,
-            location: 'Almacén A1',
-            last_updated: new Date().toISOString(),
-            status: 'in_stock' as const
-          },
-          {
-            id: 99002,
-            name: 'MANCUERNAS 5KG - STOCK CENTRAL',
-            category: 'Material Deportivo',
-            size: '5kg',
-            quantity: 25,
-            min_stock: 5,
-            max_stock: 50,
-            purchase_price: 28.00,
-            sale_price: 45.00,
-            supplier: 'Deportes Centrales SL',
-            center: 'central' as const,
-            location: 'Almacén B2',
-            last_updated: new Date().toISOString(),
-            status: 'in_stock' as const
-          }
-        ];
-        
-        console.log('🧪 AÑADIENDO ITEMS DE PRUEBA PARA CENTRAL:', testCentralItems.length);
+        console.log(' Cargando inventario desde Supabase...');
         
         // Importar supabase
         const { supabase } = await import('../lib/supabase');
@@ -931,26 +676,15 @@ const LogisticsManagementSystem: React.FC = () => {
         const { data, error } = await supabase
           .from('inventory_items')
           .select('*')
-          .in('center_id', [9, 10, 11, 12]);
+          .in('center_id', [9, 10, 11]);
 
         if (error) {
-          console.error('❌ Error cargando inventario:', error);
+          console.error(' Error cargando inventario:', error);
           return;
         }
 
         if (data && data.length > 0) {
-          console.log(`✅ ${data.length} items cargados desde Supabase`);
-          
-          // Debug: mostrar center_ids únicos encontrados
-          const uniqueCenterIds = [...new Set(data.map(item => item.center_id))];
-          console.log('🏢 Center IDs encontrados:', uniqueCenterIds.sort());
-          
-          // Debug: contar items por centro
-          const itemsByCenter = data.reduce((acc, item) => {
-            acc[item.center_id] = (acc[item.center_id] || 0) + 1;
-            return acc;
-          }, {});
-          console.log('📊 Items por centro:', itemsByCenter);
+          console.log(` ${data.length} items cargados desde Supabase`);
           
           // Convertir datos de Supabase al formato del componente
           const convertedItems: InventoryItem[] = data.map(item => ({
@@ -964,29 +698,24 @@ const LogisticsManagementSystem: React.FC = () => {
             purchase_price: item.precio_compra || item.cost_per_unit || 0,
             sale_price: item.precio_venta || item.selling_price || 0,
             supplier: item.proveedor || item.supplier || 'Sin proveedor',
-            center: (item.center_id === 9 ? 'sevilla' : 
+            center: item.center_id === 9 ? 'sevilla' : 
                    item.center_id === 10 ? 'jerez' : 
-                   item.center_id === 11 ? 'puerto' : 'central') as 'central' | 'sevilla' | 'jerez' | 'puerto',
+                   item.center_id === 11 ? 'puerto' : 'central',
             location: item.ubicacion || item.location || 'Sin ubicación',
             last_updated: item.updated_at || new Date().toISOString(),
             status: (item.cantidad_actual || 0) === 0 ? 'out_of_stock' : 
                    (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
           }));
 
-          // Combinar items de Supabase con items de prueba
-          const allItems = [...convertedItems, ...testCentralItems];
-          setInventoryItems(allItems);
-          console.log('📦 INVENTARIO CARGADO CORRECTAMENTE:', allItems.length, 'items (incluyendo', testCentralItems.length, 'items de prueba para Central)');
-          console.log('🧪 Items de prueba añadidos:', testCentralItems.map(item => ({ name: item.name, center: item.center })));
-          console.log('🏢 CENTROS EN ALLITEMS:', [...new Set(allItems.map(item => item.center))]);
+          setInventoryItems(convertedItems);
+          console.log(' Inventario cargado correctamente:', convertedItems.length, 'items');
         } else {
-          console.log('⚠️ No se encontraron datos de inventario en Supabase');
+          console.log(' No se encontraron datos de inventario en Supabase');
         }
       } catch (error) {
-        console.error('❌ Error conectando a Supabase:', error);
+        console.error(' Error conectando a Supabase:', error);
       }
     };
-    
     loadInventoryFromSupabase();
   }, []);
 
@@ -1547,7 +1276,6 @@ const LogisticsManagementSystem: React.FC = () => {
         urgent: false
       }
     ]);
-
   }, []);
 
   const filteredOrders = orders.filter(order => {
@@ -2331,36 +2059,18 @@ const LogisticsManagementSystem: React.FC = () => {
               </select>
               <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}>
                 <option value="all">Todas las categorías</option>
-                <optgroup label="📦 Material Deportivo">
-                  <option value="Mancuernas">🏋️ Mancuernas</option>
-                  <option value="Cardio">🏃 Cardio</option>
-                  <option value="Discos">💿 Discos</option>
-                  <option value="Kettlebells">🔔 Kettlebells</option>
-                  <option value="Gomas">🎯 Gomas</option>
-                  <option value="Barras">📏 Barras</option>
-                  <option value="Pelotas">⚽ Pelotas</option>
-                  <option value="Sacos">🥊 Sacos</option>
-                  <option value="Funcional">🤸 Funcional</option>
-                  <option value="Accesorios">🔧 Accesorios</option>
-                </optgroup>
-                <optgroup label="🏢 Categorías Empresariales">
-                  <option value="Vestuario">👕 Vestuario</option>
-                  <option value="Merchandising">🎁 Merchandising</option>
-                  <option value="Consumibles">🧽 Consumibles</option>
-                  <option value="Instalaciones">🏢 Instalaciones</option>
-                  <option value="Limpieza">🧼 Limpieza</option>
-                </optgroup>
+                <option value="Vestuario">Vestuario</option>
+                <option value="Material Deportivo">Material Deportivo</option>
+                <option value="Merchandising">Merchandising</option>
+                <option value="Instalaciones">Instalaciones</option>
+                <option value="Consumibles">Consumibles</option>
               </select>
-              <select 
-                value={selectedCenterForInventory} 
-                onChange={(e) => setSelectedCenterForInventory(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
-                style={{ padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}
-              >
+              <select value={centerFilter} onChange={(e) => setCenterFilter(e.target.value)} style={{ padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}>
                 <option value="all">Todos los centros</option>
-                <option value={12}>🏢 Central (Marca)</option>
-                <option value={9}>🏪 Sevilla</option>
-                <option value={10}>🏪 Jerez</option>
-                <option value={11}>🏪 Puerto</option>
+                <option value="central">🏢 Central</option>
+                <option value="sevilla">🏪 Sevilla</option>
+                <option value="jerez">🏪 Jerez</option>
+                <option value="puerto">🏪 Puerto</option>
               </select>
             </>
           )}
@@ -2428,14 +2138,7 @@ const LogisticsManagementSystem: React.FC = () => {
 
         {/* Pestaña Inventario */}
         {activeTab === 'inventory' && currentUser.permissions.canManageInventory && (
-          <RealInventoryTable 
-            selectedCenter={selectedCenterForInventory}
-            searchTerm={searchTerm}
-            statusFilter={statusFilter}
-            categoryFilter={categoryFilter}
-            inventoryItems={inventoryItems}
-            onDeleteItem={handleDeleteItem}
-          />
+          <RealInventoryTable />
         )}
 
         {/* Pestaña Revisión Trimestral */}
@@ -2518,15 +2221,7 @@ const LogisticsManagementSystem: React.FC = () => {
               </select>
             </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px', 
-              padding: '1rem', 
-              backgroundColor: '#f9fafb', 
-              fontWeight: '600', 
-              fontSize: '0.875rem',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
               <div>Nº Pedido</div>
               <div>Tipo</div>
               <div>De → Para</div>
@@ -2534,17 +2229,18 @@ const LogisticsManagementSystem: React.FC = () => {
               <div>Entrega</div>
               <div>Importe</div>
               <div>Estado</div>
-              <div>Acciones</div>
             </div>
             
             {filteredOrders.map((order: Order) => (
             <div 
               key={order.id} 
+              onClick={() => handleOrderClick(order)}
               style={{ 
                 display: 'grid', 
-                gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px', 
+                gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr', 
                 padding: '1rem', 
                 borderBottom: '1px solid #f3f4f6', 
+                cursor: 'pointer',
                 transition: 'background-color 0.2s'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -2594,33 +2290,6 @@ const LogisticsManagementSystem: React.FC = () => {
                    order.status === 'pending' ? '⏳ Pendiente' : 
                    order.status === 'cancelled' ? '❌ Cancelado' : '❓ Desconocido'}
                 </span>
-              </div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Evitar que se abra el modal de detalle
-                    const confirmDelete = window.confirm(
-                      `¿Estás seguro de que quieres eliminar el pedido "${order.id}"?\n\nEsta acción no se puede deshacer.`
-                    );
-                    if (confirmDelete) {
-                      handleDeleteOrder(order.id);
-                      console.log(`✅ Pedido "${order.id}" eliminado correctamente`);
-                    }
-                  }}
-                  style={{
-                    padding: '4px',
-                    backgroundColor: '#fef2f2',
-                    color: '#dc2626',
-                    border: '1px solid #fecaca',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Eliminar pedido"
-                >
-                  <Trash2 size={14} />
-                </button>
               </div>
             </div>
             ))}
@@ -2771,31 +2440,6 @@ const LogisticsManagementSystem: React.FC = () => {
                   >
                     📋 Historial
                   </button>
-                  <button
-                    onClick={() => {
-                      const confirmDelete = window.confirm(
-                        `¿Estás seguro de que quieres eliminar la herramienta "${tool.name}"?\n\nEsta acción no se puede deshacer.`
-                      );
-                      if (confirmDelete) {
-                        handleDeleteTool(tool.id);
-                        console.log(`✅ Herramienta "${tool.name}" eliminada correctamente`);
-                      }
-                    }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#fef2f2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    title="Eliminar herramienta"
-                  >
-                    <Trash2 size={12} />
-                  </button>
                 </div>
               </div>
             ))}
@@ -2846,23 +2490,24 @@ const LogisticsManagementSystem: React.FC = () => {
 
             {/* Tabla de Proveedores */}
             <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr 80px', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
                 <div>Proveedor</div>
                 <div>Tipo</div>
                 <div>Contacto</div>
                 <div>Rating</div>
                 <div>Total Pedidos</div>
-                <div>Acciones</div>
               </div>
               
               {filteredSuppliers.map((supplier: Supplier) => (
                 <div 
                   key={supplier.id} 
+                  onClick={() => handleSupplierClick(supplier)}
                   style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr 80px', 
+                    gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', 
                     padding: '1rem', 
                     borderBottom: '1px solid #f3f4f6', 
+                    cursor: 'pointer',
                     transition: 'background-color 0.2s'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -2899,33 +2544,6 @@ const LogisticsManagementSystem: React.FC = () => {
                   <div>
                     <div style={{ fontWeight: '600' }}>{supplier.total_orders}</div>
                     <div style={{ fontSize: '0.75rem', color: '#059669' }}>€{supplier.total_amount.toLocaleString()}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Evitar que se abra el modal de detalle
-                        const confirmDelete = window.confirm(
-                          `¿Estás seguro de que quieres eliminar el proveedor "${supplier.name}"?\n\nEsta acción no se puede deshacer.`
-                        );
-                        if (confirmDelete) {
-                          handleDeleteSupplier(supplier.id);
-                          console.log(`✅ Proveedor "${supplier.name}" eliminado correctamente`);
-                        }
-                      }}
-                      style={{
-                        padding: '4px',
-                        backgroundColor: '#fef2f2',
-                        color: '#dc2626',
-                        border: '1px solid #fecaca',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                      title="Eliminar proveedor"
-                    >
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 </div>
               ))}
@@ -3066,231 +2684,45 @@ const LogisticsManagementSystem: React.FC = () => {
 
         {/* Modal Nuevo Producto */}
         {showNewProductModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflow: 'auto' }}>
-            <div style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '16px', 
-              padding: '2rem', 
-              width: '90%', 
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              margin: '2rem',
-              position: 'relative'
-            }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
               <h2 style={{ margin: '0 0 1.5rem 0' }}>Nuevo Producto</h2>
               
               <div style={{ display: 'grid', gap: '1rem' }}>
-                {/* Selector de Modo */}
-                <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
-                    🎯 Tipo de Producto
-                  </label>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="productMode"
-                        value="predefined"
-                        checked={productMode === 'predefined'}
-                        onChange={(e) => {
-                          setProductMode('predefined');
-                          setNewProduct(prev => ({ ...prev, name: '', category: 'Vestuario', size: '' }));
-                          setSelectedProductType('');
-                        }}
-                      />
-                      <span>📦 Producto Predefinido</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="productMode"
-                        value="custom"
-                        checked={productMode === 'custom'}
-                        onChange={(e) => {
-                          setProductMode('custom');
-                          setNewProduct(prev => ({ ...prev, name: '', category: '', size: '' }));
-                          setSelectedProductType('');
-                        }}
-                      />
-                      <span>✏️ Producto Personalizado</span>
-                    </label>
-                  </div>
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                    {productMode === 'predefined' 
-                      ? 'Selecciona de productos conocidos con precios y tallas predefinidas'
-                      : 'Crea un producto completamente nuevo con nombre y especificaciones personalizadas'
-                    }
-                  </p>
-                </div>
-
-                {/* Campo de nombre - Solo visible en modo custom */}
-                {productMode === 'custom' && (
-                  <input
-                    type="text"
-                    placeholder="Nombre del producto (ej: Camiseta Técnica Personalizada)"
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
-                    style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-                  />
-                )}
+                <input
+                  type="text"
+                  placeholder="Nombre del producto"
+                  value={newProduct.name}
+                  onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
+                  style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                />
                 
-                <div style={{ display: 'grid', gridTemplateColumns: productMode === 'predefined' ? '1fr 1fr' : '1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <select
                     value={newProduct.category}
-                    onChange={(e) => {
-                      const category = e.target.value;
-                      setNewProduct(prev => ({ ...prev, category }));
-                      setSelectedProductType(''); // Reset product type when category changes
-                    }}
-                    style={{ 
-                      padding: '0.75rem', 
-                      border: '1px solid #d1d5db', 
-                      borderRadius: '8px',
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}
+                    onChange={(e) => setNewProduct(prev => ({ ...prev, category: e.target.value }))}
+                    style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   >
-                    <option value="">Seleccionar categoría...</option>
-                    {productMode === 'predefined' ? (
-                      <>
-                        <optgroup label="📦 Material Deportivo">
-                          <option value="Mancuernas">🏋️ Mancuernas</option>
-                          <option value="Cardio">🏃 Cardio</option>
-                          <option value="Discos">💿 Discos</option>
-                          <option value="Kettlebells">🔔 Kettlebells</option>
-                          <option value="Gomas">🎯 Gomas</option>
-                          <option value="Barras">📏 Barras</option>
-                          <option value="Pelotas">⚽ Pelotas</option>
-                          <option value="Sacos">🥊 Sacos</option>
-                          <option value="Funcional">🤸 Funcional</option>
-                          <option value="Accesorios">🔧 Accesorios</option>
-                        </optgroup>
-                        <optgroup label="🏢 Categorías Empresariales">
-                          <option value="Vestuario">👕 Vestuario</option>
-                          <option value="Merchandising">🎁 Merchandising</option>
-                          <option value="Consumibles">🧽 Consumibles</option>
-                          <option value="Instalaciones">🏢 Instalaciones</option>
-                          <option value="Limpieza">🧼 Limpieza</option>
-                        </optgroup>
-                      </>
-                    ) : (
-                      <>
-                        <optgroup label="📦 Material Deportivo">
-                          <option value="Mancuernas">🏋️ Mancuernas</option>
-                          <option value="Cardio">🏃 Cardio</option>
-                          <option value="Discos">💿 Discos</option>
-                          <option value="Kettlebells">🔔 Kettlebells</option>
-                          <option value="Gomas">🎯 Gomas</option>
-                          <option value="Barras">📏 Barras</option>
-                          <option value="Pelotas">⚽ Pelotas</option>
-                          <option value="Sacos">🥊 Sacos</option>
-                          <option value="Funcional">🤸 Funcional</option>
-                          <option value="Accesorios">🔧 Accesorios</option>
-                        </optgroup>
-                        <optgroup label="🏢 Categorías Empresariales">
-                          <option value="Vestuario">👕 Vestuario</option>
-                          <option value="Merchandising">🎁 Merchandising</option>
-                          <option value="Consumibles">🧽 Consumibles</option>
-                          <option value="Instalaciones">🏢 Instalaciones</option>
-                          <option value="Limpieza">🧼 Limpieza</option>
-                        </optgroup>
-                        <optgroup label="🏢 Otras Categorías">
-                          <option value="Oficina">📄 Oficina</option>
-                          <option value="Tecnología">💻 Tecnología</option>
-                          <option value="Otros">📦 Otros</option>
-                        </optgroup>
-                      </>
-                    )}
+                    <option value="Vestuario">👕 Vestuario</option>
+                    <option value="Material Deportivo">🏋️ Material Deportivo</option>
+                    <option value="Merchandising">🎁 Merchandising</option>
+                    <option value="Instalaciones">🏢 Instalaciones</option>
+                    <option value="Consumibles">🧽 Consumibles</option>
                   </select>
                   
-                  {newProduct.category && productMode === 'predefined' && (
-                    <select
-                      value={selectedProductType}
-                      onChange={(e) => {
-                        const productType = e.target.value;
-                        setSelectedProductType(productType);
-                        const product = productsByCategory[newProduct.category as keyof typeof productsByCategory]?.find(p => p.name === productType);
-                        if (product) {
-                          setNewProduct(prev => ({ 
-                            ...prev, 
-                            name: product.name,
-                            purchase_price: product.price,
-                            size: '' // Reset size when product changes
-                          }));
-                        }
-                      }}
-                      style={{ 
-                        padding: '0.75rem', 
-                        border: '1px solid #d1d5db', 
-                        borderRadius: '8px',
-                        width: '100%',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="">Seleccionar producto...</option>
-                      {productsByCategory[newProduct.category as keyof typeof productsByCategory]?.map(product => (
-                        <option key={product.name} value={product.name}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <input
+                    type="text"
+                    placeholder="Talla/Tamaño (ej: M, L)"
+                    value={newProduct.size}
+                    onChange={(e) => setNewProduct(prev => ({ ...prev, size: e.target.value }))}
+                    style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                  />
                 </div>
-
-                {/* Campo de talla/tamaño */}
-                {((productMode === 'predefined' && selectedProductType) || productMode === 'custom') && (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
-                      📏 Talla/Tamaño
-                    </label>
-                    {productMode === 'predefined' ? (
-                      <select
-                        value={newProduct.size}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, size: e.target.value }))}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem', 
-                          border: '1px solid #d1d5db', 
-                          borderRadius: '8px',
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        <option value="">Seleccionar talla/tamaño...</option>
-                        {productsByCategory[newProduct.category as keyof typeof productsByCategory]
-                          ?.find(p => p.name === selectedProductType)
-                          ?.sizes.map(size => (
-                            <option key={size} value={size}>{size}</option>
-                          ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder="Ej: M, L, 5kg, 750ml, Pack 10..."
-                        value={newProduct.size}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, size: e.target.value }))}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem', 
-                          border: '1px solid #d1d5db', 
-                          borderRadius: '8px',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
 
                 <select
                   value={newProduct.center}
                   onChange={(e) => setNewProduct(prev => ({ ...prev, center: e.target.value as any }))}
-                  style={{ 
-                    padding: '0.75rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '8px',
-                    width: '100%',
-                    boxSizing: 'border-box'
-                  }}
+                  style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                 >
                   <option value="sevilla">🏪 Sevilla</option>
                   <option value="jerez">🏪 Jerez</option>

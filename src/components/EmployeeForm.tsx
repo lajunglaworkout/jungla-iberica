@@ -42,7 +42,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     { id: 'laboral', label: '💼 Datos Laborales' },
     { id: 'bancario', label: '💳 Datos Bancarios' },
     { id: 'academico', label: '🎓 Formación' },
-    { id: 'uniforme', label: '👕 Uniformes' },
+    { id: 'vestuario', label: '🏃 Vestuario La Jungla' },
     { id: 'documentos', label: '📄 Documentos' }
   ];
 
@@ -535,59 +535,108 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
             </div>
           )}
 
-          {/* TAB: Uniformes */}
-          {activeTab === 'uniforme' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+
+          {/* TAB: Vestuario La Jungla */}
+          {activeTab === 'vestuario' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
               <div>
-                <label style={labelStyle}>Talla Camiseta *</label>
+                <label style={labelStyle}>🧥 Chándal</label>
                 <select
-                  value={formData.talla_camiseta || ''}
-                  onChange={(e) => setFormData({...formData, talla_camiseta: e.target.value as any})}
+                  value={formData.vestuario_chandal || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_chandal: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
                   style={inputStyle}
-                  required
                 >
-                  <option value="">Seleccionar...</option>
-                  <option value="XS">XS</option>
+                  <option value="">Sin asignar</option>
                   <option value="S">S</option>
                   <option value="M">M</option>
                   <option value="L">L</option>
                   <option value="XL">XL</option>
-                  <option value="XXL">XXL</option>
-                  <option value="XXXL">XXXL</option>
                 </select>
               </div>
 
               <div>
-                <label style={labelStyle}>Talla Pantalón *</label>
+                <label style={labelStyle}>🧥 Sudadera Frío</label>
                 <select
-                  value={formData.talla_pantalon || ''}
-                  onChange={(e) => setFormData({...formData, talla_pantalon: e.target.value})}
-                  style={inputStyle}
-                  required
-                >
-                  <option value="">Seleccionar...</option>
-                  {[36, 38, 40, 42, 44, 46, 48, 50, 52].map(size => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Talla Chaquetón</label>
-                <select
-                  value={formData.talla_chaqueton || ''}
-                  onChange={(e) => setFormData({...formData, talla_chaqueton: e.target.value as any})}
+                  value={formData.vestuario_sudadera_frio || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_sudadera_frio: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
                   style={inputStyle}
                 >
-                  <option value="">Seleccionar...</option>
-                  <option value="XS">XS</option>
+                  <option value="">Sin asignar</option>
                   <option value="S">S</option>
                   <option value="M">M</option>
                   <option value="L">L</option>
                   <option value="XL">XL</option>
-                  <option value="XXL">XXL</option>
-                  <option value="XXXL">XXXL</option>
                 </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>🦺 Chaleco Frío</label>
+                <select
+                  value={formData.vestuario_chaleco_frio || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_chaleco_frio: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  style={inputStyle}
+                >
+                  <option value="">Sin asignar</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>🩳 Pantalón Corto</label>
+                <select
+                  value={formData.vestuario_pantalon_corto || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_pantalon_corto: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  style={inputStyle}
+                >
+                  <option value="">Sin asignar</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>👕 Polo Verde</label>
+                <select
+                  value={formData.vestuario_polo_verde || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_polo_verde: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  style={inputStyle}
+                >
+                  <option value="">Sin asignar</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>💪 Camiseta Entrenamiento Personal</label>
+                <select
+                  value={formData.vestuario_camiseta_entrenamiento || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_camiseta_entrenamiento: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  style={inputStyle}
+                >
+                  <option value="">Sin asignar</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                </select>
+              </div>
+
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={labelStyle}>📝 Observaciones del Vestuario</label>
+                <textarea
+                  value={formData.vestuario_observaciones || ''}
+                  onChange={(e) => setFormData({...formData, vestuario_observaciones: e.target.value})}
+                  style={{...inputStyle, minHeight: '80px', resize: 'vertical'}}
+                  placeholder="Observaciones sobre el vestuario asignado..."
+                />
               </div>
             </div>
           )}

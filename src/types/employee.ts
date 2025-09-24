@@ -41,6 +41,16 @@ export interface Employee {
   talla_pantalon: string; // 36, 38, 40, 42, 44, 46, 48, 50
   talla_chaqueton: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
   
+  // Vestuario La Jungla - Tallas asignadas
+  vestuario_chandal?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_sudadera_frio?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_chaleco_frio?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_pantalon_corto?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_polo_verde?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_camiseta_entrenamiento?: 'S' | 'M' | 'L' | 'XL';
+  vestuario_asignado_fecha?: Date;
+  vestuario_observaciones?: string;
+  
   // Otros
   foto_perfil?: string;
   activo: boolean;

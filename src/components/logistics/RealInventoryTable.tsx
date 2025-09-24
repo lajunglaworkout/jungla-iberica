@@ -1,24 +1,81 @@
 import React, { useState } from 'react';
-import { Package, AlertTriangle, Edit, Save, X, RefreshCw } from 'lucide-react';
+import { Package, AlertTriangle, Edit, Save, X, RefreshCw, Trash2 } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
 
 interface RealInventoryTableProps {
   selectedCenter?: number | 'all';
+  searchTerm?: string;
+  statusFilter?: string;
+  categoryFilter?: string;
+  inventoryItems?: any[];
+  onDeleteItem?: (itemId: number) => void;
 }
 
-const RealInventoryTable: React.FC<RealInventoryTableProps> = ({ selectedCenter = 'all' }) => {
-  const { inventoryItems, loading, error, refetch } = useInventory();
+const RealInventoryTable: React.FC<RealInventoryTableProps> = ({ 
+  selectedCenter = 'all',
+  searchTerm = '',
+  statusFilter = 'all',
+  categoryFilter = 'all',
+  inventoryItems: propInventoryItems,
+  onDeleteItem
+}) => {
+  const { inventoryItems: hookInventoryItems, loading, error, refetch } = useInventory();
+  
+  // Usar items de prop si están disponibles, sino usar los del hook
+  const inventoryItems = propInventoryItems || hookInventoryItems;
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<any>({});
   const [sortBy, setSortBy] = useState<'name' | 'stock' | 'center' | 'category'>('name');
+
+  // Función para eliminar item
+  const deleteItem = (itemId: number, itemName: string) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar "${itemName}"?\n\nEsta acción no se puede deshacer.`
+    );
+    
+    if (confirmDelete) {
+      console.log(`🗑️ Eliminando item ID: ${itemId} - "${itemName}"`);
+      
+      // Si hay función callback, usarla (para items de prueba)
+      if (onDeleteItem) {
+        onDeleteItem(itemId);
+        console.log(`✅ Item "${itemName}" eliminado del inventario`);
+      } else {
+        // Para items reales de Supabase, implementar eliminación real
+        console.log('🔄 Eliminación de items reales de Supabase - Por implementar');
+        alert('Eliminación de items reales pendiente de implementar con Supabase.');
+      }
+    }
+  };
   
-  // Filtrar items por centro seleccionado y ordenar según criterio seleccionado
-  const filteredItems = (selectedCenter === 'all' 
-    ? inventoryItems 
-    : inventoryItems.filter(item => {
-        const centerMap: Record<string, number> = { sevilla: 9, jerez: 10, puerto: 11 };
-        return centerMap[item.center] === selectedCenter;
-      }))
+  // Filtrar items por todos los criterios y ordenar según criterio seleccionado
+  const filteredItems = inventoryItems
+    .filter(item => {
+      // Filtro por centro
+      if (selectedCenter !== 'all') {
+        const centerMap: Record<string, number> = { central: 12, sevilla: 9, jerez: 10, puerto: 11 };
+        const shouldInclude = centerMap[item.center] === selectedCenter;
+        console.log(`🔍 Item "${item.name}": center="${item.center}", selectedCenter=${selectedCenter}, centerMap[${item.center}]=${centerMap[item.center]}, include=${shouldInclude}`);
+        if (!shouldInclude) return false;
+      }
+      
+      // Filtro por búsqueda
+      if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+      
+      // Filtro por estado
+      if (statusFilter !== 'all' && item.status !== statusFilter) {
+        return false;
+      }
+      
+      // Filtro por categoría
+      if (categoryFilter !== 'all' && item.category !== categoryFilter) {
+        return false;
+      }
+      
+      return true;
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -34,10 +91,29 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({ selectedCenter 
       }
     });
 
-  console.log('Total inventory items:', inventoryItems.length);
-  console.log('Selected center:', selectedCenter);
-  console.log('Filtered items:', filteredItems.length);
-  console.log('Filtered items data:', filteredItems);
+  console.log('📊 Total inventory items:', inventoryItems.length);
+  console.log('📋 All categories found:', [...new Set(inventoryItems.map(item => item.category))]);
+  console.log('🔍 Current category filter:', categoryFilter);
+  console.log('🏢 Selected center:', selectedCenter);
+  const allCenters = [...new Set(inventoryItems.map(item => item.center))];
+  console.log('📍 All centers in inventory:', allCenters);
+  console.log('📍 Centers detailed:', allCenters.map(center => `"${center}"`));
+  console.log('📦 Filtered items:', filteredItems.length);
+  
+  // Debug específico para centro Central
+  if (selectedCenter === 12) {
+    const centralItems = inventoryItems.filter(item => item.center === 'central');
+    console.log('🏢 Items con center="central":', centralItems.length);
+    console.log('🎯 Items después del filtro completo:', filteredItems.length);
+    if (centralItems.length > 0) {
+      console.log('📦 Primeros items centrales:', centralItems.slice(0, 3).map(item => ({ name: item.name, center: item.center })));
+    }
+    if (filteredItems.length > 0) {
+      console.log('✅ Items que se van a mostrar:', filteredItems.slice(0, 3).map(item => ({ name: item.name, center: item.center })));
+    } else {
+      console.log('❌ NO HAY ITEMS PARA MOSTRAR después del filtrado');
+    }
+  }
 
   // Calcular totales del inventario
   const inventoryTotals = filteredItems.reduce((totals, item) => {
@@ -508,22 +584,40 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({ selectedCenter 
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => startEditing(item)}
-                style={{
-                  padding: '4px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-                title="Editar"
-              >
-                <Edit size={14} />
-              </button>
+              <>
+                <button
+                  onClick={() => startEditing(item)}
+                  style={{
+                    padding: '4px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Editar"
+                >
+                  <Edit size={14} />
+                </button>
+                <button
+                  onClick={() => deleteItem(item.id, item.name)}
+                  style={{
+                    padding: '4px',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Eliminar"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </>
             )}
           </div>
         </div>
