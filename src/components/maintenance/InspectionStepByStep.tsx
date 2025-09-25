@@ -65,7 +65,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
       });
     });
     
-    setInspectionData((prev: any) => ({ ...prev, items }));
+    setInspectionData((prev: any) => ({ ...prev, ...items }));
   }, []);
 
   // Actualizar item de inspección
@@ -438,7 +438,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
         }}>
           {zoneConcepts.map((concept: any) => {
             const itemId = `${zone.id}_${concept.id}`;
-            const item = inspectionData.items[itemId];
+            const item = inspectionData[itemId];
             
             return (
               <div key={itemId} style={{
@@ -691,7 +691,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   // Renderizar paso de resumen
   const renderSummaryStep = () => {
-    const items = Object.values(inspectionData.items);
+    const items = Object.values(inspectionData).filter((item: any) => item && typeof item === 'object' && item.status);
     const bien = items.filter((item: any) => item.status === 'bien').length;
     const regular = items.filter((item: any) => item.status === 'regular').length;
     const mal = items.filter((item: any) => item.status === 'mal').length;
