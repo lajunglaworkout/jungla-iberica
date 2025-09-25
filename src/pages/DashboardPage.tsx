@@ -26,6 +26,7 @@ import { saveMeetingToSupabase, loadMeetingsFromSupabase, updateMeetingInSupabas
 import { canUserCreateMeetings } from '../config/departments';
 import LogisticsManagementSystem from '../components/LogisticsManagementSystem';
 import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
+import MaintenanceModule from '../components/MaintenanceModule';
 import UserManagement from '../components/UserManagement';
 import '../styles/dashboard.css';
 
@@ -216,6 +217,7 @@ const DashboardPage: React.FC = () => {
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
   const [showMeetingHistory, setShowMeetingHistory] = useState(false);
   const [showLogistics, setShowLogistics] = useState(false);
+  const [showMaintenance, setShowMaintenance] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -607,7 +609,9 @@ const DashboardPage: React.FC = () => {
             className="btn btn-secondary"
             onClick={() => {
               setShowLogistics(!showLogistics);
-              setShowMeetingHistory(false); // Cerrar historial si está abierto
+              setShowMeetingHistory(false);
+              setShowMaintenance(false);
+              setShowUserManagement(false);
             }}
             style={{ 
               backgroundColor: showLogistics ? '#059669' : undefined,
@@ -618,6 +622,23 @@ const DashboardPage: React.FC = () => {
             Logística
           </button>
 
+          <button 
+            className="btn btn-secondary"
+            onClick={() => {
+              setShowMaintenance(!showMaintenance);
+              setShowMeetingHistory(false);
+              setShowLogistics(false);
+              setShowUserManagement(false);
+            }}
+            style={{ 
+              backgroundColor: showMaintenance ? '#059669' : undefined,
+              color: showMaintenance ? 'white' : undefined
+            }}
+          >
+            <AlertTriangle size={16} />
+            Mantenimiento
+          </button>
+
           {/* Solo CEO puede ver gestión de usuarios */}
           {employee?.email === 'carlossuarezparra@gmail.com' && (
             <button 
@@ -625,6 +646,7 @@ const DashboardPage: React.FC = () => {
               onClick={() => {
                 setShowUserManagement(!showUserManagement);
                 setShowLogistics(false);
+                setShowMaintenance(false);
                 setShowMeetingHistory(false);
               }}
               style={{ 
@@ -674,11 +696,19 @@ const DashboardPage: React.FC = () => {
           <LogisticsManagementSystem />
         )}
 
+        {showMaintenance && (
+          <MaintenanceModule
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.nombre || 'Carlos Suárez'}
+            onBack={() => setShowMaintenance(false)}
+          />
+        )}
+
         {showUserManagement && (
           <UserManagement />
         )}
         
-        {!showMeetingHistory && !showLogistics && !showUserManagement && (
+        {!showMeetingHistory && !showLogistics && !showMaintenance && !showUserManagement && (
           <>
             {(currentView === 'week' ? renderWeekView() : renderMonthView())}
             {renderAlertsPanel()}

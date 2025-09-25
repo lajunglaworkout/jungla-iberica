@@ -46,6 +46,7 @@ import MeetingHistorySystem from './components/MeetingHistorySystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
 import LogisticsManagementSystem from './components/LogisticsManagementSystem';
+import MaintenanceModule from './components/MaintenanceModule';
 import IncidentManagementSystem from './components/incidents/IncidentManagementSystem';
 import CEODashboard from './components/CEODashboard';
 import PendingTasksSystem from './components/PendingTasksSystem';
@@ -123,7 +124,16 @@ const NavigationDashboard: React.FC = () => {
         description: 'Gestión de vestuario y pedidos',
         icon: Package,
         color: '#ea580c',
-        component: null,
+        component: LogisticsManagementSystem,
+        available: true
+      },
+      {
+        id: 'maintenance',
+        title: 'Mantenimiento',
+        description: 'Inspecciones mensuales y mantenimiento',
+        icon: AlertTriangle,
+        color: '#dc2626',
+        component: MaintenanceModule,
         available: true
       },
       {
@@ -211,7 +221,7 @@ const NavigationDashboard: React.FC = () => {
           description: 'Gestión de vestuario y pedidos',
           icon: Package,
           color: '#ea580c',
-          component: null,
+          component: LogisticsManagementSystem,
           available: true
         });
       } else if (employee?.email === 'vicente@lajungla.es') {
@@ -614,7 +624,20 @@ const NavigationDashboard: React.FC = () => {
 
     if (module.component) {
       const Component = module.component;
-      return <Component />;
+      
+      // Props especiales para módulos específicos
+      if (module.id === 'maintenance') {
+        return (
+          <Component
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.nombre || 'Carlos Suárez'}
+            onBack={() => setSelectedModule('main-dashboard')}
+          />
+        );
+      } else {
+        // Otros módulos que no requieren props especiales
+        return <Component {...({} as any)} />;
+      }
     }
 
     return (
