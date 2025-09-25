@@ -224,6 +224,15 @@ const NavigationDashboard: React.FC = () => {
           component: LogisticsManagementSystem,
           available: true
         });
+        adminModules.push({
+          id: 'maintenance',
+          title: 'Mantenimiento',
+          description: 'Inspecciones mensuales y mantenimiento',
+          icon: AlertTriangle,
+          color: '#dc2626',
+          component: MaintenanceModule,
+          available: true
+        });
       } else if (employee?.email === 'vicente@lajungla.es') {
         adminModules.push({
           id: 'hr',
