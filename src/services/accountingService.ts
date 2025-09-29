@@ -42,6 +42,10 @@ export interface FinancialData {
   entrenamientos_grupales: number;
   otros: number;
   
+  // Contadores de clientes generales
+  clientes_altas: number;
+  clientes_bajas: number;
+  
   // Gastos fijos con IVA
   alquiler: number;
   alquiler_iva: boolean;
