@@ -13,89 +13,75 @@ interface TipoCuota {
   nombre: string;
   precio: number; // Precio total que paga el usuario (con IVA incluido)
 }
-
 interface MovimientoCuota {
   fecha: string;
   descripcion?: string;
 }
 
-interface CuotaItem {
+interface CuotaItem extends Omit<MonthlyCuota, 'tipo' | 'precio_total'> {
   id: string;
   cuota_type_id: string;
   tipo: string;
-  cantidad: number;
-  importe: number;
-  iva: number;
-  precio_total?: number;
-  lleva_iva?: boolean;
+  precio_total: number; // Siempre tendrá un valor numérico
+  lleva_iva: boolean;
 }
 
 interface GastoExtra {
   id: string;
+  concepto: string;
   importe: number;
   categoria: string;
   lleva_iva?: boolean;
 }
 
+interface ClientesActivos {
+  total: number;
+  renovaciones: number;
+  altas_nuevas: number;
+  repescados: number;
+  [key: string]: number; // Para permitir acceso dinámico
+}
+
+interface BajasClientes {
+  total: number;
+  primer_mes: number;
+  primeros_6_meses: number;
+  mas_de_1_anio: number;
+  [key: string]: number; // Para permitir acceso dinámico
+}
+
 interface FinancialData {
+  id?: string;
   center_id: string;
   center_name: string;
   mes: number;
   año: number;
   cuotas: CuotaItem[];
+  gastos_extras: GastoExtra[];
+  clientes_activos: ClientesActivos;
+  bajas: BajasClientes;
   nutricion: number;
   fisioterapia: number;
   entrenamiento_personal: number;
   entrenamientos_grupales: number;
   otros: number;
   alquiler: number;
-  alquiler_iva?: boolean;
   suministros: number;
-  suministros_iva?: boolean;
   nominas: number;
-  nominas_iva?: boolean;
   seguridad_social: number;
-  seguridad_social_iva?: boolean;
   marketing: number;
-  marketing_iva?: boolean;
   mantenimiento: number;
-  mantenimiento_iva?: boolean;
   royalty: number;
-  royalty_iva?: boolean;
   software_gestion: number;
-  software_gestion_iva?: boolean;
-  gastos_extras: GastoExtra[];
+  seguridad_social_iva: boolean;
+  marketing_iva: boolean;
+  mantenimiento_iva: boolean;
+  royalty_iva: boolean;
+  software_gestion_iva: boolean;
+  
+  // Para permitir el acceso dinámico a las propiedades
+  [key: string]: any;
 }
-
-const [data, setData] = useState<any>({
-  center_id: centerId,
-  center_name: centerName,
-  mes: new Date().getMonth() + 1,
-  año: new Date().getFullYear(),
-  cuotas: [],
-  nutricion: 0,
-  fisioterapia: 0,
-  entrenamiento_personal: 0,
-  entrenamientos_grupales: 0,
-  otros: 0,
-  alquiler: 0,
-  alquiler_iva: true,
-  suministros: 0,
-  suministros_iva: true,
-  nominas: 0,
-  nominas_iva: false,
-  seguridad_social: 0,
-  seguridad_social_iva: false,
-  marketing: 0,
-  marketing_iva: true,
-  mantenimiento: 0,
-  mantenimiento_iva: true,
-  royalty: 0,
-  royalty_iva: false,
-  software_gestion: 0,
-  software_gestion_iva: true,
-  gastos_extras: []
-});
 
 // Tipos de cuota por defecto con precios - se pueden personalizar por centro
 const DEFAULT_TPOS_CUOTA: TipoCuota[] = [
@@ -131,54 +117,51 @@ const MESES = [
 const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerId, onBack }) => {
   const [activeTab, setActiveTab] = useState<'entrada' | 'reportes'>('entrada');
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<{
-    center_id: string;
-    center_name: string;
-    mes: number;
-    año: number;
-    cuotas: any[];
-    nutricion: number;
-    fisioterapia: number;
-    entrenamiento_personal: number;
-    entrenamientos_grupales: number;
-    otros: number;
-    alquiler: number;
-    suministros: number;
-    nominas: number;
-    seguridad_social: number;
-    marketing: number;
-    mantenimiento: number;
-    royalty: number;
-    software_gestion: number;
-    gastos_extras: any[];
-  }>({
+  const [saving, setSaving] = useState(false);
+  const [data, setData] = useState<FinancialData>({
     center_id: centerId,
     center_name: centerName,
     mes: new Date().getMonth() + 1,
     año: new Date().getFullYear(),
     cuotas: [],
+    clientes_activos: {
+      total: 0,
+      renovaciones: 0,
+      altas_nuevas: 0,
+      repescados: 0
+    },
+    bajas: {
+      total: 0,
+      primer_mes: 0,
+      primeros_6_meses: 0,
+      mas_de_1_anio: 0
+    },
+    // Ingresos
     nutricion: 0,
     fisioterapia: 0,
     entrenamiento_personal: 0,
     entrenamientos_grupales: 0,
     otros: 0,
+    // Gastos fijos
     alquiler: 0,
-    alquiler_iva: true,
     suministros: 0,
-    suministros_iva: true,
     nominas: 0,
-    nominas_iva: false,
     seguridad_social: 0,
-    seguridad_social_iva: false,
     marketing: 0,
-    marketing_iva: true,
     mantenimiento: 0,
-    mantenimiento_iva: true,
     royalty: 0,
-    royalty_iva: false,
     software_gestion: 0,
-    software_gestion_iva: true,
-    gastos_extras: []
+    // Gastos extras
+    gastos_extras: [],
+    // Valores por defecto para IVA (opcionales)
+    alquiler_iva: true,
+    suministros_iva: true,
+    nominas_iva: false,
+    seguridad_social_iva: false,
+    marketing_iva: true,
+    mantenimiento_iva: true,
+    royalty_iva: false,
+    software_gestion_iva: true
   });
 
   // Estado para tipos de cuotas desde Supabase
@@ -223,41 +206,104 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
 
   const loadFinancialData = async () => {
     setLoading(true);
-    const financialData = await accountingService.getFinancialData(centerId, centerName, data.mes, data.año);
-    
-    // Convertir datos de Supabase al formato local
-    const localData: SupabaseFinancialData & { software_gestion?: number } = {
-      center_id: centerId,
-      center_name: centerName,
-      cuotas: financialData.cuotas.map(cuota => ({
-        id: cuota.id || Math.random().toString(36).substr(2, 9),
-        cuota_type_id: cuota.cuota_type_id,
-        cantidad: cuota.cantidad,
-        importe: cuota.importe,
-        iva: cuota.iva,
-        tipo: cuota.tipo || '',
-        precio_total: cuota.precio_total
-      })),
-      nutricion: financialData.nutricion,
-      fisioterapia: financialData.fisioterapia,
-      entrenamiento_personal: financialData.entrenamiento_personal,
-      entrenamientos_grupales: financialData.entrenamientos_grupales,
-      otros: financialData.otros,
-      alquiler: financialData.alquiler,
-      suministros: financialData.suministros,
-      nominas: financialData.nominas,
-      seguridad_social: financialData.seguridad_social,
-      marketing: financialData.marketing,
-      mantenimiento: financialData.mantenimiento,
-      royalty: financialData.royalty || 0,
-      software_gestion: 0, // Inicializar en 0 ya que no existe en Supabase aún
-      gastos_extras: financialData.gastos_extras,
-      mes: financialData.mes,
-      año: financialData.año
-    };
-    
-    setData(localData);
-    setLoading(false);
+    try {
+      const financialData = await accountingService.getFinancialData(centerId, centerName, data.mes, data.año);
+      
+      // Convertir datos de Supabase al formato local
+      const localData: FinancialData = {
+        id: financialData.id,
+        center_id: centerId,
+        center_name: centerName,
+        mes: financialData.mes || data.mes,
+        año: financialData.año || data.año,
+        cuotas: financialData.cuotas?.map(cuota => ({
+          id: cuota.id || Math.random().toString(36).substr(2, 9),
+          cuota_type_id: cuota.cuota_type_id,
+          cantidad: cuota.cantidad || 0,
+          importe: cuota.importe || 0,
+          iva: cuota.iva || 0,
+          tipo: cuota.tipo || '',
+          precio_total: cuota.precio_total || 0,
+          lleva_iva: cuota.lleva_iva !== false
+        })) || [],
+        gastos_extras: financialData.gastos_extras?.map(gasto => ({
+          id: gasto.id,
+          concepto: gasto.concepto || '',
+          importe: gasto.importe || 0,
+          categoria: gasto.categoria || 'Otros',
+          lleva_iva: gasto.lleva_iva !== false
+        })) || [],
+        // Valores por defecto para clientes (sin funcionalidad completa por ahora)
+        clientes_activos: financialData.clientes_activos || { total: 0, renovaciones: 0, altas_nuevas: 0, repescados: 0 },
+        bajas: financialData.bajas || { total: 0, primer_mes: 0, primeros_6_meses: 0, mas_de_1_anio: 0 },
+        // Ingresos
+        nutricion: financialData.nutricion || 0,
+        fisioterapia: financialData.fisioterapia || 0,
+        entrenamiento_personal: financialData.entrenamiento_personal || 0,
+        entrenamientos_grupales: financialData.entrenamientos_grupales || 0,
+        otros: financialData.otros || 0,
+        // Gastos fijos
+        alquiler: financialData.alquiler || 0,
+        suministros: financialData.suministros || 0,
+        nominas: financialData.nominas || 0,
+        seguridad_social: financialData.seguridad_social || 0,
+        marketing: financialData.marketing || 0,
+        mantenimiento: financialData.mantenimiento || 0,
+        royalty: financialData.royalty || 0,
+        software_gestion: financialData.software_gestion || 0,
+        // Configuración de IVA
+        alquiler_iva: financialData.alquiler_iva !== undefined ? financialData.alquiler_iva : true,
+        suministros_iva: financialData.suministros_iva !== undefined ? financialData.suministros_iva : true,
+        nominas_iva: financialData.nominas_iva !== undefined ? financialData.nominas_iva : false,
+        seguridad_social_iva: financialData.seguridad_social_iva !== undefined ? financialData.seguridad_social_iva : false,
+        marketing_iva: financialData.marketing_iva !== undefined ? financialData.marketing_iva : true,
+        mantenimiento_iva: financialData.mantenimiento_iva !== undefined ? financialData.mantenimiento_iva : true,
+        royalty_iva: financialData.royalty_iva !== undefined ? financialData.royalty_iva : false,
+        software_gestion_iva: financialData.software_gestion_iva !== undefined ? financialData.software_gestion_iva : true
+      };
+
+      setData(localData);
+    } catch (error) {
+      console.error('Error loading financial data:', error);
+      // Initialize with default values in case of error
+      setData({
+        center_id: centerId,
+        center_name: centerName,
+        mes: data.mes,
+        año: data.año,
+        cuotas: [],
+        gastos_extras: [],
+        // Valores por defecto para clientes
+        clientes_activos: { total: 0, renovaciones: 0, altas_nuevas: 0, repescados: 0 },
+        bajas: { total: 0, primer_mes: 0, primeros_6_meses: 0, mas_de_1_anio: 0 },
+        // Ingresos
+        nutricion: 0,
+        fisioterapia: 0,
+        entrenamiento_personal: 0,
+        entrenamientos_grupales: 0,
+        otros: 0,
+        // Gastos fijos
+        alquiler: 0,
+        suministros: 0,
+        nominas: 0,
+        seguridad_social: 0,
+        marketing: 0,
+        mantenimiento: 0,
+        royalty: 0,
+        software_gestion: 0,
+        // Configuración de IVA
+        alquiler_iva: true,
+        suministros_iva: true,
+        nominas_iva: false,
+        seguridad_social_iva: false,
+        marketing_iva: true,
+        mantenimiento_iva: true,
+        royalty_iva: false,
+        software_gestion_iva: true
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cálculos automáticos con IVA por tipo de cuota y gasto
@@ -276,16 +322,16 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
 
   // IVA soportado = IVA de gastos que llevan IVA (gastos fijos + gastos extras)
   const gastosFijosConIva = 
-    (data.alquiler_iva !== false ? data.alquiler : 0) +
-    (data.suministros_iva !== false ? data.suministros : 0) +
-    (data.nominas_iva === true ? data.nominas : 0) +
-    (data.seguridad_social_iva === true ? data.seguridad_social : 0) +
-    (data.marketing_iva !== false ? data.marketing : 0) +
-    (data.mantenimiento_iva !== false ? data.mantenimiento : 0) +
-    (data.royalty_iva === true ? data.royalty : 0) +
+    (data.alquiler_iva !== false ? (data.alquiler || 0) : 0) +
+    (data.suministros_iva !== false ? (data.suministros || 0) : 0) +
+    (data.nominas_iva === true ? (data.nominas || 0) : 0) +
+    (data.seguridad_social_iva === true ? (data.seguridad_social || 0) : 0) +
+    (data.marketing_iva !== false ? (data.marketing || 0) : 0) +
+    (data.mantenimiento_iva !== false ? (data.mantenimiento || 0) : 0) +
+    (data.royalty_iva === true ? (data.royalty || 0) : 0) +
     (data.software_gestion_iva !== false ? (data.software_gestion || 0) : 0);
   
-  const ivaSoportado = (gastosFijosConIva + gastosExtrasConIva) * 0.21;
+  const ivaSoportado = (gastosFijosConIva + (gastosExtrasConIva || 0)) * 0.21;
 
   // IVA repercutido = IVA de cuotas + IVA de servicios adicionales (asumiendo que llevan IVA)
   const ivaRepercutido = totalIvaCuotas; // Por simplicidad, asumimos que servicios adicionales llevan IVA
@@ -300,42 +346,84 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
   const beneficioNeto = totalIngresos - totalGastos;
   const margen = totalIngresos > 0 ? (beneficioNeto / totalIngresos) * 100 : 0;
 
-  const handleChange = (field: keyof FinancialData, value: string) => {
-    if (field === 'cuotas' || field === 'gastos_extras') return; // Estos se manejan por separado
-    
-    // Manejar campos de IVA (booleanos)
-    if (field.endsWith('_iva')) {
-      setData(prev => ({ ...prev, [field]: value === 'true' }));
-    }
-    // Manejar campos especiales que son números enteros
-    else if (field === 'mes' || field === 'año') {
-      setData(prev => ({ ...prev, [field]: parseInt(value) || 0 }));
-    } else {
-      // Campos monetarios (números decimales)
-      setData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-    }
+  const handleNestedChange = (parent: keyof FinancialData, field: string, value: number) => {
+    setData(prev => ({
+      ...prev,
+      [parent]: {
+        ...prev[parent],
+        [field]: value
+      }
+    }));
   };
 
-  // Función para calcular IVA desde precio CON IVA incluido (PVP)
-  const calcularPrecios = (precioConIva: number, llevaIva: boolean = true) => {
+  const handleChange = (field: keyof FinancialData, value: string | boolean) => {
+    if (field === 'cuotas' || field === 'gastos_extras') return; // Estos se manejan por separado
+    
+    // Manejar campos booleanos (IVA)
+    if (field.endsWith('_iva')) {
+      const boolValue = typeof value === 'string' ? value === 'true' : Boolean(value);
+      setData(prev => ({ ...prev, [field]: boolValue }));
+      return;
+    }
+    
+    // Campos numéricos
+    const numericFields = [
+      'nutricion', 'fisioterapia', 'entrenamiento_personal', 'entrenamientos_grupales', 'otros',
+      'alquiler', 'suministros', 'nominas', 'seguridad_social', 'marketing', 'mantenimiento',
+      'royalty', 'software_gestion', 'mes', 'año'
+    ];
+    
+    if (numericFields.includes(field)) {
+      const numValue = typeof value === 'string' ? parseFloat(value) || 0 : Number(value) || 0;
+      
+      // Manejar campos que deben ser enteros
+      if (field === 'mes' || field === 'año') {
+        setData(prev => ({ ...prev, [field]: Math.round(numValue) }));
+      } else {
+        // Redondear a 2 decimales para campos monetarios
+        setData(prev => ({ ...prev, [field]: Math.round(numValue * 100) / 100 }));
+      }
+      return;
+    }
+    
+    // Para cualquier otro campo
+    setData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Función para calcular precios con o sin IVA
+  const calcularPrecios = (precio: number, llevaIva: boolean = true, esPrecioConIva: boolean = false) => {
     if (!llevaIva) {
       // Si no lleva IVA, el precio introducido es el precio final
-      return { precioSinIva: precioConIva, iva: 0, precioTotal: precioConIva };
+      return { 
+        precioSinIva: precio, 
+        iva: 0, 
+        precioTotal: precio 
+      };
     }
 
-    // Cálculo según el método de La Jungla:
-    // PVP = 45€
-    // IVA = 45€ × 21% = 9.45€
-    // Base sin IVA = 45€ - 9.45€ = 35.55€
-    
-    const iva = precioConIva * 0.21;  // IVA = PVP × 21%
-    const precioSinIva = precioConIva - iva;  // Base = PVP - IVA
-    
-    return { 
-      precioSinIva: Math.round(precioSinIva * 100) / 100,  // Redondear a 2 decimales
-      iva: Math.round(iva * 100) / 100,  // Redondear a 2 decimales
-      precioTotal: precioConIva 
-    };
+    if (esPrecioConIva) {
+      // Si el precio incluye IVA, calculamos el precio sin IVA
+      // precio = precioConIva = precioSinIva * 1.21
+      // precioSinIva = precio / 1.21
+      const precioSinIva = precio / 1.21;
+      const iva = precio - precioSinIva;
+      
+      return {
+        precioSinIva: Math.round(precioSinIva * 100) / 100,
+        iva: Math.round(iva * 100) / 100,
+        precioTotal: precio
+      };
+    } else {
+      // Si el precio NO incluye IVA, calculamos el IVA y el precio total
+      const iva = precio * 0.21;  // IVA = Precio base × 21%
+      const precioTotal = precio + iva;  // Precio total = Precio base + IVA
+      
+      return { 
+        precioSinIva: Math.round(precio * 100) / 100,  // Redondear a 2 decimales
+        iva: Math.round(iva * 100) / 100,  // Redondear a 2 decimales
+        precioTotal: Math.round(precioTotal * 100) / 100
+      };
+    }
   };
 
   // Funciones para gestionar tipos de cuotas con Supabase
@@ -395,23 +483,30 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
       entrenamiento_personal: data.entrenamiento_personal,
       entrenamientos_grupales: data.entrenamientos_grupales,
       otros: data.otros,
+      clientes_altas: data.clientes_altas,
+      clientes_bajas: data.clientes_bajas,
       alquiler: data.alquiler,
+      alquiler_iva: data.alquiler_iva,
       suministros: data.suministros,
+      suministros_iva: data.suministros_iva,
       nominas: data.nominas,
+      nominas_iva: data.nominas_iva,
       seguridad_social: data.seguridad_social,
+      seguridad_social_iva: data.seguridad_social_iva,
       marketing: data.marketing,
+      marketing_iva: data.marketing_iva,
       mantenimiento: data.mantenimiento,
+      mantenimiento_iva: data.mantenimiento_iva,
       royalty: data.royalty,
+      royalty_iva: data.royalty_iva,
       software_gestion: data.software_gestion,
-      cuotas: data.cuotas.map(cuota => {
-        const tipoCuota = tiposCuota.find(t => t.nombre === cuota.tipo);
-        return {
-          cuota_type_id: tipoCuota?.id || '',
-          cantidad: cuota.cantidad,
-          importe: cuota.importe,
-          iva: cuota.iva
-        };
-      }),
+      software_gestion_iva: data.software_gestion_iva,
+      cuotas: data.cuotas.map(cuota => ({
+        cuota_type_id: cuota.cuota_type_id,
+        cantidad: cuota.cantidad,
+        importe: cuota.importe,
+        iva: cuota.iva
+      })),
       gastos_extras: data.gastos_extras
     };
 
@@ -433,16 +528,17 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     }
     
     const primerTipo = tiposCuota[0];
-    const { precioSinIva, iva } = calcularPrecios(primerTipo.precio, primerTipo.lleva_iva);
+    // Asumimos que el precio del tipo de cuota es con IVA incluido
+    const { precioSinIva, iva, precioTotal } = calcularPrecios(primerTipo.precio, primerTipo.lleva_iva, true);
 
     const newCuota: CuotaItem = {
       id: Date.now().toString(),
       cuota_type_id: primerTipo.id,
       tipo: primerTipo.nombre,
       cantidad: 0,
-      importe: precioSinIva,
-      iva: iva,
-      precio_total: primerTipo.precio,
+      importe: precioSinIva,  // Precio base sin IVA
+      iva: iva,               // IVA calculado
+      precio_total: precioTotal,  // Precio total con IVA
       lleva_iva: primerTipo.lleva_iva
     };
     setData(prev => ({ ...prev, cuotas: [...prev.cuotas, newCuota] }));
@@ -458,8 +554,16 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
             const tipoSeleccionado = tiposCuota.find(t => t.nombre === value);
             if (tipoSeleccionado) {
               // Usar el valor real de lleva_iva del tipo de cuota
-              const { precioSinIva, iva } = calcularPrecios(tipoSeleccionado.precio, tipoSeleccionado.lleva_iva);
-              return { ...cuota, tipo: value, importe: precioSinIva, iva: iva, lleva_iva: tipoSeleccionado.lleva_iva };
+              // Asumimos que el precio del tipo de cuota es con IVA incluido
+              const { precioSinIva, iva, precioTotal } = calcularPrecios(tipoSeleccionado.precio, tipoSeleccionado.lleva_iva, true);
+              return { 
+                ...cuota, 
+                tipo: value, 
+                importe: precioSinIva, 
+                iva: iva, 
+                precio_total: precioTotal,
+                lleva_iva: tipoSeleccionado.lleva_iva 
+              };
             }
             return { ...cuota, tipo: value };
           } else if (field === 'cantidad') {
@@ -518,13 +622,21 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     const tipoCuota = tiposCuota.find(t => t.nombre === nuevoTipo);
     if (!tipoCuota) return;
     
-    const { precioSinIva, iva } = calcularPrecios(tipoCuota.precio, tipoCuota.lleva_iva);
+    // Asumimos que el precio del tipo de cuota es con IVA incluido
+    const { precioSinIva, iva, precioTotal } = calcularPrecios(tipoCuota.precio, tipoCuota.lleva_iva, true);
     
     setData(prev => ({
       ...prev,
       cuotas: prev.cuotas.map(cuota => 
         cuota.id === cuotaId 
-          ? { ...cuota, tipo: nuevoTipo, importe: precioSinIva, iva: iva }
+          ? { 
+              ...cuota, 
+              tipo: nuevoTipo, 
+              importe: precioSinIva, 
+              iva: iva,
+              precio_total: precioTotal,
+              lleva_iva: tipoCuota.lleva_iva 
+            }
           : cuota
       )
     }));
@@ -583,17 +695,83 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     }
   };
 
-  // Cálculo automático de clientes basado en cuotas
-  const totalClientes = data.cuotas.reduce((sum, cuota) => {
-    // Consideramos que cada cuota representa un cliente
-    // Las medias cuotas (0.5) también cuentan como clientes
-    return sum + cuota.cantidad;
-  }, 0);
+  // Función para forzar el guardado de gastos extras
+  const forceSaveGastosExtras = async () => {
+    try {
+      setSaving(true);
+      
+      // Crear un objeto con todos los campos requeridos
+      const gastosToSave = {
+        // Campos requeridos
+        id: data.id,
+        center_id: data.center_id,
+        center_name: data.center_name,
+        mes: data.mes,
+        año: data.año,
+        
+        // Ingresos
+        cuotas: [],
+        nutricion: data.nutricion || 0,
+        fisioterapia: data.fisioterapia || 0,
+        entrenamiento_personal: data.entrenamiento_personal || 0,
+        entrenamientos_grupales: data.entrenamientos_grupales || 0,
+        otros: data.otros || 0,
+        
+        // Gastos fijos con IVA
+        alquiler: data.alquiler || 0,
+        suministros: data.suministros || 0,
+        nominas: data.nominas || 0,
+        seguridad_social: data.seguridad_social || 0,
+        marketing: data.marketing || 0,
+        mantenimiento: data.mantenimiento || 0,
+        royalty: data.royalty || 0,
+        software_gestion: data.software_gestion || 0,
+        
+        // Gastos extras
+        gastos_extras: data.gastos_extras || [],
+        
+        // Configuración de IVA (todos requeridos en la interfaz)
+        alquiler_iva: data.alquiler_iva !== undefined ? data.alquiler_iva : true,
+        suministros_iva: data.suministros_iva !== undefined ? data.suministros_iva : true,
+        nominas_iva: data.nominas_iva !== undefined ? data.nominas_iva : false,
+        seguridad_social_iva: data.seguridad_social_iva !== undefined ? data.seguridad_social_iva : false,
+        marketing_iva: data.marketing_iva !== undefined ? data.marketing_iva : true,
+        mantenimiento_iva: data.mantenimiento_iva !== undefined ? data.mantenimiento_iva : true,
+        royalty_iva: data.royalty_iva !== undefined ? data.royalty_iva : false,
+        software_gestion_iva: data.software_gestion_iva !== undefined ? data.software_gestion_iva : true
+      };
+      
+      console.log('Datos a guardar:', gastosToSave);
+      
+      // Llamar al servicio de guardado
+      const success = await accountingService.saveFinancialData(gastosToSave as FinancialData);
+      
+      if (success) {
+        alert('Gastos extras guardados correctamente.');
+      } else {
+        throw new Error('Error al guardar los gastos extras');
+      }
+    } catch (error) {
+      console.error('Error guardando gastos extras:', error);
+      alert('Error al guardar los gastos extras. Por favor, inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Cálculo de clientes netos (total activos - total bajas)
+  const totalClientes = (data.clientes_activos?.total || 0) - (data.bajas?.total || 0);
 
   // Función para sincronizar con módulo de clientes
   const syncWithClientsModule = () => {
+    const totalAltas = (data.clientes_activos?.altas_nuevas || 0) + (data.clientes_activos?.repescados || 0);
+    const totalBajas = data.bajas?.total || 0;
+    const totalClientesNeto = (data.clientes_activos?.total || 0) - totalBajas;
+    
     const clientsData = {
-      totalClientes,
+      totalClientes: totalClientesNeto,
+      clientes_activos: data.clientes_activos,
+      bajas: data.bajas,
       facturacionTotal: totalIngresos,
       mes: data.mes,
       año: data.año,
@@ -608,6 +786,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     
     // Guardar en localStorage para que el módulo de clientes lo pueda leer
     localStorage.setItem(`clients_sync_${centerId}`, JSON.stringify(clientsData));
+    
+    return clientsData;
   };
 
   const handleSave = async () => {
@@ -620,13 +800,21 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
       // También sincronizar directamente con Supabase si está disponible
       try {
         const { clientsService } = await import('../../services/clientsService');
-        await clientsService.syncFromAccounting(centerId, data.mes, data.año, totalClientes, totalIngresos);
+        await clientsService.syncFromAccounting(
+          centerId, 
+          data.mes, 
+          data.año, 
+          totalClientes, 
+          data.clientes_altas || 0,
+          data.clientes_bajas || 0,
+          totalIngresos
+        );
         console.log('Sincronización automática con Supabase completada');
       } catch (error) {
         console.log('Sincronización con localStorage completada (Supabase no disponible)');
       }
       
-      alert(`Datos guardados en Supabase correctamente. ${totalClientes} clientes sincronizados automáticamente con el módulo de clientes.`);
+      alert(`Datos guardados correctamente. ${totalClientes} clientes netos (${data.clientes_altas || 0} altas - ${data.clientes_bajas || 0} bajas) sincronizados con el módulo de clientes.`);
     } catch (error) {
       console.error('Error al guardar:', error);
       alert('Error al guardar los datos en Supabase');
@@ -788,20 +976,31 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                           €{(cuota.iva * cuota.cantidad).toFixed(2)}
                         </div>
                         <div style={{ padding: '8px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '12px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
-                          €{((cuota.importe + cuota.iva) * cuota.cantidad).toFixed(2)}
+                          €{(cuota.precio_total * cuota.cantidad).toFixed(2)}
                         </div>
                         <select
                           value={cuota.lleva_iva !== undefined ? cuota.lleva_iva.toString() : 'true'}
                           onChange={(e) => {
-                            const nuevaCantidad = cuota.cantidad;
                             const tipoSeleccionado = tiposCuota.find(t => t.nombre === cuota.tipo);
                             if (tipoSeleccionado) {
-                              const { precioSinIva, iva } = calcularPrecios(tipoSeleccionado.precio, e.target.value === 'true');
+                              // Si el selector de IVA cambia, usamos el precio base del tipo de cuota
+                              // y especificamos si el precio incluye IVA o no
+                              const { precioSinIva, iva, precioTotal } = calcularPrecios(
+                                tipoSeleccionado.precio, 
+                                e.target.value === 'true',
+                                true // Asumimos que el precio del tipo de cuota es con IVA incluido
+                              );
                               setData(prev => ({
                                 ...prev,
                                 cuotas: prev.cuotas.map(c =>
                                   c.id === cuota.id
-                                    ? { ...c, importe: precioSinIva, iva: iva, lleva_iva: e.target.value === 'true' }
+                                    ? { 
+                                        ...c, 
+                                        importe: precioSinIva, 
+                                        iva: iva, 
+                                        precio_total: precioTotal,
+                                        lleva_iva: e.target.value === 'true' 
+                                      }
                                     : c
                                 )
                               }));
@@ -835,6 +1034,95 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                       </div>
                     </div>
                   )}
+
+                  {/* Gestión de Clientes - Versión detallada */}
+                  <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#1e293b' }}>
+                      👥 Análisis de Clientes
+                    </label>
+                    
+                    {/* Clientes Activos */}
+                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontWeight: '600', marginBottom: '8px', color: '#166534', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%', marginRight: '8px' }}></span>
+                        Clientes Activos
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <InputField 
+                          label="Total activos" 
+                          value={data.clientes_activos?.total || 0} 
+                          onChange={(val) => handleNestedChange('clientes_activos', 'total', val)}
+                          bgColor="#dcfce7"
+                        />
+                        <InputField 
+                          label="Renovaciones" 
+                          value={data.clientes_activos?.renovaciones || 0} 
+                          onChange={(val) => handleNestedChange('clientes_activos', 'renovaciones', val)}
+                          bgColor="#dcfce7"
+                        />
+                        <InputField 
+                          label="Altas nuevas" 
+                          value={data.clientes_activos?.altas_nuevas || 0} 
+                          onChange={(val) => handleNestedChange('clientes_activos', 'altas_nuevas', val)}
+                          bgColor="#dcfce7"
+                        />
+                        <InputField 
+                          label="Repescados" 
+                          value={data.clientes_activos?.repescados || 0} 
+                          onChange={(val) => handleNestedChange('clientes_activos', 'repescados', val)}
+                          bgColor="#dcfce7"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bajas de Clientes */}
+                    <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                      <div style={{ fontWeight: '600', marginBottom: '8px', color: '#991b1b', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%', marginRight: '8px' }}></span>
+                        Bajas de Clientes
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <InputField 
+                          label="Total bajas" 
+                          value={data.bajas?.total || 0} 
+                          onChange={(val) => handleNestedChange('bajas', 'total', val)}
+                          bgColor="#fee2e2"
+                        />
+                        <InputField 
+                          label="1er mes" 
+                          value={data.bajas?.primer_mes || 0} 
+                          onChange={(val) => handleNestedChange('bajas', 'primer_mes', val)}
+                          bgColor="#fee2e2"
+                        />
+                        <InputField 
+                          label="< 6 meses" 
+                          value={data.bajas?.primeros_6_meses || 0} 
+                          onChange={(val) => handleNestedChange('bajas', 'primeros_6_meses', val)}
+                          bgColor="#fee2e2"
+                        />
+                        <InputField 
+                          label="> 1 año" 
+                          value={data.bajas?.mas_de_1_anio || 0} 
+                          onChange={(val) => handleNestedChange('bajas', 'mas_de_1_anio', val)}
+                          bgColor="#fee2e2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resumen */}
+                    <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#eff6ff', borderRadius: '6px', textAlign: 'center', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span>Clientes netos:</span>
+                        <span style={{ fontWeight: '600' }}>
+                          {(data.clientes_activos?.total || 0) - (data.bajas?.total || 0)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#4b5563' }}>
+                        <span>Total activos: {data.clientes_activos?.total || 0}</span>
+                        <span>Total bajas: {data.bajas?.total || 0}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Servicios Adicionales - Solo los servicios reales */}
@@ -842,7 +1130,7 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#1e293b' }}>
                     🏋️ Servicios Adicionales
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         🥗 Nutrición
@@ -857,6 +1145,7 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                         title="Ingresos por consultas nutricionales - Actualizar cada viernes"
                       />
                     </div>
+                    {/* Sección de Gestión de Clientes movida arriba */}
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         🩺 Fisioterapia
@@ -945,8 +1234,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.alquiler} onChange={(e) => handleChange('alquiler', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                     <select
-                      value={data.alquiler_iva !== undefined ? data.alquiler_iva.toString() : 'true'}
-                      onChange={(e) => handleChange('alquiler_iva', e.target.value)}
+                      value={data.alquiler_iva.toString()}
+                      onChange={(e) => handleChange('alquiler_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -979,8 +1268,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.nominas} onChange={(e) => handleChange('nominas', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                     <select
-                      value={data.nominas_iva !== undefined ? data.nominas_iva.toString() : 'false'}
-                      onChange={(e) => handleChange('nominas_iva', e.target.value)}
+                      value={data.nominas_iva.toString()}
+                      onChange={(e) => handleChange('nominas_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -1013,8 +1302,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.marketing} onChange={(e) => handleChange('marketing', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                     <select
-                      value={data.marketing_iva !== undefined ? data.marketing_iva.toString() : 'true'}
-                      onChange={(e) => handleChange('marketing_iva', e.target.value)}
+                      value={data.marketing_iva.toString()}
+                      onChange={(e) => handleChange('marketing_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -1030,8 +1319,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.mantenimiento} onChange={(e) => handleChange('mantenimiento', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
                     <select
-                      value={data.mantenimiento_iva !== undefined ? data.mantenimiento_iva.toString() : 'true'}
-                      onChange={(e) => handleChange('mantenimiento_iva', e.target.value)}
+                      value={data.mantenimiento_iva.toString()}
+                      onChange={(e) => handleChange('mantenimiento_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -1047,8 +1336,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.royalty || 0} onChange={(e) => handleChange('royalty', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} placeholder="Ej: 5% de facturación" title="Royalty mensual pagado a la marca matriz" />
                     <select
-                      value={data.royalty_iva !== undefined ? data.royalty_iva.toString() : 'false'}
-                      onChange={(e) => handleChange('royalty_iva', e.target.value)}
+                      value={data.royalty_iva.toString()}
+                      onChange={(e) => handleChange('royalty_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -1064,8 +1353,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                     <input type="number" step="0.01" value={data.software_gestion || 0} onChange={(e) => handleChange('software_gestion', e.target.value)} style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} placeholder="Ej: Licencias, suscripciones" title="Gastos de software de gestión empresarial" />
                     <select
-                      value={data.software_gestion_iva !== undefined ? data.software_gestion_iva.toString() : 'true'}
-                      onChange={(e) => handleChange('software_gestion_iva', e.target.value)}
+                      value={data.software_gestion_iva.toString()}
+                      onChange={(e) => handleChange('software_gestion_iva', e.target.value === 'true')}
                       style={{ padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                     >
                       <option value="true">Con IVA</option>
@@ -1091,8 +1380,35 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                     backgroundColor: '#f9fafb',
                     minHeight: '80px',
                     maxHeight: data.gastos_extras.length > 3 ? '300px' : 'auto',
-                    overflowY: data.gastos_extras.length > 3 ? 'auto' : 'visible'
+                    overflowY: data.gastos_extras.length > 3 ? 'auto' : 'visible',
+                    position: 'relative'
                   }}>
+                    {data.gastos_extras.length > 0 && (
+                      <button 
+                        onClick={forceSaveGastosExtras}
+                        disabled={saving}
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          padding: '4px 8px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          zIndex: 10
+                        }}
+                        title="Guardar gastos extras"
+                      >
+                        <Save style={{ width: '12px', height: '12px' }} />
+                        {saving ? 'Guardando...' : 'Guardar'}
+                      </button>
+                    )}
                     {data.gastos_extras.length === 0 && (
                       <div style={{ textAlign: 'center', color: '#6b7280', fontSize: '12px', padding: '20px' }}>
                         No hay gastos extras. Usa "Añadir" para crear el primero.

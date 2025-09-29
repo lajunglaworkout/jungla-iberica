@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Users, UserPlus, UserMinus, Target, TrendingUp, Calendar, RefreshCw } from 'lucide-react';
 import { clientsService, type ClientMetrics as SupabaseClientMetrics } from '../../services/clientsService';
+import CancellationAnalysis from './CancellationAnalysis';
 
 interface ClientsModuleProps {
   centerName: string;
@@ -15,6 +16,7 @@ const MESES = [
 
 const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onBack }) => {
   const [loading, setLoading] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [metrics, setMetrics] = useState<SupabaseClientMetrics>({
     center_id: centerId,
     center_name: centerName,
@@ -33,6 +35,14 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
   useEffect(() => {
     loadClientMetrics();
   }, [centerId, metrics.mes, metrics.año]);
+
+  // Evitar actualizaciones innecesarias
+  const handleCancellationMetricsChange = useCallback((cancellationMetrics: any) => {
+    setMetrics(prev => ({
+      ...prev,
+      bajas_reales: cancellationMetrics.total_bajas
+    }));
+  }, []);
 
   const loadClientMetrics = async () => {
     setLoading(true);
@@ -271,11 +281,50 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Bajas</label>
-                <input type="number" value={metrics.bajas_reales} onChange={(e) => handleChange('bajas_reales', e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                <input 
+                  type="number" 
+                  value={metrics.bajas_reales} 
+                  onChange={(e) => handleChange('bajas_reales', e.target.value)} 
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: '#ef4444'
+                  }} 
+                />
+                
+                {/* Mostrar el desglose de bajas directamente debajo */}
+                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}>Distribución de bajas por tiempo</div>
+                  <CancellationAnalysis 
+                    centerId={centerId}
+                    mes={metrics.mes}
+                    año={metrics.año}
+                    totalBajas={metrics.bajas_reales}
+                    onMetricsChange={handleCancellationMetricsChange}
+                  />
+                </div>
               </div>
+              
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Leads</label>
-                <input type="number" value={metrics.leads} onChange={(e) => handleChange('leads', e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+                <input 
+                  type="number" 
+                  value={metrics.leads} 
+                  onChange={(e) => handleChange('leads', e.target.value)} 
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: '#3b82f6'
+                  }} 
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Clientes Activos</label>
@@ -346,11 +395,48 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.altas_reales}</p>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Altas</p>
           </div>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center' }}>
-            <UserMinus style={{ width: '32px', height: '32px', color: '#ef4444', margin: '0 auto 12px' }} />
-            <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.bajas_reales}</p>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Bajas</p>
+          
+          {/* Tarjeta de Bajas */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '12px', 
+            padding: '20px', 
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
+            textAlign: 'center',
+            position: 'relative',
+            gridColumn: 'span 1',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '180px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <UserMinus style={{ width: '24px', height: '24px', color: '#ef4444' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#ef4444', margin: 0 }}>Bajas Totales</h3>
+            </div>
+            <p style={{ 
+              fontSize: '36px', 
+              fontWeight: 'bold', 
+              color: '#ef4444', 
+              margin: '0 0 12px 0',
+              lineHeight: '1.2'
+            }}>
+              {metrics.bajas_reales}
+            </p>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#9ca3af', 
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <Calendar style={{ width: '14px', height: '14px' }} />
+              {MESES[metrics.mes - 1]} {metrics.año}
+            </p>
           </div>
+          
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center' }}>
             <Users style={{ width: '32px', height: '32px', color: '#3b82f6', margin: '0 auto 12px' }} />
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.clientes_activos}</p>
@@ -361,6 +447,37 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.objetivo_mensual}</p>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Objetivo</p>
           </div>
+        </div>
+
+        {/* Sección de Leads */}
+        <div style={{ marginTop: '24px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#4b5563', margin: '0 0 16px 0' }}>Leads</h3>
+          <input 
+            type="number" 
+            value={metrics.leads} 
+            onChange={(e) => handleChange('leads', e.target.value)} 
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              border: '1px solid #d1d5db', 
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: '#3b82f6'
+            }} 
+          />
+        </div>
+
+        {/* Sección de Bajas con Desglose */}
+        <div style={{ marginTop: '24px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#4b5563', margin: '0 0 16px 0' }}>Distribución de Bajas</h3>
+          <CancellationAnalysis 
+            centerId={centerId}
+            mes={metrics.mes}
+            año={metrics.año}
+            totalBajas={metrics.bajas_reales}
+            onMetricsChange={handleCancellationMetricsChange}
+          />
         </div>
       </div>
     </div>
