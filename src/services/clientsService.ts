@@ -1,5 +1,26 @@
 import { supabase } from '../lib/supabase';
 
+export interface ClientCancellationMetrics {
+  id?: string;
+  center_id: string;
+  mes: number;
+  año: number;
+  total_bajas: number;
+  // Tiempo de permanencia
+  baja_1_mes: number;
+  baja_3_meses: number;
+  baja_6_meses: number;
+  baja_1_año: number;
+  baja_mas_1_año: number;
+  // Motivos
+  motivo_precio: number;
+  motivo_servicio: number;
+  motivo_ubicacion: number;
+  motivo_otro: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ClientMetrics {
   id?: string;
   center_id: string;
@@ -76,37 +97,13 @@ class ClientsService {
   }
 
   // Guardar métricas de clientes
-  async saveClientMetrics(data: ClientMetrics): Promise<boolean> {
+  async saveClientMetrics(metrics: ClientMetrics): Promise<boolean> {
     try {
-      console.log('Guardando métricas de clientes:', data);
-      
-      const { data: result, error } = await supabase
+      const { error } = await supabase
         .from('client_metrics')
-        .upsert({
-          center_id: data.center_id,
-          center_name: data.center_name,
-          mes: data.mes,
-          año: data.año,
-          objetivo_mensual: data.objetivo_mensual,
-          altas_reales: data.altas_reales,
-          bajas_reales: data.bajas_reales,
-          clientes_activos: data.clientes_activos,
-          leads: data.leads,
-          clientes_contabilidad: data.clientes_contabilidad || 0,
-          facturacion_total: data.facturacion_total || 0,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'center_id,mes,año'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error saving client metrics:', error);
-        return false;
-      }
-
-      console.log('Métricas de clientes guardadas exitosamente:', result);
+        .upsert(metrics);
+      
+      if (error) throw error;
       return true;
     } catch (error) {
       console.error('Error saving client metrics:', error);
@@ -114,10 +111,87 @@ class ClientsService {
     }
   }
 
-  // Sincronizar datos desde el módulo de contabilidad
-  async syncFromAccounting(centerId: string, mes: number, año: number, clientesContabilidad: number, facturacionTotal: number): Promise<boolean> {
+  // Obtener métricas de cancelación
+  async getCancellationMetrics(centerId: string, mes: number, año: number): Promise<ClientCancellationMetrics> {
     try {
-      console.log('Sincronizando datos desde contabilidad:', { centerId, mes, año, clientesContabilidad, facturacionTotal });
+      const { data, error } = await supabase
+        .from('client_cancellations')
+        .select('*')
+        .eq('center_id', centerId)
+        .eq('mes', mes)
+        .eq('año', año)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        return data;
+      }
+
+      // Datos por defecto si no existe el registro
+      return {
+        center_id: centerId,
+        mes,
+        año,
+        total_bajas: 0,
+        baja_1_mes: 0,
+        baja_3_meses: 0,
+        baja_6_meses: 0,
+        baja_1_año: 0,
+        baja_mas_1_año: 0,
+        motivo_precio: 0,
+        motivo_servicio: 0,
+        motivo_ubicacion: 0,
+        motivo_otro: 0
+      };
+    } catch (error) {
+      console.error('Error loading cancellation metrics:', error);
+      throw error;
+    }
+  }
+
+  // Guardar métricas de cancelación
+  async saveCancellationMetrics(metrics: ClientCancellationMetrics): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('client_cancellations')
+        .upsert({
+          ...metrics,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'center_id,mes,año'
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error saving cancellation metrics:', error);
+      return false;
+    }
+  }
+
+  // Sincronizar datos desde el módulo de contabilidad
+  async syncFromAccounting(
+    centerId: string, 
+    mes: number, 
+    año: number, 
+    clientesNetos: number,
+    altas: number,
+    bajas: number,
+    facturacionTotal: number
+  ): Promise<boolean> {
+    try {
+      console.log('Sincronizando datos desde contabilidad:', { 
+        centerId, 
+        mes, 
+        año, 
+        clientesNetos, 
+        altas, 
+        bajas, 
+        facturacionTotal 
+      });
       
       // Obtener métricas existentes
       const existingMetrics = await this.getClientMetrics(centerId, '', mes, año);
@@ -127,7 +201,9 @@ class ClientsService {
         .from('client_metrics')
         .upsert({
           ...existingMetrics,
-          clientes_contabilidad: clientesContabilidad,
+          clientes_contabilidad: clientesNetos,
+          altas_reales: altas,
+          bajas_reales: bajas,
           facturacion_total: facturacionTotal,
           updated_at: new Date().toISOString()
         }, {
@@ -136,7 +212,6 @@ class ClientsService {
 
       if (error) {
         console.error('Error syncing from accounting:', error);
-        return false;
       }
 
       console.log('Sincronización desde contabilidad exitosa');
