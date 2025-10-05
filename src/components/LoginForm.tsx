@@ -70,6 +70,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setError('');
 
     try {
+      console.log('🔐 Intentando login con email:', formData.email);
+      
       // AUTENTICACIÓN REAL CON SUPABASE
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -77,21 +79,43 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       });
 
       if (authError) {
-        // Manejar errores específicos de Supabase
-        switch (authError.message) {
-          case 'Invalid login credentials':
+        console.log('❌ Error de autenticación:', authError.message);
+        
+        // Si falla la autenticación, verificar si es un email actualizado
+        if (authError.message === 'Invalid login credentials') {
+          console.log('🔍 Verificando si el email fue actualizado en gestión de usuarios...');
+          
+          // Buscar el email en la tabla employees
+          const { data: employeeData, error: employeeError } = await supabase
+            .from('employees')
+            .select('email, user_id, name, is_active')
+            .eq('email', formData.email)
+            .eq('is_active', true)
+            .single();
+          
+          if (employeeData && !employeeError) {
+            console.log('✅ Email encontrado en tabla employees:', employeeData);
+            setError(`El email ${formData.email} fue actualizado recientemente. 
+                     Por favor, contacta con el administrador para reactivar tu acceso.
+                     Usuario: ${employeeData.name}`);
+          } else {
             setError('Email o contraseña incorrectos');
-            break;
-          case 'Email not confirmed':
-            setError('Email no confirmado. Revisa tu bandeja de entrada.');
-            break;
-          case 'Too many requests':
-            setError('Demasiados intentos. Espera un momento.');
-            break;
-          default:
-            setError(authError.message);
+          }
+        } else {
+          // Manejar otros errores específicos de Supabase
+          switch (authError.message) {
+            case 'Email not confirmed':
+              setError('Email no confirmado. Revisa tu bandeja de entrada.');
+              break;
+            case 'Too many requests':
+              setError('Demasiados intentos. Espera un momento.');
+              break;
+            default:
+              setError(authError.message);
+          }
         }
       } else if (data.user) {
+        console.log('✅ Login exitoso para:', data.user.email);
         // Login exitoso
         setSuccess(true);
         

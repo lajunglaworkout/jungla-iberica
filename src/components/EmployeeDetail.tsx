@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Employee } from '../types/employee';
-import { ArrowLeft, User, Briefcase, Banknote, GraduationCap, Shirt, FileText } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, Banknote, GraduationCap, Shirt, FileText, Calendar } from 'lucide-react';
+import EmployeeOperations from './hr/EmployeeOperations';
 
 // Sub-componente para una fila de información
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -22,10 +23,17 @@ const DetailCard: React.FC<{ title: string; icon: React.ReactNode; children: Rea
 );
 
 const EmployeeDetail: React.FC<{ employee: Employee; onBack: () => void }> = ({ employee, onBack }) => {
+  const [activeTab, setActiveTab] = useState('info');
+  
   const formatDate = (date: Date | string) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString('es-ES');
   };
+
+  const tabs = [
+    { id: 'info', name: 'Información', icon: User },
+    { id: 'operations', name: 'Operativa Diaria', icon: Calendar }
+  ];
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -62,57 +70,100 @@ const EmployeeDetail: React.FC<{ employee: Employee; onBack: () => void }> = ({ 
         </div>
       </div>
 
-      {/* Grid de Detalles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-        
-        <DetailCard title="Datos Personales" icon={<User color="#059669" />}>
-          <InfoRow label="Email" value={employee.email} />
-          <InfoRow label="Teléfono" value={employee.telefono} />
-          <InfoRow label="DNI" value={employee.dni} />
-          <InfoRow label="Fecha de Nacimiento" value={formatDate(employee.fecha_nacimiento)} />
-          <InfoRow label="Dirección" value={`${employee.direccion}, ${employee.ciudad}, ${employee.codigo_postal}`} />
-        </DetailCard>
-
-        <DetailCard title="Datos Laborales" icon={<Briefcase color="#059669" />}>
-          <InfoRow label="Centro" value={employee.centro_nombre || 'No asignado'} />
-          <InfoRow label="Fecha de Alta" value={formatDate(employee.fecha_alta)} />
-          <InfoRow label="Tipo de Contrato" value={employee.tipo_contrato} />
-          <InfoRow label="Jornada" value={employee.jornada} />
-          <InfoRow label="Salario Bruto Anual" value={`${employee.salario_bruto_anual.toLocaleString('es-ES')} €`} />
-          <InfoRow label="Departamento" value={employee.departamento} />
-        </DetailCard>
-        
-        <DetailCard title="Datos Bancarios" icon={<Banknote color="#059669" />}>
-          <InfoRow label="Banco" value={employee.banco} />
-          <InfoRow label="IBAN" value={employee.iban} />
-        </DetailCard>
-
-        <DetailCard title="Datos Académicos" icon={<GraduationCap color="#059669" />}>
-          <InfoRow label="Nivel de Estudios" value={employee.nivel_estudios} />
-          <InfoRow label="Titulación" value={employee.titulacion} />
-          <InfoRow label="Especialidad" value={employee.especialidad} />
-        </DetailCard>
-
-        <DetailCard title="Uniformes" icon={<Shirt color="#059669" />}>
-          <InfoRow label="Talla Camiseta" value={employee.talla_camiseta} />
-          <InfoRow label="Talla Pantalón" value={employee.talla_pantalon} />
-          <InfoRow label="Talla Chaquetón" value={employee.talla_chaqueton} />
-        </DetailCard>
-
-        <DetailCard title="Documentación" icon={<FileText color="#059669" />}>
-          <InfoRow label="Contrato Firmado" value={employee.tiene_contrato_firmado ? 'Sí' : 'No'} />
-          <InfoRow label="Alta en SS" value={employee.tiene_alta_ss ? 'Sí' : 'No'} />
-          <InfoRow label="Formación en Riesgos" value={employee.tiene_formacion_riesgos ? 'Sí' : 'No'} />
-        </DetailCard>
-
-      </div>
-       {employee.observaciones && (
-        <div style={{ marginTop: '24px' }}>
-          <DetailCard title="Observaciones" icon={<FileText color="#059669" />}>
-            <p style={{ color: '#374151', fontSize: '16px', whiteSpace: 'pre-wrap' }}>{employee.observaciones}</p>
-          </DetailCard>
+      {/* Tabs */}
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', marginBottom: '24px' }}>
+        <div style={{ borderBottom: '1px solid #e5e7eb', padding: '0 24px' }}>
+          <nav style={{ display: 'flex', gap: '32px' }}>
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: '16px 0',
+                    borderBottom: isActive ? '2px solid #059669' : '2px solid transparent',
+                    fontWeight: isActive ? '600' : '500',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    color: isActive ? '#059669' : '#6b7280',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={16} />
+                  <span>{tab.name}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
-      )}
+        
+        <div style={{ padding: '24px' }}>
+          {activeTab === 'info' && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                <DetailCard title="Datos Personales" icon={<User color="#059669" />}>
+                  <InfoRow label="Email" value={employee.email} />
+                  <InfoRow label="Teléfono" value={employee.telefono} />
+                  <InfoRow label="DNI" value={employee.dni} />
+                  <InfoRow label="Fecha de Nacimiento" value={formatDate(employee.fecha_nacimiento)} />
+                  <InfoRow label="Dirección" value={`${employee.direccion}, ${employee.ciudad}, ${employee.codigo_postal}`} />
+                </DetailCard>
+
+                <DetailCard title="Datos Laborales" icon={<Briefcase color="#059669" />}>
+                  <InfoRow label="Centro" value={employee.centro_nombre || 'No asignado'} />
+                  <InfoRow label="Fecha de Alta" value={formatDate(employee.fecha_alta)} />
+                  <InfoRow label="Tipo de Contrato" value={employee.tipo_contrato} />
+                  <InfoRow label="Jornada" value={employee.jornada} />
+                  <InfoRow label="Salario Bruto Anual" value={`${employee.salario_bruto_anual.toLocaleString('es-ES')} €`} />
+                  <InfoRow label="Departamento" value={employee.departamento} />
+                </DetailCard>
+                
+                <DetailCard title="Datos Bancarios" icon={<Banknote color="#059669" />}>
+                  <InfoRow label="Banco" value={employee.banco} />
+                  <InfoRow label="IBAN" value={employee.iban} />
+                </DetailCard>
+
+                <DetailCard title="Datos Académicos" icon={<GraduationCap color="#059669" />}>
+                  <InfoRow label="Nivel de Estudios" value={employee.nivel_estudios} />
+                  <InfoRow label="Titulación" value={employee.titulacion} />
+                  <InfoRow label="Especialidad" value={employee.especialidad} />
+                </DetailCard>
+
+                <DetailCard title="Uniformes" icon={<Shirt color="#059669" />}>
+                  <InfoRow label="Talla Camiseta" value={employee.talla_camiseta} />
+                  <InfoRow label="Talla Pantalón" value={employee.talla_pantalon} />
+                  <InfoRow label="Talla Chaquetón" value={employee.talla_chaqueton} />
+                </DetailCard>
+
+                <DetailCard title="Documentación" icon={<FileText color="#059669" />}>
+                  <InfoRow label="Contrato Firmado" value={employee.tiene_contrato_firmado ? 'Sí' : 'No'} />
+                  <InfoRow label="Alta en SS" value={employee.tiene_alta_ss ? 'Sí' : 'No'} />
+                  <InfoRow label="Formación en Riesgos" value={employee.tiene_formacion_riesgos ? 'Sí' : 'No'} />
+                </DetailCard>
+              </div>
+              
+              {employee.observaciones && (
+                <div style={{ marginTop: '24px' }}>
+                  <DetailCard title="Observaciones" icon={<FileText color="#059669" />}>
+                    <p style={{ color: '#374151', fontSize: '16px', whiteSpace: 'pre-wrap' }}>{employee.observaciones}</p>
+                  </DetailCard>
+                </div>
+              )}
+            </>
+          )}
+          
+          {activeTab === 'operations' && (
+            <EmployeeOperations employee={employee} />
+          )}
+        </div>
+      </div>
     </div>
   );
 };

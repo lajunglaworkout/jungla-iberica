@@ -14,12 +14,15 @@ interface DashboardCard {
   description: string;
   color: string;
   count?: number | string;
-  status: 'active' | 'development' | 'coming-soon';
+  status: 'active' | 'development' | 'coming-soon' | 'separator';
 }
 
 interface HRDashboardProps {
   onNavigate: (module: string) => void;
   onBack?: () => void;
+  userRole?: string;
+  isRegularEmployee?: boolean;
+  currentEmployee?: any;
 }
 
 interface DashboardStats {
@@ -29,7 +32,16 @@ interface DashboardStats {
   pendingDocuments: number;
 }
 
-const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
+const HRDashboard: React.FC<HRDashboardProps> = ({ 
+  onNavigate, 
+  onBack, 
+  userRole, 
+  isRegularEmployee = false, 
+  currentEmployee 
+}) => {
+  // Sistema de solicitud de vacaciones implementado
+  console.log('🚨 HRDashboard CARGADO - userRole:', userRole);
+  console.log('🚨 HRDashboard CARGADO - isRegularEmployee:', isRegularEmployee);
   const [stats, setStats] = useState<DashboardStats>({
     totalEmployees: 0,
     presentToday: 0,
@@ -73,7 +85,75 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
     }
   };
 
-  const dashboardCards: DashboardCard[] = [
+  // Tarjetas para empleados regulares
+  const employeeCards: DashboardCard[] = [
+    {
+      id: 'my-profile',
+      title: 'Mi Perfil',
+      icon: <Users size={32} />,
+      description: 'Ver y actualizar mi información personal',
+      color: '#059669',
+      count: 'Mi Info',
+      status: 'active'
+    },
+    {
+      id: 'my-shifts',
+      title: 'Mis Turnos',
+      icon: <Clock size={32} />,
+      description: 'Ver mis horarios y turnos asignados',
+      color: '#0ea5e9',
+      count: 'Esta semana',
+      status: 'active'
+    },
+    {
+      id: 'mobile-timeclock',
+      title: 'Fichar',
+      icon: <UserCheck size={32} />,
+      description: 'Fichar entrada y salida',
+      color: '#8b5cf6',
+      count: 'QR Activo',
+      status: 'active'
+    },
+    {
+      id: 'vacation-request',
+      title: 'Solicitar Vacaciones',
+      icon: <Palmtree size={32} />,
+      description: 'Solicitar días de vacaciones',
+      color: '#10b981',
+      count: 'Disponible',
+      status: 'active'
+    },
+    {
+      id: 'uniform-request',
+      title: 'Solicitar Vestuario',
+      icon: <Award size={32} />,
+      description: 'Pedir uniformes y material',
+      color: '#ef4444',
+      count: 'Nuevo',
+      status: 'active'
+    },
+    {
+      id: 'my-documents',
+      title: 'Mis Documentos',
+      icon: <FileText size={32} />,
+      description: 'Contrato, nóminas y documentos',
+      color: '#84cc16',
+      count: 'Ver',
+      status: 'active'
+    },
+    {
+      id: 'hr-contact',
+      title: 'Contactar RRHH',
+      icon: <Database size={32} />,
+      description: 'Comunicación directa con RRHH',
+      color: '#f97316',
+      count: 'Chat',
+      status: 'active'
+    }
+  ];
+
+  // Tarjetas para administradores/encargados (original)
+  const adminCards: DashboardCard[] = [
     {
       id: 'employees',
       title: 'Gestión de Empleados',
@@ -126,7 +206,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
       description: 'Gestión de vacaciones y permisos',
       color: '#10b981',
       count: '12 pendientes',
-      status: 'coming-soon'
+      status: 'active'
     },
     {
       id: 'evaluations',
@@ -183,6 +263,39 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
       status: 'coming-soon'
     }
   ];
+
+  // Combinar tarjetas para encargados (empleado + admin)
+  const managerCards = [
+    // Funcionalidades de empleado primero
+    ...employeeCards,
+    // Separador visual
+    {
+      id: 'separator',
+      title: '--- FUNCIONES DE GESTIÓN ---',
+      icon: <div style={{ fontSize: '16px' }}>⚙️</div>,
+      description: 'Funciones administrativas',
+      color: '#6b7280',
+      count: '',
+      status: 'separator' as any
+    },
+    // Funcionalidades de administrador
+    ...adminCards.filter(card => !['mobile-timeclock'].includes(card.id)) // Evitar duplicados
+  ];
+
+  // Seleccionar tarjetas según el rol
+  const isManager = userRole?.includes('manager') || userRole?.includes('encargado') || userRole === 'center_manager';
+  
+  // Seleccionar tarjetas según el rol del usuario
+  const dashboardCards = isManager 
+    ? managerCards 
+    : isRegularEmployee 
+      ? employeeCards 
+      : adminCards;
+      
+  console.log('🚨 isManager:', isManager);
+  console.log('🚨 dashboardCards:', dashboardCards.map(c => ({ id: c.id, title: c.title, status: c.status })));
+  console.log('🚨 Tarjeta vacation-request:', dashboardCards.find(c => c.id === 'vacation-request'));
+      
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -243,13 +356,19 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
   };
 
   const handleCardClick = (cardId: string, status: string) => {
-    if (status === 'active') {
-      onNavigate(cardId);
-    } else if (status === 'development') {
-      alert('🚧 Módulo en desarrollo\n\nEste módulo está siendo implementado y estará disponible próximamente.');
-    } else {
-      alert('⏳ Próximamente\n\nEste módulo será implementado en futuras versiones del sistema.');
+    console.log('🚨 CLICK EN TARJETA HRDashboard:', { cardId, status });
+    
+    if (status === 'coming-soon' || status === 'development' || status === 'separator') {
+      if (status === 'coming-soon') {
+        alert('⏳ Próximamente\n\nEste módulo será implementado en futuras versiones del sistema.');
+      } else if (status === 'development') {
+        alert('🚧 Módulo en desarrollo\n\nEste módulo está siendo implementado y estará disponible próximamente.');
+      }
+      return;
     }
+    
+    console.log('🚨 NAVEGANDO A:', cardId);
+    onNavigate(cardId);
   };
 
   if (loading) {
@@ -312,14 +431,24 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
             margin: 0,
             marginBottom: '8px'
           }}>
-            👥 Portal de Recursos Humanos
+            {userRole?.includes('manager') || userRole?.includes('encargado') || userRole === 'center_manager'
+              ? '👨‍💼 Portal de Encargado' 
+              : isRegularEmployee 
+                ? '👤 Mi Portal de Empleado' 
+                : '👥 Portal de Recursos Humanos'
+            }
           </h1>
           <p style={{ 
             color: '#6b7280', 
             fontSize: '16px',
             margin: 0
           }}>
-            Sistema integral de gestión de personal - La Jungla Ibérica
+            {userRole?.includes('manager') || userRole?.includes('encargado') || userRole === 'center_manager'
+              ? `Bienvenido ${currentEmployee?.nombre || 'Encargado'} - Gestiona tu información personal y tu equipo`
+              : isRegularEmployee 
+                ? `Bienvenido ${currentEmployee?.nombre || 'Empleado'} - Gestiona tu información personal y laboral`
+                : 'Sistema integral de gestión de personal - La Jungla Ibérica'
+            }
           </p>
         </div>
 
@@ -437,28 +566,33 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
             key={card.id}
             onClick={() => handleCardClick(card.id, card.status)}
             style={{
-              backgroundColor: 'white',
-              borderRadius: '20px',
-              padding: '32px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              border: `3px solid ${card.color}20`,
+              backgroundColor: card.status === 'separator' ? '#f8fafc' : 'white',
+              borderRadius: card.status === 'separator' ? '10px' : '20px',
+              padding: card.status === 'separator' ? '16px' : '32px',
+              cursor: card.status === 'separator' ? 'default' : 'pointer',
+              boxShadow: card.status === 'separator' ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              border: card.status === 'separator' ? '2px dashed #cbd5e1' : `3px solid ${card.color}20`,
               transition: 'all 0.3s ease',
               position: 'relative',
-              minHeight: '200px',
+              minHeight: card.status === 'separator' ? '60px' : '200px',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: card.status === 'separator' ? 'center' : 'space-between',
+              gridColumn: card.status === 'separator' ? '1 / -1' : 'auto'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.borderColor = `${card.color}60`;
+              if (card.status !== 'separator') {
+                e.currentTarget.style.transform = 'translateY(-8px)';
+                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.borderColor = `${card.color}60`;
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.borderColor = `${card.color}20`;
+              if (card.status !== 'separator') {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.borderColor = `${card.color}20`;
+              }
             }}
           >
             {/* Status badge */}

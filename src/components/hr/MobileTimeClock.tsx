@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useSession } from '../../contexts/SessionContext';
 import { 
   Camera, 
   Clock, 
@@ -32,7 +32,7 @@ interface QRData {
 }
 
 const MobileTimeClock: React.FC = () => {
-  const { user } = useAuth();
+  const { user, employee } = useSession();
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
