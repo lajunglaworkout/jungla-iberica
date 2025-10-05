@@ -75,6 +75,11 @@ const DASHBOARD_CONFIGS: Record<string, DashboardConfig> = {
     permissions: ['read', 'write', 'delete'],
     theme: 'light'
   },
+  center_manager: {
+    sections: ['management'], // Solo pestaña Gestión
+    permissions: ['read', 'write', 'center_specific'],
+    theme: 'light'
+  },
   manager: {
     sections: ['analytics', 'employees', 'executive'],
     permissions: ['read', 'write'],
@@ -92,12 +97,14 @@ const ROLE_MAPPING: Record<string, string> = {
   'CEO': 'superadmin',
   'Director': 'admin',
   'Gerente': 'manager',
+  'Encargado': 'center_manager',
   'Empleado': 'employee',
   'Admin': 'admin',
   'SuperAdmin': 'superadmin',
   'SUPERADMIN': 'superadmin',
   'admin': 'admin',
   'superadmin': 'superadmin',
+  'center_manager': 'center_manager',
   'manager': 'manager',
   'employee': 'employee'
 };
@@ -111,7 +118,8 @@ const VALID_USERS = [
   'beni.jungla@gmail.com',
   'lajunglacentral@gmail.com',
   'rrhhlajungla@gmail.com',
-  'lajunglawonline@gmail.com'
+  'lajunglawonline@gmail.com',
+  'franciscogiraldezmorales@gmail.com'
 ];
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -141,14 +149,16 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         roleToUse = 'superadmin';
       } else if (email === 'beni.jungla@gmail.com') {
         roleToUse = 'admin'; // Beni es admin con acceso a logística
-      } else if (email === 'vicente@lajungla.es') {
-        roleToUse = 'admin'; // Vicente es admin con acceso a RRHH
+      } else if (email === 'lajunglacentral@gmail.com') {
+        roleToUse = 'admin'; // Vicente es admin con acceso a logística y mantenimiento
       } else if (email === 'diego@lajungla.es') {
         roleToUse = 'admin'; // Diego es admin con acceso a marketing
       } else if (email === 'jonathan@lajungla.es') {
         roleToUse = 'admin'; // Jonathan es admin con acceso a online
       } else if (email === 'antonio@lajungla.es') {
         roleToUse = 'admin'; // Antonio es admin con acceso a eventos
+      } else if (email === 'franciscogiraldezmorales@gmail.com') {
+        roleToUse = 'center_manager'; // Francisco es encargado de Centro Sevilla
       }
 
       const basicEmployee: Employee = {
@@ -156,7 +166,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         user_id: userId,
         name: email.split('@')[0],
         email: email,
-        role: roleToUse === 'superadmin' ? 'superadmin' : roleToUse === 'admin' ? 'admin' : 'employee',
+        role: roleToUse === 'superadmin' ? 'superadmin' : roleToUse === 'admin' ? 'admin' : roleToUse === 'center_manager' ? 'center_manager' : 'employee',
         is_active: true,
         workType: 'marca',
         profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,

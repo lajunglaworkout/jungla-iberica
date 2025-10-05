@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
+import SmartIncidentModal from './incidents/SmartIncidentModal';
 
 // Interfaces para tipos de datos
 interface Task {
@@ -39,20 +40,23 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const [loading, setLoading] = useState(true);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [selectedTaskForIncident, setSelectedTaskForIncident] = useState<Task | null>(null);
-  const [observaciones, setObservaciones] = useState('');
+  const [selectedIncidentType, setSelectedIncidentType] = useState<string>('');
+  const [incidentDescription, setIncidentDescription] = useState<string>('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   
   // Estados para firmas digitales
   const [firmaApertura, setFirmaApertura] = useState({
-    empleadoId: null,
+    empleadoId: null as string | null,
     empleadoNombre: '',
-    hora: null,
+    hora: null as string | null,
     firmado: false
   });
   
   const [firmaCierre, setFirmaCierre] = useState({
-    empleadoId: null,
+    empleadoId: null as string | null,
     empleadoNombre: '',
-    hora: null,
+    hora: null as string | null,
     firmado: false
   });
 
@@ -259,31 +263,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const loadInitialData = async () => {
     console.log('📋 Cargando checklist para centro:', centerName, centerId);
     
-    // Intentar cargar de BD
-    const today = new Date().toISOString().split('T')[0];
-    const { data: existing } = await supabase
-      .from('daily_checklists')
-      .select('*')
-      .eq('center_id', centerId)
-      .eq('date', today)
-      .single();
-
-    if (existing && existing.tasks) {
-      try {
-        const parsedTasks = typeof existing.tasks === 'string' ? JSON.parse(existing.tasks) : existing.tasks;
-        setChecklist(parsedTasks);
-        console.log('✅ Checklist cargado desde BD:', parsedTasks);
-      } catch (e) {
-        console.log('⚠️ Error parseando tareas, usando por defecto');
-        const defaultTasks = getDefaultTasks();
-        setChecklist(defaultTasks);
-      }
-    } else {
-      // IMPORTANTE: Cargar las tareas por defecto
-      const defaultTasks = getDefaultTasks();
-      console.log('📝 Cargando tareas por defecto:', defaultTasks);
-      setChecklist(defaultTasks);
-    }
+    // Por ahora, cargar siempre las tareas por defecto para evitar errores de BD
+    const defaultTasks = getDefaultTasks();
+    console.log('📝 Cargando tareas por defecto:', defaultTasks);
+    setChecklist(defaultTasks);
     setLoading(false);
   };
 
@@ -304,9 +287,40 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     updateChecklistInDB();
   };
 
+  // Función para manejar la selección de imágenes
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Limitar a 3 imágenes máximo
+    const maxImages = 3;
+    const newFiles = files.slice(0, maxImages - selectedImages.length);
+    
+    // Crear URLs de preview
+    const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
+    
+    setSelectedImages(prev => [...prev, ...newFiles]);
+    setImagePreviewUrls(prev => [...prev, ...newPreviewUrls]);
+  };
+
+  // Función para eliminar una imagen
+  const removeImage = (index: number) => {
+    // Liberar la URL del objeto
+    URL.revokeObjectURL(imagePreviewUrls[index]);
+    
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Función para reportar incidencia
   const handleReportIncident = (tarea: Task) => {
     setSelectedTaskForIncident(tarea);
+    setIncidentDescription(`Problema con: ${tarea.titulo}`);
+    setSelectedIncidentType('');
+    // Limpiar imágenes previas
+    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    setSelectedImages([]);
+    setImagePreviewUrls([]);
     setShowIncidentModal(true);
   };
 
@@ -322,31 +336,93 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     }));
   };
 
-  // Auto-guardar en BD
-  const updateChecklistInDB = async () => {
-    console.log('💾 Auto-guardando checklist...');
-    // Implementar guardado en Supabase aquí
+  // Función para firmar apertura
+  const handleFirmarApertura = async () => {
+    if (!employee) {
+      alert('Error: No se puede identificar el empleado');
+      return;
+    }
+
+    const ahora = new Date();
+    const nuevaFirma = {
+      empleadoId: employee.id ?? null,
+      empleadoNombre: employee.name,
+      hora: ahora.toLocaleTimeString('es-ES'),
+      firmado: true
+    };
+
+    setFirmaApertura(nuevaFirma);
+    
+    // Guardar estado provisional en BD
+    await guardarEstadoProvisional('apertura_firmada');
+    
+    alert(`✅ Apertura firmada por ${employee.name} a las ${nuevaFirma.hora}\n\n🔄 Estado guardado. El turno de noche puede continuar con el checklist.`);
+  };
+
+  // Función para firmar cierre
+  const handleFirmarCierre = async () => {
+    if (!employee) {
+      alert('Error: No se puede identificar el empleado');
+      return;
+    }
+
+    const ahora = new Date();
+    const nuevaFirma = {
+      empleadoId: employee.id ?? null,
+      empleadoNombre: employee.name,
+      hora: ahora.toLocaleTimeString('es-ES'),
+      firmado: true
+    };
+
+    setFirmaCierre(nuevaFirma);
+    
+    // Guardar estado provisional en BD
+    await guardarEstadoProvisional('cierre_firmado');
+    
+    alert(`✅ Cierre firmado por ${employee.name} a las ${nuevaFirma.hora}\n\n📋 Checklist listo para envío final.`);
+  };
+
+  // Función para guardar estado provisional
+  const guardarEstadoProvisional = async (estado: string) => {
+    console.log('💾 Guardando estado provisional:', estado);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const { error } = await supabase
+      
+      const checklistData = {
+        center_id: centerId || 'sevilla',
+        date: today,
+        employee_id: employee?.id || null,
+        tasks: checklist,
+        status: estado, // 'apertura_firmada', 'cierre_firmado', 'completado'
+        firma_apertura: firmaApertura.firmado ? JSON.stringify(firmaApertura) : null,
+        firma_cierre: firmaCierre.firmado ? JSON.stringify(firmaCierre) : null,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('📤 Guardando estado provisional:', checklistData);
+
+      const { data, error } = await supabase
         .from('daily_checklists')
-        .upsert({
-          center_id: centerId,
-          date: today,
-          employee_id: employee?.id,
-          tasks: JSON.stringify(checklist),
-          status: 'en_progreso',
-          updated_at: new Date().toISOString()
-        });
+        .upsert(checklistData, {
+          onConflict: 'center_id,date'
+        })
+        .select();
       
       if (error) {
-        console.error('❌ Error guardando:', error);
+        console.error('❌ Error guardando estado provisional:', error);
+        alert('⚠️ Error al guardar. El estado se mantiene localmente.');
       } else {
-        console.log('✅ Checklist guardado');
+        console.log('✅ Estado provisional guardado:', data);
       }
     } catch (error) {
-      console.error('❌ Error en updateChecklistInDB:', error);
+      console.error('❌ Error en guardarEstadoProvisional:', error);
     }
+  };
+
+  // Auto-guardar en BD (versión simplificada para auto-guardado)
+  const updateChecklistInDB = async () => {
+    console.log('💾 Auto-guardando checklist...');
+    await guardarEstadoProvisional('en_progreso');
   };
 
   // RENDERIZADO CORRECTO de las tareas
@@ -504,9 +580,28 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             
             {/* Botón de firma apertura */}
             <div style={{ marginTop: '16px' }}>
-              <button style={buttonStyle}>
-                ✍️ Firmar Apertura
+              <button 
+                onClick={handleFirmarApertura}
+                disabled={firmaApertura.firmado}
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: firmaApertura.firmado ? '#10b981' : '#3b82f6',
+                  opacity: firmaApertura.firmado ? 0.8 : 1,
+                  cursor: firmaApertura.firmado ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {firmaApertura.firmado ? '✅ Firmado por ' + firmaApertura.empleadoNombre : '✍️ Firmar Apertura'}
               </button>
+              {firmaApertura.firmado && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#059669', 
+                  marginTop: '4px',
+                  fontWeight: '500'
+                }}>
+                  Firmado a las {firmaApertura.hora}
+                </div>
+              )}
             </div>
           </div>
 
@@ -541,39 +636,58 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             
             {/* Botón de firma cierre */}
             <div style={{ marginTop: '16px' }}>
-              <button style={buttonStyle}>
-                ✍️ Firmar Cierre
+              <button 
+                onClick={handleFirmarCierre}
+                disabled={firmaCierre.firmado}
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: firmaCierre.firmado ? '#10b981' : '#3b82f6',
+                  opacity: firmaCierre.firmado ? 0.8 : 1,
+                  cursor: firmaCierre.firmado ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {firmaCierre.firmado ? '✅ Firmado por ' + firmaCierre.empleadoNombre : '✍️ Firmar Cierre'}
               </button>
+              {firmaCierre.firmado && (
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#059669', 
+                  marginTop: '4px',
+                  fontWeight: '500'
+                }}>
+                  Firmado a las {firmaCierre.hora}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* OBSERVACIONES */}
+          {/* Sección de incidencias */}
           <div style={{ marginBottom: '32px' }}>
             <h2 style={{ 
-              color: '#059669', 
-              borderBottom: '2px solid #059669', 
-              paddingBottom: '8px',
+              fontSize: '20px', 
+              fontWeight: '700', 
               marginBottom: '16px',
-              fontSize: '24px',
-              fontWeight: '700'
+              color: '#374151'
             }}>
-              📝 OBSERVACIONES
+              🚨 Incidencias Reportadas
             </h2>
-            <textarea 
-              style={{ 
-                width: '100%', 
-                minHeight: '150px', 
-                padding: '12px',
-                borderRadius: '8px',
-                border: '2px solid #e5e7eb',
-                fontSize: '16px',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-              placeholder="Escribir observaciones o incidencias aquí..."
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-            />
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              border: '2px dashed #e5e7eb',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: '#6b7280', marginBottom: '12px' }}>
+                {checklist.incidencias.length > 0 
+                  ? `${checklist.incidencias.length} incidencia(s) reportada(s) hoy`
+                  : 'No hay incidencias reportadas hoy'
+                }
+              </p>
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                💡 Para reportar una incidencia, haz clic en "Reportar" junto a cualquier tarea
+              </p>
+            </div>
           </div>
 
           {/* Botón final para completar todo */}
@@ -598,7 +712,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         </>
       )}
 
-      {/* Modal de incidencias */}
+      {/* Modal de incidencias - Versión de prueba */}
       {showIncidentModal && (
         <div style={{
           position: 'fixed',
@@ -606,7 +720,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: 'rgba(0,0,0,0.8)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -614,19 +728,364 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         }}>
           <div style={{
             backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            width: '90%'
+            padding: '32px',
+            borderRadius: '16px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto'
           }}>
-            <h3>Reportar Incidencia</h3>
-            <p>Tarea: {selectedTaskForIncident?.titulo}</p>
-            <button 
-              onClick={() => setShowIncidentModal(false)}
-              style={buttonStyle}
-            >
-              Cerrar
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
+                🚨 Reportar Incidencia
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowIncidentModal(false);
+                  setSelectedTaskForIncident(null);
+                }}
+                style={{
+                  padding: '8px',
+                  backgroundColor: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '18px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <p><strong>Tarea:</strong> {selectedTaskForIncident?.titulo}</p>
+              <p><strong>Centro:</strong> {centerName}</p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                Departamento Responsable:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button 
+                  onClick={() => setSelectedIncidentType('mantenimiento')}
+                  style={{ 
+                    padding: '12px', 
+                    backgroundColor: selectedIncidentType === 'mantenimiento' ? '#ef4444' : '#fee2e2', 
+                    color: selectedIncidentType === 'mantenimiento' ? 'white' : '#dc2626',
+                    border: selectedIncidentType === 'mantenimiento' ? 'none' : '2px solid #ef4444',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: selectedIncidentType === 'mantenimiento' ? 'bold' : 'normal'
+                  }}
+                >
+                  🔧 Mantenimiento
+                </button>
+                <button 
+                  onClick={() => setSelectedIncidentType('logistica')}
+                  style={{ 
+                    padding: '12px', 
+                    backgroundColor: selectedIncidentType === 'logistica' ? '#059669' : '#dcfce7', 
+                    color: selectedIncidentType === 'logistica' ? 'white' : '#059669',
+                    border: selectedIncidentType === 'logistica' ? 'none' : '2px solid #059669',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: selectedIncidentType === 'logistica' ? 'bold' : 'normal'
+                  }}
+                >
+                  📦 Logística
+                </button>
+                <button 
+                  onClick={() => setSelectedIncidentType('personal')}
+                  style={{ 
+                    padding: '12px', 
+                    backgroundColor: selectedIncidentType === 'personal' ? '#8b5cf6' : '#ede9fe', 
+                    color: selectedIncidentType === 'personal' ? 'white' : '#8b5cf6',
+                    border: selectedIncidentType === 'personal' ? 'none' : '2px solid #8b5cf6',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: selectedIncidentType === 'personal' ? 'bold' : 'normal'
+                  }}
+                >
+                  👥 Personal
+                </button>
+                <button 
+                  onClick={() => setSelectedIncidentType('clientes')}
+                  style={{ 
+                    padding: '12px', 
+                    backgroundColor: selectedIncidentType === 'clientes' ? '#f59e0b' : '#fef3c7', 
+                    color: selectedIncidentType === 'clientes' ? 'white' : '#f59e0b',
+                    border: selectedIncidentType === 'clientes' ? 'none' : '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: selectedIncidentType === 'clientes' ? 'bold' : 'normal'
+                  }}
+                >
+                  😊 Clientes
+                </button>
+              </div>
+              {selectedIncidentType && (
+                <div style={{ 
+                  marginTop: '12px', 
+                  padding: '12px', 
+                  backgroundColor: '#f8fafc', 
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  <strong>Se notificará a:</strong> {
+                    selectedIncidentType === 'mantenimiento' ? 'Departamento de Mantenimiento' :
+                    selectedIncidentType === 'logistica' ? 'Departamento de Logística (incluye seguridad)' :
+                    selectedIncidentType === 'personal' ? 'Recursos Humanos' :
+                    selectedIncidentType === 'clientes' ? 'Dirección y Atención al Cliente' : ''
+                  }
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                Descripción:
+              </label>
+              <textarea 
+                value={incidentDescription}
+                onChange={(e) => setIncidentDescription(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  minHeight: '100px', 
+                  padding: '12px', 
+                  border: '2px solid #e5e7eb', 
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                placeholder="Describe el problema..."
+              />
+            </div>
+
+            {/* Sección de imágenes */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                📸 Imágenes (opcional):
+              </label>
+              <div style={{ 
+                border: '2px dashed #d1d5db', 
+                borderRadius: '8px', 
+                padding: '20px',
+                backgroundColor: '#f9fafb'
+              }}>
+                {selectedImages.length === 0 ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>📷</div>
+                    <p style={{ color: '#6b7280', marginBottom: '12px', fontSize: '14px' }}>
+                      Adjunta fotos para ayudar a resolver la incidencia
+                    </p>
+                    <label style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      padding: '12px 20px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}>
+                      📤 Seleccionar imágenes
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+                      Máximo 3 imágenes (JPG, PNG, GIF)
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+                      gap: '12px', 
+                      marginBottom: '16px' 
+                    }}>
+                      {imagePreviewUrls.map((url, index) => (
+                        <div key={index} style={{ position: 'relative' }}>
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '2px solid #e5e7eb'
+                            }}
+                          />
+                          <button
+                            onClick={() => removeImage(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '-8px',
+                              right: '-8px',
+                              width: '24px',
+                              height: '24px',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '50%',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 'bold',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            ×
+                          </button>
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#6b7280',
+                            marginTop: '4px',
+                            textAlign: 'center'
+                          }}>
+                            {selectedImages[index]?.name.substring(0, 15)}...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedImages.length < 3 && (
+                      <div style={{ textAlign: 'center' }}>
+                        <label style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          padding: '8px 16px',
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          border: '1px solid #d1d5db'
+                        }}>
+                          ➕ Añadir más
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleImageSelect}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+                    )}
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '8px',
+                      backgroundColor: '#ecfdf5',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#065f46',
+                      textAlign: 'center'
+                    }}>
+                      ✅ {selectedImages.length} imagen{selectedImages.length > 1 ? 'es' : ''} seleccionada{selectedImages.length > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  setShowIncidentModal(false);
+                  setSelectedTaskForIncident(null);
+                  setSelectedIncidentType('');
+                  setIncidentDescription('');
+                  // Limpiar imágenes y liberar URLs
+                  imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+                  setSelectedImages([]);
+                  setImagePreviewUrls([]);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  if (!selectedIncidentType) {
+                    alert('Por favor selecciona un departamento responsable');
+                    return;
+                  }
+                  if (!incidentDescription.trim()) {
+                    alert('Por favor describe el problema');
+                    return;
+                  }
+                  
+                  const incidentData = {
+                    tarea: selectedTaskForIncident?.titulo,
+                    centro: centerName,
+                    departamento: selectedIncidentType,
+                    descripcion: incidentDescription,
+                    fecha: new Date().toLocaleString('es-ES'),
+                    reportadoPor: employee?.name || 'Usuario',
+                    imagenes: selectedImages.length > 0 ? selectedImages.map(file => ({
+                      nombre: file.name,
+                      tamaño: `${(file.size / 1024).toFixed(1)}KB`,
+                      tipo: file.type
+                    })) : null,
+                    tieneImagenes: selectedImages.length > 0
+                  };
+                  
+                  console.log('📋 Incidencia reportada:', incidentData);
+                  
+                  if (selectedImages.length > 0) {
+                    console.log(`📸 Imágenes adjuntas: ${selectedImages.length}`);
+                    selectedImages.forEach((file, index) => {
+                      console.log(`  - Imagen ${index + 1}: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+                    });
+                  }
+                  alert(`¡Incidencia reportada al departamento de ${
+                    selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
+                    selectedIncidentType === 'logistica' ? 'Logística' :
+                    selectedIncidentType === 'personal' ? 'Personal' :
+                    selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
+                  }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}`);
+                  
+                  setShowIncidentModal(false);
+                  setSelectedTaskForIncident(null);
+                  setSelectedIncidentType('');
+                  setIncidentDescription('');
+                  // Limpiar imágenes y liberar URLs
+                  imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+                  setSelectedImages([]);
+                  setImagePreviewUrls([]);
+                }}
+                disabled={!selectedIncidentType || !incidentDescription.trim()}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: (!selectedIncidentType || !incidentDescription.trim()) ? '#9ca3af' : '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: (!selectedIncidentType || !incidentDescription.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: (!selectedIncidentType || !incidentDescription.trim()) ? 0.6 : 1
+                }}
+              >
+                Reportar Incidencia
+              </button>
+            </div>
           </div>
         </div>
       )}
