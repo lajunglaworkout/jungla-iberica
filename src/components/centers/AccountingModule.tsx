@@ -45,12 +45,21 @@ interface FinancialData {
   mes: number;
   año: number;
   cuotas: CuotaItem[];
-  // Ingresos
+  // Ingresos principales simplificados
+  ingresos_con_iva: number;
+  ingresos_sin_iva: number;
+  // Ingresos extras
   nutricion: number;
   fisioterapia: number;
   entrenamiento_personal: number;
   entrenamientos_grupales: number;
   otros: number;
+  // IVA de ingresos extras
+  nutricion_iva: boolean;
+  fisioterapia_iva: boolean;
+  entrenamiento_personal_iva: boolean;
+  entrenamientos_grupales_iva: boolean;
+  otros_iva: boolean;
   // Gastos fijos
   alquiler: number;
   suministros: number;
@@ -114,12 +123,21 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     mes: new Date().getMonth() + 1,
     año: new Date().getFullYear(),
     cuotas: [],
-    // Ingresos
+    // Ingresos principales simplificados
+    ingresos_con_iva: 0,
+    ingresos_sin_iva: 0,
+    // Ingresos extras
     nutricion: 0,
     fisioterapia: 0,
     entrenamiento_personal: 0,
     entrenamientos_grupales: 0,
     otros: 0,
+    // IVA de ingresos extras (por defecto con IVA)
+    nutricion_iva: true,
+    fisioterapia_iva: true,
+    entrenamiento_personal_iva: true,
+    entrenamientos_grupales_iva: true,
+    otros_iva: true,
     // Gastos fijos
     alquiler: 0,
     suministros: 0,
@@ -201,12 +219,21 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
         precio_total: cuota.precio_total,
         lleva_iva: cuota.lleva_iva !== false // Por defecto true si no está definido
       })),
-      // Ingresos
+      // Ingresos principales simplificados
+      ingresos_con_iva: financialData.ingresos_con_iva || 0,
+      ingresos_sin_iva: financialData.ingresos_sin_iva || 0,
+      // Ingresos extras
       nutricion: financialData.nutricion || 0,
       fisioterapia: financialData.fisioterapia || 0,
       entrenamiento_personal: financialData.entrenamiento_personal || 0,
       entrenamientos_grupales: financialData.entrenamientos_grupales || 0,
       otros: financialData.otros || 0,
+      // IVA de ingresos extras
+      nutricion_iva: financialData.nutricion_iva !== undefined ? financialData.nutricion_iva : true,
+      fisioterapia_iva: financialData.fisioterapia_iva !== undefined ? financialData.fisioterapia_iva : true,
+      entrenamiento_personal_iva: financialData.entrenamiento_personal_iva !== undefined ? financialData.entrenamiento_personal_iva : true,
+      entrenamientos_grupales_iva: financialData.entrenamientos_grupales_iva !== undefined ? financialData.entrenamientos_grupales_iva : true,
+      otros_iva: financialData.otros_iva !== undefined ? financialData.otros_iva : true,
       
       // Gastos fijos
       alquiler: financialData.alquiler || 0,
@@ -243,11 +270,28 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     setLoading(false);
   };
 
-  // Cálculos automáticos con IVA por tipo de cuota y gasto
+  // Cálculos automáticos híbridos CORREGIDOS
+  // Ingresos principales simplificados
+  const totalIngresosPrincipales = (data.ingresos_con_iva || 0) + (data.ingresos_sin_iva || 0);
+  const ivaRepercutidoPrincipales = (data.ingresos_con_iva || 0) - ((data.ingresos_con_iva || 0) / 1.21); // IVA extraído del importe bruto
+  
+  // Ingresos de cuotas (mantenemos compatibilidad)
   const totalIngresosNetosCuotas = data.cuotas.reduce((sum, cuota) => sum + (cuota.cantidad * cuota.importe), 0);
   const totalIvaCuotas = data.cuotas.reduce((sum, cuota) => sum + (cuota.cantidad * cuota.iva), 0);
-  const totalIngresosNetos = totalIngresosNetosCuotas + data.nutricion + data.fisioterapia + data.entrenamiento_personal + data.entrenamientos_grupales + data.otros;
-  const totalIngresos = totalIngresosNetos + totalIvaCuotas;
+  
+  // Ingresos extras CON IVA calculado
+  const totalIngresosExtras = data.nutricion + data.fisioterapia + data.entrenamiento_personal + data.entrenamientos_grupales + data.otros;
+  const ivaIngresosExtras = (
+    (data.nutricion_iva ? data.nutricion - (data.nutricion / 1.21) : 0) +
+    (data.fisioterapia_iva ? data.fisioterapia - (data.fisioterapia / 1.21) : 0) +
+    (data.entrenamiento_personal_iva ? data.entrenamiento_personal - (data.entrenamiento_personal / 1.21) : 0) +
+    (data.entrenamientos_grupales_iva ? data.entrenamientos_grupales - (data.entrenamientos_grupales / 1.21) : 0) +
+    (data.otros_iva ? data.otros - (data.otros / 1.21) : 0)
+  );
+  
+  // TOTALES CORREGIDOS - Los ingresos introducidos ya son BRUTOS (con IVA incluido)
+  const totalIngresosNetos = totalIngresosPrincipales + totalIngresosNetosCuotas + totalIngresosExtras;
+  const totalIngresos = totalIngresosNetos; // NO sumar el IVA porque ya está incluido en los importes brutos
 
   // Calcular gastos con IVA según corresponda
   const gastosExtrasConIva = data.gastos_extras
@@ -268,10 +312,10 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     (data.royalty_iva === true ? (data.royalty || 0) : 0) +
     (data.software_gestion_iva !== false ? (data.software_gestion || 0) : 0);
   
-  const ivaSoportado = (gastosFijosConIva + (gastosExtrasConIva || 0)) * 0.21;
+  const ivaSoportado = (gastosFijosConIva + (gastosExtrasConIva || 0)) - ((gastosFijosConIva + (gastosExtrasConIva || 0)) / 1.21);
 
-  // IVA repercutido = IVA de cuotas + IVA de servicios adicionales (asumiendo que llevan IVA)
-  const ivaRepercutido = totalIvaCuotas; // Por simplicidad, asumimos que servicios adicionales llevan IVA
+  // IVA repercutido CORREGIDO = IVA de ingresos principales + IVA de cuotas + IVA de ingresos extras
+  const ivaRepercutido = ivaRepercutidoPrincipales + totalIvaCuotas + ivaIngresosExtras;
 
   // IVA a pagar = IVA repercutido - IVA soportado
   const ivaAPagar = ivaRepercutido - ivaSoportado;
@@ -286,8 +330,8 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
   const handleChange = (field: keyof FinancialData, value: string | boolean) => {
     if (field === 'cuotas' || field === 'gastos_extras') return; // Estos se manejan por separado
     
-    // Manejar campos booleanos (IVA)
-    if (field.endsWith('_iva')) {
+    // Manejar campos booleanos (IVA) - excluir los campos de ingresos
+    if (field.endsWith('_iva') && !field.startsWith('ingresos_')) {
       const boolValue = typeof value === 'string' ? value === 'true' : value;
       setData(prev => ({ ...prev, [field]: boolValue }));
       return;
@@ -295,6 +339,7 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
     
     // Campos numéricos
     const numericFields = [
+      'ingresos_con_iva', 'ingresos_sin_iva', // Nuevos campos principales
       'nutricion', 'fisioterapia', 'entrenamiento_personal', 'entrenamientos_grupales', 'otros',
       'alquiler', 'suministros', 'nominas', 'seguridad_social', 'marketing', 'mantenimiento',
       'royalty', 'software_gestion', 'mes', 'año'
@@ -342,7 +387,7 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
       };
     } else {
       // Si el precio NO incluye IVA, calculamos el IVA y el precio total
-      const iva = precio * 0.21;  // IVA = Precio base × 21%
+      const iva = precio * 0.21;  // IVA = Precio base × 21% (CORRECTO: aquí sí es precio base)
       const precioTotal = precio + iva;  // Precio total = Precio base + IVA
       
       return { 
@@ -813,143 +858,57 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
               </h3>
               
               <div style={{ display: 'grid', gap: '16px' }}>
-                {/* Cuotas por Tipo con IVA Individual */}
+                {/* Ingresos Principales Simplificados */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ fontSize: '14px', fontWeight: '500' }}>💰 Cuotas por Tipo</label>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        onClick={() => setShowCuotaConfig(true)}
-                        style={{ padding: '6px 12px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        title="Configurar tipos de cuotas"
-                      >
-                        ⚙️ Config
-                      </button>
-                      <button
-                        onClick={addCuota}
-                        disabled={loading || tiposCuota.length === 0}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: (loading || tiposCuota.length === 0) ? '#9ca3af' : '#10b981',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: (loading || tiposCuota.length === 0) ? 'not-allowed' : 'pointer',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Plus style={{ width: '14px', height: '14px' }} />
-                        {loading ? 'Cargando...' : 'Añadir Tipo'}
-                      </button>
-                    </div>
+                    <label style={{ fontSize: '14px', fontWeight: '500' }}>💰 Ingresos Principales</label>
                   </div>
 
-                  {/* Información de sincronización */}
-                  <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '6px', padding: '8px', marginBottom: '12px', fontSize: '12px', color: '#0c4a6e' }}>
-                    👥 <strong>{totalClientes}</strong> clientes totales • Configura el número de clientes por tipo de cuota
+                  {/* Campos simplificados para ingresos */}
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
+                        💰 Ingresos CON IVA (€)
+                      </label>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="0.00 €" 
+                        value={data.ingresos_con_iva || ''} 
+                        onChange={(e) => handleChange('ingresos_con_iva', e.target.value)} 
+                        style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }} 
+                        title="Introduce el total bruto de ingresos que incluyen IVA"
+                      />
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA repercutido: €{((data.ingresos_con_iva || 0) - ((data.ingresos_con_iva || 0) / 1.21)).toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
+                        💰 Ingresos SIN IVA (€)
+                      </label>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="0.00 €" 
+                        value={data.ingresos_sin_iva || ''} 
+                        onChange={(e) => handleChange('ingresos_sin_iva', e.target.value)} 
+                        style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }} 
+                        title="Introduce el total de ingresos exentos de IVA"
+                      />
+                      <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px', fontStyle: 'italic' }}>
+                        Exento de IVA: €0.00
+                      </div>
+                    </div>
                   </div>
-
-                  {/* Lista de cuotas por tipo */}
-                  {data.cuotas.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.8fr 0.8fr 0.8fr auto', gap: '4px', marginBottom: '6px', fontSize: '10px', color: '#6b7280', fontWeight: '500' }}>
-                        <div>Tipo de Cuota</div>
-                        <div>Clientes</div>
-                        <div>Base (€)</div>
-                        <div>IVA</div>
-                        <div>Total</div>
-                        <div>IVA?</div>
-                        <div></div>
-                      </div>
+                  
+                  {/* Total de ingresos principales */}
+                  <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                    <div style={{ fontSize: '14px', color: '#166534', fontWeight: '600', textAlign: 'center' }}>
+                      Total Ingresos Principales: €{((data.ingresos_con_iva || 0) + (data.ingresos_sin_iva || 0)).toFixed(2)}
                     </div>
-                  )}
-
-                  {data.cuotas.map((cuota) => (
-                    <div key={cuota.id} style={{ marginBottom: '12px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.8fr 0.8fr 0.8fr auto', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-                        <select
-                          value={cuota.tipo}
-                          onChange={(e) => updateCuota(cuota.id || '', 'tipo', e.target.value)}
-                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}
-                        >
-                          {tiposCuota.map((tipo) => <option key={tipo.nombre} value={tipo.nombre}>{tipo.nombre}</option>)}
-                        </select>
-                        <input
-                          type="number"
-                          placeholder="Nº clientes"
-                          value={cuota.cantidad}
-                          onChange={(e) => updateCuota(cuota.id || '', 'cantidad', e.target.value)}
-                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', textAlign: 'center' }}
-                          min="0"
-                        />
-                        <div style={{ padding: '8px', backgroundColor: '#e0f2fe', borderRadius: '6px', fontSize: '12px', textAlign: 'center', color: '#0c4a6e', fontWeight: '500' }}>
-                          €{(cuota.importe * cuota.cantidad).toFixed(2)}
-                        </div>
-                        <div style={{ padding: '8px', backgroundColor: '#f0f9ff', borderRadius: '6px', fontSize: '12px', textAlign: 'center', color: '#1e40af', fontWeight: '500' }}>
-                          €{(cuota.iva * cuota.cantidad).toFixed(2)}
-                        </div>
-                        <div style={{ padding: '8px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '12px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
-                          €{(cuota.precio_total * cuota.cantidad).toFixed(2)}
-                        </div>
-                        <select
-                          value={cuota.lleva_iva !== undefined ? cuota.lleva_iva.toString() : 'true'}
-                          onChange={(e) => {
-                            const tipoSeleccionado = tiposCuota.find(t => t.nombre === cuota.tipo);
-                            if (tipoSeleccionado) {
-                              // Si el selector de IVA cambia, usamos el precio base del tipo de cuota
-                              // y especificamos si el precio incluye IVA o no
-                              const { precioSinIva, iva, precioTotal } = calcularPrecios(
-                                tipoSeleccionado.precio, 
-                                e.target.value === 'true',
-                                true // Asumimos que el precio del tipo de cuota es con IVA incluido
-                              );
-                              setData(prev => ({
-                                ...prev,
-                                cuotas: prev.cuotas.map(c =>
-                                  c.id === cuota.id
-                                    ? { 
-                                        ...c, 
-                                        importe: precioSinIva, 
-                                        iva: iva, 
-                                        precio_total: precioTotal,
-                                        lleva_iva: e.target.value === 'true' 
-                                      }
-                                    : c
-                                )
-                              }));
-                            }
-                          }}
-                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
-                        >
-                          <option value="true">Con IVA</option>
-                          <option value="false">Sin IVA</option>
-                        </select>
-                        <button
-                          onClick={() => removeCuota(cuota.id || '')}
-                          style={{ padding: '6px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                          title="Eliminar cuota"
-                        >
-                          <Trash2 style={{ width: '12px', height: '12px' }} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Mensaje informativo cuando no hay cuotas */}
-                  {data.cuotas.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', color: '#92400e', fontSize: '14px' }}>
-                      <div style={{ fontWeight: '500', marginBottom: '8px' }}>🚀 ¡Sistema de Cuotas por Tipo!</div>
-                      <div style={{ fontSize: '12px' }}>
-                        1. Configura tipos de cuotas (⚙️ Config)<br/>
-                        2. Usa "Añadir Tipo" para crear cuotas específicas<br/>
-                        3. Especifica el número de clientes para cada tipo<br/>
-                        4. Sistema calcula automáticamente IVA y totales
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Servicios Adicionales - Solo los servicios reales */}
@@ -962,71 +921,136 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         🥗 Nutrición
                       </label>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00 €" 
-                        value={data.nutricion || ''} 
-                        onChange={(e) => handleChange('nutricion', e.target.value)} 
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
-                        title="Ingresos por consultas nutricionales - Actualizar cada viernes"
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00 €" 
+                          value={data.nutricion || ''} 
+                          onChange={(e) => handleChange('nutricion', e.target.value)} 
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
+                          title="Ingresos por consultas nutricionales"
+                        />
+                        <select
+                          value={data.nutricion_iva.toString()}
+                          onChange={(e) => handleChange('nutricion_iva', e.target.value === 'true')}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="true">Con IVA</option>
+                          <option value="false">Sin IVA</option>
+                        </select>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA: €{(data.nutricion_iva ? (data.nutricion || 0) - ((data.nutricion || 0) / 1.21) : 0).toFixed(2)}
+                      </div>
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         🩺 Fisioterapia
                       </label>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00 €" 
-                        value={data.fisioterapia || ''} 
-                        onChange={(e) => handleChange('fisioterapia', e.target.value)} 
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
-                        title="Ingresos por fisioterapia - Actualizar cada viernes"
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00 €" 
+                          value={data.fisioterapia || ''} 
+                          onChange={(e) => handleChange('fisioterapia', e.target.value)} 
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
+                          title="Ingresos por fisioterapia"
+                        />
+                        <select
+                          value={data.fisioterapia_iva.toString()}
+                          onChange={(e) => handleChange('fisioterapia_iva', e.target.value === 'true')}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="true">Con IVA</option>
+                          <option value="false">Sin IVA</option>
+                        </select>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA: €{(data.fisioterapia_iva ? (data.fisioterapia || 0) - ((data.fisioterapia || 0) / 1.21) : 0).toFixed(2)}
+                      </div>
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         💪 Entrenamientos Personales
                       </label>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00 €" 
-                        value={data.entrenamiento_personal || ''} 
-                        onChange={(e) => handleChange('entrenamiento_personal', e.target.value)} 
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
-                        title="Ingresos por entrenamientos personales - Actualizar cada viernes"
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00 €" 
+                          value={data.entrenamiento_personal || ''} 
+                          onChange={(e) => handleChange('entrenamiento_personal', e.target.value)} 
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
+                          title="Ingresos por entrenamientos personales"
+                        />
+                        <select
+                          value={data.entrenamiento_personal_iva.toString()}
+                          onChange={(e) => handleChange('entrenamiento_personal_iva', e.target.value === 'true')}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="true">Con IVA</option>
+                          <option value="false">Sin IVA</option>
+                        </select>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA: €{(data.entrenamiento_personal_iva ? (data.entrenamiento_personal || 0) - ((data.entrenamiento_personal || 0) / 1.21) : 0).toFixed(2)}
+                      </div>
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         🏃 Entrenamientos Grupales
                       </label>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00 €" 
-                        value={data.entrenamientos_grupales || ''} 
-                        onChange={(e) => handleChange('entrenamientos_grupales', e.target.value)} 
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
-                        title="Ingresos por entrenamientos grupales - Actualizar cada viernes"
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00 €" 
+                          value={data.entrenamientos_grupales || ''} 
+                          onChange={(e) => handleChange('entrenamientos_grupales', e.target.value)} 
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
+                          title="Ingresos por entrenamientos grupales"
+                        />
+                        <select
+                          value={data.entrenamientos_grupales_iva.toString()}
+                          onChange={(e) => handleChange('entrenamientos_grupales_iva', e.target.value === 'true')}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="true">Con IVA</option>
+                          <option value="false">Sin IVA</option>
+                        </select>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA: €{(data.entrenamientos_grupales_iva ? (data.entrenamientos_grupales || 0) - ((data.entrenamientos_grupales || 0) / 1.21) : 0).toFixed(2)}
+                      </div>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', marginBottom: '4px', color: '#64748b' }}>
                         📋 Otros Ingresos
                       </label>
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00 €" 
-                        value={data.otros || ''} 
-                        onChange={(e) => handleChange('otros', e.target.value)} 
-                        style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
-                        title="Otros ingresos no categorizados - Actualizar cada viernes"
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00 €" 
+                          value={data.otros || ''} 
+                          onChange={(e) => handleChange('otros', e.target.value)} 
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', backgroundColor: 'white' }} 
+                          title="Otros ingresos no categorizados"
+                        />
+                        <select
+                          value={data.otros_iva.toString()}
+                          onChange={(e) => handleChange('otros_iva', e.target.value === 'true')}
+                          style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
+                        >
+                          <option value="true">Con IVA</option>
+                          <option value="false">Sin IVA</option>
+                        </select>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                        IVA: €{(data.otros_iva ? (data.otros || 0) - ((data.otros || 0) / 1.21) : 0).toFixed(2)}
+                      </div>
                     </div>
                   </div>
                   
@@ -1332,6 +1356,14 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
                 <div style={{ padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #0ea5e9' }}>
                   <p style={{ fontSize: '14px', color: '#0c4a6e', margin: '0 0 4px 0' }}>Total Clientes</p>
                   <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#0284c7', margin: 0 }}>{totalClientes}</p>
+                </div>
+                
+                <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+                  <p style={{ fontSize: '14px', color: '#92400e', margin: '0 0 4px 0' }}>IVA a Pagar</p>
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#d97706', margin: 0 }}>€{ivaAPagar.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</p>
+                  <p style={{ fontSize: '10px', color: '#92400e', margin: '4px 0 0 0', fontStyle: 'italic' }}>
+                    IVA repercutido (€{ivaRepercutido.toFixed(2)}) - IVA soportado (€{ivaSoportado.toFixed(2)})
+                  </p>
                 </div>
               </div>
               

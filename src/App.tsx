@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { CreateCenterModal } from './components/CreateCenterModal';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { DataProvider } from './contexts/DataContext';
-import LoginForm from './components/LoginForm';
 import { supabase } from './lib/supabase';
+import LoginForm from './components/LoginForm';
 import {
   Calendar,
   Users,
@@ -32,6 +32,7 @@ import {
   Loader2,
   AlertTriangle,
   LayoutDashboard,
+  DollarSign,
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
@@ -43,9 +44,12 @@ import MarketingPublicationSystem from './components/MarketingPublicationSystem'
 import ExecutiveDashboard from './components/ExecutiveDashboard';
 import IntelligentExecutiveDashboard from './components/IntelligentExecutiveDashboard';
 import StrategicMeetingSystem from './components/StrategicMeetingSystem';
+import BrandAccountingModule from './components/accounting/BrandAccountingModule';
 import MeetingHistorySystem from './components/MeetingHistorySystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
+import CenterManagement from './components/centers/CenterManagement';
+import DailyOperations from './components/hr/DailyOperations';
 import LogisticsManagementSystem from './components/LogisticsManagementSystem';
 import MaintenanceModule from './components/MaintenanceModule';
 import IncidentManagementSystem from './components/incidents/IncidentManagementSystem';
@@ -55,9 +59,23 @@ import DashboardPage from './pages/DashboardPage';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
-  const { employee, signOut, userRole } = useSession();
+  const { employee, signOut, userRole, isAuthenticated } = useSession();
   const [selectedModule, setSelectedModule] = useState<string | null>('main-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
+  
+  // Debug: Mostrar información de autenticación
+  useEffect(() => {
+    console.log('Estado de autenticación:', { 
+      isAuthenticated, 
+      userRole, 
+      employee: employee ? { 
+        id: employee.id, 
+        name: employee.name, 
+        email: employee.email,
+        role: employee.role
+      } : 'No autenticado'
+    });
+  }, [isAuthenticated, userRole, employee]);
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -68,12 +86,58 @@ const NavigationDashboard: React.FC = () => {
   const [showChecklistHistory, setShowChecklistHistory] = useState(false);
   const [selectedCenterForHistory, setSelectedCenterForHistory] = useState<string | null>(null);
   const [showChecklist, setShowChecklist] = useState(false);
+  
+  // Estados para notificaciones de vacaciones
+  const [vacationNotifications, setVacationNotifications] = useState<any[]>([]);
+  const [showVacationNotifications, setShowVacationNotifications] = useState(false);
+
+  // Función para cargar notificaciones de vacaciones (solo para encargados)
+  const loadVacationNotifications = async () => {
+    if (userRole !== 'center_manager') return;
+    
+    try {
+      // Obtener empleados del centro (asumiendo centro Sevilla = ID 9)
+      const { data: centerEmployees } = await supabase
+        .from('employees')
+        .select('id, nombre, apellidos')
+        .eq('center_id', 9);
+      
+      if (centerEmployees && centerEmployees.length > 0) {
+        const employeeIds = centerEmployees.map(emp => emp.id);
+        
+        // Obtener solicitudes pendientes
+        const { data: requests } = await supabase
+          .from('vacation_requests')
+          .select('*')
+          .in('employee_id', employeeIds)
+          .eq('status', 'pending')
+          .order('requested_at', { ascending: false });
+        
+        if (requests) {
+          setVacationNotifications(requests);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando notificaciones de vacaciones:', error);
+    }
+  };
+
+  // Cargar notificaciones al cambiar el usuario
+  useEffect(() => {
+    if (userRole === 'center_manager') {
+      loadVacationNotifications();
+      // Recargar cada 30 segundos
+      const interval = setInterval(loadVacationNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole, employee?.id]);
 
   // Sistema de módulos optimizado por roles
   const getAvailableModules = () => {
     const isCEO = userRole === 'superadmin'; // Solo Carlos tiene acceso total
     const isAdmin = userRole === 'admin'; // Directores con acceso limitado
     const isManager = userRole === 'manager';
+    const isCenterManager = userRole === 'center_manager'; // Encargados de centro
     
     // Módulos base para todos los roles
     const baseModules = [
@@ -158,6 +222,15 @@ const NavigationDashboard: React.FC = () => {
         hasSubmenu: true
       },
       {
+        id: 'brand-management',
+        title: 'Gestión de Marca',
+        description: 'Gestión financiera de la marca',
+        icon: DollarSign,
+        color: '#8b5cf6',
+        component: BrandAccountingModule,
+        available: true
+      },
+      {
         id: 'incidents',
         title: 'Incidencias',
         description: 'Ausencias, vacaciones y solicitudes',
@@ -207,9 +280,16 @@ const NavigationDashboard: React.FC = () => {
     };
 
     // Construir módulos según el rol
+    console.log('Construyendo módulos para el rol:', userRole);
+    console.log('¿Es CEO?', isCEO, '¿Es admin?', isAdmin);
+    
     if (isCEO) {
       // Solo Carlos (CEO) tiene acceso a TODOS los módulos
-      return [...baseModules, ...ceoModules];
+      console.log('Módulos CEO disponibles:', ceoModules.map(m => m.title));
+      console.log('Módulos base:', baseModules.map(m => m.title));
+      const allModules = [...baseModules, ...ceoModules];
+      console.log('Todos los módulos para CEO:', allModules.map(m => m.title));
+      return allModules;
     } else if (isAdmin) {
       // Directores (admin) solo tienen acceso a SU módulo específico
       const adminModules = [];
@@ -234,7 +314,7 @@ const NavigationDashboard: React.FC = () => {
           component: MaintenanceModule,
           available: true
         });
-      } else if (employee?.email === 'vicente@lajungla.es') {
+      } else if (employee?.email === 'lajunglacentral@gmail.com') {
         adminModules.push({
           id: 'hr',
           title: 'RRHH y Procedimientos',
@@ -278,6 +358,31 @@ const NavigationDashboard: React.FC = () => {
       }
       
       return [...baseModules, ...adminModules];
+    } else if (isCenterManager) {
+      // Encargados de centro solo tienen acceso a gestión de su centro y operativa diaria
+      const centerManagerModules = [
+        {
+          id: 'center-management',
+          title: 'Gestión',
+          description: 'Gestión del Centro Sevilla',
+          icon: Building2,
+          color: '#059669',
+          component: CenterManagement,
+          available: true
+        },
+        {
+          id: 'daily-operations',
+          title: 'Mi Operativa',
+          description: 'Fichaje, check-lists y tareas diarias',
+          icon: Clock,
+          color: '#3b82f6',
+          component: DailyOperations,
+          available: true
+        }
+      ];
+      
+      // Solo dashboard, gestión y operativa diaria
+      return [baseModules[0], ...centerManagerModules]; // Solo el dashboard principal
     } else {
       // Para otros roles, solo dashboard + reuniones + su módulo específico
       const userDepartmentModules = departmentModules[userRole as keyof typeof departmentModules] || [];
@@ -286,6 +391,9 @@ const NavigationDashboard: React.FC = () => {
   };
 
   const modules = getAvailableModules();
+  console.log('Módulos disponibles para el usuario:', modules.map(m => m.title));
+  console.log('Rol del usuario:', userRole);
+  console.log('Email del empleado:', employee?.email);
 
   // Componente de contenido vacío para módulos en desarrollo
   const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
@@ -608,25 +716,118 @@ const NavigationDashboard: React.FC = () => {
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button style={{
-                  padding: '8px',
-                  backgroundColor: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}>
-                  <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
-                  <span style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '4px',
-                    width: '8px',
-                    height: '8px',
-                    backgroundColor: '#ef4444',
-                    borderRadius: '50%'
-                  }} />
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => setShowVacationNotifications(!showVacationNotifications)}
+                    style={{
+                      padding: '8px',
+                      backgroundColor: '#f3f4f6',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                  >
+                    <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
+                    {vacationNotifications.length > 0 && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '2px',
+                        right: '2px',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '16px',
+                        height: '16px',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {vacationNotifications.length}
+                      </span>
+                    )}
+                  </button>
+                  
+                  {/* Panel de notificaciones */}
+                  {showVacationNotifications && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '8px',
+                      backgroundColor: 'white',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+                      border: '1px solid #e5e7eb',
+                      width: '350px',
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                      zIndex: 1000
+                    }}>
+                      <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>
+                        <h3 style={{ margin: 0, color: '#111827', fontSize: '16px', fontWeight: 'bold' }}>
+                          🏖️ Solicitudes de Vacaciones ({vacationNotifications.length})
+                        </h3>
+                      </div>
+                      
+                      {vacationNotifications.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                          No hay solicitudes pendientes
+                        </div>
+                      ) : (
+                        vacationNotifications.map(request => (
+                          <div
+                            key={request.id}
+                            style={{
+                              padding: '16px',
+                              borderBottom: '1px solid #f3f4f6',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              // Navegar al módulo de vacaciones
+                              setSelectedModule('center-management');
+                              setShowVacationNotifications(false);
+                            }}
+                          >
+                            <div style={{ fontWeight: 'bold', color: '#111827', fontSize: '14px', marginBottom: '4px' }}>
+                              {request.employee_name}
+                            </div>
+                            <div style={{ color: '#374151', fontSize: '13px', marginBottom: '4px' }}>
+                              {request.start_date} al {request.end_date} • {request.days_requested} días
+                            </div>
+                            <div style={{ color: '#6b7280', fontSize: '12px' }}>
+                              {request.reason || 'Sin motivo especificado'}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      
+                      {vacationNotifications.length > 0 && (
+                        <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedModule('center-management');
+                              setShowVacationNotifications(false);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#059669',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            Ver todas las solicitudes
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

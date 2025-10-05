@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ClipboardList, AlertTriangle, CheckCircle, XCircle, Calendar, Filter, Plus } from 'lucide-react';
+import SmartIncidentModal from '../incidents/SmartIncidentModal';
 
 interface ChecklistModuleProps {
   centerName: string;
@@ -23,6 +24,8 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
   const [activeTab, setActiveTab] = useState<'reportes' | 'nuevo'>('reportes');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [incidentDescription, setIncidentDescription] = useState('');
   
   // Mock data de reportes
   const [reportes, setReportes] = useState<ChecklistItem[]>([
@@ -290,6 +293,48 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
           </div>
         )}
       </div>
+
+      {/* Botón flotante para reportar incidencia rápida */}
+      <button
+        onClick={() => {
+          setIncidentDescription('');
+          setShowIncidentModal(true);
+        }}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: '60px',
+          height: '60px',
+          backgroundColor: '#ef4444',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          zIndex: 1000
+        }}
+        title="Reportar Incidencia"
+      >
+        <AlertTriangle size={24} />
+      </button>
+
+      {/* Modal de Incidencias Inteligente */}
+      <SmartIncidentModal
+        isOpen={showIncidentModal}
+        onClose={() => setShowIncidentModal(false)}
+        centerName={centerName}
+        centerId={centerId}
+        initialDescription={incidentDescription}
+        onIncidentCreated={(incident) => {
+          console.log('Incidencia creada desde checklist:', incident);
+          // Aquí puedes añadir la incidencia a la lista de reportes si quieres
+        }}
+      />
     </div>
   );
 };

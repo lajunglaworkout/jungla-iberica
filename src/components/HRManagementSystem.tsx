@@ -11,6 +11,10 @@ import ShiftAssignmentSystem from './hr/ShiftAssignmentSystem';
 import TimeclockDashboard from './hr/TimeclockDashboard';
 import MobileTimeClock from './hr/MobileTimeClock';
 import DatabaseVerification from './DatabaseVerification';
+import EmployeeProfile from './hr/EmployeeProfile';
+import ComingSoon from './hr/ComingSoon';
+import VacationRequest from './hr/VacationRequest';
+import VacationApproval from './hr/VacationApproval';
 import { Employee } from '../types/employee';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
@@ -286,6 +290,13 @@ const HRManagementSystem: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentModule, setCurrentModule] = useState<string>('dashboard');
 
+  // Determinar si es un empleado regular (no encargado/admin/director)
+  const isRegularEmployee = userRole === 'employee' || 
+    (!userRole?.includes('admin') && 
+     !userRole?.includes('manager') && 
+     !userRole?.includes('director') &&
+     userRole !== 'center_manager');
+
   // Opciones de centros para filtros
   const centerOptions = [
     { id: 'all', name: 'Todos los Centros' },
@@ -409,23 +420,92 @@ const HRManagementSystem: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
+      // Preparar datos para Supabase con mapeo correcto de campos
+      const supabaseData = {
+        nombre: employeeData.nombre || (employeeData as any).name,
+        apellidos: employeeData.apellidos,
+        email: employeeData.email,
+        telefono: employeeData.telefono || (employeeData as any).phone,
+        dni: employeeData.dni,
+        fecha_nacimiento: employeeData.fecha_nacimiento,
+        direccion: employeeData.direccion,
+        ciudad: employeeData.ciudad,
+        codigo_postal: employeeData.codigo_postal,
+        center_id: employeeData.center_id ? parseInt(String(employeeData.center_id)) : null,
+        fecha_alta: employeeData.fecha_alta,
+        fecha_baja: employeeData.fecha_baja,
+        tipo_contrato: employeeData.tipo_contrato,
+        jornada: employeeData.jornada,
+        salario_bruto_anual: employeeData.salario_bruto_anual,
+        rol: employeeData.rol,
+        departamento: employeeData.departamento,
+        cargo: employeeData.cargo,
+        numero_cuenta: employeeData.numero_cuenta,
+        iban: employeeData.iban,
+        banco: employeeData.banco,
+        nivel_estudios: employeeData.nivel_estudios,
+        titulacion: employeeData.titulacion,
+        especialidad: employeeData.especialidad,
+        talla_camiseta: employeeData.talla_camiseta,
+        talla_pantalon: employeeData.talla_pantalon,
+        talla_chaqueton: employeeData.talla_chaqueton,
+        foto_perfil: employeeData.foto_perfil,
+        activo: employeeData.activo,
+        observaciones: employeeData.observaciones,
+        tiene_contrato_firmado: employeeData.tiene_contrato_firmado,
+        tiene_alta_ss: employeeData.tiene_alta_ss,
+        tiene_formacion_riesgos: employeeData.tiene_formacion_riesgos,
+        updated_at: new Date().toISOString()
+      };
+
+      // Filtrar campos undefined para evitar errores
+      const cleanData = Object.fromEntries(
+        Object.entries(supabaseData).filter(([_, value]) => value !== undefined)
+      );
+
       if (selectedEmployee) {
         console.log(`💾 Actualizando empleado con ID: ${selectedEmployee.id}`);
-        const { error } = await supabase.from('employees').update(employeeData).eq('id', selectedEmployee.id);
-        if (error) throw error;
-        console.log('✅ Empleado actualizado');
+        console.log('📝 Datos a actualizar:', cleanData);
+        
+        const { data, error } = await supabase
+          .from('employees')
+          .update(cleanData)
+          .eq('id', selectedEmployee.id)
+          .select();
+        
+        if (error) {
+          console.error('❌ Error de Supabase:', error);
+          throw error;
+        }
+        
+        console.log('✅ Empleado actualizado correctamente:', data);
+        alert('✅ Empleado actualizado correctamente');
       } else {
         console.log('➕ Creando nuevo empleado...');
-        const { error } = await supabase.from('employees').insert([employeeData]);
-        if (error) throw error;
-        console.log('✅ Empleado creado');
+        console.log('📝 Datos a insertar:', cleanData);
+        
+        const { data, error } = await supabase
+          .from('employees')
+          .insert([{...cleanData, created_at: new Date().toISOString()}])
+          .select();
+        
+        if (error) {
+          console.error('❌ Error de Supabase:', error);
+          throw error;
+        }
+        
+        console.log('✅ Empleado creado correctamente:', data);
+        alert('✅ Empleado creado correctamente');
       }
+      
       setShowEmployeeForm(false);
       setSelectedEmployee(null);
       await loadEmployees();
     } catch (err: any) {
-      setError(err.message);
-      console.error("Error guardando empleado:", err.message);
+      const errorMessage = err.message || 'Error desconocido';
+      setError(errorMessage);
+      console.error("❌ Error guardando empleado:", errorMessage);
+      alert(`❌ Error guardando empleado: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -446,11 +526,8 @@ const HRManagementSystem: React.FC = () => {
   };
 
   const handleNavigate = (module: string) => {
-    console.log('🧭 Navegando a:', module);
     setCurrentView(module);
     setCurrentModule(module);
-    
-    // Resetear estados cuando se navega
     setShowEmployeeForm(false);
     setSelectedEmployee(null);
     setViewingEmployee(null);
@@ -480,9 +557,18 @@ const HRManagementSystem: React.FC = () => {
     return matchesSearch && matchesCenter;
   });
 
+  // Debug logs removed to fix CSS conflicts
+
   // Renderizado condicional basado en la vista actual
   if (currentView === 'dashboard') {
-    return <HRDashboard onNavigate={handleNavigate} />;
+    return (
+      <HRDashboard 
+        onNavigate={handleNavigate} 
+        userRole={userRole}
+        isRegularEmployee={isRegularEmployee}
+        currentEmployee={employee}
+      />
+    );
   }
 
   if (currentView === 'shifts') {
@@ -495,6 +581,73 @@ const HRManagementSystem: React.FC = () => {
 
   if (currentView === 'mobile-timeclock') {
     return <MobileTimeClock />;
+  }
+
+  if (currentView === 'vacations') {
+    return (
+      <VacationApproval
+        onBack={() => setCurrentView('dashboard')}
+        currentEmployee={employee}
+      />
+    );
+  }
+
+  if (currentView === 'my-profile') {
+    return (
+      <EmployeeProfile 
+        onBack={() => setCurrentView('dashboard')}
+        currentEmployee={employee}
+      />
+    );
+  }
+
+  if (currentView === 'my-shifts') {
+    return (
+      <ComingSoon
+        onBack={() => setCurrentView('dashboard')}
+        title="📅 Mis Turnos"
+        description="Aquí podrás ver tus horarios asignados, turnos de la semana y solicitar cambios de turno."
+      />
+    );
+  }
+
+  if (currentView === 'vacation-request') {
+    return (
+      <VacationRequest
+        onBack={() => setCurrentView('dashboard')}
+        currentEmployee={employee}
+      />
+    );
+  }
+
+  if (currentView === 'uniform-request') {
+    return (
+      <ComingSoon
+        onBack={() => setCurrentView('dashboard')}
+        title="👕 Solicitar Vestuario"
+        description="Solicita uniformes, material de trabajo y consulta el estado de tus pedidos."
+      />
+    );
+  }
+
+  if (currentView === 'my-documents') {
+    return (
+      <ComingSoon
+        onBack={() => setCurrentView('dashboard')}
+        title="📄 Mis Documentos"
+        description="Accede a tu contrato, nóminas, certificados y otros documentos laborales."
+      />
+    );
+  }
+
+  if (currentView === 'hr-contact') {
+    return (
+      <ComingSoon
+        onBack={() => setCurrentView('dashboard')}
+        title="💬 Contactar RRHH"
+        description="Comunícate directamente con el departamento de Recursos Humanos para resolver tus consultas."
+      />
+    );
   }
 
   if (currentView === 'employees') {

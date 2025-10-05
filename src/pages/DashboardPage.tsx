@@ -24,10 +24,12 @@ import { DepartmentMeetingHistory } from '../components/dashboard/DepartmentMeet
 import { useSession } from '../contexts/SessionContext';
 import { saveMeetingToSupabase, loadMeetingsFromSupabase, updateMeetingInSupabase, deleteMeetingFromSupabase } from '../services/meetingService';
 import { canUserCreateMeetings } from '../config/departments';
+import { supabase } from '../lib/supabase';
 import LogisticsManagementSystem from '../components/LogisticsManagementSystem';
 import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
 import MaintenanceModule from '../components/MaintenanceModule';
 import UserManagement from '../components/UserManagement';
+import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
 import '../styles/dashboard.css';
 
 // Datos de ejemplo para mostrar funcionalidad completa
@@ -183,31 +185,23 @@ const sampleTasks: Task[] = [
   }
 ];
 
-const sampleAlerts = [
-  {
-    id: '1',
-    title: 'Tarea Pendiente',
-    description: 'Revisar informe financiero del Q3',
-    type: 'warning' as const,
-    priority: 'high' as const,
-    createdAt: '2025-01-16T08:00:00Z',
-    isRead: false
-  },
-  {
-    id: '2',
-    title: 'Reunión en 15 minutos',
-    description: 'Revisión de objetivos trimestrales',
-    type: 'info' as const,
-    priority: 'medium' as const,
-    createdAt: '2025-01-16T08:45:00Z',
-    isRead: false
-  }
-];
+// Interfaz para las alertas inteligentes
+interface SmartAlert {
+  id: string;
+  title: string;
+  description: string;
+  type: 'warning' | 'info' | 'success' | 'error';
+  priority: 'high' | 'medium' | 'low';
+  createdAt: string;
+  isRead: boolean;
+  department?: string;
+  actionUrl?: string;
+}
 
 const DashboardPage: React.FC = () => {
-  const { employee } = useSession();
+  const { employee, userRole } = useSession();
   const [tasks, setTasks] = useState<Task[]>(sampleTasks);
-  const [alerts] = useState(sampleAlerts);
+  const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [currentView, setCurrentView] = useState<'week' | 'month'>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -219,6 +213,7 @@ const DashboardPage: React.FC = () => {
   const [showLogistics, setShowLogistics] = useState(false);
   const [showMaintenance, setShowMaintenance] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Cargar reuniones desde Supabase al inicializar
@@ -242,10 +237,101 @@ const DashboardPage: React.FC = () => {
     loadMeetings();
   }, []);
 
-  // Obtener días de la semana
+  // Función para cargar alertas inteligentes según el rol
+  const loadSmartAlerts = async () => {
+    const newAlerts: SmartAlert[] = [];
+    const now = new Date().toISOString();
+
+    try {
+      // ALERTAS PARA ENCARGADOS DE CENTRO (Vicente, Francisco, etc.)
+      if (userRole === 'center_manager') {
+        // 1. Solicitudes de vacaciones pendientes
+        const { data: centerEmployees } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('center_id', 9); // Centro Sevilla
+
+        if (centerEmployees && centerEmployees.length > 0) {
+          const employeeIds = centerEmployees.map((emp: any) => emp.id);
+          
+          const { data: vacationRequests } = await supabase
+            .from('vacation_requests')
+            .select('*')
+            .in('employee_id', employeeIds)
+            .eq('status', 'pending');
+
+          if (vacationRequests && vacationRequests.length > 0) {
+            newAlerts.push({
+              id: 'vacation-requests',
+              title: `${vacationRequests.length} Solicitud${vacationRequests.length > 1 ? 'es' : ''} de Vacaciones`,
+              description: `${vacationRequests.map((r: any) => r.employee_name).join(', ')} ha${vacationRequests.length > 1 ? 'n' : ''} solicitado vacaciones`,
+              type: 'warning',
+              priority: 'high',
+              createdAt: now,
+              isRead: false,
+              department: 'RRHH'
+            });
+          }
+        }
+
+        // 2. Incidencias abiertas del centro
+        newAlerts.push({
+          id: 'center-incidents',
+          title: '2 Incidencias Abiertas',
+          description: 'Aire acondicionado averiado, reposición de toallas',
+          type: 'warning',
+          priority: 'medium',
+          createdAt: now,
+          isRead: false,
+          department: 'Mantenimiento'
+        });
+      }
+
+      // ALERTAS PARA CEO (Carlos)
+      else if (userRole === 'superadmin') {
+        newAlerts.push({
+          id: 'dept-summary',
+          title: 'Resumen Departamental',
+          description: 'Contabilidad: 2 tareas pendientes, RRHH: 3 solicitudes, Logística: 1 pedido',
+          type: 'info',
+          priority: 'high',
+          createdAt: now,
+          isRead: false,
+          department: 'Dirección'
+        });
+
+        newAlerts.push({
+          id: 'critical-kpis',
+          title: 'KPIs Críticos',
+          description: 'Centro Puerto: ocupación 65% (objetivo 80%)',
+          type: 'warning',
+          priority: 'high',
+          createdAt: now,
+          isRead: false,
+          department: 'Operaciones'
+        });
+      }
+
+      setAlerts(newAlerts);
+    } catch (error) {
+      console.error('Error cargando alertas inteligentes:', error);
+    }
+  };
+
+  // Cargar alertas al inicializar
+  useEffect(() => {
+    if (userRole && employee) {
+      loadSmartAlerts();
+      const interval = setInterval(loadSmartAlerts, 120000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole, employee?.id]);
+
+  // Obtener días de la semana (solo lunes a viernes)
   const getWeekDays = () => {
     const start = startOfWeek(selectedDate, { locale: es });
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    // Solo devolver lunes (0) a viernes (4) - 5 días laborables
+    return Array.from({ length: 5 }, (_, i) => addDays(start, i));
   };
 
   // Obtener tareas para un día específico
@@ -335,50 +421,263 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  // Renderizar calendario semanal
+  // Renderizar calendario semanal mejorado (Lunes a Viernes)
   const renderWeekView = () => {
     const weekDays = getWeekDays();
+    const weekStart = format(weekDays[0], 'dd/MM', { locale: es });
+    const weekEnd = format(weekDays[4], 'dd/MM', { locale: es });
     
     return (
       <div className="calendar-container">
+        {/* Header de la semana con navegación */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          padding: '16px 20px',
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h2 style={{ margin: 0, color: '#111827', fontSize: '18px', fontWeight: '600' }}>
+              Semana Laboral: {weekStart} - {weekEnd}
+            </h2>
+            <span style={{ 
+              backgroundColor: '#f3f4f6', 
+              color: '#6b7280', 
+              padding: '4px 8px', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}>
+              {format(new Date(), 'MMMM yyyy', { locale: es })}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '14px'
+              }}
+            >
+              <ChevronLeft size={16} />
+              Anterior
+            </button>
+            
+            <button
+              onClick={() => setSelectedDate(new Date())}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Hoy
+            </button>
+            
+            <button
+              onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '14px'
+              }}
+            >
+              Siguiente
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Grid de días laborables */}
         <div className="week-grid">
           {weekDays.map((day, index) => {
             const dayTasks = getTasksForDay(day);
             const isToday = isSameDay(day, new Date());
+            const dayName = format(day, 'EEEE', { locale: es });
+            const dayNumber = format(day, 'd');
+            const monthName = format(day, 'MMM', { locale: es });
+            
             return (
               <div key={index} className="day-column">
-                <div className="day-header">
-                  <div className="day-name">
-                    {format(day, 'EEE', { locale: es })}
+                <div className="day-header" style={{ 
+                  backgroundColor: isToday ? '#f0f9ff' : '#f8f9fa',
+                  borderBottom: isToday ? '2px solid #059669' : '1px solid #eee'
+                }}>
+                  <div className="day-name" style={{ 
+                    color: isToday ? '#059669' : '#6b7280',
+                    fontWeight: isToday ? '600' : '500'
+                  }}>
+                    {dayName}
                   </div>
-                  <div className={`day-number ${isToday ? 'today' : ''}`}>
-                    {format(day, 'd')}
+                  <div className={`day-number ${isToday ? 'today' : ''}`} style={{
+                    backgroundColor: isToday ? '#059669' : 'transparent',
+                    color: isToday ? 'white' : '#111827'
+                  }}>
+                    {dayNumber}
+                  </div>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#9ca3af', 
+                    marginTop: '2px',
+                    textTransform: 'uppercase'
+                  }}>
+                    {monthName}
                   </div>
                 </div>
-                <div className="day-events">
-                  {dayTasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      className={`event ${task.category} ${task.priority}`}
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setNewTask(task);
-                        setIsCreatingMeeting(task.category === 'meeting');
-                        setShowTaskModal(true);
-                      }}
-                    >
-                      <div className="event-time">
-                        <Clock size={12} />
-                        {task.startTime}
-                      </div>
-                      <div className="event-title">{task.title}</div>
-                      {task.meetingType && (
-                        <div className="event-recurring">
-                          {task.meetingType === 'weekly' ? '📅' : '🗓️'}
-                        </div>
-                      )}
+                
+                <div className="day-events" style={{ 
+                  padding: '8px',
+                  minHeight: '300px',
+                  backgroundColor: isToday ? '#fefffe' : 'white'
+                }}>
+                  {dayTasks.length === 0 ? (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      color: '#9ca3af', 
+                      fontSize: '13px',
+                      marginTop: '20px',
+                      fontStyle: 'italic'
+                    }}>
+                      Sin eventos programados
                     </div>
-                  ))}
+                  ) : (
+                    dayTasks.map(task => (
+                      <div 
+                        key={task.id} 
+                        className={`event ${task.category} ${task.priority}`}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setNewTask(task);
+                          setIsCreatingMeeting(task.category === 'meeting');
+                          setShowTaskModal(true);
+                        }}
+                        style={{
+                          marginBottom: '8px',
+                          padding: '8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          border: '1px solid #e5e7eb',
+                          backgroundColor: task.category === 'meeting' ? '#fef3c7' : '#f0f9ff',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div className="event-time" style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          marginBottom: '4px'
+                        }}>
+                          <Clock size={12} />
+                          {task.startTime}
+                          {task.endTime && ` - ${task.endTime}`}
+                        </div>
+                        <div className="event-title" style={{ 
+                          fontWeight: '500',
+                          fontSize: '13px',
+                          color: '#111827',
+                          marginBottom: '2px'
+                        }}>
+                          {task.title}
+                        </div>
+                        {task.meetingType && (
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px',
+                            fontSize: '11px',
+                            color: '#059669'
+                          }}>
+                            {task.meetingType === 'weekly' ? '📅' : '🗓️'}
+                            <span>Recurrente</span>
+                          </div>
+                        )}
+                        {task.priority === 'high' && (
+                          <div style={{ 
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#ef4444',
+                            borderRadius: '50%'
+                          }} />
+                        )}
+                      </div>
+                    ))
+                  )}
+                  
+                  {/* Botón para añadir evento rápido */}
+                  <button
+                    onClick={() => {
+                      setNewTask({ 
+                        startDate: format(day, 'yyyy-MM-dd'),
+                        startTime: '09:00',
+                        endTime: '10:00',
+                        category: 'task',
+                        priority: 'medium'
+                      });
+                      setIsCreatingMeeting(false);
+                      setShowTaskModal(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      marginTop: '8px',
+                      backgroundColor: 'transparent',
+                      border: '1px dashed #d1d5db',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#059669';
+                      e.currentTarget.style.color = '#059669';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                      e.currentTarget.style.color = '#6b7280';
+                    }}
+                  >
+                    <Plus size={14} />
+                    Añadir evento
+                  </button>
                 </div>
               </div>
             );
@@ -485,10 +784,11 @@ const DashboardPage: React.FC = () => {
     );
   };
 
-  // Renderizar panel de alertas
+  // Renderizar panel de alertas y botones de acción
   const renderAlertsPanel = () => (
     <div className="alerts-container">
       <div className="alerts-panel">
+        {/* Sección de Alertas - Parte Superior */}
         <div className="alerts-header">
           <h3>
             <Bell size={18} />
@@ -500,21 +800,149 @@ const DashboardPage: React.FC = () => {
         <div className="alerts-list">
           <div className="alert-section">
             <h4>Pendientes</h4>
-            {alerts.slice(0, 5).map(alert => (
-              <div key={alert.id} className={`alert ${alert.type} ${alert.isRead ? 'read' : 'unread'}`}>
-                <div className="alert-icon">
-                  {alert.type === 'warning' && <AlertTriangle size={16} />}
-                  {alert.type === 'info' && <CheckCircle size={16} />}
-                </div>
-                <div className="alert-content">
-                  <div className="alert-title">{alert.title}</div>
-                  <div className="alert-message">{alert.description}</div>
-                  <div className="alert-time">
-                    {format(new Date(alert.createdAt), 'HH:mm', { locale: es })}
+            {alerts.length === 0 ? (
+              <div style={{ 
+                padding: '20px', 
+                textAlign: 'center', 
+                color: '#6b7280',
+                fontSize: '14px'
+              }}>
+                🎉 No hay notificaciones pendientes
+              </div>
+            ) : (
+              alerts.slice(0, 4).map((alert: SmartAlert) => (
+                <div key={alert.id} className={`alert ${alert.type} ${alert.isRead ? 'read' : 'unread'}`}>
+                  <div className="alert-icon">
+                    {alert.type === 'warning' && <AlertTriangle size={16} />}
+                    {alert.type === 'info' && <CheckCircle size={16} />}
+                    {alert.type === 'error' && <AlertTriangle size={16} />}
+                    {alert.type === 'success' && <CheckCircle size={16} />}
+                  </div>
+                  <div className="alert-content">
+                    <div className="alert-title">
+                      {alert.title}
+                      {alert.department && (
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: '#6b7280', 
+                          marginLeft: '8px',
+                          fontWeight: 'normal'
+                        }}>
+                          • {alert.department}
+                        </span>
+                      )}
+                    </div>
+                    <div className="alert-message">{alert.description}</div>
+                    <div className="alert-time">
+                      {format(new Date(alert.createdAt), 'HH:mm', { locale: es })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sección de Botones de Acción - Parte Inferior */}
+        <div className="action-buttons-section">
+          <div className="action-buttons-header">
+            <h3>
+              <LayoutDashboard size={18} />
+              Acciones Rápidas
+            </h3>
+          </div>
+          
+          <div className="action-buttons-grid">
+            {/* Nueva Tarea */}
+            <button 
+              className="action-btn primary"
+              onClick={() => {
+                setSelectedTask(null);
+                setIsCreatingMeeting(false);
+                setNewTask({
+                  isRecurring: false,
+                  category: 'task',
+                  priority: 'medium',
+                  status: 'pending',
+                  startDate: format(new Date(), 'yyyy-MM-dd'),
+                  startTime: '09:00'
+                });
+                setShowTaskModal(true);
+              }}
+              style={{ backgroundColor: '#059669', color: 'white' }}
+            >
+              <Plus size={20} />
+              <span>Nueva Tarea</span>
+            </button>
+
+            {/* Solo directivos pueden crear reuniones y ver módulos administrativos */}
+            {canUserCreateMeetings(employee?.email || '') && employee?.role !== 'center_manager' && (
+              <>
+                {/* Nueva Reunión */}
+                <button 
+                  className="action-btn secondary"
+                  onClick={() => {
+                    setNewTask({
+                      title: 'Nueva Reunión',
+                      isRecurring: true,
+                      category: 'meeting',
+                      meetingType: 'weekly',
+                      priority: 'high',
+                      status: 'pending',
+                      startDate: format(new Date(), 'yyyy-MM-dd'),
+                      startTime: '10:00',
+                      endTime: '11:00'
+                    });
+                    setShowTaskModal(true);
+                  }}
+                  style={{ backgroundColor: '#3b82f6', color: 'white' }}
+                >
+                  <Calendar size={20} />
+                  <span>Nueva Reunión</span>
+                </button>
+
+                {/* Historial Reuniones */}
+                <button 
+                  className="action-btn tertiary"
+                  onClick={() => setShowMeetingHistory(!showMeetingHistory)}
+                  style={{ 
+                    backgroundColor: showMeetingHistory ? '#8b5cf6' : '#f3f4f6',
+                    color: showMeetingHistory ? 'white' : '#374151'
+                  }}
+                >
+                  <History size={20} />
+                  <span>Historial</span>
+                </button>
+              </>
+            )}
+
+            {/* Solo CEO puede ver gestión de usuarios */}
+            {employee?.email === 'carlossuarezparra@gmail.com' && (
+              <button 
+                className="action-btn users"
+                onClick={() => {
+                  setShowUserManagement(!showUserManagement);
+                  setShowMeetingHistory(false);
+                }}
+                style={{ 
+                  backgroundColor: showUserManagement ? '#6366f1' : '#f3f4f6',
+                  color: showUserManagement ? 'white' : '#374151'
+                }}
+              >
+                <Users size={20} />
+                <span>Usuarios</span>
+              </button>
+            )}
+
+            {/* Incidencias - Disponible para todos */}
+            <button 
+              className="action-btn incidents"
+              onClick={() => setShowIncidentModal(true)}
+              style={{ backgroundColor: '#ef4444', color: 'white' }}
+            >
+              <AlertTriangle size={20} />
+              <span>Incidencias</span>
+            </button>
           </div>
         </div>
       </div>
@@ -526,7 +954,17 @@ const DashboardPage: React.FC = () => {
       {/* Header */}
       <header className="dashboard-header">
         <h1>
-          Bienvenido, {employee?.name || 'Usuario'}
+          Buenos días, {employee?.name || 'Usuario'}
+          {alerts.length > 0 && (
+            <span style={{ 
+              fontSize: '0.7rem', 
+              color: '#ef4444', 
+              fontWeight: 'normal',
+              marginLeft: '1rem'
+            }}>
+              • {alerts.length} notificación{alerts.length > 1 ? 'es' : ''} pendiente{alerts.length > 1 ? 's' : ''}
+            </span>
+          )}
           {loading && (
             <span style={{ 
               marginLeft: '1rem', 
@@ -548,117 +986,8 @@ const DashboardPage: React.FC = () => {
             </span>
           )}
         </h1>
-        <div className="header-actions">
-          <button 
-            className="btn btn-primary"
-            onClick={() => {
-              setSelectedTask(null);
-              setIsCreatingMeeting(false);
-              setNewTask({
-                isRecurring: false,
-                category: 'task',
-                priority: 'medium',
-                status: 'pending',
-                startDate: format(new Date(), 'yyyy-MM-dd'),
-                startTime: '09:00'
-              });
-              setShowTaskModal(true);
-            }}
-          >
-            <Plus size={16} />
-            Nueva Tarea
-          </button>
-          
-          {canUserCreateMeetings(employee?.email || 'carlossuarezparra@gmail.com') && (
-            <button 
-              className="btn btn-secondary"
-              onClick={() => {
-                setSelectedTask(null);
-                setIsCreatingMeeting(true);
-                setNewTask({
-                  isRecurring: true,
-                  category: 'meeting',
-                  meetingType: 'weekly',
-                  priority: 'high',
-                  status: 'pending',
-                  startDate: format(new Date(), 'yyyy-MM-dd'),
-                  startTime: '10:00',
-                  endTime: '11:00'
-                });
-                setShowTaskModal(true);
-              }}
-            >
-              <Calendar size={16} />
-              Nueva Reunión
-            </button>
-          )}
-
-          <button 
-            className="btn btn-secondary"
-            onClick={() => setShowMeetingHistory(!showMeetingHistory)}
-            style={{ 
-              backgroundColor: showMeetingHistory ? '#059669' : undefined,
-              color: showMeetingHistory ? 'white' : undefined
-            }}
-          >
-            <History size={16} />
-            Historial Reuniones
-          </button>
-
-          <button 
-            className="btn btn-secondary"
-            onClick={() => {
-              setShowLogistics(!showLogistics);
-              setShowMeetingHistory(false);
-              setShowMaintenance(false);
-              setShowUserManagement(false);
-            }}
-            style={{ 
-              backgroundColor: showLogistics ? '#059669' : undefined,
-              color: showLogistics ? 'white' : undefined
-            }}
-          >
-            <Package size={16} />
-            Logística
-          </button>
-
-          <button 
-            className="btn btn-secondary"
-            onClick={() => {
-              setShowMaintenance(!showMaintenance);
-              setShowMeetingHistory(false);
-              setShowLogistics(false);
-              setShowUserManagement(false);
-            }}
-            style={{ 
-              backgroundColor: showMaintenance ? '#059669' : undefined,
-              color: showMaintenance ? 'white' : undefined
-            }}
-          >
-            <AlertTriangle size={16} />
-            Mantenimiento
-          </button>
-
-          {/* Solo CEO puede ver gestión de usuarios */}
-          {employee?.email === 'carlossuarezparra@gmail.com' && (
-            <button 
-              className="btn btn-secondary"
-              onClick={() => {
-                setShowUserManagement(!showUserManagement);
-                setShowLogistics(false);
-                setShowMaintenance(false);
-                setShowMeetingHistory(false);
-              }}
-              style={{ 
-                backgroundColor: showUserManagement ? '#059669' : undefined,
-                color: showUserManagement ? 'white' : undefined
-              }}
-            >
-              <Users size={16} />
-              Usuarios
-            </button>
-          )}
-
+        {/* Solo directivos ven las vistas de calendario - NO encargados de centro */}
+        {employee?.role !== 'center_manager' && (
           <div className="view-toggle">
             <button 
               className={`btn ${currentView === 'week' ? 'active' : ''}`}
@@ -675,7 +1004,7 @@ const DashboardPage: React.FC = () => {
               Mes
             </button>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Contenido principal */}
@@ -707,7 +1036,7 @@ const DashboardPage: React.FC = () => {
         {showUserManagement && (
           <UserManagement />
         )}
-        
+
         {!showMeetingHistory && !showLogistics && !showMaintenance && !showUserManagement && (
           <>
             {(currentView === 'week' ? renderWeekView() : renderMonthView())}
@@ -769,6 +1098,18 @@ const DashboardPage: React.FC = () => {
           onClose={() => setShowRecurrenceModal(false)}
         />
       )}
+
+      {/* Modal de Incidencias Inteligente */}
+      <SmartIncidentModal
+        isOpen={showIncidentModal}
+        onClose={() => setShowIncidentModal(false)}
+        centerName={employee?.centerName || 'Centro'}
+        centerId={employee?.center_id?.toString() || '1'}
+        onIncidentCreated={(incident) => {
+          console.log('Nueva incidencia creada:', incident);
+          // Aquí puedes añadir lógica adicional como actualizar alertas
+        }}
+      />
     </div>
   );
 };
