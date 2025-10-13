@@ -1,0 +1,119 @@
+import React, { useMemo, useState } from 'react';
+import { useSession } from '../../contexts/SessionContext';
+import { ArrowLeft, User, Clock, ClipboardList, CheckCircle, Calendar, Shirt, FileText, MessageCircle } from 'lucide-react';
+import UniformRequestPanel from '../logistics/UniformRequestPanel';
+import { LocationType } from '../../types/logistics';
+
+interface EmployeeAction {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const CenterManagement: React.FC = () => {
+  const { employee } = useSession();
+  const [activeAction, setActiveAction] = useState<string>('summary');
+
+  const actionCards: EmployeeAction[] = useMemo(() => [
+    { id: 'my-profile', title: 'Mi Perfil', description: 'Datos personales', icon: <User /> },
+    { id: 'mobile-timeclock', title: 'Fichar', description: 'Escanear QR', icon: <Clock /> },
+    { id: 'timeclock', title: 'Historial fichajes', description: 'Ver entradas/salidas', icon: <ClipboardList /> },
+    { id: 'daily-operations', title: 'Checklist diaria', description: 'Tareas operativas', icon: <CheckCircle /> },
+    { id: 'vacation-request', title: 'Solicitar vacaciones', description: 'Nueva solicitud', icon: <Calendar /> },
+    { id: 'vacations', title: 'Estado vacaciones', description: 'Solicitudes enviadas', icon: <Calendar /> },
+    { id: 'uniform-request', title: 'Solicitar uniforme', description: 'Vestuario/material', icon: <Shirt /> },
+    { id: 'my-documents', title: 'Mis documentos', description: 'Contratos/nóminas', icon: <FileText /> },
+    { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y ayuda', icon: <MessageCircle /> }
+  ], []);
+
+  if (!employee) return <div>Cargando...</div>;
+
+  const renderSummary = () => (
+    <div>
+      <h1>Gestión del Centro</h1>
+      <div>
+        {actionCards.map(card => (
+          <button key={card.id} onClick={() => setActiveAction(card.id)}>
+            {card.icon}
+            <div>{card.title}</div>
+            <p>{card.description}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderActionContent = () => {
+    switch (activeAction) {
+      case 'uniform-request':
+        return <UniformRequestPanel 
+          userLocation={employee.centerName?.toLowerCase() as LocationType || 'central'} 
+        />;
+      default:
+        return renderSummary();
+    }
+  };
+
+  return activeAction === 'summary' 
+    ? <div>{renderSummary()}</div> 
+    : (
+      <div>
+        <button onClick={() => setActiveAction('summary')}>← Volver</button>
+        {renderActionContent()}
+      </div>
+    );
+};
+
+export default CenterManagement;
+  const { employee } = useSession();
+  const [activeAction, setActiveAction] = useState<string>('summary');
+
+  const actionCards: EmployeeAction[] = useMemo(() => [
+    { id: 'my-profile', title: 'Mi Perfil', description: 'Datos personales', icon: <User /> },
+    { id: 'timeclock', title: 'Historial fichajes', description: 'Ver entradas/salidas', icon: <ClipboardList /> },
+    { id: 'daily-operations', title: 'Checklist diaria', description: 'Tareas operativas', icon: <CheckCircle /> },
+    { id: 'vacation-request', title: 'Solicitar vacaciones', description: 'Nueva solicitud', icon: <Calendar /> },
+    { id: 'vacations', title: 'Estado vacaciones', description: 'Solicitudes enviadas', icon: <Calendar /> },
+    { id: 'uniform-request', title: 'Solicitar uniforme', description: 'Vestuario/material', icon: <Shirt /> },
+    { id: 'my-documents', title: 'Mis documentos', description: 'Contratos/nóminas', icon: <FileText /> },
+    { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y ayuda', icon: <MessageCircle /> }
+  ], []);
+
+  if (!employee) return <div>Cargando...</div>;
+
+  const renderSummary = () => (
+    <div>
+      <h1>Gestión del Centro</h1>
+      <div>
+        {actionCards.map(card => (
+          <button key={card.id} onClick={() => setActiveAction(card.id)}>
+            {card.icon}
+            <div>{card.title}</div>
+            <p>{card.description}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderActionContent = () => {
+    switch (activeAction) {
+      case 'uniform-request':
+        return <UniformRequestPanel 
+          userLocation={employee.centerName?.toLowerCase() as LocationType || 'central'} 
+        />;
+      default:
+        return renderSummary();
+    }
+  };
+
+  return activeAction === 'summary' 
+    ? <div>{renderSummary()}</div> 
+    : (
+      <div>
+        <button onClick={() => setActiveAction('summary')}>← Volver</button>
+        {renderActionContent()}
+      </div>
+    );
+};

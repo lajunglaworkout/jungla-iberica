@@ -192,7 +192,7 @@ const IncidentManagementSystem: React.FC = () => {
       if (activeTab === 'my-incidents' && !isHR && !isLogistics) {
         // Empleados normales solo ven sus incidencias
         if (employee?.id) {
-          query = query.eq('employee_id', employee.id);
+          query = query.eq('employee_id', parseInt(employee.id.replace(/\D/g, '')));
         }
       } else if (activeTab === 'pending-approval' && (isHR || isLogistics)) {
         // HR ve pendientes de aprobación de su área

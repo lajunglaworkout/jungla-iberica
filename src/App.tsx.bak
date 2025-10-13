@@ -96,43 +96,29 @@ const NavigationDashboard: React.FC = () => {
     if (userRole !== 'center_manager') return;
     
     try {
-      const centerIdentifier = Number(employee?.center_id ?? 9);
-
-      // Obtener empleados del centro (solo campos existentes)
-      const { data: centerEmployees, error: centerError } = await supabase
+      // Obtener empleados del centro (asumiendo centro Sevilla = ID 9)
+      const { data: centerEmployees } = await supabase
         .from('employees')
-        .select('id, name, email')
-        .eq('center_id', centerIdentifier);
+        .select('id, nombre, apellidos')
+        .eq('center_id', 9);
       
-      if (centerError) {
-        console.error('Error cargando empleados del centro:', centerError);
-        setVacationNotifications([]);
-        return;
-      }
-
       if (centerEmployees && centerEmployees.length > 0) {
         const employeeIds = centerEmployees.map(emp => emp.id);
         
         // Obtener solicitudes pendientes
-        const { data: requests, error: requestError } = await supabase
+        const { data: requests } = await supabase
           .from('vacation_requests')
           .select('*')
           .in('employee_id', employeeIds)
           .eq('status', 'pending')
           .order('requested_at', { ascending: false });
         
-        if (requestError) {
-          console.error('Error cargando solicitudes de vacaciones:', requestError);
-          setVacationNotifications([]);
-        } else if (requests) {
+        if (requests) {
           setVacationNotifications(requests);
         }
-      } else {
-        setVacationNotifications([]);
       }
     } catch (error) {
       console.error('Error cargando notificaciones de vacaciones:', error);
-      setVacationNotifications([]);
     }
   };
 
@@ -373,18 +359,30 @@ const NavigationDashboard: React.FC = () => {
       
       return [...baseModules, ...adminModules];
     } else if (isCenterManager) {
-      // Encargados de centro: menú reducido (Dashboard + Gestión)
-      const centerManagerModule = {
-        id: 'center-management',
-        title: 'Gestión',
-        description: 'Gestión del Centro Sevilla',
-        icon: Building2,
-        color: '#059669',
-        component: CenterManagement,
-        available: true
-      };
-
-      return [baseModules[0], centerManagerModule];
+      // Encargados de centro solo tienen acceso a gestión de su centro y operativa diaria
+      const centerManagerModules = [
+        {
+          id: 'center-management',
+          title: 'Gestión',
+          description: 'Gestión del Centro Sevilla',
+          icon: Building2,
+          color: '#059669',
+          component: CenterManagement,
+          available: true
+        },
+        {
+          id: 'daily-operations',
+          title: 'Mi Operativa',
+          description: 'Fichaje, check-lists y tareas diarias',
+          icon: Clock,
+          color: '#3b82f6',
+          component: DailyOperations,
+          available: true
+        }
+      ];
+      
+      // Solo dashboard, gestión y operativa diaria
+      return [baseModules[0], ...centerManagerModules]; // Solo el dashboard principal
     } else {
       // Para otros roles, solo dashboard + reuniones + su módulo específico
       const userDepartmentModules = departmentModules[userRole as keyof typeof departmentModules] || [];
@@ -396,49 +394,6 @@ const NavigationDashboard: React.FC = () => {
   console.log('Módulos disponibles para el usuario:', modules.map(m => m.title));
   console.log('Rol del usuario:', userRole);
   console.log('Email del empleado:', employee?.email);
-
-  useEffect(() => {
-    const handleModuleNavigation = (event: Event) => {
-      const customEvent = event as CustomEvent<{ moduleId?: string; fallbackUrl?: string | null; hrView?: string }>;
-      const { moduleId, fallbackUrl = null, hrView } = customEvent.detail || {};
-
-      if (!moduleId) {
-        return;
-      }
-
-      const targetModule = modules.find(module => module.id === moduleId);
-
-      if (targetModule) {
-        // Cerrar paneles relacionados y navegar dentro de la SPA
-        setSelectedModule(moduleId);
-        setShowVacationNotifications(false);
-
-        const moduleWithClick = targetModule as any;
-        if (moduleWithClick.onClick && typeof moduleWithClick.onClick === 'function') {
-          moduleWithClick.onClick();
-        }
-
-        if (hrView) {
-          // Permitir que el módulo RRHH procese la vista solicitada
-          setTimeout(() => {
-            window.dispatchEvent(
-              new CustomEvent('hr-module-view', {
-                detail: { view: hrView }
-              })
-            );
-          }, 0);
-        }
-      } else if (fallbackUrl) {
-        window.location.href = fallbackUrl;
-      }
-    };
-
-    window.addEventListener('navigate-module', handleModuleNavigation as EventListener);
-
-    return () => {
-      window.removeEventListener('navigate-module', handleModuleNavigation as EventListener);
-    };
-  }, [modules]);
 
   // Componente de contenido vacío para módulos en desarrollo
   const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (

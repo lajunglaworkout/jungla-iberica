@@ -59,8 +59,8 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       // Cargar estadísticas reales desde Supabase
       const { data: employees } = await supabase
         .from('employees')
-        .select('id, activo')
-        .eq('activo', true);
+        .select('id, is_active')
+        .eq('is_active', true);
 
       const totalEmployees = employees?.length || 24;
       const presentToday = Math.floor(totalEmployees * 0.75); // 75% presente (simulado)
@@ -85,74 +85,94 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
     }
   };
 
-  // Tarjetas para empleados regulares
-  const employeeCards: DashboardCard[] = [
+  const dailyOperationsCards: DashboardCard[] = [
     {
-      id: 'my-profile',
-      title: 'Mi Perfil',
-      icon: <Users size={32} />,
-      description: 'Ver y actualizar mi información personal',
-      color: '#059669',
-      count: 'Mi Info',
-      status: 'active'
-    },
-    {
-      id: 'my-shifts',
-      title: 'Mis Turnos',
-      icon: <Clock size={32} />,
-      description: 'Ver mis horarios y turnos asignados',
-      color: '#0ea5e9',
-      count: 'Esta semana',
-      status: 'active'
-    },
-    {
-      id: 'mobile-timeclock',
+      id: 'daily-mobile-timeclock',
       title: 'Fichar',
       icon: <UserCheck size={32} />,
-      description: 'Fichar entrada y salida',
+      description: 'Registrar entrada y salida',
       color: '#8b5cf6',
-      count: 'QR Activo',
+      count: 'QR activo',
       status: 'active'
     },
     {
-      id: 'vacation-request',
-      title: 'Solicitar Vacaciones',
-      icon: <Palmtree size={32} />,
-      description: 'Solicitar días de vacaciones',
+      id: 'daily-timeclock',
+      title: 'Historial de fichajes',
+      icon: <Clock size={32} />,
+      description: 'Ver fichajes recientes',
+      color: '#0ea5e9',
+      count: 'Control horario',
+      status: 'active'
+    },
+    {
+      id: 'daily-operations-dashboard',
+      title: 'Checklist diaria',
+      icon: <CheckCircle size={32} />,
+      description: 'Completar tareas diarias del centro',
       color: '#10b981',
-      count: 'Disponible',
-      status: 'active'
-    },
-    {
-      id: 'uniform-request',
-      title: 'Solicitar Vestuario',
-      icon: <Award size={32} />,
-      description: 'Pedir uniformes y material',
-      color: '#ef4444',
-      count: 'Nuevo',
-      status: 'active'
-    },
-    {
-      id: 'my-documents',
-      title: 'Mis Documentos',
-      icon: <FileText size={32} />,
-      description: 'Contrato, nóminas y documentos',
-      color: '#84cc16',
-      count: 'Ver',
-      status: 'active'
-    },
-    {
-      id: 'hr-contact',
-      title: 'Contactar RRHH',
-      icon: <Database size={32} />,
-      description: 'Comunicación directa con RRHH',
-      color: '#f97316',
-      count: 'Chat',
+      count: 'Pendientes',
       status: 'active'
     }
   ];
 
-  // Tarjetas para administradores/encargados (original)
+  const hrCards: DashboardCard[] = [
+    {
+      id: 'my-profile',
+      title: 'Mi perfil',
+      icon: <Users size={32} />,
+      description: 'Información personal y laboral',
+      color: '#059669',
+      count: 'Actualizar',
+      status: 'active'
+    },
+    {
+      id: 'employee-vacation-request',
+      title: 'Solicitar vacaciones',
+      icon: <Palmtree size={32} />,
+      description: 'Pedir días de vacaciones',
+      color: '#10b981',
+      count: 'Nuevo',
+      status: 'active'
+    },
+    {
+      id: 'employee-vacations',
+      title: 'Estado de vacaciones',
+      icon: <Calendar size={32} />,
+      description: 'Ver solicitudes y estado',
+      color: '#0ea5e9',
+      count: 'Seguimiento',
+      status: 'active'
+    },
+    {
+      id: 'employee-uniform-request',
+      title: 'Solicitar vestuario',
+      icon: <Award size={32} />,
+      description: 'Pedir uniformes y material',
+      color: '#ef4444',
+      count: 'Vestuario',
+      status: 'active'
+    },
+    {
+      id: 'employee-documents',
+      title: 'Mis documentos',
+      icon: <FileText size={32} />,
+      description: 'Contratos y nóminas',
+      color: '#84cc16',
+      count: 'Descargar',
+      status: 'active'
+    },
+    {
+      id: 'employee-hr-contact',
+      title: 'Contactar RRHH',
+      icon: <Database size={32} />,
+      description: 'Solicitar ayuda o soporte',
+      color: '#f97316',
+      count: 'Ayuda',
+      status: 'active'
+    }
+  ];
+
+  // Tarjetas adicionales para encargados y roles superiores
   const adminCards: DashboardCard[] = [
     {
       id: 'employees',
@@ -182,7 +202,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       status: 'active'
     },
     {
-      id: 'mobile-timeclock',
+      id: 'admin-mobile-timeclock',
       title: 'Fichaje Móvil',
       icon: <MapPin size={32} />,
       description: 'Escaneo QR desde móvil para empleados',
@@ -200,7 +220,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       status: 'coming-soon'
     },
     {
-      id: 'vacations',
+      id: 'admin-vacations',
       title: 'Vacaciones',
       icon: <Palmtree size={32} />,
       description: 'Gestión de vacaciones y permisos',
@@ -266,9 +286,8 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
 
   // Combinar tarjetas para encargados (empleado + admin)
   const managerCards = [
-    // Funcionalidades de empleado primero
-    ...employeeCards,
-    // Separador visual
+    ...dailyOperationsCards,
+    ...hrCards,
     {
       id: 'separator',
       title: '--- FUNCIONES DE GESTIÓN ---',
@@ -278,8 +297,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       count: '',
       status: 'separator' as any
     },
-    // Funcionalidades de administrador
-    ...adminCards.filter(card => !['mobile-timeclock'].includes(card.id)) // Evitar duplicados
+    ...adminCards
   ];
 
   // Seleccionar tarjetas según el rol
@@ -289,7 +307,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
   const dashboardCards = isManager 
     ? managerCards 
     : isRegularEmployee 
-      ? employeeCards 
+      ? [...dailyOperationsCards, ...hrCards]
       : adminCards;
       
   console.log('🚨 isManager:', isManager);
