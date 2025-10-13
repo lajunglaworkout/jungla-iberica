@@ -29,6 +29,10 @@ export interface ClientMetrics {
   año: number;
   objetivo_mensual: number;
   altas_reales: number;
+  // 🆕 Nuevos campos desglosados de altas
+  altas_fundador: number;
+  altas_normal: number;
+  altas_bonos: number;
   bajas_reales: number;
   clientes_activos: number;
   leads: number;
@@ -71,6 +75,10 @@ class ClientsService {
         año: año,
         objetivo_mensual: 0,
         altas_reales: 0,
+        // 🆕 Inicializar nuevos campos desglosados
+        altas_fundador: 0,
+        altas_normal: 0,
+        altas_bonos: 0,
         bajas_reales: 0,
         clientes_activos: 0,
         leads: 0,
@@ -87,6 +95,10 @@ class ClientsService {
         año: año,
         objetivo_mensual: 0,
         altas_reales: 0,
+        // 🆕 Inicializar nuevos campos desglosados
+        altas_fundador: 0,
+        altas_normal: 0,
+        altas_bonos: 0,
         bajas_reales: 0,
         clientes_activos: 0,
         leads: 0,
@@ -97,12 +109,12 @@ class ClientsService {
   }
 
   // Guardar métricas de clientes
-  async saveClientMetrics(metrics: ClientMetrics): Promise<boolean> {
+  async saveClientMetrics(metrics: Omit<ClientMetrics, 'altas_reales'>): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('client_metrics')
         .upsert(metrics);
-      
+
       if (error) throw error;
       return true;
     } catch (error) {
@@ -205,6 +217,10 @@ class ClientsService {
           altas_reales: altas,
           bajas_reales: bajas,
           facturacion_total: facturacionTotal,
+          // 🆕 Incluir campos desglosados si están disponibles
+          altas_fundador: existingMetrics.altas_fundador || 0,
+          altas_normal: existingMetrics.altas_normal || 0,
+          altas_bonos: existingMetrics.altas_bonos || 0,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'center_id,mes,año'

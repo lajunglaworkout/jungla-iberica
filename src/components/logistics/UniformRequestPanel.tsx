@@ -1,0 +1,224 @@
+import React, { useMemo, useState } from 'react';
+import { Minus, Plus, Shirt, ShoppingBag, CheckCircle } from 'lucide-react';
+import { LocationType } from '../../types/logistics';
+import { useInventory } from '../../hooks/useInventory';
+
+type ReasonType = 'reposicion' | 'compra';
+
+interface RequestLine {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+}
+
+interface UniformRequestPanelProps {
+  userLocation: LocationType;
+  employeeName?: string;
+  onSubmit?: (payload: { reason: ReasonType; location: LocationType; items: RequestLine[] }) => void;
+}
+
+const REASONS: { id: ReasonType; label: string; icon: React.ReactNode }[] = [
+  { id: 'reposicion', label: 'Dotación por deterioro', icon: <Shirt size={16} /> },
+  { id: 'compra', label: 'Compra puntual', icon: <ShoppingBag size={16} /> }
+];
+
+const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation, employeeName, onSubmit }) => {
+  const { inventoryItems, loading, error } = useInventory();
+  const [reason, setReason] = useState<ReasonType>('reposicion');
+  const [selection, setSelection] = useState<RequestLine[]>([]);
+
+  // Filtrar artículos que contengan 'ropa' o 'vestuario' en el nombre o categoría
+  const uniformItems = useMemo(() => {
+    const filtered = inventoryItems.filter(item => 
+      item.category?.toLowerCase().includes('ropa') || 
+      item.category?.toLowerCase().includes('vestuario') ||
+      item.name?.toLowerCase().includes('camiseta') ||
+      item.name?.toLowerCase().includes('pantalon') ||
+      item.name?.toLowerCase().includes('zapato') ||
+      item.name?.toLowerCase().includes('uniforme')
+    );
+    return filtered.slice(0, 5); // Limitar a 5 para demo
+  }, [inventoryItems]);
+
+  console.log('All categories:', [...new Set(inventoryItems.map(item => item.category))]);
+  console.log('Uniform items:', uniformItems.length, uniformItems.map(item => ({ name: item.name, category: item.category })));
+
+  const getStockForLocation = (itemId: string, location: LocationType) => {
+    return 10; // Placeholder
+  };
+
+  const updateQuantity = (itemId: string, itemName: string, delta: number) => {
+    console.log('Updating quantity:', itemId, itemName, delta);
+    setSelection(prev => {
+      const existing = prev.find(line => line.itemId === itemId);
+      if (!existing) {
+        return delta > 0 ? [...prev, { itemId, itemName, quantity: 1 }] : prev;
+      }
+
+      const newQty = existing.quantity + delta;
+      if (newQty <= 0) {
+        return prev.filter(line => line.itemId !== itemId);
+      }
+
+      return prev.map(line => (line.itemId === itemId ? { ...line, quantity: newQty } : line));
+    });
+  };
+
+  const totalItems = selection.reduce((acc, line) => acc + line.quantity, 0);
+  console.log('Total items:', totalItems, 'Selection:', selection);
+
+  const handleSubmit = () => {
+    if (!totalItems) {
+      alert('Selecciona al menos una prenda.');
+      return;
+    }
+
+    onSubmit?.({ reason, location: userLocation, items: selection });
+  };
+
+  if (loading) return <div>Cargando inventario...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div style={{ display: 'grid', gap: '20px' }}>
+      <header style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(15,118,110,0.12)' }}>
+        <h1 style={{ margin: 0, fontSize: '24px', color: '#111827' }}>
+          {employeeName ? `Vestuario para ${employeeName}` : 'Solicitud de vestuario'}
+        </h1>
+        <p style={{ margin: '6px 0 0', color: '#6b7280' }}>
+          Selecciona prendas de la categoría vestuario y el motivo de la solicitud.
+        </p>
+        <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {REASONS.map(option => (
+            <button
+              key={option.id}
+              onClick={() => {
+                console.log('Clic en motivo:', option.id);
+                setReason(option.id);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: `2px solid ${reason === option.id ? '#059669' : '#d1d5db'}`,
+                backgroundColor: reason === option.id ? '#ecfdf5' : 'white',
+                color: reason === option.id ? '#059669' : '#374151',
+                cursor: 'pointer',
+                pointerEvents: 'auto'
+              }}
+            >
+              {option.icon}
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div style={{ display: 'grid', gap: '16px' }}>
+        {uniformItems.length === 0 ? (
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+            <p>No hay artículos de vestuario disponibles en el inventario.</p>
+          </div>
+        ) : (
+          uniformItems.map(item => {
+            const currentSelection = selection.find(line => line.itemId === item.id);
+            const quantity = currentSelection?.quantity || 0;
+
+            return (
+              <div key={item.id} style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '16px',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#111827' }}>{item.name}</h3>
+                  <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
+                    Stock disponible: {getStockForLocation(item.id, 'central').toString()} unidades
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.name, -1)}
+                    disabled={quantity === 0}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: '1px solid #d1d5db',
+                      background: quantity === 0 ? '#f9fafb' : 'white',
+                      color: quantity === 0 ? '#9ca3af' : '#374151',
+                      cursor: quantity === 0 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span style={{ minWidth: '24px', textAlign: 'center', fontSize: '16px', fontWeight: 600 }}>
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.name, 1)}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: '1px solid #059669',
+                      background: '#059669',
+                      color: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {totalItems > 0 && (
+        <footer style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
+              Total de prendas: {totalItems}
+            </span>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+              Motivo: {REASONS.find(r => r.id === reason)?.label}
+            </span>
+          </div>
+          <button
+            onClick={handleSubmit}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <CheckCircle size={18} style={{ marginRight: '8px' }} />
+            Enviar solicitud a RRHH
+          </button>
+        </footer>
+      )}
+    </div>
+  );
+};
+
+export default UniformRequestPanel;

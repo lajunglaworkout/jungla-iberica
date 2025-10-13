@@ -15,7 +15,11 @@ import EmployeeProfile from './hr/EmployeeProfile';
 import ComingSoon from './hr/ComingSoon';
 import VacationRequest from './hr/VacationRequest';
 import VacationApproval from './hr/VacationApproval';
+import { InventoryManagement } from './logistics/InventoryManagement';
+import IncidentManagementSystem from './incidents/IncidentManagementSystem';
+import DailyOperations from './hr/DailyOperations';
 import { Employee } from '../types/employee';
+import { LocationType } from '../types/logistics';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
 import { useData } from '../contexts/DataContext';
@@ -289,6 +293,43 @@ const HRManagementSystem: React.FC = () => {
   // Estados para navegación del dashboard
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentModule, setCurrentModule] = useState<string>('dashboard');
+
+  useEffect(() => {
+    const handleModuleView = (event: Event) => {
+      const customEvent = event as CustomEvent<{ view?: string }>;
+      const { view } = customEvent.detail || {};
+
+      if (!view) {
+        return;
+      }
+
+      if (view === 'vacation-approvals' || view === 'vacations') {
+        setCurrentModule('vacations');
+        setCurrentView('vacations');
+      } else if (view === 'daily-operations') {
+        setCurrentModule('daily-operations');
+        setCurrentView('daily-operations');
+      } else if (view === 'uniform-request') {
+        setCurrentModule('uniform-request');
+        setCurrentView('uniform-request');
+      } else if (view === 'my-documents') {
+        setCurrentModule('my-documents');
+        setCurrentView('my-documents');
+      } else if (view === 'hr-contact') {
+        setCurrentModule('hr-contact');
+        setCurrentView('hr-contact');
+      } else {
+        setCurrentModule(view);
+        setCurrentView(view);
+      }
+    };
+
+    window.addEventListener('hr-module-view', handleModuleView as EventListener);
+
+    return () => {
+      window.removeEventListener('hr-module-view', handleModuleView as EventListener);
+    };
+  }, []);
 
   // Determinar si es un empleado regular (no encargado/admin/director)
   const isRegularEmployee = userRole === 'employee' || 
@@ -571,83 +612,62 @@ const HRManagementSystem: React.FC = () => {
     );
   }
 
-  if (currentView === 'shifts') {
-    return <ShiftAssignmentSystem />;
-  }
-
-  if (currentView === 'timeclock') {
-    return <TimeclockDashboard />;
-  }
-
-  if (currentView === 'mobile-timeclock') {
-    return <MobileTimeClock />;
-  }
-
-  if (currentView === 'vacations') {
-    return (
-      <VacationApproval
-        onBack={() => setCurrentView('dashboard')}
-        currentEmployee={employee}
-      />
-    );
-  }
-
-  if (currentView === 'my-profile') {
-    return (
-      <EmployeeProfile 
-        onBack={() => setCurrentView('dashboard')}
-        currentEmployee={employee}
-      />
-    );
-  }
-
-  if (currentView === 'my-shifts') {
-    return (
-      <ComingSoon
-        onBack={() => setCurrentView('dashboard')}
-        title="📅 Mis Turnos"
-        description="Aquí podrás ver tus horarios asignados, turnos de la semana y solicitar cambios de turno."
-      />
-    );
-  }
-
-  if (currentView === 'vacation-request') {
-    return (
-      <VacationRequest
-        onBack={() => setCurrentView('dashboard')}
-        currentEmployee={employee}
-      />
-    );
-  }
-
-  if (currentView === 'uniform-request') {
-    return (
-      <ComingSoon
-        onBack={() => setCurrentView('dashboard')}
-        title="👕 Solicitar Vestuario"
-        description="Solicita uniformes, material de trabajo y consulta el estado de tus pedidos."
-      />
-    );
-  }
-
-  if (currentView === 'my-documents') {
-    return (
-      <ComingSoon
-        onBack={() => setCurrentView('dashboard')}
-        title="📄 Mis Documentos"
-        description="Accede a tu contrato, nóminas, certificados y otros documentos laborales."
-      />
-    );
-  }
-
-  if (currentView === 'hr-contact') {
-    return (
-      <ComingSoon
-        onBack={() => setCurrentView('dashboard')}
-        title="💬 Contactar RRHH"
-        description="Comunícate directamente con el departamento de Recursos Humanos para resolver tus consultas."
-      />
-    );
+  switch (currentView) {
+    case 'timeclock':
+      return <TimeclockDashboard />;
+    case 'mobile-timeclock':
+      return <MobileTimeClock />;
+    case 'daily-operations':
+      return <DailyOperations />;
+    case 'my-profile':
+      return (
+        <EmployeeProfile
+          onBack={() => setCurrentView('dashboard')}
+          currentEmployee={employee}
+        />
+      );
+    case 'vacation-request':
+      return (
+        <VacationRequest
+          onBack={() => setCurrentView('dashboard')}
+          currentEmployee={employee}
+        />
+      );
+    case 'vacations':
+      return (
+        <VacationApproval
+          onBack={() => setCurrentView('dashboard')}
+          currentEmployee={employee}
+        />
+      );
+    case 'uniform-request':
+      return (
+        <InventoryManagement
+          userLocation={(employee?.centerName?.toLowerCase() as LocationType) || 'central'}
+          canEdit={false}
+          visibleCategories={['vestuario']}
+        />
+      );
+    case 'my-documents':
+      return (
+        <ComingSoon
+          onBack={() => setCurrentView('dashboard')}
+          title="📄 Mis Documentos"
+          description="Accede a tu contrato, nóminas y documentos laborales."
+        />
+      );
+    case 'hr-contact':
+      return <IncidentManagementSystem />;
+    case 'employees':
+      break;
+    default:
+      return (
+        <ComingSoon
+          onBack={() => setCurrentView('dashboard')}
+          title="🚧 Módulo en Desarrollo"
+          description="Estamos preparando esta herramienta del CRM."
+        />
+      );
   }
 
   if (currentView === 'employees') {

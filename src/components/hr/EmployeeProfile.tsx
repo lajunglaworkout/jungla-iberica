@@ -9,8 +9,8 @@ interface EmployeeProfileProps {
 }
 
 const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmployee }) => {
-  const [employee, setEmployee] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [employee, setEmployee] = useState<any>(currentEmployee || null);
+  const [loading, setLoading] = useState(!currentEmployee);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -18,24 +18,35 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
   }, []);
 
   const loadEmployeeData = async () => {
-    if (!currentEmployee?.id) return;
+    if (!currentEmployee?.id) {
+      setLoading(false);
+      return;
+    }
+
+    // Evitar peticiones si el ID no es numérico (perfiles simulados desde SessionContext)
+    if (isNaN(Number(currentEmployee.id))) {
+      setEmployee(currentEmployee);
+      setLoading(false);
+      return;
+    }
     
     try {
       const { data } = await supabase
         .from('employees')
         .select('*')
-        .eq('id', currentEmployee.id)
+        .eq('id', Number(currentEmployee.id))
         .single();
       
       setEmployee(data);
     } catch (error) {
       console.error('Error:', error);
-    } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>;
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>;
+  }
 
   return (
     <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>

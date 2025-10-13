@@ -17,6 +17,7 @@ const MESES = [
 const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [modoEntrada, setModoEntrada] = useState<'manual' | 'automatico'>('manual');
   const [metrics, setMetrics] = useState<SupabaseClientMetrics>({
     center_id: centerId,
     center_name: centerName,
@@ -24,6 +25,10 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
     año: new Date().getFullYear(),
     objetivo_mensual: 0,
     altas_reales: 0,
+    // 🆕 Inicializar nuevos campos desglosados
+    altas_fundador: 0,
+    altas_normal: 0,
+    altas_bonos: 0,
     bajas_reales: 0,
     clientes_activos: 0,
     leads: 0,
@@ -61,62 +66,118 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
 
   const handleSave = async () => {
     setLoading(true);
-    const success = await clientsService.saveClientMetrics(metrics);
-    setLoading(false);
-    
-    if (success) {
-      alert('Datos guardados correctamente en Supabase');
-    } else {
-      alert('Error al guardar los datos');
+
+    try {
+      // Verificar si hay datos manuales introducidos
+      const hasManualData = (metrics.altas_fundador || 0) > 0 ||
+                           (metrics.altas_normal || 0) > 0 ||
+                           (metrics.altas_bonos || 0) > 0;
+
+      const dataToSave = {
+        center_id: metrics.center_id,
+        center_name: metrics.center_name,
+        mes: metrics.mes,
+        año: metrics.año,
+        objetivo_mensual: metrics.objetivo_mensual || 0,
+
+        // Si hay datos manuales, usar esos
+        // Si no, intentar sincronizar desde contabilidad
+        altas_fundador: metrics.altas_fundador || 0,
+        altas_normal: metrics.altas_normal || 0,
+        altas_bonos: metrics.altas_bonos || 0,
+
+        bajas_reales: metrics.bajas_reales || 0,
+        clientes_activos: metrics.clientes_activos || 0,
+        leads: metrics.leads || 0,
+
+        // Datos desde contabilidad (si existen)
+        clientes_contabilidad: metrics.clientes_contabilidad || 0,
+        facturacion_total: metrics.facturacion_total || 0
+      };
+
+      const success = await clientsService.saveClientMetrics(dataToSave);
+
+      if (success) {
+        alert('✅ Datos guardados correctamente');
+      } else {
+        alert('❌ Error al guardar los datos');
+      }
+    } catch (error) {
+      console.error('Error guardando datos:', error);
+      alert('❌ Error al guardar los datos');
     }
+
+    setLoading(false);
   };
 
   const syncFromAccounting = async () => {
     setLoading(true);
     console.log('Iniciando sincronización desde contabilidad...');
-    
-    // Buscar datos sincronizados desde contabilidad
-    const syncData = localStorage.getItem(`clients_sync_${centerId}`);
-    console.log('Datos encontrados en localStorage:', syncData);
-    
-    if (syncData) {
-      try {
+
+    try {
+      // Buscar datos sincronizados desde contabilidad
+      const syncData = localStorage.getItem(`clients_sync_${centerId}`);
+      console.log('Datos encontrados en localStorage:', syncData);
+
+      if (syncData) {
         const accountingData = JSON.parse(syncData);
         console.log('Datos parseados:', accountingData);
-        console.log('Comparando fechas:', { 
+        console.log('Comparando fechas:', {
           contabilidad: { mes: accountingData.mes, año: accountingData.año },
           clientes: { mes: metrics.mes, año: metrics.año }
         });
-        
+
         if (accountingData.mes === metrics.mes && accountingData.año === metrics.año) {
+          // Verificar si ya hay datos manuales en el período actual
+          const hasExistingManualData = (metrics.altas_fundador || 0) > 0 ||
+                                       (metrics.altas_normal || 0) > 0 ||
+                                       (metrics.altas_bonos || 0) > 0;
+
+          if (hasExistingManualData) {
+            const confirmOverwrite = window.confirm(
+              `⚠️ Ya existen datos manuales para ${MESES[metrics.mes - 1]} ${metrics.año}.\n\n` +
+              `Altas Fundador: ${metrics.altas_fundador || 0}\n` +
+              `Altas Normal: ${metrics.altas_normal || 0}\n` +
+              `Altas Bonos: ${metrics.altas_bonos || 0}\n\n` +
+              `¿Deseas SOBREESCRIBIR estos datos con los de contabilidad?`
+            );
+
+            if (!confirmOverwrite) {
+              setLoading(false);
+              return;
+            }
+          }
+
           const updatedMetrics = {
             ...metrics,
             clientes_contabilidad: accountingData.totalClientes,
             facturacion_total: accountingData.facturacionTotal || 0
           };
-          
+
           console.log('Actualizando métricas:', updatedMetrics);
           setMetrics(updatedMetrics);
-          
+
           // También guardar en Supabase
           try {
             await clientsService.saveClientMetrics(updatedMetrics);
             console.log('Datos guardados en Supabase exitosamente');
+
+            const modeText = hasExistingManualData ? 'SOBREESCRITOS' : 'SINCRONIZADOS';
+            alert(`✅ Datos ${modeText}: ${accountingData.totalClientes} clientes y €${(accountingData.facturacionTotal || 0).toLocaleString('es-ES')} de facturación desde contabilidad`);
           } catch (error) {
             console.error('Error guardando en Supabase:', error);
           }
-          
-          alert(`✅ Sincronizado: ${accountingData.totalClientes} clientes y €${(accountingData.facturacionTotal || 0).toLocaleString('es-ES')} de facturación desde contabilidad`);
         } else {
-          alert(`❌ No hay datos de contabilidad para ${metrics.mes}/${metrics.año}. Datos disponibles para ${accountingData.mes}/${accountingData.año}`);
+          alert(`❌ No hay datos de contabilidad para ${MESES[metrics.mes - 1]} ${metrics.año}. Datos disponibles para ${MESES[accountingData.mes - 1]} ${accountingData.año}`);
         }
-      } catch (error) {
-        console.error('Error parseando datos:', error);
-        alert('❌ Error al procesar los datos de sincronización');
+      } else {
+        alert('❌ No hay datos de contabilidad para sincronizar. Asegúrate de guardar datos en el módulo de contabilidad primero.');
       }
-    } else {
-      alert('❌ No hay datos de contabilidad para sincronizar. Asegúrate de guardar datos en el módulo de contabilidad primero.');
+    } catch (error) {
+      console.error('Error parseando datos:', error);
+      alert('❌ Error al procesar los datos de sincronización');
     }
+
     setLoading(false);
   };
 
@@ -131,32 +192,62 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
           <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Métricas y sincronización con contabilidad</p>
         </div>
         
-        {/* Selector de Mes Global */}
+        {/* Selector de Año y Mes Separados */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Calendar style={{ width: '20px', height: '20px', color: '#6b7280' }} />
-            <select 
-              value={`${metrics.año}-${metrics.mes.toString().padStart(2, '0')}`}
+
+            {/* Selector de Año */}
+            <select
+              value={metrics.año}
               onChange={(e) => {
-                const [año, mes] = e.target.value.split('-');
-                setMetrics(prev => ({ 
-                  ...prev, 
-                  año: parseInt(año), 
-                  mes: parseInt(mes) 
+                setMetrics(prev => ({
+                  ...prev,
+                  año: parseInt(e.target.value)
                 }));
               }}
-              style={{ 
-                padding: '8px 12px', 
-                border: '1px solid #d1d5db', 
-                borderRadius: '8px', 
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
                 fontSize: '14px',
                 backgroundColor: 'white',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              {Array.from({ length: 5 }, (_, yearIndex) => {
+                const year = new Date().getFullYear() - 2 + yearIndex; // 2023, 2024, 2025, 2026, 2027
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                );
+              })}
+            </select>
+
+            {/* Selector de Mes */}
+            <select
+              value={metrics.mes}
+              onChange={(e) => {
+                setMetrics(prev => ({
+                  ...prev,
+                  mes: parseInt(e.target.value)
+                }));
+              }}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                fontWeight: '500'
               }}
             >
               {MESES.map((nombreMes, index) => (
-                <option key={`${metrics.año}-${index + 1}`} value={`${metrics.año}-${(index + 1).toString().padStart(2, '0')}`}>
-                  {nombreMes} {metrics.año}
+                <option key={index + 1} value={index + 1}>
+                  {nombreMes}
                 </option>
               ))}
             </select>
@@ -266,6 +357,76 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
       </div>
 
       <div style={{ padding: '32px' }}>
+        {/* Toggle de Modo de Entrada */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #e2e8f0'
+        }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
+            ⚙️ Modo de Entrada de Datos
+          </h3>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              onClick={() => setModoEntrada('manual')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: modoEntrada === 'manual' ? '#059669' : '#f3f4f6',
+                color: modoEntrada === 'manual' ? 'white' : '#6b7280',
+                border: '2px solid ' + (modoEntrada === 'manual' ? '#059669' : '#d1d5db'),
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>✍️</span>
+              Manual
+            </button>
+
+            <button
+              onClick={() => setModoEntrada('automatico')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: modoEntrada === 'automatico' ? '#059669' : '#f3f4f6',
+                color: modoEntrada === 'automatico' ? 'white' : '#6b7280',
+                border: '2px solid ' + (modoEntrada === 'automatico' ? '#059669' : '#d1d5db'),
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>🔄</span>
+              Desde Contabilidad
+            </button>
+          </div>
+
+          <p style={{
+            marginTop: '12px',
+            fontSize: '14px',
+            color: modoEntrada === 'manual' ? '#059669' : '#6b7280',
+            fontWeight: '500'
+          }}>
+            {modoEntrada === 'manual'
+              ? '📝 Modo Manual: Introduce los datos directamente en el formulario'
+              : '🔄 Modo Automático: Sincroniza datos desde el módulo de contabilidad'
+            }
+          </p>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
           {/* Entrada de Datos */}
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
@@ -275,9 +436,98 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Objetivo Mensual</label>
                 <input type="number" value={metrics.objetivo_mensual} onChange={(e) => handleChange('objetivo_mensual', e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Altas Reales</label>
-                <input type="number" value={metrics.altas_reales} onChange={(e) => handleChange('altas_reales', e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
+
+              {/* 🆕 Sección de Altas Desglosadas */}
+              <div style={{
+                border: '2px solid #3b82f6',
+                padding: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ color: '#3b82f6', marginBottom: '15px' }}>
+                  📊 Altas por Tipo de Cliente
+                </h3>
+
+                {/* Altas Fundador */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>
+                    👑 Altas Fundador
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={metrics.altas_fundador || 0}
+                    onChange={(e) => handleChange('altas_fundador', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+
+                {/* Altas Normal */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>
+                    👤 Altas Normal
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={metrics.altas_normal || 0}
+                    onChange={(e) => handleChange('altas_normal', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+
+                {/* Altas Bonos */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>
+                    🎁 Altas Bonos
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={metrics.altas_bonos || 0}
+                    onChange={(e) => handleChange('altas_bonos', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+
+                {/* Total calculado (solo lectura y visual) */}
+                <div style={{
+                  marginTop: '15px',
+                  padding: '10px',
+                  backgroundColor: '#f0f9ff',
+                  borderRadius: '6px',
+                  border: '1px solid #3b82f6'
+                }}>
+                  <label style={{ display: 'block', fontWeight: 'bold', color: '#1e40af' }}>
+                    ✅ Total Altas (calculado automáticamente)
+                  </label>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: '#3b82f6',
+                    marginTop: '5px'
+                  }}>
+                    {(metrics.altas_fundador || 0) + (metrics.altas_normal || 0) + (metrics.altas_bonos || 0)}
+                  </div>
+                  <small style={{ color: '#64748b', fontSize: '12px' }}>
+                    Este valor se guarda automáticamente en la base de datos
+                  </small>
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Bajas</label>
@@ -394,6 +644,27 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             <UserPlus style={{ width: '32px', height: '32px', color: '#10b981', margin: '0 auto 12px' }} />
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.altas_reales}</p>
             <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Altas</p>
+
+            {/* Desglose por tipo */}
+            <div style={{
+              marginTop: '15px',
+              paddingTop: '15px',
+              borderTop: '1px solid rgba(0,0,0,0.1)',
+              fontSize: '14px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <span>👑 Fundadores:</span>
+                <strong>{metrics.altas_fundador || 0}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <span>👤 Normales:</span>
+                <strong>{metrics.altas_normal || 0}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>🎁 Bonos:</span>
+                <strong>{metrics.altas_bonos || 0}</strong>
+              </div>
+            </div>
           </div>
           
           {/* Tarjeta de Bajas */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Package, Plus, Search, AlertTriangle } from 'lucide-react';
 import { InventoryItem, LocationType, ItemCategory } from '../../types/logistics';
 import { INVENTORY_CATEGORIES, getCategoryIcon } from '../../config/logistics';
@@ -6,14 +6,26 @@ import { INVENTORY_CATEGORIES, getCategoryIcon } from '../../config/logistics';
 interface InventoryManagementProps {
   userLocation?: LocationType;
   canEdit?: boolean;
+  visibleCategories?: ItemCategory[];
 }
 
 export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   userLocation = 'central',
-  canEdit = true
+  canEdit = true,
+  visibleCategories
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
+
+  const allowedCategories = useMemo<ItemCategory[]>(() => {
+    return visibleCategories ?? (INVENTORY_CATEGORIES.map(cat => cat.id as ItemCategory));
+  }, [visibleCategories]);
+
+  useEffect(() => {
+    if (selectedCategory !== 'all' && !allowedCategories.includes(selectedCategory)) {
+      setSelectedCategory('all');
+    }
+  }, [allowedCategories, selectedCategory]);
 
   // Datos de ejemplo simplificados
   const mockItems = [
@@ -40,15 +52,52 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       sevillaStock: 12,
       minStock: 8,
       isLowStock: false
+    },
+    {
+      id: 'item-101',
+      name: 'Camiseta Oficial La Jungla',
+      category: 'vestuario' as ItemCategory,
+      sku: 'VEST-CAM-001',
+      purchasePrice: 9.50,
+      salePrice: 19.90,
+      centralStock: 120,
+      sevillaStock: 24,
+      minStock: 15,
+      isLowStock: false
+    },
+    {
+      id: 'item-102',
+      name: 'Pantalón Técnico',
+      category: 'vestuario' as ItemCategory,
+      sku: 'VEST-PAN-002',
+      purchasePrice: 14.00,
+      salePrice: 28.00,
+      centralStock: 80,
+      sevillaStock: 10,
+      minStock: 12,
+      isLowStock: true
+    },
+    {
+      id: 'item-103',
+      name: 'Chaqueta Corta Viento',
+      category: 'vestuario' as ItemCategory,
+      sku: 'VEST-CHA-003',
+      purchasePrice: 22.00,
+      salePrice: 45.00,
+      centralStock: 50,
+      sevillaStock: 8,
+      minStock: 6,
+      isLowStock: false
     }
   ];
 
-  const filteredItems = mockItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
+  const filteredItems = mockItems
+    .filter(item => allowedCategories.includes(item.category))
+    .filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
   return (
     <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -102,11 +151,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           }}
         >
           <option value="all">Todas las categorías</option>
-          {INVENTORY_CATEGORIES.map(cat => (
-            <option key={cat.id} value={cat.id}>
-              {cat.icon} {cat.name}
-            </option>
-          ))}
+          {allowedCategories.map(categoryId => {
+            const categoryConfig = INVENTORY_CATEGORIES.find(cat => cat.id === categoryId);
+            if (!categoryConfig) return null;
+            return (
+              <option key={categoryConfig.id} value={categoryConfig.id}>
+                {categoryConfig.icon} {categoryConfig.name}
+              </option>
+            );
+          })}
         </select>
       </div>
 

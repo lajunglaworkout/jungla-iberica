@@ -47,13 +47,20 @@ export type AccountingCategory =
 export interface ClientMetrics {
   id: string;
   center_id: string;
-  date: string;
+  center_name: string;
+  mes: number;
+  año: number;
+  objetivo_mensual: number;
+  altas_reales: number;
+  // 🆕 Nuevos campos desglosados de altas
+  altas_fundador: number;
+  altas_normal: number;
+  altas_bonos: number;
+  bajas_reales: number;
+  clientes_activos: number;
   leads: number;
-  altas: number;
-  bajas: number;
-  total_clients: number;
-  objective_clients: number;
-  fluctuation_percentage: number;
+  clientes_contabilidad: number;
+  facturacion_total: number;
   created_at: string;
   updated_at: string;
 }
