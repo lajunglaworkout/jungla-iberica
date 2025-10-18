@@ -53,7 +53,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
     .filter(item => {
       // Filtro por centro
       if (selectedCenter !== 'all') {
-        const centerMap: Record<string, number> = { central: 12, sevilla: 9, jerez: 10, puerto: 11 };
+        const centerMap: Record<string, number> = { central: 1, sevilla: 9, jerez: 10, puerto: 11 };
         const shouldInclude = centerMap[item.center] === selectedCenter;
         console.log(`🔍 Item "${item.name}": center="${item.center}", selectedCenter=${selectedCenter}, centerMap[${item.center}]=${centerMap[item.center]}, include=${shouldInclude}`);
         if (!shouldInclude) return false;

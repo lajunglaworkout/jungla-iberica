@@ -28,8 +28,11 @@ import { supabase } from '../lib/supabase';
 import LogisticsManagementSystem from '../components/LogisticsManagementSystem';
 import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
 import MaintenanceModule from '../components/MaintenanceModule';
+import { IncidentVerificationNotification } from '../components/incidents/IncidentVerificationNotification';
 import UserManagement from '../components/UserManagement';
 import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
+import IncidentManagementModal from '../components/incidents/IncidentManagementModal';
+import { checklistIncidentService } from '../services/checklistIncidentService';
 import '../styles/dashboard.css';
 
 // Datos de ejemplo para mostrar funcionalidad completa
@@ -198,6 +201,7 @@ interface SmartAlert {
   actionUrl?: string;
   moduleId?: string;
   hrView?: string;
+  logisticsView?: string;
 }
 
 const DashboardPage: React.FC = () => {
@@ -216,6 +220,8 @@ const DashboardPage: React.FC = () => {
   const [showMaintenance, setShowMaintenance] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [showIncidentManagementModal, setShowIncidentManagementModal] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Cargar reuniones desde Supabase al inicializar
@@ -280,6 +286,99 @@ const DashboardPage: React.FC = () => {
             hrView: 'vacations'
           });
         }
+
+        // Buscar solicitudes de uniformes pendientes
+        console.log('👕 Buscando solicitudes de uniformes pendientes...');
+        const { data: uniformRequests, error: uniformError } = await supabase
+          .from('uniform_requests')
+          .select('*')
+          .eq('status', 'pending')
+          .order('requested_at', { ascending: false });
+
+        if (!uniformError && uniformRequests && uniformRequests.length > 0) {
+          console.log(`👕 Encontradas ${uniformRequests.length} solicitudes de uniformes pendientes`);
+
+          const employees = [...new Set(uniformRequests.map((request: any) => request.employee_name))];
+          const maxShown = 3;
+          const displayed = employees.slice(0, maxShown);
+          const remaining = employees.length - displayed.length;
+          const applicantsText = `${displayed.join(', ')}${remaining > 0 ? ` y ${remaining} más` : ''}`;
+
+          newAlerts.push({
+            id: 'uniform-requests',
+            title: 'Solicitudes de uniformes pendientes',
+            description: `${uniformRequests.length} solicitud${uniformRequests.length === 1 ? '' : 'es'} de ${applicantsText}`,
+            type: 'info',
+            priority: 'high',
+            createdAt: uniformRequests[0].requested_at ?? now,
+            isRead: false,
+            department: 'Logística',
+            actionUrl: '/logistics',
+            moduleId: 'logistics',
+            logisticsView: 'orders'
+          });
+        }
+
+        // Cargar incidencias reales de checklist para ADMINS
+        console.log('🚨 Buscando incidencias pendientes para admin:', employee?.email);
+        try {
+          const pendingIncidents = await checklistIncidentService.getPendingIncidents();
+          console.log('🚨 Incidencias encontradas:', pendingIncidents);
+          
+          if (pendingIncidents && pendingIncidents.length > 0) {
+            console.log(`🚨 Encontradas ${pendingIncidents.length} incidencias pendientes`);
+            
+            // Agrupar por departamento
+            const incidentsByDept = pendingIncidents.reduce((acc: any, incident: any) => {
+              const dept = incident.department || 'General';
+              if (!acc[dept]) acc[dept] = [];
+              acc[dept].push(incident);
+              return acc;
+            }, {});
+
+            // Crear alerta por cada departamento con incidencias
+            Object.entries(incidentsByDept).forEach(([dept, incidents]: [string, any]) => {
+              const incidentList = incidents as any[];
+              const titles = incidentList.slice(0, 2).map((inc: any) => inc.title.replace('Incidencia: ', '')).join(', ');
+              const remaining = incidentList.length > 2 ? ` y ${incidentList.length - 2} más` : '';
+              
+              // Solo mostrar incidencias relevantes para el usuario actual
+              const isVicente = employee?.email === 'lajunglacentral@gmail.com';
+              const isBeni = employee?.email === 'beni.jungla@gmail.com';
+              
+              console.log('🚨 Evaluando incidencia:', dept, 'para usuario:', employee?.email);
+              console.log('🚨 Es Vicente:', isVicente, 'Es Beni:', isBeni);
+              
+              const shouldShowIncident = 
+                (isBeni && (dept === 'Mantenimiento' || dept === 'Logística')) || // Beni ve Mantenimiento y Logística
+                (isVicente && (dept === 'Personal' || dept === 'Atención al Cliente')) || // Vicente ve Personal y Clientes
+                (userRole === 'superadmin'); // CEO ve todo
+              
+              console.log('🚨 Mostrar incidencia:', shouldShowIncident);
+              
+              if (shouldShowIncident) {
+                newAlerts.push({
+                  id: `incidents-${dept.toLowerCase()}`,
+                  title: `${incidentList.length} Incidencia${incidentList.length === 1 ? '' : 's'} - ${dept}`,
+                  description: `${titles}${remaining}`,
+                  type: 'error',
+                  priority: incidentList.some((inc: any) => inc.priority === 'critica') ? 'high' : 'high',
+                  createdAt: incidentList[0].created_at || now,
+                  isRead: false,
+                  department: dept,
+                  actionUrl: dept === 'Mantenimiento' ? '/maintenance' : 
+                           dept === 'Logística' ? '/logistics' :
+                           dept === 'Personal' ? '/hr-management' : '/incidents',
+                  moduleId: dept === 'Mantenimiento' ? 'maintenance' : 
+                           dept === 'Logística' ? 'logistics' :
+                           dept === 'Personal' ? 'hr' : 'incidents'
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error cargando incidencias:', error);
+        }
       }
 
       // ALERTAS PARA ENCARGADOS DE CENTRO (Vicente, Francisco, etc.)
@@ -313,18 +412,8 @@ const DashboardPage: React.FC = () => {
           }
         }
 
-        // 2. Incidencias abiertas del centro
-        newAlerts.push({
-          id: 'center-incidents',
-          title: '2 Incidencias Abiertas',
-          description: 'Aire acondicionado averiado, reposición de toallas',
-          type: 'warning',
-          priority: 'medium',
-          createdAt: now,
-          isRead: false,
-          department: 'Mantenimiento'
-        });
       }
+
 
       // ALERTAS PARA CEO (Carlos)
       else if (userRole === 'superadmin') {
@@ -1003,13 +1092,30 @@ const DashboardPage: React.FC = () => {
   );
 
   const handleAlertNavigation = (alert: SmartAlert) => {
+    console.log('🔔 handleAlertNavigation llamado con:', alert);
+    console.log('🔔 Estados actuales:', {
+      showIncidentModal,
+      showIncidentManagementModal,
+      selectedDepartment
+    });
+    
+    // Si es una alerta de incidencias, abrir el modal de gestión
+    if (alert.id.startsWith('incidents-')) {
+      console.log('🔥 ABRIENDO MODAL DE GESTIÓN DE INCIDENCIAS:', alert.department);
+      setSelectedDepartment(alert.department || '');
+      setShowIncidentManagementModal(true);
+      console.log('🔥 Estado después de setear:', { showIncidentManagementModal: true });
+      return;
+    }
+
     if (alert.moduleId) {
       window.dispatchEvent(
         new CustomEvent('navigate-module', {
           detail: {
             moduleId: alert.moduleId,
             fallbackUrl: alert.actionUrl ?? null,
-            hrView: alert.hrView
+            hrView: alert.hrView,
+            logisticsView: alert.logisticsView
           }
         })
       );
@@ -1080,6 +1186,9 @@ const DashboardPage: React.FC = () => {
               setNewTask(meeting);
               setShowTaskModal(true);
             }}
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.nombre || 'Carlos Suárez'}
+            onBack={() => setShowMaintenance(false)}
           />
         )}
 
@@ -1172,6 +1281,24 @@ const DashboardPage: React.FC = () => {
           // Aquí puedes añadir lógica adicional como actualizar alertas
         }}
       />
+
+      {/* Modal de Gestión de Incidencias */}
+      <IncidentManagementModal
+        isOpen={showIncidentManagementModal}
+        onClose={() => {
+          console.log('🔥 CERRANDO MODAL DE GESTIÓN');
+          setShowIncidentManagementModal(false);
+        }}
+        department={selectedDepartment}
+        userEmail={employee?.email || ''}
+      />
+
+      {/* Notificación de Verificación de Incidencias */}
+      {employee?.name && (
+        <IncidentVerificationNotification 
+          employeeName={employee.name}
+        />
+      )}
     </div>
   );
 };
