@@ -414,6 +414,8 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
           <SessionProvider>
             <DataProvider>
               <ChecklistCompleteSystem
+                centerId={centerId.toString()}
+                centerName={centerName}
                 onClose={() => setShowChecklist(false)}
               />
             </DataProvider>
