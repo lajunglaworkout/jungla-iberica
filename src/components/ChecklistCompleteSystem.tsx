@@ -434,7 +434,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para firmar apertura
   const handleFirmarApertura = async () => {
     if (!employee) {
-      alert('Error: No se puede identificar el empleado');
+      alert('⚠️ Función disponible solo para empleados. Estás usando sesión de centro.');
       return;
     }
 
@@ -457,7 +457,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para firmar cierre
   const handleFirmarCierre = async () => {
     if (!employee) {
-      alert('Error: No se puede identificar el empleado');
+      alert('⚠️ Función disponible solo para empleados. Estás usando sesión de centro.');
       return;
     }
 
@@ -668,13 +668,16 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         </div>
       )}
 
-      {!employee && (
+      {!employee && !loading && (
         <div style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ color: '#dc2626', fontSize: '18px' }}>No hay sesión de empleado activa</p>
+          <p style={{ color: '#f59e0b', fontSize: '18px' }}>⚠️ Sesión de centro detectada</p>
+          <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '8px' }}>
+            El checklist funciona mejor con una sesión de empleado, pero puedes visualizarlo como centro.
+          </p>
         </div>
       )}
 
-      {employee && !loading && (
+      {!loading && (
         <>
           {/* Header */}
           <div style={{
