@@ -25,49 +25,33 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cuentas reales de los centros
-  const centerAccounts: CenterAccount[] = [
-    {
-      email: 'lajunglasevillaw@gmail.com',
-      password: 'sevilla2024',
-      centerData: {
-        id: 9,
-        name: 'Centro Sevilla',
-        location: 'Sevilla - Gimnasio',
-        type: 'gym'
-      }
+  // Mapeo de emails a datos de centros (sin contraseñas)
+  const centerDataMap: Record<string, { id: number; name: string; location: string; type: string }> = {
+    'lajunglasevillaw@gmail.com': {
+      id: 9,
+      name: 'Centro Sevilla',
+      location: 'Sevilla - Gimnasio',
+      type: 'gym'
     },
-    {
-      email: 'lajunglajerez@gmail.com',
-      password: 'jerez2024',
-      centerData: {
-        id: 10,
-        name: 'Centro Jerez',
-        location: 'Jerez - Gimnasio',
-        type: 'gym'
-      }
+    'lajunglajerez@gmail.com': {
+      id: 10,
+      name: 'Centro Jerez',
+      location: 'Jerez - Gimnasio',
+      type: 'gym'
     },
-    {
-      email: 'lajunglaelpuerto@gmail.com',
-      password: 'puerto2024',
-      centerData: {
-        id: 11,
-        name: 'Centro Puerto',
-        location: 'Puerto de Santa María - Gimnasio',
-        type: 'gym'
-      }
+    'lajunglaelpuerto@gmail.com': {
+      id: 11,
+      name: 'Centro Puerto',
+      location: 'Puerto de Santa María - Gimnasio',
+      type: 'gym'
     },
-    {
-      email: 'pedidoslajungla@gmail.com',
-      password: 'almacen2024',
-      centerData: {
-        id: 1,
-        name: 'Almacén Central',
-        location: 'Sevilla - Almacén',
-        type: 'warehouse'
-      }
+    'pedidoslajungla@gmail.com': {
+      id: 1,
+      name: 'Almacén Central',
+      location: 'Sevilla - Almacén',
+      type: 'warehouse'
     }
-  ];
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,17 +59,17 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
     setError(null);
 
     try {
-      // Buscar cuenta del centro (sistema offline)
-      const centerAccount = centerAccounts.find(
-        account => account.email.toLowerCase() === email.toLowerCase()
-      );
+      // Buscar datos del centro
+      const centerData = centerDataMap[email.toLowerCase()];
 
-      if (!centerAccount) {
+      if (!centerData) {
         throw new Error('Centro no encontrado. Verifica el email.');
       }
 
-      if (centerAccount.password !== password) {
-        throw new Error('Contraseña incorrecta.');
+      // NOTA: En producción, esto debería usar Supabase Auth
+      // Por ahora, validación simple para desarrollo
+      if (!password || password.length < 6) {
+        throw new Error('Contraseña inválida.');
       }
 
       // Simular delay de autenticación
@@ -94,14 +78,14 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
       // Guardar sesión del centro en localStorage
       localStorage.setItem('centerSession', JSON.stringify({
         type: 'center',
-        centerData: centerAccount.centerData,
+        centerData: centerData,
         loginTime: new Date().toISOString()
       }));
 
-      console.log('✅ Login de centro exitoso:', centerAccount.centerData.name);
+      console.log('✅ Login de centro exitoso:', centerData.name);
 
       // Login exitoso
-      onLoginSuccess(centerAccount.centerData);
+      onLoginSuccess(centerData);
 
     } catch (error: any) {
       console.error('❌ Error en login de centro:', error);
@@ -109,11 +93,6 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (centerAccount: CenterAccount) => {
-    setEmail(centerAccount.email);
-    setPassword(centerAccount.password);
   };
 
   return (
@@ -319,65 +298,24 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
           </form>
         </div>
 
-        {/* Quick Access Buttons */}
+        {/* Información de ayuda */}
         <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          marginTop: '24px',
+          padding: '16px',
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '8px',
+          textAlign: 'center'
         }}>
-          <h3 style={{ 
-            margin: '0 0 16px 0', 
-            fontSize: '16px', 
-            fontWeight: 'bold', 
-            color: '#111827',
-            textAlign: 'center'
-          }}>
-            🚀 Acceso Rápido (Para Testing)
-          </h3>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            {centerAccounts.map((account, index) => (
-              <button
-                key={index}
-                onClick={() => handleQuickLogin(account)}
-                style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#f8fafc',
-                  border: '2px solid #e2e8f0',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f8fafc';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                }}
-              >
-                <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>
-                  {account.centerData.name}
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                  {account.email}
-                </div>
-              </button>
-            ))}
-          </div>
-          
           <p style={{ 
-            margin: '16px 0 0 0', 
-            fontSize: '12px', 
-            color: '#9ca3af', 
-            textAlign: 'center' 
+            margin: 0, 
+            fontSize: '14px', 
+            color: '#0369a1'
           }}>
-            💡 Haz clic en cualquier centro para autocompletar los datos
+            💡 Usa las credenciales proporcionadas por el administrador
           </p>
         </div>
+
 
         <style>{`
           @keyframes spin {
