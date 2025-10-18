@@ -24,9 +24,10 @@ interface ChecklistData {
 interface ChecklistCompleteSystemProps {
   centerId?: string;
   centerName?: string;
+  onClose?: () => void;
 }
 
-const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ centerId, centerName }) => {
+const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ centerId, centerName, onClose }) => {
   const { employee, userRole } = useSession();
   
   // ESTRUCTURA CORRECTA DE DATOS CON TIPOS
@@ -263,11 +264,80 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const loadInitialData = async () => {
     console.log('📋 Cargando checklist para centro:', centerName, centerId);
     
-    // Por ahora, cargar siempre las tareas por defecto para evitar errores de BD
-    const defaultTasks = getDefaultTasks();
-    console.log('📝 Cargando tareas por defecto:', defaultTasks);
-    setChecklist(defaultTasks);
-    setLoading(false);
+    if (!centerId) {
+      console.error('❌ No se proporcionó centerId');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Obtener la fecha de hoy
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Buscar checklist del día en Supabase
+      const { data: existingChecklist, error } = await supabase
+        .from('daily_checklists')
+        .select('*')
+        .eq('center_id', centerId)
+        .eq('date', today)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('❌ Error al cargar checklist:', error);
+        throw error;
+      }
+
+      if (existingChecklist) {
+        // Ya existe un checklist para hoy, cargar los datos
+        console.log('✅ Checklist existente encontrado:', existingChecklist);
+        setChecklist({
+          apertura: existingChecklist.apertura_tasks || [],
+          limpieza: existingChecklist.limpieza_tasks || [],
+          cierre: existingChecklist.cierre_tasks || [],
+          incidencias: []
+        });
+        
+        // Cargar firmas si existen
+        if (existingChecklist.firma_apertura) {
+          setFirmaApertura(existingChecklist.firma_apertura);
+        }
+        if (existingChecklist.firma_cierre) {
+          setFirmaCierre(existingChecklist.firma_cierre);
+        }
+      } else {
+        // No existe checklist para hoy, crear uno nuevo con tareas por defecto
+        console.log('📝 Creando nuevo checklist para hoy');
+        const defaultTasks = getDefaultTasks();
+        
+        const { data: newChecklist, error: insertError } = await supabase
+          .from('daily_checklists')
+          .insert({
+            center_id: centerId,
+            center_name: centerName || 'Centro',
+            date: today,
+            apertura_tasks: defaultTasks.apertura,
+            limpieza_tasks: defaultTasks.limpieza,
+            cierre_tasks: defaultTasks.cierre,
+            status: 'en_progreso'
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Error al crear checklist:', insertError);
+          throw insertError;
+        }
+
+        console.log('✅ Nuevo checklist creado:', newChecklist);
+        setChecklist(defaultTasks);
+      }
+    } catch (error) {
+      console.error('❌ Error fatal al cargar checklist:', error);
+      // En caso de error, mostrar mensaje al usuario
+      alert('Error al cargar el checklist. Por favor, verifica tu conexión e intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para marcar/desmarcar tarea
@@ -334,6 +404,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           : tarea
       )
     }));
+    
+    // Auto-guardar en BD
+    updateChecklistInDB();
   };
 
   // Función para firmar apertura
@@ -385,21 +458,30 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para guardar estado provisional
   const guardarEstadoProvisional = async (estado: string) => {
     console.log('💾 Guardando estado provisional:', estado);
+    
+    if (!centerId) {
+      console.error('❌ No se puede guardar sin centerId');
+      return;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0];
       
       const checklistData = {
-        center_id: centerId || 'sevilla',
+        center_id: centerId,
+        center_name: centerName || 'Centro',
         date: today,
         employee_id: employee?.id || null,
-        tasks: checklist,
-        status: estado, // 'apertura_firmada', 'cierre_firmado', 'completado'
-        firma_apertura: firmaApertura.firmado ? JSON.stringify(firmaApertura) : null,
-        firma_cierre: firmaCierre.firmado ? JSON.stringify(firmaCierre) : null,
+        apertura_tasks: checklist.apertura,
+        limpieza_tasks: checklist.limpieza,
+        cierre_tasks: checklist.cierre,
+        status: estado,
+        firma_apertura: firmaApertura.firmado ? firmaApertura : null,
+        firma_cierre: firmaCierre.firmado ? firmaCierre : null,
         updated_at: new Date().toISOString()
       };
 
-      console.log('📤 Guardando estado provisional:', checklistData);
+      console.log('📤 Guardando en Supabase:', checklistData);
 
       const { data, error } = await supabase
         .from('daily_checklists')
@@ -409,13 +491,14 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         .select();
       
       if (error) {
-        console.error('❌ Error guardando estado provisional:', error);
-        alert('⚠️ Error al guardar. El estado se mantiene localmente.');
+        console.error('❌ Error guardando en Supabase:', error);
+        alert('⚠️ Error al guardar en la base de datos. Verifica tu conexión.');
       } else {
-        console.log('✅ Estado provisional guardado:', data);
+        console.log('✅ Checklist guardado en Supabase:', data);
       }
     } catch (error) {
-      console.error('❌ Error en guardarEstadoProvisional:', error);
+      console.error('❌ Error fatal en guardarEstadoProvisional:', error);
+      alert('⚠️ Error al guardar. Por favor, intenta de nuevo.');
     }
   };
 
@@ -530,7 +613,32 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   console.log('Tareas cierre:', checklist.cierre?.length);
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: window.innerWidth < 768 ? '16px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Botón de cerrar (si se proporciona onClose) */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            padding: '10px 20px',
+            backgroundColor: '#f3f4f6',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: '500',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          ✕ Cerrar
+        </button>
+      )}
+
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <Loader2 style={{ height: '48px', width: '48px', animation: 'spin 1s linear infinite', color: '#059669' }} />
@@ -550,11 +658,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           <div style={{
             backgroundColor: '#059669',
             color: 'white',
-            padding: '20px',
+            padding: window.innerWidth < 768 ? '16px' : '20px',
             borderRadius: '12px',
-            marginBottom: '24px'
+            marginBottom: window.innerWidth < 768 ? '16px' : '24px'
           }}>
-            <h1 style={{ fontSize: '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
+            <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
             <p style={{ fontSize: '18px', margin: '0', opacity: 0.9 }}>📅 Fecha: {new Date().toLocaleDateString('es-ES', { 
               weekday: 'long', 
               year: 'numeric', 
