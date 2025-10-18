@@ -290,12 +290,34 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       if (existingChecklist) {
         // Ya existe un checklist para hoy, cargar los datos
         console.log('✅ Checklist existente encontrado:', existingChecklist);
-        setChecklist({
-          apertura: existingChecklist.apertura_tasks || [],
-          limpieza: existingChecklist.limpieza_tasks || [],
-          cierre: existingChecklist.cierre_tasks || [],
-          incidencias: []
+        console.log('📊 Datos de tareas:', {
+          apertura: existingChecklist.apertura_tasks,
+          limpieza: existingChecklist.limpieza_tasks,
+          cierre: existingChecklist.cierre_tasks,
+          tasks_antiguo: existingChecklist.tasks
         });
+        
+        // Si tiene el formato antiguo (tasks), migrar al nuevo formato
+        if (existingChecklist.tasks && !existingChecklist.apertura_tasks) {
+          console.log('🔄 Migrando formato antiguo a nuevo formato');
+          const oldTasks = existingChecklist.tasks;
+          setChecklist({
+            apertura: oldTasks.apertura || [],
+            limpieza: oldTasks.limpieza || [],
+            cierre: oldTasks.cierre || [],
+            incidencias: []
+          });
+          // Guardar en el nuevo formato
+          await guardarEstadoProvisional(existingChecklist.status || 'en_progreso');
+        } else {
+          // Usar el nuevo formato
+          setChecklist({
+            apertura: existingChecklist.apertura_tasks || [],
+            limpieza: existingChecklist.limpieza_tasks || [],
+            cierre: existingChecklist.cierre_tasks || [],
+            incidencias: []
+          });
+        }
         
         // Cargar firmas si existen
         if (existingChecklist.firma_apertura) {
