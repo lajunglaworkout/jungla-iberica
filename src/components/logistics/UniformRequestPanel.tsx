@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { Minus, Plus, Shirt, ShoppingBag, CheckCircle } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Minus, Plus, Shirt, ShoppingBag, CheckCircle, Package } from 'lucide-react';
 import { LocationType } from '../../types/logistics';
 import { useInventory } from '../../hooks/useInventory';
+import { supabase } from '../../lib/supabase';
 
 type ReasonType = 'reposicion' | 'compra';
 
@@ -26,25 +27,51 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
   const { inventoryItems, loading, error } = useInventory();
   const [reason, setReason] = useState<ReasonType>('reposicion');
   const [selection, setSelection] = useState<RequestLine[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Filtrar artículos que contengan 'ropa' o 'vestuario' en el nombre o categoría
+  // Filtrar artículos de vestuario y merchandising
   const uniformItems = useMemo(() => {
-    const filtered = inventoryItems.filter(item => 
-      item.category?.toLowerCase().includes('ropa') || 
-      item.category?.toLowerCase().includes('vestuario') ||
-      item.name?.toLowerCase().includes('camiseta') ||
-      item.name?.toLowerCase().includes('pantalon') ||
-      item.name?.toLowerCase().includes('zapato') ||
-      item.name?.toLowerCase().includes('uniforme')
-    );
-    return filtered.slice(0, 5); // Limitar a 5 para demo
+    const filtered = inventoryItems.filter(item => {
+      const category = item.category?.toLowerCase() || '';
+      const name = item.name?.toLowerCase() || '';
+      
+      return (
+        category.includes('vestuario') ||
+        category.includes('ropa') ||
+        category.includes('merchandising') ||
+        category.includes('textil') ||
+        name.includes('camiseta') ||
+        name.includes('pantalón') ||
+        name.includes('pantalon') ||
+        name.includes('zapato') ||
+        name.includes('uniforme') ||
+        name.includes('toalla') ||
+        name.includes('botella') ||
+        name.includes('polo') ||
+        name.includes('sudadera')
+      );
+    });
+    
+    console.log('📦 Artículos de vestuario encontrados:', filtered.length);
+    console.log('📋 Categorías disponibles:', [...new Set(inventoryItems.map(item => item.category))]);
+    console.log('👕 Items de vestuario:', filtered.map(item => ({ 
+      name: item.name, 
+      category: item.category, 
+      center: item.center,
+      quantity: item.quantity 
+    })));
+    
+    return filtered;
   }, [inventoryItems]);
 
-  console.log('All categories:', [...new Set(inventoryItems.map(item => item.category))]);
-  console.log('Uniform items:', uniformItems.length, uniformItems.map(item => ({ name: item.name, category: item.category })));
-
-  const getStockForLocation = (itemId: string, location: LocationType) => {
-    return 10; // Placeholder
+  // Obtener stock real por ubicación
+  const getStockForLocation = (itemId: number, location: LocationType) => {
+    const item = inventoryItems.find(i => i.id === itemId);
+    if (!item) return 0;
+    
+    // El vestuario SIEMPRE se muestra desde la central, independientemente del centro del usuario
+    // Todos los empleados pueden solicitar vestuario de la central
+    return item.quantity || 0;
   };
 
   const updateQuantity = (itemId: string, itemName: string, delta: number) => {
@@ -67,26 +94,98 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
   const totalItems = selection.reduce((acc, line) => acc + line.quantity, 0);
   console.log('Total items:', totalItems, 'Selection:', selection);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!totalItems) {
       alert('Selecciona al menos una prenda.');
       return;
     }
 
-    onSubmit?.({ reason, location: userLocation, items: selection });
+    try {
+      setSubmitting(true);
+      
+      // Guardar solicitud en Supabase
+      const { data: requestData, error: requestError } = await supabase
+        .from('uniform_requests')
+        .insert({
+          employee_name: employeeName || 'Empleado',
+          location: userLocation,
+          reason: reason,
+          status: 'pending',
+          requested_at: new Date().toISOString(),
+          items: selection
+        })
+        .select()
+        .single();
+
+      if (requestError) {
+        console.error('Error guardando solicitud:', requestError);
+        alert('Error al enviar la solicitud. Por favor, inténtalo de nuevo.');
+        return;
+      }
+
+      console.log('✅ Solicitud guardada:', requestData);
+      
+      // Llamar al callback si existe
+      onSubmit?.({ reason, location: userLocation, items: selection });
+      
+      // Limpiar selección
+      setSelection([]);
+      
+    } catch (error) {
+      console.error('Error en handleSubmit:', error);
+      alert('Error inesperado al enviar la solicitud.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (loading) return <div>Cargando inventario...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '60px 20px',
+        backgroundColor: 'white',
+        borderRadius: '16px'
+      }}>
+        <Package size={48} color="#059669" style={{ marginBottom: '16px' }} />
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>Cargando inventario de vestuario...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div style={{ 
+        padding: '24px', 
+        backgroundColor: '#fef2f2', 
+        borderRadius: '12px',
+        border: '1px solid #fecaca'
+      }}>
+        <p style={{ color: '#dc2626', margin: 0 }}>❌ Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
-      <header style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(15,118,110,0.12)' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#111827' }}>
-          {employeeName ? `Vestuario para ${employeeName}` : 'Solicitud de vestuario'}
-        </h1>
-        <p style={{ margin: '6px 0 0', color: '#6b7280' }}>
-          Selecciona prendas de la categoría vestuario y el motivo de la solicitud.
+      <header style={{ 
+        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
+        padding: '28px', 
+        borderRadius: '16px', 
+        boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
+        color: 'white'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <Shirt size={32} />
+          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700 }}>
+            {employeeName ? `Vestuario para ${employeeName}` : 'Solicitud de Vestuario'}
+          </h1>
+        </div>
+        <p style={{ margin: 0, fontSize: '15px', opacity: 0.95 }}>
+          Selecciona las prendas que necesitas y el motivo de tu solicitud.
         </p>
         <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {REASONS.map(option => (
@@ -123,63 +222,100 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
           </div>
         ) : (
           uniformItems.map(item => {
-            const currentSelection = selection.find(line => line.itemId === item.id);
+            const currentSelection = selection.find(line => line.itemId === item.id.toString());
             const quantity = currentSelection?.quantity || 0;
+            const availableStock = getStockForLocation(item.id, userLocation);
+            const isOutOfStock = availableStock === 0;
 
             return (
               <div key={item.id} style={{
                 background: 'white',
                 borderRadius: '12px',
-                padding: '16px',
-                border: '1px solid #e5e7eb',
+                padding: '20px',
+                border: `2px solid ${quantity > 0 ? '#10b981' : '#e5e7eb'}`,
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                transition: 'all 0.2s ease',
+                opacity: isOutOfStock ? 0.6 : 1
               }}>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#111827' }}>{item.name}</h3>
-                  <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
-                    Stock disponible: {getStockForLocation(item.id, 'central').toString()} unidades
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600, color: '#111827' }}>
+                    {item.name}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '6px', alignItems: 'center' }}>
+                    <span style={{ 
+                      fontSize: '13px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: '#f0fdf4',
+                      color: '#059669',
+                      fontWeight: 500
+                    }}>
+                      {item.category}
+                    </span>
+                    {item.size && (
+                      <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                        Talla: {item.size}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ 
+                    margin: '8px 0 0', 
+                    color: isOutOfStock ? '#dc2626' : '#059669', 
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}>
+                    {isOutOfStock ? '❌ Sin stock' : `✅ Stock: ${availableStock} unidades`}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <button
-                    onClick={() => updateQuantity(item.id, item.name, -1)}
-                    disabled={quantity === 0}
+                    onClick={() => updateQuantity(item.id.toString(), item.name, -1)}
+                    disabled={quantity === 0 || isOutOfStock}
                     style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      border: '1px solid #d1d5db',
-                      background: quantity === 0 ? '#f9fafb' : 'white',
-                      color: quantity === 0 ? '#9ca3af' : '#374151',
-                      cursor: quantity === 0 ? 'not-allowed' : 'pointer',
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      border: '2px solid #e5e7eb',
+                      background: (quantity === 0 || isOutOfStock) ? '#f9fafb' : 'white',
+                      color: (quantity === 0 || isOutOfStock) ? '#9ca3af' : '#374151',
+                      cursor: (quantity === 0 || isOutOfStock) ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <Minus size={16} />
+                    <Minus size={18} />
                   </button>
-                  <span style={{ minWidth: '24px', textAlign: 'center', fontSize: '16px', fontWeight: 600 }}>
+                  <span style={{ 
+                    minWidth: '32px', 
+                    textAlign: 'center', 
+                    fontSize: '20px', 
+                    fontWeight: 700,
+                    color: '#059669'
+                  }}>
                     {quantity}
                   </span>
                   <button
-                    onClick={() => updateQuantity(item.id, item.name, 1)}
+                    onClick={() => updateQuantity(item.id.toString(), item.name, 1)}
+                    disabled={isOutOfStock || quantity >= availableStock}
                     style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      border: '1px solid #059669',
-                      background: '#059669',
-                      color: 'white',
-                      cursor: 'pointer',
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      border: '2px solid #059669',
+                      background: (isOutOfStock || quantity >= availableStock) ? '#f9fafb' : '#059669',
+                      color: (isOutOfStock || quantity >= availableStock) ? '#9ca3af' : 'white',
+                      cursor: (isOutOfStock || quantity >= availableStock) ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <Plus size={16} />
+                    <Plus size={18} />
                   </button>
                 </div>
               </div>
@@ -200,20 +336,26 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
           </div>
           <button
             onClick={handleSubmit}
+            disabled={submitting}
             style={{
               width: '100%',
-              padding: '12px',
-              background: '#059669',
+              padding: '14px',
+              background: submitting ? '#9ca3af' : '#059669',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '12px',
               fontSize: '16px',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
             }}
           >
-            <CheckCircle size={18} style={{ marginRight: '8px' }} />
-            Enviar solicitud a RRHH
+            <CheckCircle size={20} />
+            {submitting ? 'Enviando solicitud...' : 'Enviar solicitud a Logística'}
           </button>
         </footer>
       )}

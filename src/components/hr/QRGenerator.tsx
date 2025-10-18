@@ -7,6 +7,8 @@ import { RefreshCw, MapPin, Clock, Shield } from 'lucide-react';
 interface QRGeneratorProps {
   centerId: number;
   centerName: string;
+  employeeId?: string;
+  employeeName?: string;
 }
 
 interface QRToken {
@@ -15,7 +17,7 @@ interface QRToken {
   timeRemaining: number;
 }
 
-const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
+const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employeeId, employeeName }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [currentToken, setCurrentToken] = useState<QRToken | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,10 +28,10 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
   useEffect(() => {
     generateNewQR();
     
-    // Generar nuevo QR cada 5 minutos
+    // Generar nuevo QR cada 30 segundos
     intervalRef.current = setInterval(() => {
       generateNewQR();
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 30 * 1000); // 30 segundos
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -48,15 +50,17 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
         .delete()
         .lt('expires_at', new Date().toISOString());
 
-      // Generar nuevo token único
-      const token = `qr_${centerId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos desde ahora
+      // Generar nuevo token único por empleado
+      const employeePrefix = employeeId ? `emp_${employeeId}` : `center_${centerId}`;
+      const token = `qr_${employeePrefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 30 * 1000); // 30 segundos desde ahora
 
       // Guardar token en la base de datos
       const { error: insertError } = await supabase
         .from('qr_tokens')
         .insert({
           center_id: centerId,
+          employee_id: employeeId || null,
           token: token,
           expires_at: expiresAt.toISOString(),
           is_used: false
@@ -69,6 +73,8 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
         token: token,
         centerId: centerId,
         centerName: centerName,
+        employeeId: employeeId || null,
+        employeeName: employeeName || null,
         timestamp: Date.now(),
         expiresAt: expiresAt.getTime()
       };
@@ -87,7 +93,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
       setCurrentToken({
         token: token,
         expiresAt: expiresAt.toISOString(),
-        timeRemaining: 5 * 60 // 5 minutos en segundos
+        timeRemaining: 30 // 30 segundos
       });
 
       // Iniciar countdown
@@ -127,8 +133,8 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
   };
 
   const getStatusColor = (timeRemaining: number): string => {
-    if (timeRemaining > 120) return '#10b981'; // Verde
-    if (timeRemaining > 60) return '#f59e0b';  // Amarillo
+    if (timeRemaining > 20) return '#10b981'; // Verde
+    if (timeRemaining > 10) return '#f59e0b';  // Amarillo
     return '#ef4444'; // Rojo
   };
 
@@ -150,7 +156,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
           fontSize: '20px',
           fontWeight: 'bold'
         }}>
-          🏢 {centerName}
+          {employeeName ? `👤 ${employeeName}` : `🏢 ${centerName}`}
         </h3>
         <p style={{ 
           margin: 0, 
@@ -327,7 +333,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName }) => {
         gap: '4px'
       }}>
         <Shield size={12} />
-        Código seguro • Se renueva cada 5 minutos
+        Código seguro • Se renueva cada 30 segundos
       </div>
 
       <style>{`

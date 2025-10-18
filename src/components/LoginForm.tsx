@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSession } from '../contexts/SessionContext';
+import { runFullDiagnostic } from '../utils/supabaseTest';
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -79,7 +81,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       });
 
       if (authError) {
+        console.error('❌ Error de autenticación completo:', authError);
+        console.error('❌ Tipo de error:', authError.name);
+        console.error('❌ Código de error:', authError.status);
         console.log('❌ Error de autenticación:', authError.message);
+        
+        // Si es un error de red, ejecutar diagnóstico
+        if (authError.name === 'AuthRetryableFetchError' || authError.message.includes('fetch')) {
+          console.log('🔍 Error de red detectado, ejecutando diagnóstico...');
+          runFullDiagnostic();
+        }
         
         // Si falla la autenticación, verificar si es un email actualizado
         if (authError.message === 'Invalid login credentials') {

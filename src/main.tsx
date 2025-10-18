@@ -1,8 +1,6 @@
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
+import AppWithProfileSelector from './components/AppWithProfileSelector.tsx'
 import './index.css'
-import { SessionProvider } from './contexts/SessionContext.tsx'
-import { DataProvider } from './contexts/DataContext.tsx'
 
 import { MantineProvider, createTheme } from '@mantine/core';
 import '@mantine/core/styles.css';
@@ -20,10 +18,6 @@ const theme = createTheme({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <MantineProvider theme={theme}>
-    <SessionProvider>
-      <DataProvider>
-        <App />
-      </DataProvider>
-    </SessionProvider>
+    <AppWithProfileSelector />
   </MantineProvider>
 );

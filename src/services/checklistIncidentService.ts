@@ -13,7 +13,7 @@ export interface ChecklistIncident {
   title: string;
   description: string;
   priority: 'baja' | 'media' | 'alta' | 'critica';
-  status: 'abierta' | 'en_proceso' | 'resuelta' | 'cerrada';
+  status: 'abierta' | 'en_proceso' | 'resuelta' | 'cerrada' | 'pendiente_verificacion' | 'verificada';
   inventory_item?: string;
   inventory_quantity?: number;
   has_images: boolean;
@@ -23,6 +23,15 @@ export interface ChecklistIncident {
   resolved_by?: string;
   resolved_at?: string;
   resolution_notes?: string;
+  
+  // Nuevos campos para el sistema de verificación
+  requires_verification?: boolean;
+  verification_status?: 'pendiente' | 'aprobada' | 'rechazada';
+  verification_notes?: string;
+  verified_by?: string;
+  verified_at?: string;
+  rejection_reason?: string;
+  
   created_at?: string;
   updated_at?: string;
 }
@@ -92,6 +101,8 @@ class ChecklistIncidentService {
    */
   async getIncidentsByDepartment(department: string, limit: number = 50): Promise<ChecklistIncident[]> {
     try {
+      console.log('🔍 Buscando incidencias para departamento:', department);
+      
       const { data, error } = await supabase
         .from('checklist_incidents')
         .select('*')
@@ -100,13 +111,16 @@ class ChecklistIncidentService {
         .limit(limit);
 
       if (error) {
-        console.error('Error obteniendo incidencias por departamento:', error);
+        console.error('❌ Error obteniendo incidencias por departamento:', error);
         throw error;
       }
 
+      console.log('📋 Resultado de la consulta:', data);
+      console.log('📊 Incidencias encontradas:', data?.length || 0);
+      
       return data || [];
     } catch (error) {
-      console.error('Error en getIncidentsByDepartment:', error);
+      console.error('❌ Error en getIncidentsByDepartment:', error);
       return [];
     }
   }
@@ -138,6 +152,35 @@ class ChecklistIncidentService {
     } catch (error) {
       console.error('Error en getPendingIncidents:', error);
       return [];
+    }
+  }
+
+  /**
+   * Actualizar una incidencia
+   */
+  async updateIncident(
+    incidentId: string, 
+    updateData: Partial<ChecklistIncident>
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('checklist_incidents')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', incidentId);
+
+      if (error) {
+        console.error('Error actualizando incidencia:', error);
+        throw error;
+      }
+
+      console.log('✅ Incidencia actualizada:', incidentId);
+      return true;
+    } catch (error) {
+      console.error('Error en updateIncident:', error);
+      return false;
     }
   }
 
@@ -292,6 +335,175 @@ class ChecklistIncidentService {
     } catch (error) {
       console.error('Error en getRecentIncidents:', error);
       return [];
+    }
+  }
+
+  /**
+   * Borrar todas las incidencias (para testing)
+   */
+  async clearAllIncidents(): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('checklist_incidents')
+        .delete()
+        .neq('id', 0); // Borra todas las filas
+
+      if (error) {
+        console.error('Error borrando incidencias:', error);
+        throw error;
+      }
+
+      console.log('✅ Todas las incidencias han sido borradas');
+    } catch (error) {
+      console.error('Error en clearAllIncidents:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear incidencia de prueba
+   */
+  async createTestIncident(): Promise<ChecklistIncident> {
+    try {
+      const testIncident = {
+        center_id: '1',
+        center_name: 'Centro Sevilla',
+        reporter_name: 'Francisco Giráldez',
+        reporter_email: 'francisco@lajungla.com',
+        incident_type: 'maintenance' as const,
+        department: 'Mantenimiento',
+        responsible: 'Equipo de Mantenimiento',
+        title: 'Problema con equipamiento de gimnasio',
+        description: 'Las mancuernas de 15kg están rotas y necesitan reparación urgente. Los usuarios no pueden completar sus rutinas de entrenamiento.',
+        priority: 'alta' as const,
+        status: 'abierta' as const,
+        has_images: false,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .insert([testIncident])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creando incidencia de prueba:', error);
+        throw error;
+      }
+
+      console.log('✅ Incidencia de prueba creada:', data);
+      return data;
+    } catch (error) {
+      console.error('Error en createTestIncident:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cerrar incidencia con verificación requerida
+   */
+  async closeIncidentWithVerification(
+    incidentId: number, 
+    resolutionNotes: string, 
+    resolvedBy: string
+  ): Promise<ChecklistIncident | null> {
+    try {
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .update({
+          status: 'pendiente_verificacion',
+          resolution_notes: resolutionNotes,
+          resolved_by: resolvedBy,
+          resolved_at: new Date().toISOString(),
+          requires_verification: true,
+          verification_status: 'pendiente',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', incidentId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error cerrando incidencia con verificación:', error);
+        throw error;
+      }
+
+      console.log('✅ Incidencia cerrada, pendiente de verificación:', data);
+      return data;
+    } catch (error) {
+      console.error('Error en closeIncidentWithVerification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar resolución de incidencia (por parte del reportador)
+   */
+  async verifyIncidentResolution(
+    incidentId: number,
+    isApproved: boolean,
+    verificationNotes: string,
+    verifiedBy: string,
+    rejectionReason?: string
+  ): Promise<ChecklistIncident | null> {
+    try {
+      const updateData: any = {
+        verification_status: isApproved ? 'aprobada' : 'rechazada',
+        verification_notes: verificationNotes,
+        verified_by: verifiedBy,
+        verified_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (isApproved) {
+        updateData.status = 'verificada';
+      } else {
+        updateData.status = 'abierta'; // Reabrir la incidencia si es rechazada
+        updateData.rejection_reason = rejectionReason;
+      }
+
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .update(updateData)
+        .eq('id', incidentId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error verificando incidencia:', error);
+        throw error;
+      }
+
+      console.log('✅ Incidencia verificada:', data);
+      return data;
+    } catch (error) {
+      console.error('Error en verifyIncidentResolution:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener incidencias pendientes de verificación para un empleado
+   */
+  async getIncidentsPendingVerification(reporterName: string): Promise<ChecklistIncident[]> {
+    try {
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .select('*')
+        .eq('reporter_name', reporterName)
+        .eq('status', 'pendiente_verificacion')
+        .order('resolved_at', { ascending: false });
+
+      if (error) {
+        console.error('Error obteniendo incidencias pendientes de verificación:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error en getIncidentsPendingVerification:', error);
+      throw error;
     }
   }
 }
