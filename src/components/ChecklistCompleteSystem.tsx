@@ -30,6 +30,11 @@ interface ChecklistCompleteSystemProps {
 const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ centerId, centerName, onClose }) => {
   const { employee, userRole } = useSession();
   
+  // Estados para QR de firma
+  const [showQRFirmaApertura, setShowQRFirmaApertura] = useState(false);
+  const [showQRFirmaCierre, setShowQRFirmaCierre] = useState(false);
+  const [qrSignatureUrl, setQrSignatureUrl] = useState('');
+  
   // ESTRUCTURA CORRECTA DE DATOS CON TIPOS
   const [checklist, setChecklist] = useState<ChecklistData>({
     apertura: [],
@@ -431,50 +436,33 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     updateChecklistInDB();
   };
 
-  // Función para firmar apertura
-  const handleFirmarApertura = async () => {
-    if (!employee) {
-      alert('⚠️ Función disponible solo para empleados. Estás usando sesión de centro.');
-      return;
-    }
-
-    const ahora = new Date();
-    const nuevaFirma = {
-      empleadoId: employee.id ?? null,
-      empleadoNombre: employee.name,
-      hora: ahora.toLocaleTimeString('es-ES'),
-      firmado: true
-    };
-
-    setFirmaApertura(nuevaFirma);
-    
-    // Guardar estado provisional en BD
-    await guardarEstadoProvisional('apertura_firmada');
-    
-    alert(`✅ Apertura firmada por ${employee.name} a las ${nuevaFirma.hora}\n\n🔄 Estado guardado. El turno de noche puede continuar con el checklist.`);
+  // Función para mostrar QR de firma de apertura
+  const handleMostrarQRFirmaApertura = () => {
+    // Generar URL única para firma
+    const signatureId = `apertura_${centerId}_${new Date().toISOString()}`;
+    const signatureUrl = `${window.location.origin}/firma/${signatureId}`;
+    setQrSignatureUrl(signatureUrl);
+    setShowQRFirmaApertura(true);
   };
 
-  // Función para firmar cierre
+  // Función para mostrar QR de firma de cierre
+  const handleMostrarQRFirmaCierre = () => {
+    // Generar URL única para firma
+    const signatureId = `cierre_${centerId}_${new Date().toISOString()}`;
+    const signatureUrl = `${window.location.origin}/firma/${signatureId}`;
+    setQrSignatureUrl(signatureUrl);
+    setShowQRFirmaCierre(true);
+  };
+
+  // Por ahora, funciones simplificadas para firmar (se reemplazarán con QR)
+  const handleFirmarApertura = async () => {
+    alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+    handleMostrarQRFirmaApertura();
+  };
+
   const handleFirmarCierre = async () => {
-    if (!employee) {
-      alert('⚠️ Función disponible solo para empleados. Estás usando sesión de centro.');
-      return;
-    }
-
-    const ahora = new Date();
-    const nuevaFirma = {
-      empleadoId: employee.id ?? null,
-      empleadoNombre: employee.name,
-      hora: ahora.toLocaleTimeString('es-ES'),
-      firmado: true
-    };
-
-    setFirmaCierre(nuevaFirma);
-    
-    // Guardar estado provisional en BD
-    await guardarEstadoProvisional('cierre_firmado');
-    
-    alert(`✅ Cierre firmado por ${employee.name} a las ${nuevaFirma.hora}\n\n📋 Checklist listo para envío final.`);
+    alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+    handleMostrarQRFirmaCierre();
   };
 
   // Función para guardar estado provisional
