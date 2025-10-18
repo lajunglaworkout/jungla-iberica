@@ -12,4 +12,4 @@
 
 [context.production.environment]
   VITE_SUPABASE_URL = "https://gfnjlmfziczimaohgkct.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "sb_publishable_jZnZS-HRxXz_aOzcYY0mMA_Fl9xIwYZ"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmbmpsbWZ6aWN6aW1hb2hna2N0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMzc0NjgsImV4cCI6MjA2OTcxMzQ2OH0.1hn6Tse7FI58VA90kU2YXiweNesa8Ndrl0w9qKixph0"
