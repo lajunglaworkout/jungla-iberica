@@ -153,17 +153,27 @@ const NavigationDashboard: React.FC = () => {
     const isManager = userRole === 'manager';
     const isCenterManager = userRole === 'center_manager'; // Encargados de centro
     
-    // Módulos base para todos los roles
+    // Módulos base para todos los usuarios autenticados
     const baseModules = [
       {
         id: 'main-dashboard',
         title: 'Dashboard',
-        description: 'Vista principal con calendario, tareas y alertas',
+        description: 'Vista general del sistema',
         icon: LayoutDashboard,
-        color: '#1976d2',
+        color: '#3b82f6',
         component: DashboardPage,
         available: true,
         isDefault: true
+      },
+      {
+        id: 'checklist',
+        title: 'Checklist',
+        description: 'Tareas diarias del centro',
+        icon: CheckCircle,
+        color: '#059669',
+        component: null,
+        available: true,
+        onClick: () => setShowChecklist(true)
       },
       {
         id: 'meetings',
@@ -924,51 +934,22 @@ const NavigationDashboard: React.FC = () => {
       )}
 
       {/* MODAL CRÍTICO: ChecklistCompleteSystem */}
-      {showChecklist && selectedCenter && (
+      {showChecklist && (
         <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
+          backgroundColor: 'white',
+          zIndex: 9999,
+          overflowY: 'auto'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '90%',
-            maxWidth: '1200px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            position: 'relative'
-          }}>
-            <button 
-              onClick={() => {
-                console.log('🔒 Cerrando modal de checklist');
-                setShowChecklist(false);
-              }}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                fontSize: '24px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#6b7280',
-                fontWeight: 'bold'
-              }}
-            >
-              ✕
-            </button>
-            
-            <ChecklistCompleteSystem />
-          </div>
+          <ChecklistCompleteSystem
+            centerId={employee?.center_id?.toString() || '9'}
+            centerName={employee?.centerName || 'Centro'}
+            onClose={() => setShowChecklist(false)}
+          />
         </div>
       )}
 
