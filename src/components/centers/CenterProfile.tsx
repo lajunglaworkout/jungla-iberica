@@ -121,7 +121,7 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
 
   return (
     <div style={{ 
-      padding: '24px', 
+      padding: window.innerWidth < 768 ? '16px' : '24px', 
       backgroundColor: '#f9fafb', 
       minHeight: '100vh',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -131,23 +131,23 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
         <div style={{
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           borderRadius: '16px',
-          padding: '32px',
-          marginBottom: '32px',
+          padding: window.innerWidth < 768 ? '20px' : '32px',
+          marginBottom: window.innerWidth < 768 ? '20px' : '32px',
           boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
           color: 'white'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row', justifyContent: 'space-between', alignItems: window.innerWidth < 768 ? 'flex-start' : 'center', gap: window.innerWidth < 768 ? '16px' : '0' }}>
             <div>
-              <h1 style={{ fontSize: '36px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+              <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '36px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 🏢 {centerName}
               </h1>
-              <p style={{ fontSize: '18px', margin: '0 0 16px 0', opacity: 0.9 }}>
+              <p style={{ fontSize: window.innerWidth < 768 ? '14px' : '18px', margin: '0 0 16px 0', opacity: 0.9 }}>
                 📍 {centerLocation}
               </p>
-              <div style={{ display: 'flex', gap: '24px', fontSize: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row', gap: window.innerWidth < 768 ? '8px' : '24px', fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Users size={18} />
-                  <span>{stats.employeesPresent}/{stats.totalEmployees} empleados presentes</span>
+                  <span>{stats.employeesPresent}/{stats.totalEmployees} empleados</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
@@ -156,14 +156,14 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
               </div>
             </div>
             
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '4px' }}>
+            <div style={{ textAlign: window.innerWidth < 768 ? 'left' : 'right' }}>
+              <div style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: 'bold', marginBottom: '4px' }}>
                 {currentTime.toLocaleTimeString('es-ES', { 
                   hour: '2-digit', 
                   minute: '2-digit'
                 })}
               </div>
-              <div style={{ fontSize: '16px', opacity: 0.9 }}>
+              <div style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px', opacity: 0.9 }}>
                 {currentTime.toLocaleDateString('es-ES', { 
                   weekday: 'long', 
                   day: 'numeric', 
@@ -175,7 +175,7 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
         </div>
 
         {/* Panel de Control */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '2fr 1fr', gap: window.innerWidth < 768 ? '16px' : '24px', marginBottom: window.innerWidth < 768 ? '20px' : '32px' }}>
           {/* Botón Principal de Fichaje */}
           <div style={{
             backgroundColor: 'white',
@@ -368,6 +368,58 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Modal QR Display */}
+      {showQRDisplay && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <SessionProvider>
+            <DataProvider>
+              <CenterQRDisplay
+                centerInfo={{
+                  id: centerId,
+                  name: centerName,
+                  location: centerLocation
+                }}
+                fullscreen={true}
+                onBack={() => setShowQRDisplay(false)}
+              />
+            </DataProvider>
+          </SessionProvider>
+        </div>
+      )}
+
+      {/* Modal Checklist */}
+      {showChecklist && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'white',
+          zIndex: 9999,
+          overflowY: 'auto'
+        }}>
+          <SessionProvider>
+            <DataProvider>
+              <ChecklistCompleteSystem
+                onClose={() => setShowChecklist(false)}
+              />
+            </DataProvider>
+          </SessionProvider>
+        </div>
+      )}
     </div>
   );
 };
