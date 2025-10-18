@@ -3,6 +3,7 @@ import { Plus, Search, Package, ShoppingCart, Settings, Building, Activity, File
 import InventoryKPIDashboard from './logistics/InventoryKPIDashboard';
 import RealInventoryTable from './logistics/RealInventoryTable';
 import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystem';
+import UniformRequestsPanel from './logistics/UniformRequestsPanel';
 
 interface InventoryItem {
   id: number;
@@ -887,51 +888,13 @@ const LogisticsManagementSystem: React.FC = () => {
       try {
         console.log('🔍 INICIANDO CARGA DE INVENTARIO DESDE SUPABASE...');
         
-        // PRIMERO: Añadir items de prueba para Central
-        const testCentralItems = [
-          {
-            id: 99001,
-            name: 'CHÁNDAL LA JUNGLA - CENTRAL',
-            category: 'Vestuario',
-            size: 'M',
-            quantity: 50,
-            min_stock: 10,
-            max_stock: 100,
-            purchase_price: 35.00,
-            sale_price: 60.00,
-            supplier: 'Textiles Deportivos Central',
-            center: 'central' as const,
-            location: 'Almacén A1',
-            last_updated: new Date().toISOString(),
-            status: 'in_stock' as const
-          },
-          {
-            id: 99002,
-            name: 'MANCUERNAS 5KG - STOCK CENTRAL',
-            category: 'Material Deportivo',
-            size: '5kg',
-            quantity: 25,
-            min_stock: 5,
-            max_stock: 50,
-            purchase_price: 28.00,
-            sale_price: 45.00,
-            supplier: 'Deportes Centrales SL',
-            center: 'central' as const,
-            location: 'Almacén B2',
-            last_updated: new Date().toISOString(),
-            status: 'in_stock' as const
-          }
-        ];
-        
-        console.log('🧪 AÑADIENDO ITEMS DE PRUEBA PARA CENTRAL:', testCentralItems.length);
-        
         // Importar supabase
         const { supabase } = await import('../lib/supabase');
         
         const { data, error } = await supabase
           .from('inventory_items')
           .select('*')
-          .in('center_id', [9, 10, 11, 12]);
+          .in('center_id', [1, 9, 10, 11]);
 
         if (error) {
           console.error('❌ Error cargando inventario:', error);
@@ -964,7 +927,8 @@ const LogisticsManagementSystem: React.FC = () => {
             purchase_price: item.precio_compra || item.cost_per_unit || 0,
             sale_price: item.precio_venta || item.selling_price || 0,
             supplier: item.proveedor || item.supplier || 'Sin proveedor',
-            center: (item.center_id === 9 ? 'sevilla' : 
+            center: (item.center_id === 1 ? 'central' :
+                   item.center_id === 9 ? 'sevilla' : 
                    item.center_id === 10 ? 'jerez' : 
                    item.center_id === 11 ? 'puerto' : 'central') as 'central' | 'sevilla' | 'jerez' | 'puerto',
             location: item.ubicacion || item.location || 'Sin ubicación',
@@ -973,12 +937,10 @@ const LogisticsManagementSystem: React.FC = () => {
                    (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
           }));
 
-          // Combinar items de Supabase con items de prueba
-          const allItems = [...convertedItems, ...testCentralItems];
-          setInventoryItems(allItems);
-          console.log('📦 INVENTARIO CARGADO CORRECTAMENTE:', allItems.length, 'items (incluyendo', testCentralItems.length, 'items de prueba para Central)');
-          console.log('🧪 Items de prueba añadidos:', testCentralItems.map(item => ({ name: item.name, center: item.center })));
-          console.log('🏢 CENTROS EN ALLITEMS:', [...new Set(allItems.map(item => item.center))]);
+          // Solo usar items reales de Supabase
+          setInventoryItems(convertedItems);
+          console.log('📦 INVENTARIO CARGADO CORRECTAMENTE:', convertedItems.length, 'items desde Supabase');
+          console.log('🏢 CENTROS EN INVENTARIO:', [...new Set(convertedItems.map(item => item.center))]);
         } else {
           console.log('⚠️ No se encontraron datos de inventario en Supabase');
         }
@@ -1003,8 +965,7 @@ const LogisticsManagementSystem: React.FC = () => {
 
       if (error) {
         console.error('❌ Error cargando pedidos:', error);
-        // Si hay error, usar datos de ejemplo como fallback
-        loadFallbackOrders();
+        setOrders([]);
         return;
       }
 
@@ -1030,95 +991,15 @@ const LogisticsManagementSystem: React.FC = () => {
         setOrders(formattedOrders);
         console.log(`✅ ${formattedOrders.length} pedidos cargados desde Supabase`);
       } else {
-        console.log('📭 No se encontraron pedidos en Supabase, cargando datos de ejemplo');
-        loadFallbackOrders();
+        console.log('📭 No se encontraron pedidos en Supabase');
+        setOrders([]);
       }
     } catch (error) {
       console.error('❌ Error en loadOrdersFromSupabase:', error);
-      loadFallbackOrders();
+      setOrders([]);
     }
   };
 
-  // Función de fallback para cargar datos de ejemplo si Supabase falla
-  const loadFallbackOrders = () => {
-    setOrders([
-      {
-        id: 'PED-2025-001',
-        type: 'brand_to_supplier',
-        from: 'La Jungla Central',
-        to: 'Textiles Deportivos SL',
-        date: '2025-01-10',
-        delivery_date: '2025-01-15',
-        estimated_delivery: '2025-01-15',
-        status: 'delivered',
-        amount: 465.00,
-        created_by: 'Beni Morales',
-        items: [
-          { 
-            product_id: 1, 
-            product_name: 'Camisetas La Jungla', 
-            quantity: 15, 
-            unit_price: 31.00, 
-            total_price: 465.00,
-            available_stock: 25,
-            has_sufficient_stock: true
-          }
-        ],
-        processed_date: '2025-01-10',
-        sent_date: '2025-01-11'
-      },
-      {
-        id: 'PED-2025-002',
-        type: 'brand_to_supplier',
-        from: 'La Jungla Central',
-        to: 'FitEquip España',
-        date: '2025-01-12',
-        delivery_date: '2025-01-25',
-        estimated_delivery: '2025-01-25',
-        status: 'delivered',
-        amount: 875.00,
-        created_by: 'María López',
-        items: [
-          { 
-            product_id: 3, 
-            product_name: 'Mancuernas 5kg', 
-            quantity: 25, 
-            unit_price: 35.00, 
-            total_price: 875.00,
-            available_stock: 3,
-            has_sufficient_stock: false
-          }
-        ],
-        processed_date: '2025-01-11',
-        sent_date: '2025-01-12'
-      },
-      {
-        id: 'REQ-2025-001',
-        type: 'center_to_brand',
-        from: 'Centro Sevilla',
-        to: 'La Jungla Central',
-        date: new Date().toISOString(),
-        delivery_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        estimated_delivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'sent',
-        amount: 175.00,
-        created_by: 'Pedro Martín',
-        items: [
-          { 
-            product_id: 3, 
-            product_name: 'Mancuernas 5kg', 
-            quantity: 5, 
-            unit_price: 35.00, 
-            total_price: 175.00,
-            available_stock: 3,
-            has_sufficient_stock: false
-          }
-        ],
-        processed_date: '2025-01-20',
-        sent_date: '2025-01-20'
-      }
-    ]);
-  };
 
   // Función para cargar proveedores desde Supabase
   const loadSuppliersFromSupabase = async () => {
@@ -1397,46 +1278,57 @@ const LogisticsManagementSystem: React.FC = () => {
     // Cargar herramientas desde Supabase
     loadToolsFromSupabase();
 
-    // Notificaciones de ejemplo para el director de logística
-    setNotifications([
-      {
-        id: 1,
-        type: 'new_order',
-        title: '🚨 Nuevo Pedido Urgente',
-        message: 'Centro Sevilla solicita 20 Gomas Elásticas - Stock insuficiente',
-        order_id: 'REQ-2025-003',
-        timestamp: new Date().toISOString(),
-        priority: 'high',
-        from: 'Centro Sevilla',
-        read: false,
-        urgent: true
-      },
-      {
-        id: 2,
-        type: 'low_stock',
-        title: '⚠️ Stock Bajo',
-        message: 'Toallas en Centro Sevilla: Solo 2 unidades disponibles',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        priority: 'medium',
-        from: 'Sistema',
-        read: false,
-        urgent: false
-      },
-      {
-        id: 3,
-        type: 'order_update',
-        title: '✅ Pedido Procesado',
-        message: 'PED-2025-001 ha sido enviado a Textiles Deportivos SL',
-        order_id: 'PED-2025-001',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        priority: 'low',
-        from: 'Sistema',
-        read: true,
-        urgent: false
-      }
-    ]);
+    // Cargar solicitudes de uniformes pendientes como notificaciones
+    loadUniformRequestsAsNotifications();
 
+    // Listener para navegación desde notificaciones
+    const handleLogisticsNavigation = (event: Event) => {
+      const customEvent = event as CustomEvent<{ view?: string }>;
+      const { view } = customEvent.detail || {};
+      
+      if (view === 'orders') {
+        setActiveTab('orders');
+      }
+    };
+
+    window.addEventListener('logistics-module-view', handleLogisticsNavigation as EventListener);
+
+    return () => {
+      window.removeEventListener('logistics-module-view', handleLogisticsNavigation as EventListener);
+    };
   }, []);
+
+  // Función para cargar solicitudes de uniformes como notificaciones
+  const loadUniformRequestsAsNotifications = async () => {
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: uniformRequests, error } = await supabase
+        .from('uniform_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false });
+
+      if (!error && uniformRequests && uniformRequests.length > 0) {
+        const uniformNotifications = uniformRequests.map((req, index) => ({
+          id: 1000 + index, // IDs únicos para notificaciones de uniformes
+          type: 'uniform_request',
+          title: '👕 Nueva Solicitud de Uniformes',
+          message: `${req.employee_name} solicita ${req.items?.length || 0} artículos de vestuario`,
+          order_id: `UNIF-${req.id}`,
+          timestamp: req.requested_at,
+          priority: 'high' as const,
+          from: req.location || 'Centro',
+          read: false,
+          urgent: true
+        }));
+
+        console.log(`📬 ${uniformNotifications.length} solicitudes de uniformes pendientes`);
+        setNotifications(prev => [...uniformNotifications, ...prev]);
+      }
+    } catch (error) {
+      console.error('Error cargando solicitudes de uniformes:', error);
+    }
+  };
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1462,40 +1354,126 @@ const LogisticsManagementSystem: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleCreateProduct = () => {
+  const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.supplier || !newProduct.location) {
       alert('Por favor, completa todos los campos obligatorios');
       return;
     }
 
-    const newId = Math.max(...inventoryItems.map(item => item.id)) + 1;
-    const status = newProduct.quantity <= newProduct.min_stock ? 
-                  (newProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
+    try {
+      console.log('💾 Guardando nuevo producto en Supabase...', newProduct);
+      
+      // Importar supabase
+      const { supabase } = await import('../lib/supabase');
+      
+      // Mapear center a center_id
+      const centerIdMap: Record<string, number> = {
+        'central': 1,  // Almacén Central - donde se guarda el vestuario
+        'sevilla': 9,  // Centro Sevilla
+        'jerez': 10,   // Centro Jerez  
+        'puerto': 11   // Centro Puerto
+      };
+      
+      // Generar código único para el producto
+      // Formato: [PREFIJO_CENTRO][NÚMERO]
+      const centerPrefixes: Record<string, string> = {
+        'central': 'CT',
+        'sevilla': 'SV',
+        'jerez': 'JZ',
+        'puerto': 'PT'
+      };
+      
+      const centerPrefix = centerPrefixes[newProduct.center] || 'CT';
+      const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos del timestamp
+      const codigo = `${centerPrefix}${timestamp}`;
+      
+      console.log('🔖 Código generado:', codigo);
+      
+      // Preparar datos para Supabase según la estructura real de la tabla
+      const dataToInsert = {
+        center_id: centerIdMap[newProduct.center] || 1,
+        codigo: codigo, // Código único obligatorio
+        nombre_item: newProduct.name,
+        categoria: newProduct.category,
+        size: newProduct.size || null,
+        cantidad_inicial: newProduct.quantity,
+        cantidad_actual: newProduct.quantity,
+        roturas: 0,
+        deterioradas: 0,
+        compradas: 0,
+        precio_compra: newProduct.purchase_price,
+        precio_venta: newProduct.sale_price,
+        proveedor: newProduct.supplier,
+        ubicacion: newProduct.location || null,
+        estado: 'activo',
+        min_stock: newProduct.min_stock
+        // created_at, updated_at, last_updated se gestionan automáticamente
+      };
+      
+      console.log('📤 Datos a insertar:', dataToInsert);
+      
+      // Insertar en Supabase
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .insert(dataToInsert)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Error guardando en Supabase:', error);
+        alert(`Error al guardar el producto: ${error.message}`);
+        return;
+      }
+      
+      console.log('✅ Producto guardado en Supabase:', data);
+      
+      // Convertir el item guardado al formato local
+      const status = newProduct.quantity <= newProduct.min_stock ? 
+                    (newProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
+      
+      const productToAdd: InventoryItem = {
+        id: data.id,
+        name: newProduct.name,
+        category: newProduct.category,
+        size: newProduct.size,
+        quantity: newProduct.quantity,
+        min_stock: newProduct.min_stock,
+        max_stock: newProduct.max_stock,
+        purchase_price: newProduct.purchase_price,
+        sale_price: newProduct.sale_price,
+        supplier: newProduct.supplier,
+        center: newProduct.center,
+        location: newProduct.location,
+        last_updated: new Date().toISOString(),
+        status: status as 'in_stock' | 'low_stock' | 'out_of_stock'
+      };
 
-    const productToAdd: InventoryItem = {
-      id: newId,
-      ...newProduct,
-      last_updated: new Date().toISOString(),
-      status: status as 'in_stock' | 'low_stock' | 'out_of_stock'
-    };
-
-    setInventoryItems([...inventoryItems, productToAdd]);
-  setNewProduct({
-    name: '',
-    category: 'Vestuario',
-    size: '',
-    quantity: 0,
-    min_stock: 0,
-    max_stock: 0,
-    purchase_price: 0,
-    sale_price: 0,
-    supplier: '',
-    center: 'central',
-    location: ''
-  });
-  setShowNewProductModal(false);
-  alert('Producto creado exitosamente');
-};
+      // Actualizar estado local
+      setInventoryItems([...inventoryItems, productToAdd]);
+      
+      // Resetear formulario
+      setNewProduct({
+        name: '',
+        category: 'Vestuario',
+        size: '',
+        quantity: 0,
+        min_stock: 0,
+        max_stock: 0,
+        purchase_price: 0,
+        sale_price: 0,
+        supplier: '',
+        center: 'central',
+        location: ''
+      });
+      
+      setShowNewProductModal(false);
+      alert('✅ Producto creado y guardado exitosamente en Supabase');
+      
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      alert('Error inesperado al guardar el producto');
+    }
+  };
 
   // Función para filtrar herramientas con búsqueda avanzada
   const getFilteredTools = () => {
@@ -2163,7 +2141,7 @@ const LogisticsManagementSystem: React.FC = () => {
             { id: 'kpis', label: '📊 KPIs Real Time', icon: Activity, permission: 'canViewReports' },
             { id: 'inventory', label: '📦 Inventario', icon: Package, permission: 'canManageInventory' },
             { id: 'quarterly', label: '📋 Revisión Trimestral', icon: FileText, permission: 'canViewReports' },
-            { id: 'orders', label: '🛒 Pedidos', icon: ShoppingCart, permission: 'canCreateOrders' },
+            { id: 'orders', label: '🛒 Pedidos y Solicitudes', icon: ShoppingCart, permission: 'canCreateOrders' },
             { id: 'tools', label: '🔧 Herramientas', icon: Settings, permission: 'canManageTools' },
             { id: 'suppliers', label: '🏪 Proveedores', icon: Building, permission: 'canManageSuppliers' }
           ].filter(tab => currentUser.permissions[tab.permission as keyof typeof currentUser.permissions]).map((tab) => (
@@ -2333,7 +2311,14 @@ const LogisticsManagementSystem: React.FC = () => {
 
         {/* Pestaña Pedidos */}
         {activeTab === 'orders' && (
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem' }}>
+          <div>
+            {/* Panel de Solicitudes de Uniformes */}
+            <div style={{ marginBottom: '2rem' }}>
+              <UniformRequestsPanel />
+            </div>
+
+            {/* Panel de Pedidos Tradicionales */}
+            <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem' }}>
             {/* Resumen de Pedidos */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
               <div style={{ backgroundColor: '#fef3c7', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
@@ -2512,6 +2497,7 @@ const LogisticsManagementSystem: React.FC = () => {
               </div>
             </div>
             ))}
+            </div>
           </div>
         )}
 

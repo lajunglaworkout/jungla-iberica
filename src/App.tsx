@@ -399,8 +399,8 @@ const NavigationDashboard: React.FC = () => {
 
   useEffect(() => {
     const handleModuleNavigation = (event: Event) => {
-      const customEvent = event as CustomEvent<{ moduleId?: string; fallbackUrl?: string | null; hrView?: string }>;
-      const { moduleId, fallbackUrl = null, hrView } = customEvent.detail || {};
+      const customEvent = event as CustomEvent<{ moduleId?: string; fallbackUrl?: string | null; hrView?: string; logisticsView?: string }>;
+      const { moduleId, fallbackUrl = null, hrView, logisticsView } = customEvent.detail || {};
 
       if (!moduleId) {
         return;
@@ -424,6 +424,17 @@ const NavigationDashboard: React.FC = () => {
             window.dispatchEvent(
               new CustomEvent('hr-module-view', {
                 detail: { view: hrView }
+              })
+            );
+          }, 0);
+        }
+
+        if (logisticsView) {
+          // Permitir que el módulo Logística procese la vista solicitada
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent('logistics-module-view', {
+                detail: { view: logisticsView }
               })
             );
           }, 0);

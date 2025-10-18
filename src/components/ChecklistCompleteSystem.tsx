@@ -1023,7 +1023,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 Cancelar
               </button>
               <button 
-                onClick={() => {
+                onClick={async () => {
                   if (!selectedIncidentType) {
                     alert('Por favor selecciona un departamento responsable');
                     return;
@@ -1050,18 +1050,67 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                   
                   console.log('📋 Incidencia reportada:', incidentData);
                   
+                  // GUARDAR INCIDENCIA EN SUPABASE
+                  try {
+                    const { data: incidentResult, error: incidentError } = await supabase
+                      .from('checklist_incidents')
+                      .insert({
+                        center_id: centerId,
+                        center_name: centerName,
+                        reporter_id: employee?.id,
+                        reporter_name: employee?.name || 'Usuario',
+                        incident_type: selectedIncidentType === 'mantenimiento' ? 'maintenance' :
+                                      selectedIncidentType === 'logistica' ? 'logistics' :
+                                      selectedIncidentType === 'personal' ? 'hr' :
+                                      selectedIncidentType === 'clientes' ? 'security' : 'maintenance',
+                        department: selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
+                                   selectedIncidentType === 'logistica' ? 'Logística' :
+                                   selectedIncidentType === 'personal' ? 'Personal' :
+                                   selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
+                        responsible: selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
+                                    selectedIncidentType === 'logistica' ? 'Logística' :
+                                    selectedIncidentType === 'personal' ? 'Personal' :
+                                    selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
+                        title: `Incidencia: ${selectedTaskForIncident?.titulo}`,
+                        description: incidentDescription,
+                        priority: 'media',
+                        status: 'abierta',
+                        has_images: selectedImages.length > 0,
+                        auto_notify: [selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
+                                     selectedIncidentType === 'logistica' ? 'Logística' :
+                                     selectedIncidentType === 'personal' ? 'Personal' :
+                                     selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento']
+                      });
+
+                    if (incidentError) {
+                      console.error('❌ Error guardando incidencia:', incidentError);
+                      alert('⚠️ Error al guardar la incidencia. Se reportó localmente.');
+                    } else {
+                      console.log('✅ Incidencia guardada en BD:', incidentResult);
+                      
+                      // Agregar a la lista local de incidencias
+                      setChecklist(prev => ({
+                        ...prev,
+                        incidencias: [...prev.incidencias, incidentData]
+                      }));
+                    }
+                  } catch (error) {
+                    console.error('❌ Error en guardado de incidencia:', error);
+                  }
+                  
                   if (selectedImages.length > 0) {
                     console.log(`📸 Imágenes adjuntas: ${selectedImages.length}`);
                     selectedImages.forEach((file, index) => {
                       console.log(`  - Imagen ${index + 1}: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
                     });
                   }
-                  alert(`¡Incidencia reportada al departamento de ${
+                  
+                  alert(`✅ ¡Incidencia guardada y reportada al departamento de ${
                     selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
                     selectedIncidentType === 'logistica' ? 'Logística' :
                     selectedIncidentType === 'personal' ? 'Personal' :
                     selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
-                  }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}`);
+                  }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}\n\n📋 Los administradores podrán verla en el sistema de incidencias.`);
                   
                   setShowIncidentModal(false);
                   setSelectedTaskForIncident(null);

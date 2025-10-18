@@ -6,10 +6,30 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Variables de entorno de Supabase faltantes:', {
+    url: !!supabaseUrl,
+    key: !!supabaseAnonKey
+  });
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+console.log('🔧 Configurando Supabase:', {
+  url: supabaseUrl,
+  keyLength: supabaseAnonKey.length
+});
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'jungla-iberica-web'
+    }
+  }
+})
 
 // Tipos de la base de datos basados en tu esquema
 export type Database = {
