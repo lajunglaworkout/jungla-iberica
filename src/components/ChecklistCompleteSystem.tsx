@@ -343,8 +343,8 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         console.log('📝 Creando nuevo checklist para hoy');
         const defaultTasks = getDefaultTasks();
         
-        // Preparar datos para inserción
-        const insertData: any = {
+        // Preparar datos para inserción (sin center_name, no existe en la tabla)
+        const insertData = {
           center_id: centerId,
           date: today,
           tasks: defaultTasks, // Campo requerido (NOT NULL)
@@ -353,11 +353,6 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           cierre_tasks: defaultTasks.cierre,
           status: 'en_progreso'
         };
-
-        // Solo agregar center_name si existe en la tabla
-        if (centerName) {
-          insertData.center_name = centerName;
-        }
 
         console.log('📤 Datos a insertar:', insertData);
 
@@ -498,7 +493,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const checklistData: any = {
+      const checklistData = {
         center_id: centerId,
         date: today,
         employee_id: employee?.id || null,
@@ -511,11 +506,6 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         firma_cierre: firmaCierre.firmado ? firmaCierre : null,
         updated_at: new Date().toISOString()
       };
-
-      // Solo agregar center_name si existe
-      if (centerName) {
-        checklistData.center_name = centerName;
-      }
 
       console.log('📤 Guardando en Supabase:', checklistData);
 
