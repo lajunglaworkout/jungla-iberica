@@ -342,6 +342,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             center_id: centerId,
             center_name: centerName || 'Centro',
             date: today,
+            tasks: defaultTasks, // Campo requerido (NOT NULL)
             apertura_tasks: defaultTasks.apertura,
             limpieza_tasks: defaultTasks.limpieza,
             cierre_tasks: defaultTasks.cierre,
@@ -482,6 +483,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         center_name: centerName || 'Centro',
         date: today,
         employee_id: employee?.id || null,
+        tasks: checklist, // Campo requerido (NOT NULL)
         apertura_tasks: checklist.apertura,
         limpieza_tasks: checklist.limpieza,
         cierre_tasks: checklist.cierre,
