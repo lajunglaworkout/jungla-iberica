@@ -285,11 +285,18 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         .select('*')
         .eq('center_id', centerId)
         .eq('date', today)
-        .single();
+        .maybeSingle(); // Usar maybeSingle() en lugar de single() para evitar error si no existe
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('❌ Error al cargar checklist:', error);
-        throw error;
+        console.error('❌ Código de error:', error.code);
+        console.error('❌ Mensaje:', error.message);
+        console.error('❌ Detalles:', error.details);
+        
+        // Si es un error diferente a "no encontrado", lanzar
+        if (error.code !== 'PGRST116') {
+          throw error;
+        }
       }
 
       if (existingChecklist) {
@@ -336,23 +343,36 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         console.log('📝 Creando nuevo checklist para hoy');
         const defaultTasks = getDefaultTasks();
         
+        // Preparar datos para inserción
+        const insertData: any = {
+          center_id: centerId,
+          date: today,
+          tasks: defaultTasks, // Campo requerido (NOT NULL)
+          apertura_tasks: defaultTasks.apertura,
+          limpieza_tasks: defaultTasks.limpieza,
+          cierre_tasks: defaultTasks.cierre,
+          status: 'en_progreso'
+        };
+
+        // Solo agregar center_name si existe en la tabla
+        if (centerName) {
+          insertData.center_name = centerName;
+        }
+
+        console.log('📤 Datos a insertar:', insertData);
+
         const { data: newChecklist, error: insertError } = await supabase
           .from('daily_checklists')
-          .insert({
-            center_id: centerId,
-            center_name: centerName || 'Centro',
-            date: today,
-            tasks: defaultTasks, // Campo requerido (NOT NULL)
-            apertura_tasks: defaultTasks.apertura,
-            limpieza_tasks: defaultTasks.limpieza,
-            cierre_tasks: defaultTasks.cierre,
-            status: 'en_progreso'
-          })
+          .insert(insertData)
           .select()
           .single();
 
         if (insertError) {
           console.error('❌ Error al crear checklist:', insertError);
+          console.error('❌ Código de error:', insertError.code);
+          console.error('❌ Mensaje:', insertError.message);
+          console.error('❌ Detalles:', insertError.details);
+          console.error('❌ Hint:', insertError.hint);
           throw insertError;
         }
 
@@ -478,9 +498,8 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const checklistData = {
+      const checklistData: any = {
         center_id: centerId,
-        center_name: centerName || 'Centro',
         date: today,
         employee_id: employee?.id || null,
         tasks: checklist, // Campo requerido (NOT NULL)
@@ -492,6 +511,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         firma_cierre: firmaCierre.firmado ? firmaCierre : null,
         updated_at: new Date().toISOString()
       };
+
+      // Solo agregar center_name si existe
+      if (centerName) {
+        checklistData.center_name = centerName;
+      }
 
       console.log('📤 Guardando en Supabase:', checklistData);
 
