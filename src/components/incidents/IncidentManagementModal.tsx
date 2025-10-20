@@ -443,6 +443,62 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                           }}>
                             📋 {incident.department}
                           </span>
+                          {(() => {
+                            const timeRemaining = checklistIncidentService.getTimeRemaining(incident);
+                            const isOverdue = checklistIncidentService.isIncidentOverdue(incident);
+                            const maxTime = checklistIncidentService.getMaxResponseTime(incident.priority);
+                            
+                            if (isOverdue) {
+                              return (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  backgroundColor: '#fef2f2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
+                                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                                }}>
+                                  ⏰ VENCIDA
+                                </span>
+                              );
+                            } else if (timeRemaining <= 2) {
+                              return (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  backgroundColor: '#fff7ed',
+                                  color: '#ea580c',
+                                  border: '1px solid #fed7aa'
+                                }}>
+                                  ⚠️ {Math.floor(timeRemaining)}h restantes
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '6px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  backgroundColor: '#f0fdf4',
+                                  color: '#16a34a',
+                                  border: '1px solid #bbf7d0'
+                                }}>
+                                  ⏱️ {Math.floor(timeRemaining)}h de {maxTime}h
+                                </span>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
                     </div>
