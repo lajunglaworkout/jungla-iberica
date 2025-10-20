@@ -503,7 +503,109 @@ class ChecklistIncidentService {
       return data || [];
     } catch (error) {
       console.error('Error en getIncidentsPendingVerification:', error);
-      throw error;
+      return [];
+    }
+  }
+
+  /**
+   * Calcular tiempo máximo de respuesta según prioridad (en horas)
+   */
+  getMaxResponseTime(priority: ChecklistIncident['priority']): number {
+    const timeMap = {
+      'critica': 2,
+      'alta': 6,
+      'media': 24,
+      'baja': 48
+    };
+    return timeMap[priority];
+  }
+
+  /**
+   * Verificar si una incidencia está vencida
+   */
+  isIncidentOverdue(incident: ChecklistIncident): boolean {
+    if (!incident.created_at || incident.status === 'verificada' || incident.status === 'cerrada') {
+      return false;
+    }
+
+    const createdAt = new Date(incident.created_at);
+    const now = new Date();
+    const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+    const maxHours = this.getMaxResponseTime(incident.priority);
+
+    return hoursElapsed > maxHours;
+  }
+
+  /**
+   * Calcular tiempo restante para resolver una incidencia (en horas)
+   */
+  getTimeRemaining(incident: ChecklistIncident): number {
+    if (!incident.created_at) return 0;
+
+    const createdAt = new Date(incident.created_at);
+    const now = new Date();
+    const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+    const maxHours = this.getMaxResponseTime(incident.priority);
+
+    return Math.max(0, maxHours - hoursElapsed);
+  }
+
+  /**
+   * Obtener incidencias vencidas (para alertar al CEO)
+   */
+  async getOverdueIncidents(): Promise<ChecklistIncident[]> {
+    try {
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .select('*')
+        .in('status', ['abierta', 'en_proceso'])
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error obteniendo incidencias:', error);
+        throw error;
+      }
+
+      // Filtrar las que están vencidas
+      const overdueIncidents = (data || []).filter(incident => 
+        this.isIncidentOverdue(incident)
+      );
+
+      console.log(`⏰ Incidencias vencidas encontradas: ${overdueIncidents.length}`);
+      return overdueIncidents;
+    } catch (error) {
+      console.error('Error en getOverdueIncidents:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener incidencias próximas a vencer (últimas 2 horas antes del límite)
+   */
+  async getIncidentsNearDeadline(): Promise<ChecklistIncident[]> {
+    try {
+      const { data, error } = await supabase
+        .from('checklist_incidents')
+        .select('*')
+        .in('status', ['abierta', 'en_proceso'])
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error obteniendo incidencias:', error);
+        throw error;
+      }
+
+      // Filtrar las que están cerca de vencer (menos de 2 horas restantes)
+      const nearDeadline = (data || []).filter(incident => {
+        const timeRemaining = this.getTimeRemaining(incident);
+        return timeRemaining > 0 && timeRemaining <= 2;
+      });
+
+      console.log(`⚠️ Incidencias próximas a vencer: ${nearDeadline.length}`);
+      return nearDeadline;
+    } catch (error) {
+      console.error('Error en getIncidentsNearDeadline:', error);
+      return [];
     }
   }
 }
