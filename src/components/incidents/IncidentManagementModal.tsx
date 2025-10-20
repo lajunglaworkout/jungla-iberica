@@ -37,14 +37,36 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     try {
       let data;
       
-      // Si es admin, cargar todas las incidencias pendientes
-      if (employee?.role === 'admin' || employee?.role === 'superadmin') {
-        console.log('👑 Usuario admin - cargando TODAS las incidencias');
+      // Definir departamentos permitidos según el usuario
+      const isBeni = employee?.email === 'beni.jungla@gmail.com';
+      const isVicente = employee?.email === 'lajunglacentral@gmail.com';
+      const isCEO = employee?.role === 'superadmin';
+      
+      if (isCEO) {
+        // CEO ve TODAS las incidencias
+        console.log('👑 CEO - cargando TODAS las incidencias');
         data = await checklistIncidentService.getPendingIncidents();
-      } else {
-        // Si no es admin, filtrar por departamento
+      } else if (isBeni) {
+        // Beni solo ve Mantenimiento y Logística
+        console.log('👤 Beni - cargando incidencias de Mantenimiento y Logística');
+        const allIncidents = await checklistIncidentService.getPendingIncidents();
+        data = allIncidents.filter((inc: ChecklistIncident) => 
+          inc.department === 'Mantenimiento' || inc.department === 'Logística'
+        );
+      } else if (isVicente) {
+        // Vicente solo ve Personal y Atención al Cliente
+        console.log('👤 Vicente - cargando incidencias de Personal y Atención al Cliente');
+        const allIncidents = await checklistIncidentService.getPendingIncidents();
+        data = allIncidents.filter((inc: ChecklistIncident) => 
+          inc.department === 'Personal' || inc.department === 'Atención al Cliente'
+        );
+      } else if (department) {
+        // Otros usuarios: filtrar por departamento específico
         console.log('👤 Usuario normal - filtrando por departamento:', department);
         data = await checklistIncidentService.getIncidentsByDepartment(department);
+      } else {
+        // Sin departamento específico: cargar todas (fallback)
+        data = await checklistIncidentService.getPendingIncidents();
       }
       
       console.log('📋 Incidencias cargadas:', data);
