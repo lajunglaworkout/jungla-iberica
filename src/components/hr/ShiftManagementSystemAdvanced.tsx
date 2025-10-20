@@ -28,6 +28,9 @@ interface Shift {
   is_support: boolean;
   description?: string;
   is_active: boolean;
+  status?: 'draft' | 'published' | 'archived';
+  published_at?: string;
+  published_by?: string;
   created_at: string;
   updated_at: string;
 }
@@ -245,6 +248,47 @@ const ShiftManager: React.FC<{
     }
   };
 
+  const handlePublish = async (shift: Shift) => {
+    // Obtener empleados asignados al turno
+    const { data: assignments } = await supabase
+      .from('employee_shifts')
+      .select('employee_id, employees(nombre, apellidos, email)')
+      .eq('shift_id', shift.id);
+
+    const employeeCount = assignments?.length || 0;
+    
+    const confirmed = confirm(
+      `📢 ¿Publicar turno "${shift.name}"?\n\n` +
+      `Se enviará notificación a ${employeeCount} empleado(s).\n\n` +
+      `Una vez publicado, los empleados recibirán un email con sus horarios.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Actualizar estado del turno a 'published'
+      const { error } = await supabase
+        .from('shifts')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+          published_by: 'admin', // TODO: usar email del usuario actual
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', shift.id);
+      
+      if (error) throw error;
+
+      // TODO: Enviar notificaciones (cuando Supabase esté disponible)
+      // await shiftNotificationService.notifyShiftPublished(shift.id, employeeEmails);
+      
+      alert(`✅ Turno "${shift.name}" publicado correctamente!\n\n📧 Se han enviado ${employeeCount} notificaciones.`);
+      onRefresh();
+    } catch (err: any) {
+      alert(`❌ Error publicando turno: ${err.message}`);
+    }
+  };
+
   if (showForm) {
     return (
       <ShiftForm
@@ -316,9 +360,48 @@ const ShiftManager: React.FC<{
               }}
             >
               <div style={{ flex: 1 }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-                  {shift.name}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                    {shift.name}
+                  </h3>
+                  {/* INDICADOR DE ESTADO */}
+                  {shift.status === 'draft' && (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      backgroundColor: '#fef3c7', 
+                      color: '#92400e', 
+                      borderRadius: '12px', 
+                      fontSize: '12px', 
+                      fontWeight: '600' 
+                    }}>
+                      🟡 Borrador
+                    </span>
+                  )}
+                  {shift.status === 'published' && (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      backgroundColor: '#dcfce7', 
+                      color: '#166534', 
+                      borderRadius: '12px', 
+                      fontSize: '12px', 
+                      fontWeight: '600' 
+                    }}>
+                      🟢 Publicado
+                    </span>
+                  )}
+                  {shift.status === 'archived' && (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      backgroundColor: '#f3f4f6', 
+                      color: '#6b7280', 
+                      borderRadius: '12px', 
+                      fontSize: '12px', 
+                      fontWeight: '600' 
+                    }}>
+                      ⚫ Archivado
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: '#6b7280' }}>
                   <span>🕐 {shift.start_time} - {shift.end_time}</span>
                   <span>👥 {shift.min_employees}-{shift.max_employees} empleados</span>
@@ -326,6 +409,27 @@ const ShiftManager: React.FC<{
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
+                {/* BOTÓN PUBLICAR (solo si es borrador) */}
+                {shift.status === 'draft' && (
+                  <button
+                    onClick={() => handlePublish(shift)}
+                    style={{ 
+                      padding: '8px 12px', 
+                      backgroundColor: '#059669', 
+                      color: 'white',
+                      border: 'none', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    📢 Publicar
+                  </button>
+                )}
                 <button
                   onClick={() => handleEdit(shift)}
                   style={{ padding: '8px 12px', backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#0ea5e9' }}
@@ -861,9 +965,16 @@ const ShiftForm: React.FC<{
           .eq('id', shift.id);
         if (error) throw error;
       } else {
+        // Crear nuevo turno en estado BORRADOR por defecto
         const { error } = await supabase
           .from('shifts')
-          .insert([formData]);
+          .insert([{
+            ...formData,
+            status: 'draft', // Nuevo turno siempre empieza como borrador
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }]);
         if (error) throw error;
       }
       
