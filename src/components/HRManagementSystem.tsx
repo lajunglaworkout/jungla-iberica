@@ -478,7 +478,7 @@ const HRManagementSystem: React.FC = () => {
         tipo_contrato: employeeData.tipo_contrato,
         jornada: employeeData.jornada,
         salario_bruto_anual: employeeData.salario_bruto_anual,
-        rol: employeeData.rol,
+        base_role: employeeData.rol, // Mapear rol a base_role para Supabase
         departamento: employeeData.departamento,
         cargo: employeeData.cargo,
         numero_cuenta: employeeData.numero_cuenta,
@@ -490,8 +490,16 @@ const HRManagementSystem: React.FC = () => {
         talla_camiseta: employeeData.talla_camiseta,
         talla_pantalon: employeeData.talla_pantalon,
         talla_chaqueton: employeeData.talla_chaqueton,
+        // Campos de vestuario La Jungla
+        vestuario_chandal: (employeeData as any).vestuario_chandal,
+        vestuario_sudadera_frio: (employeeData as any).vestuario_sudadera_frio,
+        vestuario_chaleco_frio: (employeeData as any).vestuario_chaleco_frio,
+        vestuario_pantalon_corto: (employeeData as any).vestuario_pantalon_corto,
+        vestuario_polo_verde: (employeeData as any).vestuario_polo_verde,
+        vestuario_camiseta_entrenamiento: (employeeData as any).vestuario_camiseta_entrenamiento,
+        vestuario_observaciones: (employeeData as any).vestuario_observaciones,
         foto_perfil: employeeData.foto_perfil,
-        activo: employeeData.activo,
+        is_active: employeeData.activo !== false, // Mapear activo a is_active
         observaciones: employeeData.observaciones,
         tiene_contrato_firmado: employeeData.tiene_contrato_firmado,
         tiene_alta_ss: employeeData.tiene_alta_ss,
