@@ -37,35 +37,23 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     try {
       let data;
       
-      // Definir departamentos permitidos según el usuario
+      // Definir usuarios con visión global (propietarios)
       const isBeni = employee?.email === 'beni.jungla@gmail.com';
       const isVicente = employee?.email === 'lajunglacentral@gmail.com';
       const isCEO = employee?.role === 'superadmin';
+      const isOwner = isBeni || isVicente || isCEO;
       
-      if (isCEO) {
-        // CEO ve TODAS las incidencias
-        console.log('👑 CEO - cargando TODAS las incidencias');
+      if (isOwner) {
+        // PROPIETARIOS (CEO, Beni, Vicente) → Visión global de TODAS las incidencias
+        console.log('👑 Propietario - cargando TODAS las incidencias para visión global');
         data = await checklistIncidentService.getPendingIncidents();
-      } else if (isBeni) {
-        // Beni solo ve Mantenimiento y Logística
-        console.log('👤 Beni - cargando incidencias de Mantenimiento y Logística');
-        const allIncidents = await checklistIncidentService.getPendingIncidents();
-        data = allIncidents.filter((inc: ChecklistIncident) => 
-          inc.department === 'Mantenimiento' || inc.department === 'Logística'
-        );
-      } else if (isVicente) {
-        // Vicente solo ve Personal y Atención al Cliente
-        console.log('👤 Vicente - cargando incidencias de Personal y Atención al Cliente');
-        const allIncidents = await checklistIncidentService.getPendingIncidents();
-        data = allIncidents.filter((inc: ChecklistIncident) => 
-          inc.department === 'Personal' || inc.department === 'Atención al Cliente'
-        );
       } else if (department) {
-        // Otros usuarios: filtrar por departamento específico
-        console.log('👤 Usuario normal - filtrando por departamento:', department);
+        // Otros usuarios (directores, managers) → Solo su departamento
+        console.log('👤 Usuario departamental - filtrando por:', department);
         data = await checklistIncidentService.getIncidentsByDepartment(department);
       } else {
-        // Sin departamento específico: cargar todas (fallback)
+        // Fallback: sin departamento específico
+        console.log('⚠️ Usuario sin departamento - cargando todas');
         data = await checklistIncidentService.getPendingIncidents();
       }
       
