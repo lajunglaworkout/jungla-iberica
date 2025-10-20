@@ -1694,8 +1694,12 @@ const ShiftAssignmentSystem: React.FC = () => {
         return;
       }
       
-      const startDate = new Date(bulkAssignmentData.start_date);
-      const endDate = new Date(bulkAssignmentData.end_date);
+      // BUG FIX 2.8: Parsear fechas correctamente para evitar desfase de zona horaria
+      // Usar fecha local en vez de UTC para evitar que L-V se convierta en M-S
+      const [startYear, startMonth, startDay] = bulkAssignmentData.start_date.split('-').map(Number);
+      const [endYear, endMonth, endDay] = bulkAssignmentData.end_date.split('-').map(Number);
+      const startDate = new Date(startYear, startMonth - 1, startDay);
+      const endDate = new Date(endYear, endMonth - 1, endDay);
       
       if (startDate > endDate) {
         alert('❌ La fecha de inicio debe ser anterior a la fecha de fin');
@@ -1717,14 +1721,14 @@ const ShiftAssignmentSystem: React.FC = () => {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = dayNames[dayOfWeek] as keyof ShiftLocal;
 
-        // Determinar si aplicar por días seleccionados manualmente o por configuración del turno
+        // BUG FIX 2.7: Determinar si aplicar por días seleccionados manualmente o por configuración del turno
         const hasSelectedDays = Object.values(selectedDays).some(v => v);
-        const manualSelected = hasSelectedDays
-          ? (selectedDays as any)[dayName] === true
-          : false;
-
-        // Verificar si el turno aplica para este día (automático si no hay selección manual)
-        const shouldAssign = hasSelectedDays ? manualSelected : (shift[dayName] === true);
+        
+        // Si hay días seleccionados manualmente, usar esos
+        // Si NO hay selección manual, usar la configuración del turno (L-V automático)
+        const shouldAssign = hasSelectedDays 
+          ? (selectedDays as any)[dayName] === true  // Usar selección manual
+          : (shift[dayName] === true);                // Usar configuración del turno (L-V)
         
         // Excluir fines de semana si está marcado
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
