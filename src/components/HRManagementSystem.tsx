@@ -680,6 +680,10 @@ const HRManagementSystem: React.FC = () => {
       );
     case 'hr-contact':
       return <IncidentManagementSystem />;
+    case 'shifts':
+      return <ShiftManagementSystemAdvanced />;
+    case 'shift-assignment':
+      return <ShiftAssignmentSystem />;
     case 'employees':
       break;
     default:
