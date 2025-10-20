@@ -461,6 +461,20 @@ const HRManagementSystem: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
+      // SEGURIDAD: Prevenir creación de superadmins desde el formulario
+      if (employeeData.rol === 'superadmin' && !selectedEmployee) {
+        alert('❌ No se pueden crear nuevos Superadmins. Este rol está reservado para el CEO.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Si está editando y cambia a superadmin, también bloquear
+      if (employeeData.rol === 'superadmin' && selectedEmployee?.rol !== 'superadmin') {
+        alert('❌ No se puede cambiar el rol a Superadmin. Este rol está reservado para el CEO.');
+        setIsLoading(false);
+        return;
+      }
+
       // Preparar datos para Supabase con mapeo correcto de campos
       const supabaseData = {
         nombre: employeeData.nombre || (employeeData as any).name,
