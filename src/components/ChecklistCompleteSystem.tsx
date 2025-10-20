@@ -4,6 +4,8 @@ import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import SmartIncidentModal from './incidents/SmartIncidentModal';
 import { checklistHistoryService } from '../services/checklistHistoryService';
+import { signatureService } from '../services/signatureService';
+import QRSignatureModal from './QRSignatureModal';
 
 // Interfaces para tipos de datos
 interface Task {
@@ -385,19 +387,41 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   };
 
   // Función para mostrar QR de firma de apertura
-  const handleMostrarQRFirmaApertura = () => {
-    // Generar URL única para firma
-    const signatureId = `apertura_${centerId}_${new Date().toISOString()}`;
-    const signatureUrl = `${window.location.origin}/firma/${signatureId}`;
+  const handleMostrarQRFirmaApertura = async () => {
+    if (!centerId || !centerName) return;
+    
+    // Generar ID único para firma
+    const signatureId = `apertura_${centerId}_${Date.now()}`;
+    const signatureUrl = `${window.location.origin}/#/firma/${signatureId}`;
+    
+    // Crear firma pendiente en BD
+    await signatureService.createPendingSignature(
+      signatureId,
+      centerId,
+      centerName,
+      'apertura'
+    );
+    
     setQrSignatureUrl(signatureUrl);
     setShowQRFirmaApertura(true);
   };
 
   // Función para mostrar QR de firma de cierre
-  const handleMostrarQRFirmaCierre = () => {
-    // Generar URL única para firma
-    const signatureId = `cierre_${centerId}_${new Date().toISOString()}`;
-    const signatureUrl = `${window.location.origin}/firma/${signatureId}`;
+  const handleMostrarQRFirmaCierre = async () => {
+    if (!centerId || !centerName) return;
+    
+    // Generar ID único para firma
+    const signatureId = `cierre_${centerId}_${Date.now()}`;
+    const signatureUrl = `${window.location.origin}/#/firma/${signatureId}`;
+    
+    // Crear firma pendiente en BD
+    await signatureService.createPendingSignature(
+      signatureId,
+      centerId,
+      centerName,
+      'cierre'
+    );
+    
     setQrSignatureUrl(signatureUrl);
     setShowQRFirmaCierre(true);
   };
@@ -1253,6 +1277,46 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           </div>
         </div>
       )}
+
+      {/* Modal QR Firma Apertura */}
+      <QRSignatureModal
+        isOpen={showQRFirmaApertura}
+        onClose={() => setShowQRFirmaApertura(false)}
+        signatureUrl={qrSignatureUrl}
+        signatureId={qrSignatureUrl.split('/').pop() || ''}
+        signatureType="apertura"
+        onSignatureCompleted={(employeeName) => {
+          const nuevaFirma = {
+            firmado: true,
+            empleado_nombre: employeeName,
+            fecha: new Date().toISOString(),
+            tipo: 'apertura'
+          };
+          setFirmaApertura(nuevaFirma);
+          guardarEstadoProvisional('en_progreso');
+          alert(`✅ Apertura firmada por ${employeeName}`);
+        }}
+      />
+
+      {/* Modal QR Firma Cierre */}
+      <QRSignatureModal
+        isOpen={showQRFirmaCierre}
+        onClose={() => setShowQRFirmaCierre(false)}
+        signatureUrl={qrSignatureUrl}
+        signatureId={qrSignatureUrl.split('/').pop() || ''}
+        signatureType="cierre"
+        onSignatureCompleted={(employeeName) => {
+          const nuevaFirma = {
+            firmado: true,
+            empleado_nombre: employeeName,
+            fecha: new Date().toISOString(),
+            tipo: 'cierre'
+          };
+          setFirmaCierre(nuevaFirma);
+          guardarEstadoProvisional('completado');
+          alert(`✅ Cierre firmado por ${employeeName}`);
+        }}
+      />
     </div>
   );
 };
