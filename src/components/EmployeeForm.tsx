@@ -397,10 +397,11 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                   style={inputStyle}
                   required
                 >
-                  <option value="employee">Empleado</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Administrador</option>
-                  <option value="superadmin">Superadmin</option>
+                  <option value="employee">👤 Empleado de Sala</option>
+                  <option value="center_manager">👔 Encargado de Centro</option>
+                  <option value="manager">👨‍💼 Manager</option>
+                  <option value="admin">⚙️ Administrador</option>
+                  <option value="superadmin">👑 Superadmin</option>
                 </select>
               </div>
 
@@ -424,11 +425,10 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                   required
                 >
                   <option value="">Seleccionar...</option>
-                  <option value="Indefinido">Indefinido</option>
-                  <option value="Temporal">Temporal</option>
-                  <option value="Prácticas">Prácticas</option>
-                  <option value="Media Jornada">Media Jornada</option>
-                  <option value="Jornada Completa">Jornada Completa</option>
+                  <option value="Indefinido">📝 Indefinido</option>
+                  <option value="Temporal">⏰ Temporal</option>
+                  <option value="Prácticas">🎓 Prácticas</option>
+                  <option value="Formación">📚 Formación</option>
                 </select>
               </div>
 
