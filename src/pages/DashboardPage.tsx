@@ -417,27 +417,62 @@ const DashboardPage: React.FC = () => {
 
       // ALERTAS PARA CEO (Carlos)
       else if (userRole === 'superadmin') {
-        newAlerts.push({
-          id: 'dept-summary',
-          title: 'Resumen Departamental',
-          description: 'Contabilidad: 2 tareas pendientes, RRHH: 3 solicitudes, Logística: 1 pedido',
-          type: 'info',
-          priority: 'high',
-          createdAt: now,
-          isRead: false,
-          department: 'Dirección'
-        });
-
-        newAlerts.push({
-          id: 'critical-kpis',
-          title: 'KPIs Críticos',
-          description: 'Centro Puerto: ocupación 65% (objetivo 80%)',
-          type: 'warning',
-          priority: 'high',
-          createdAt: now,
-          isRead: false,
-          department: 'Operaciones'
-        });
+        // Verificar incidencias vencidas
+        console.log('👑 CEO - Verificando incidencias vencidas...');
+        try {
+          const overdueIncidents = await checklistIncidentService.getOverdueIncidents();
+          
+          if (overdueIncidents && overdueIncidents.length > 0) {
+            console.log(`⏰ ${overdueIncidents.length} incidencias vencidas encontradas`);
+            
+            // Agrupar por prioridad
+            const critical = overdueIncidents.filter(i => i.priority === 'critica');
+            const high = overdueIncidents.filter(i => i.priority === 'alta');
+            const medium = overdueIncidents.filter(i => i.priority === 'media');
+            const low = overdueIncidents.filter(i => i.priority === 'baja');
+            
+            let description = '';
+            if (critical.length > 0) description += `${critical.length} crítica${critical.length > 1 ? 's' : ''}, `;
+            if (high.length > 0) description += `${high.length} alta${high.length > 1 ? 's' : ''}, `;
+            if (medium.length > 0) description += `${medium.length} media${medium.length > 1 ? 's' : ''}, `;
+            if (low.length > 0) description += `${low.length} baja${low.length > 1 ? 's' : ''}`;
+            description = description.replace(/, $/, ''); // Quitar última coma
+            
+            newAlerts.push({
+              id: 'overdue-incidents',
+              title: `⚠️ ${overdueIncidents.length} Incidencia${overdueIncidents.length > 1 ? 's' : ''} Vencida${overdueIncidents.length > 1 ? 's' : ''}`,
+              description: `Sin resolver: ${description}`,
+              type: 'error',
+              priority: 'high',
+              createdAt: overdueIncidents[0].created_at || now,
+              isRead: false,
+              department: 'Incidencias',
+              actionUrl: '/incidents',
+              moduleId: 'incidents'
+            });
+          }
+          
+          // Verificar incidencias próximas a vencer
+          const nearDeadline = await checklistIncidentService.getIncidentsNearDeadline();
+          if (nearDeadline && nearDeadline.length > 0) {
+            console.log(`⚠️ ${nearDeadline.length} incidencias próximas a vencer`);
+            
+            newAlerts.push({
+              id: 'near-deadline-incidents',
+              title: `⏰ ${nearDeadline.length} Incidencia${nearDeadline.length > 1 ? 's' : ''} Próxima${nearDeadline.length > 1 ? 's' : ''} a Vencer`,
+              description: `Menos de 2 horas restantes`,
+              type: 'warning',
+              priority: 'high',
+              createdAt: nearDeadline[0].created_at || now,
+              isRead: false,
+              department: 'Incidencias',
+              actionUrl: '/incidents',
+              moduleId: 'incidents'
+            });
+          }
+        } catch (error) {
+          console.error('Error verificando incidencias vencidas:', error);
+        }
       }
 
       setAlerts(newAlerts);
