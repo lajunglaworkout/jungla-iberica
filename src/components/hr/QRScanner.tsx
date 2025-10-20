@@ -205,52 +205,112 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
 
-    // Verificar si ya existe un registro para hoy
-    const { data: existingRecord, error: recordError } = await supabase
-      .from('timeclock_records')
+    // Verificar último fichaje del día (entrada sin salida)
+    const { data: lastEntry, error: recordError } = await supabase
+      .from('time_records')
       .select('*')
       .eq('employee_id', employeeData.id)
-      .eq('date', today)
+      .eq('clock_type', 'entrada')
+      .gte('clock_time', `${today}T00:00:00`)
+      .lte('clock_time', `${today}T23:59:59`)
+      .order('clock_time', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (recordError && recordError.code !== 'PGRST116') {
       throw recordError;
     }
 
-    if (existingRecord) {
-      // Si ya hay entrada pero no salida, registrar salida
-      if (existingRecord.clock_in && !existingRecord.clock_out) {
-        const clockIn = new Date(existingRecord.clock_in);
-        const clockOut = new Date(now);
-        const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+    // Verificar si ya hay salida registrada hoy
+    const { data: lastExit } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', employeeData.id)
+      .eq('clock_type', 'salida')
+      .gte('clock_time', `${today}T00:00:00`)
+      .lte('clock_time', `${today}T23:59:59`)
+      .order('clock_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-        await supabase
-          .from('timeclock_records')
-          .update({
-            clock_out: now,
-            total_hours: Math.round(totalHours * 100) / 100,
-            location_out: location ? `${location.lat},${location.lng}` : null
-          })
-          .eq('id', existingRecord.id);
+    // Determinar si es entrada o salida
+    if (lastEntry && !lastExit) {
+      // Ya hay entrada sin salida → Registrar SALIDA
+      const clockIn = new Date(lastEntry.clock_time);
+      const clockOut = new Date(now);
+      const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
-        setSuccess(`¡Salida registrada! Tiempo trabajado: ${Math.round(totalHours * 100) / 100} horas`);
-      } else {
-        throw new Error('Ya tienes fichajes completos para hoy');
-      }
-    } else {
-      // Registrar nueva entrada
       await supabase
-        .from('timeclock_records')
+        .from('time_records')
         .insert({
           employee_id: employeeData.id,
-          date: today,
-          clock_in: now,
-          location_in: location ? `${location.lat},${location.lng}` : null,
-          center_id: qrData.centerId
+          employee_name: employee.name || employee.email,
+          employee_email: employee.email,
+          center_id: qrData.centerId.toString(),
+          center_name: qrData.centerName,
+          clock_type: 'salida',
+          clock_time: now,
+          location_lat: location?.lat,
+          location_lng: location?.lng,
+          location_accuracy: location?.accuracy,
+          qr_token_id: tokenData.id,
+          notes: `Tiempo trabajado: ${Math.round(totalHours * 100) / 100}h`
         });
 
-      setSuccess('¡Entrada registrada correctamente!');
+      // Actualizar resumen diario
+      await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_time, now, totalHours);
+
+      setSuccess(`✅ Salida registrada! Tiempo trabajado: ${Math.round(totalHours * 100) / 100} horas`);
+    } else if (lastExit) {
+      // Ya hay entrada Y salida → No permitir más fichajes hoy
+      throw new Error('Ya tienes fichajes completos para hoy (entrada y salida registradas)');
+    } else {
+      // No hay entrada → Registrar ENTRADA
+      await supabase
+        .from('time_records')
+        .insert({
+          employee_id: employeeData.id,
+          employee_name: employee.name || employee.email,
+          employee_email: employee.email,
+          center_id: qrData.centerId.toString(),
+          center_name: qrData.centerName,
+          clock_type: 'entrada',
+          clock_time: now,
+          location_lat: location?.lat,
+          location_lng: location?.lng,
+          location_accuracy: location?.accuracy,
+          qr_token_id: tokenData.id
+        });
+
+      setSuccess('✅ Entrada registrada correctamente!');
     }
+  };
+
+  const updateDailyAttendance = async (
+    employeeId: string,
+    qrData: QRData,
+    clockInTime: string,
+    clockOutTime: string,
+    totalHours: number
+  ) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    await supabase
+      .from('daily_attendance')
+      .upsert({
+        employee_id: employeeId,
+        employee_name: employee?.name || employee?.email || '',
+        center_id: qrData.centerId.toString(),
+        center_name: qrData.centerName,
+        date: today,
+        clock_in_time: clockInTime,
+        clock_out_time: clockOutTime,
+        total_hours: Math.round(totalHours * 100) / 100,
+        status: 'presente',
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'employee_id,center_id,date'
+      });
   };
 
   return (
