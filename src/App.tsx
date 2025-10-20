@@ -48,6 +48,7 @@ import BrandAccountingModule from './components/accounting/BrandAccountingModule
 import MeetingHistorySystem from './components/MeetingHistorySystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
+import SignaturePage from './pages/SignaturePage';
 import CenterManagement from './components/centers/CenterManagement';
 import DailyOperations from './components/hr/DailyOperations';
 import LogisticsManagementSystem from './components/LogisticsManagementSystem';
@@ -62,6 +63,15 @@ const NavigationDashboard: React.FC = () => {
   const { employee, signOut, userRole, isAuthenticated } = useSession();
   const [selectedModule, setSelectedModule] = useState<string | null>('main-dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
+  
+  // Detectar ruta de firma en hash URL
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/firma/')) {
+      const signatureId = hash.replace('#/firma/', '');
+      setSelectedModule(`firma-${signatureId}`);
+    }
+  }, []);
   
   // Debug: Mostrar información de autenticación
   useEffect(() => {
@@ -483,6 +493,11 @@ const NavigationDashboard: React.FC = () => {
 
     // Renderizar el módulo seleccionado
   const renderModule = () => {
+    // Detectar ruta de firma
+    if (selectedModule?.startsWith('firma-')) {
+      return <SignaturePage />;
+    }
+    
     const module = modules.find(m => m.id === selectedModule);
     if (!module) {
       // Si no hay módulo seleccionado, mostrar el dashboard principal
