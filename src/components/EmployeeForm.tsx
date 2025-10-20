@@ -401,8 +401,21 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                   <option value="center_manager">👔 Encargado de Centro</option>
                   <option value="manager">👨‍💼 Manager</option>
                   <option value="admin">⚙️ Administrador</option>
-                  <option value="superadmin">👑 Superadmin</option>
+                  {/* Superadmin solo para Carlos - no se puede crear desde aquí */}
                 </select>
+                {formData.rol === 'superadmin' && (
+                  <div style={{ 
+                    marginTop: '4px', 
+                    padding: '8px', 
+                    backgroundColor: '#fef3c7', 
+                    border: '1px solid #fbbf24',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    color: '#92400e'
+                  }}>
+                    👑 <strong>Superadmin:</strong> Este rol solo puede ser asignado por el CEO (Carlos)
+                  </div>
+                )}
               </div>
 
               <div>
