@@ -470,15 +470,61 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     setShowQRFirmaCierre(true);
   };
 
-  // Por ahora, funciones simplificadas para firmar (se reemplazarán con QR)
+  // SISTEMA HÍBRIDO DE FIRMAS: Detecta automáticamente si hay empleado logueado
   const handleFirmarApertura = async () => {
-    alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
-    handleMostrarQRFirmaApertura();
+    // CASO 1: Empleado logueado → Firma directa
+    if (employee?.id) {
+      console.log('✍️ Firma directa de apertura por empleado:', employee.name);
+      
+      const nuevaFirma = {
+        firmado: true,
+        empleado_id: employee.id,
+        empleado_nombre: employee.name || employee.email,
+        fecha: new Date().toISOString(),
+        tipo: 'apertura'
+      };
+      
+      setFirmaApertura(nuevaFirma);
+      
+      // Guardar en BD
+      await guardarEstadoProvisional('en_progreso');
+      
+      alert(`✅ Apertura firmada por ${employee.name || employee.email}`);
+    }
+    // CASO 2: Sin empleado logueado → Mostrar QR
+    else {
+      console.log('📱 Mostrando QR para firma de apertura');
+      alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+      handleMostrarQRFirmaApertura();
+    }
   };
 
   const handleFirmarCierre = async () => {
-    alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
-    handleMostrarQRFirmaCierre();
+    // CASO 1: Empleado logueado → Firma directa
+    if (employee?.id) {
+      console.log('✍️ Firma directa de cierre por empleado:', employee.name);
+      
+      const nuevaFirma = {
+        firmado: true,
+        empleado_id: employee.id,
+        empleado_nombre: employee.name || employee.email,
+        fecha: new Date().toISOString(),
+        tipo: 'cierre'
+      };
+      
+      setFirmaCierre(nuevaFirma);
+      
+      // Guardar en BD
+      await guardarEstadoProvisional('completado');
+      
+      alert(`✅ Cierre firmado por ${employee.name || employee.email}`);
+    }
+    // CASO 2: Sin empleado logueado → Mostrar QR
+    else {
+      console.log('📱 Mostrando QR para firma de cierre');
+      alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+      handleMostrarQRFirmaCierre();
+    }
   };
 
   // Función para guardar estado provisional
