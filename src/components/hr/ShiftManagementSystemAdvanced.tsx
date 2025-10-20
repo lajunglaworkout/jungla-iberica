@@ -61,30 +61,42 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
   const { centers } = useData();
   
   const [activeTab, setActiveTab] = useState<'shifts' | 'assignments' | 'substitutions' | 'calendar'>('shifts');
+  const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar datos iniciales
+  // Establecer centro por defecto al cargar
+  useEffect(() => {
+    if (centers && centers.length > 0 && !selectedCenter) {
+      setSelectedCenter(centers[0].id);
+    }
+  }, [centers, selectedCenter]);
+
+  // Cargar datos iniciales filtrados por centro
   const loadData = useCallback(async () => {
+    if (!selectedCenter) return;
+    
     setIsLoading(true);
     setError(null);
     try {
-      // Cargar turnos
+      // Cargar turnos del centro seleccionado
       const { data: shiftsData, error: shiftsError } = await supabase
         .from('shifts')
         .select('*')
+        .eq('center_id', selectedCenter)
         .order('start_time');
       
       if (shiftsError) throw shiftsError;
       setShifts(shiftsData || []);
 
-      // Cargar empleados - usar campos reales de la tabla
+      // Cargar empleados del centro seleccionado
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
-        .select('*');
+        .select('*')
+        .eq('center_id', selectedCenter);
       
       if (employeesError) throw employeesError;
       
@@ -108,7 +120,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedCenter]);
 
   useEffect(() => {
     loadData();
@@ -159,14 +171,60 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
   return (
     <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Header */}
+        {/* Header con selector de centro */}
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
-            Sistema de Gestión de Turnos
-          </h1>
-          <p style={{ fontSize: '16px', color: '#6b7280' }}>
-            Gestiona turnos, asignaciones, sustituciones y visualiza el calendario completo
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+                Sistema de Gestión de Turnos
+              </h1>
+              <p style={{ fontSize: '16px', color: '#6b7280' }}>
+                Gestiona turnos, asignaciones, sustituciones y visualiza el calendario completo
+              </p>
+            </div>
+            
+            {/* Selector de Centro */}
+            <div style={{ minWidth: '250px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '600', 
+                color: '#374151', 
+                marginBottom: '8px' 
+              }}>
+                📍 Centro de Trabajo
+              </label>
+              <select
+                value={selectedCenter || ''}
+                onChange={(e) => setSelectedCenter(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  color: '#111827',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                {centers.map((center: any) => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
+                  </option>
+                ))}
+              </select>
+              <p style={{ 
+                fontSize: '12px', 
+                color: '#6b7280', 
+                marginTop: '6px' 
+              }}>
+                {employees.length} empleados • {shifts.length} turnos
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Navegación por pestañas */}
@@ -208,7 +266,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
 
         {/* Contenido de pestañas */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-          {activeTab === 'shifts' && <ShiftManager shifts={shifts} centers={centers} onRefresh={loadData} />}
+          {activeTab === 'shifts' && <ShiftManager shifts={shifts} centers={centers} selectedCenter={selectedCenter} onRefresh={loadData} />}
           {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} />}
           {activeTab === 'substitutions' && <SubstitutionManager shifts={shifts} employees={employees} />}
           {activeTab === 'calendar' && <ShiftCalendarClean />}
@@ -222,10 +280,14 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
 const ShiftManager: React.FC<{
   shifts: Shift[];
   centers: any[];
+  selectedCenter: number | null;
   onRefresh: () => void;
-}> = ({ shifts, centers, onRefresh }) => {
+}> = ({ shifts, centers, selectedCenter, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  
+  // Obtener nombre del centro seleccionado
+  const centerName = centers.find((c: any) => c.id === selectedCenter)?.name || 'Centro';
 
   const handleEdit = (shift: Shift) => {
     setEditingShift(shift);
@@ -294,6 +356,7 @@ const ShiftManager: React.FC<{
       <ShiftForm
         shift={editingShift}
         centers={centers}
+        defaultCenterId={selectedCenter}
         onSave={() => {
           setShowForm(false);
           setEditingShift(null);
@@ -311,7 +374,7 @@ const ShiftManager: React.FC<{
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827' }}>
-          Gestión de Turnos ({shifts.length})
+          Gestión de Turnos - {centerName} ({shifts.length})
         </h2>
         <button
           onClick={() => setShowForm(true)}
@@ -933,9 +996,10 @@ const ShiftCreator: React.FC<{
 const ShiftForm: React.FC<{
   shift: Shift | null;
   centers: any[];
+  defaultCenterId?: number | null;
   onSave: () => void;
   onCancel: () => void;
-}> = ({ shift, centers, onSave, onCancel }) => {
+}> = ({ shift, centers, defaultCenterId, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     name: shift?.name || '',
     start_time: shift?.start_time || '09:00',
@@ -948,7 +1012,7 @@ const ShiftForm: React.FC<{
     saturday: shift?.saturday || false,
     sunday: shift?.sunday || false,
     break_minutes: shift?.break_minutes || 30,
-    center_id: shift?.center_id || centers[0]?.id || 9,
+    center_id: shift?.center_id || defaultCenterId || centers[0]?.id || 9,
     max_employees: shift?.max_employees || 1,
     min_employees: shift?.min_employees || 1,
     is_support: shift?.is_support || false,
