@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import SmartIncidentModal from './incidents/SmartIncidentModal';
+import { checklistHistoryService } from '../services/checklistHistoryService';
 
 // Interfaces para tipos de datos
 interface Task {
@@ -269,114 +270,45 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const loadInitialData = async () => {
     console.log('📋 Cargando checklist para centro:', centerName, centerId);
     
-    if (!centerId) {
-      console.error('❌ No se proporcionó centerId');
+    if (!centerId || !centerName) {
+      console.error('❌ No se proporcionó centerId o centerName');
       setLoading(false);
       return;
     }
 
     try {
-      // Obtener la fecha de hoy
-      const today = new Date().toISOString().split('T')[0];
+      // 🔄 RESET AUTOMÁTICO: Usar el servicio que crea checklist diario automáticamente
+      const todayChecklist = await checklistHistoryService.getTodayChecklist(centerId, centerName);
       
-      // Buscar checklist del día en Supabase
-      const { data: existingChecklist, error } = await supabase
-        .from('daily_checklists')
-        .select('*')
-        .eq('center_id', centerId)
-        .eq('date', today)
-        .maybeSingle(); // Usar maybeSingle() en lugar de single() para evitar error si no existe
-
-      if (error) {
-        console.error('❌ Error al cargar checklist:', error);
-        console.error('❌ Código de error:', error.code);
-        console.error('❌ Mensaje:', error.message);
-        console.error('❌ Detalles:', error.details);
+      if (todayChecklist) {
+        console.log('✅ Checklist del día cargado:', todayChecklist);
         
-        // Si es un error diferente a "no encontrado", lanzar
-        if (error.code !== 'PGRST116') {
-          throw error;
-        }
-      }
-
-      if (existingChecklist) {
-        // Ya existe un checklist para hoy, cargar los datos
-        console.log('✅ Checklist existente encontrado:', existingChecklist);
-        console.log('📊 Datos de tareas:', {
-          apertura: existingChecklist.apertura_tasks,
-          limpieza: existingChecklist.limpieza_tasks,
-          cierre: existingChecklist.cierre_tasks,
-          tasks_antiguo: existingChecklist.tasks
+        // Cargar tareas
+        setChecklist({
+          apertura: todayChecklist.apertura_tasks || [],
+          limpieza: todayChecklist.limpieza_tasks || [],
+          cierre: todayChecklist.cierre_tasks || [],
+          incidencias: todayChecklist.incidencias || []
         });
         
-        // Si tiene el formato antiguo (tasks), migrar al nuevo formato
-        if (existingChecklist.tasks && !existingChecklist.apertura_tasks) {
-          console.log('🔄 Migrando formato antiguo a nuevo formato');
-          const oldTasks = existingChecklist.tasks;
-          setChecklist({
-            apertura: oldTasks.apertura || [],
-            limpieza: oldTasks.limpieza || [],
-            cierre: oldTasks.cierre || [],
-            incidencias: []
-          });
-          // Guardar en el nuevo formato
-          await guardarEstadoProvisional(existingChecklist.status || 'en_progreso');
-        } else {
-          // Usar el nuevo formato
-          setChecklist({
-            apertura: existingChecklist.apertura_tasks || [],
-            limpieza: existingChecklist.limpieza_tasks || [],
-            cierre: existingChecklist.cierre_tasks || [],
-            incidencias: []
-          });
-        }
-        
         // Cargar firmas si existen
-        if (existingChecklist.firma_apertura) {
-          setFirmaApertura(existingChecklist.firma_apertura);
+        if (todayChecklist.firma_apertura) {
+          setFirmaApertura(todayChecklist.firma_apertura);
         }
-        if (existingChecklist.firma_cierre) {
-          setFirmaCierre(existingChecklist.firma_cierre);
+        if (todayChecklist.firma_cierre) {
+          setFirmaCierre(todayChecklist.firma_cierre);
         }
-      } else {
-        // No existe checklist para hoy, crear uno nuevo con tareas por defecto
-        console.log('📝 Creando nuevo checklist para hoy');
-        const defaultTasks = getDefaultTasks();
         
-        // Preparar datos para inserción (sin center_name, no existe en la tabla)
-        const insertData = {
-          center_id: centerId,
-          date: today,
-          tasks: defaultTasks, // Campo requerido (NOT NULL)
-          apertura_tasks: defaultTasks.apertura,
-          limpieza_tasks: defaultTasks.limpieza,
-          cierre_tasks: defaultTasks.cierre,
-          status: 'en_progreso'
-        };
-
-        console.log('📤 Datos a insertar:', insertData);
-
-        const { data: newChecklist, error: insertError } = await supabase
-          .from('daily_checklists')
-          .insert(insertData)
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('❌ Error al crear checklist:', insertError);
-          console.error('❌ Código de error:', insertError.code);
-          console.error('❌ Mensaje:', insertError.message);
-          console.error('❌ Detalles:', insertError.details);
-          console.error('❌ Hint:', insertError.hint);
-          throw insertError;
+        // Verificar si hay checklist de ayer sin completar
+        const incompleteYesterday = await checklistHistoryService.checkIncompleteYesterday(centerId);
+        if (incompleteYesterday) {
+          console.log('⚠️ Checklist de ayer sin completar:', incompleteYesterday.date);
+          // Opcional: Mostrar alerta al usuario
+          // alert(`⚠️ El checklist del ${incompleteYesterday.date} no fue completado`);
         }
-
-        console.log('✅ Nuevo checklist creado:', newChecklist);
-        setChecklist(defaultTasks);
       }
     } catch (error) {
       console.error('❌ Error fatal al cargar checklist:', error);
-      // En caso de error, mostrar mensaje al usuario
       alert('Error al cargar el checklist. Por favor, verifica tu conexión e intenta de nuevo.');
     } finally {
       setLoading(false);
