@@ -16,7 +16,8 @@ import {
   MapPin,
   Timer,
   Eye,
-  Edit3
+  Edit3,
+  ArrowLeft
 } from 'lucide-react';
 
 interface TimeclockRecord {
@@ -41,7 +42,11 @@ interface DashboardStats {
   lateArrivals: number;
 }
 
-const TimeclockDashboard: React.FC = () => {
+interface TimeclockDashboardProps {
+  onBack?: () => void;
+}
+
+const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const { centers, employees } = useData();
   const [selectedCenter, setSelectedCenter] = useState<number>(9); // Sevilla por defecto
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -214,6 +219,37 @@ const TimeclockDashboard: React.FC = () => {
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+      {/* Botón Volver */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151',
+            marginBottom: '16px',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#f3f4f6';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'white';
+          }}
+        >
+          <ArrowLeft size={18} />
+          Volver a RRHH
+        </button>
+      )}
+
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
