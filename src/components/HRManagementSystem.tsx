@@ -18,6 +18,7 @@ import VacationRequest from './hr/VacationRequest';
 import VacationApproval from './hr/VacationApproval';
 import HRReports from './hr/HRReports';
 import AttendanceManagement from './hr/AttendanceManagement';
+import DocumentManagement from './hr/DocumentManagement';
 import { InventoryManagement } from './logistics/InventoryManagement';
 import IncidentManagementSystem from './incidents/IncidentManagementSystem';
 import DailyOperations from './hr/DailyOperations';
@@ -695,6 +696,8 @@ const HRManagementSystem: React.FC = () => {
       return <HRReports onBack={() => setCurrentView('dashboard')} />;
     case 'attendance':
       return <AttendanceManagement onBack={() => setCurrentView('dashboard')} />;
+    case 'documents':
+      return <DocumentManagement onBack={() => setCurrentView('dashboard')} />;
     case 'shifts':
       return <ShiftManagementSystemAdvanced onBack={() => setCurrentView('dashboard')} />;
     case 'shift-assignment':
