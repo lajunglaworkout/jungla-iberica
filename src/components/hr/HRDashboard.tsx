@@ -214,10 +214,10 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       id: 'attendance',
       title: 'Asistencia',
       icon: <Calendar size={32} />,
-      description: 'Registro de asistencia y ausencias',
+      description: 'Registro de retrasos, ausencias y bajas médicas',
       color: '#f59e0b',
-      count: '85%',
-      status: 'coming-soon'
+      count: 'Gestionar',
+      status: 'active'
     },
     {
       id: 'admin-vacations',
