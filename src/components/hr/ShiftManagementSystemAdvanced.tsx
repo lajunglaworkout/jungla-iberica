@@ -288,7 +288,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
         {/* Contenido de pestañas */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
           {activeTab === 'shifts' && <ShiftManager shifts={shifts} centers={centers} selectedCenter={selectedCenter} onRefresh={loadData} />}
-          {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} />}
+          {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} holidays={holidays} />}
           {activeTab === 'substitutions' && <SubstitutionManager shifts={shifts} employees={employees} />}
           {activeTab === 'calendar' && <ShiftCalendarClean holidays={holidays} />}
           {activeTab === 'holidays' && <HolidayList holidays={holidays} />}
@@ -541,9 +541,17 @@ const ShiftManager: React.FC<{
 const ShiftAssignments: React.FC<{
   shifts: Shift[];
   employees: Employee[];
-}> = ({ shifts, employees }) => {
+  holidays?: Holiday[];
+}> = ({ shifts, employees, holidays = [] }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [assignments, setAssignments] = useState<any[]>([]);
+
+  // Verificar si la fecha seleccionada es festivo
+  const isHoliday = (dateStr: string): Holiday | undefined => {
+    return holidays.find(h => h.date === dateStr);
+  };
+
+  const selectedHoliday = isHoliday(selectedDate);
 
   return (
     <div>
@@ -551,18 +559,68 @@ const ShiftAssignments: React.FC<{
         <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
           Asignaciones de Empleados
         </h2>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
             Fecha:
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ marginLeft: '8px', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+              style={{ 
+                marginLeft: '8px', 
+                padding: '8px', 
+                border: selectedHoliday ? '2px solid #ef4444' : '1px solid #d1d5db', 
+                borderRadius: '6px',
+                backgroundColor: selectedHoliday ? '#fef2f2' : 'white'
+              }}
             />
           </label>
+          
+          {selectedHoliday && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: '#fee2e2',
+              border: '2px solid #ef4444',
+              borderRadius: '8px',
+              color: '#991b1b',
+              fontWeight: '600',
+              fontSize: '14px'
+            }}>
+              <span>🎉</span>
+              <span>{selectedHoliday.name}</span>
+              <span style={{ fontSize: '12px', fontWeight: '400' }}>
+                ({selectedHoliday.type === 'national' ? 'Nacional' : selectedHoliday.type === 'regional' ? 'Regional' : 'Local'})
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Alerta de bloqueo si es festivo */}
+      {selectedHoliday && (
+        <div style={{
+          padding: '20px',
+          backgroundColor: '#fef2f2',
+          border: '2px solid #ef4444',
+          borderRadius: '12px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <AlertCircle size={24} color="#dc2626" />
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#dc2626', margin: 0 }}>
+              ⛔ Asignaciones Bloqueadas - Día Festivo
+            </h3>
+          </div>
+          <p style={{ fontSize: '14px', color: '#991b1b', margin: 0, lineHeight: '1.6' }}>
+            No se pueden asignar turnos en días festivos. El <strong>{selectedHoliday.name}</strong> es un festivo 
+            {selectedHoliday.type === 'national' ? ' nacional' : selectedHoliday.type === 'regional' ? ' regional' : ' local'}.
+            Por favor, selecciona otra fecha para realizar asignaciones.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gap: '16px' }}>
         {shifts.map(shift => (
@@ -594,16 +652,19 @@ const ShiftAssignments: React.FC<{
                   <Users size={24} style={{ margin: '0 auto 8px' }} />
                   <p style={{ fontSize: '14px' }}>Empleado {i + 1}</p>
                   <select
+                    disabled={!!selectedHoliday}
                     style={{
                       width: '100%',
                       padding: '6px',
                       border: '1px solid #d1d5db',
                       borderRadius: '4px',
-                      marginTop: '8px'
+                      marginTop: '8px',
+                      cursor: selectedHoliday ? 'not-allowed' : 'pointer',
+                      backgroundColor: selectedHoliday ? '#f3f4f6' : 'white'
                     }}
                   >
-                    <option value="">Seleccionar...</option>
-                    {employees.map(emp => (
+                    <option value="">{selectedHoliday ? 'Bloqueado' : 'Seleccionar...'}</option>
+                    {!selectedHoliday && employees.map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.nombre} {emp.apellidos}
                       </option>
