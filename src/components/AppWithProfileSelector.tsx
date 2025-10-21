@@ -69,31 +69,7 @@ const AppWithProfileSelector: React.FC = () => {
   return (
     <SessionProvider>
       <DataProvider>
-        <div>
-          {/* Botón para volver al selector */}
-          <button
-            onClick={handleBackToSelector}
-            style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              padding: '8px 16px',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            👤 Cambiar a Centro
-          </button>
-          
-          <App />
-        </div>
+        <App />
       </DataProvider>
     </SessionProvider>
   );
