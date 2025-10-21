@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, AlertCircle, Clock, UserX, Plus, Filter, MapPin, 
-  Calendar, Save, X, FileText, TrendingUp, Users, CheckCircle
+  Calendar, Save, X, FileText, TrendingUp, Users, CheckCircle, Zap, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useData } from '../../contexts/DataContext';
+import { detectDailyAttendanceIncidents, processTodayAttendance } from '../../services/attendanceService';
 
 interface AttendanceManagementProps {
   onBack?: () => void;
@@ -18,7 +19,7 @@ interface AttendanceRecord {
   center_id?: number;
   center_name?: string;
   date: string;
-  type: 'late' | 'sick_leave' | 'absence' | 'personal' | 'other';
+  type: 'late' | 'sick_leave' | 'absence' | 'personal' | 'other' | 'early_departure';
   hours_late?: number;
   reason: string;
   notes?: string;
@@ -167,12 +168,25 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
     }
   };
 
+  const handleAutoDetect = async () => {
+    if (!confirm('¿Procesar incidencias automáticamente desde los fichajes de hoy?')) return;
+
+    try {
+      const incidentsCount = await processTodayAttendance(selectedCenter || undefined);
+      alert(`✅ Proceso completado: ${incidentsCount} incidencias detectadas y registradas`);
+      loadRecords();
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    }
+  };
+
   const getTypeLabel = (type: string) => {
     const labels = {
       late: '⏰ Retraso',
       sick_leave: '🤒 Baja médica',
       absence: '❌ Ausencia',
       personal: '👤 Asunto personal',
+      early_departure: '🚪 Salida temprana',
       other: '📋 Otro'
     };
     return labels[type as keyof typeof labels] || type;
@@ -184,6 +198,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
       sick_leave: { bg: '#fee2e2', color: '#991b1b' },
       absence: { bg: '#fecaca', color: '#7f1d1d' },
       personal: { bg: '#dbeafe', color: '#1e40af' },
+      early_departure: { bg: '#fed7aa', color: '#9a3412' },
       other: { bg: '#e5e7eb', color: '#374151' }
     };
     return colors[type as keyof typeof colors] || colors.other;
@@ -298,6 +313,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
               <option value="sick_leave">🤒 Baja médica</option>
               <option value="absence">❌ Ausencia injustificada</option>
               <option value="personal">👤 Asunto personal</option>
+              <option value="early_departure">🚪 Salida temprana</option>
               <option value="other">📋 Otro</option>
             </select>
           </div>
@@ -457,25 +473,46 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
               </p>
             </div>
 
-            <button
-              onClick={() => setShowForm(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                backgroundColor: '#059669',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              <Plus size={18} />
-              Registrar Incidencia
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={handleAutoDetect}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                <Zap size={18} />
+                Detectar Automático
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                <Plus size={18} />
+                Registrar Manual
+              </button>
+            </div>
           </div>
         </div>
 
@@ -571,6 +608,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
                 <option value="sick_leave">Bajas médicas</option>
                 <option value="absence">Ausencias</option>
                 <option value="personal">Asuntos personales</option>
+                <option value="early_departure">Salidas tempranas</option>
                 <option value="other">Otros</option>
               </select>
             </div>
