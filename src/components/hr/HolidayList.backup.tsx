@@ -211,37 +211,6 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays, selectedCenter, onR
           );
         })}
       </div>
-
-      {/* Modal añadir festivo */}
-      {showAddModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowAddModal(false)}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>➕ Añadir Festivo Local</h3>
-              <button onClick={() => setShowAddModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-            <div style={{ display: 'grid', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px' }}>Nombre:</label>
-                <input type="text" value={newHoliday.name} onChange={(e) => setNewHoliday({ ...newHoliday, name: e.target.value })} placeholder="Ej: Feria de Sevilla" style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px' }}>Fecha:</label>
-                <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px' }} />
-              </div>
-              <div style={{ padding: '12px', backgroundColor: '#dbeafe', borderRadius: '6px', fontSize: '13px' }}>
-                ℹ️ Festivo específico del centro (Local)
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '10px', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={handleAddHoliday} disabled={isSubmitting || !newHoliday.name || !newHoliday.date} style={{ flex: 1, padding: '10px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', opacity: (isSubmitting || !newHoliday.name || !newHoliday.date) ? 0.5 : 1 }}>
-                  {isSubmitting ? 'Guardando...' : 'Añadir'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

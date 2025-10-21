@@ -291,7 +291,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
           {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} holidays={holidays} />}
           {activeTab === 'substitutions' && <SubstitutionManager shifts={shifts} employees={employees} />}
           {activeTab === 'calendar' && <ShiftCalendarClean holidays={holidays} />}
-          {activeTab === 'holidays' && <HolidayList holidays={holidays} />}
+          {activeTab === 'holidays' && <HolidayList holidays={holidays} selectedCenter={selectedCenter} onRefresh={loadData} />}
         </div>
       </div>
     </div>
