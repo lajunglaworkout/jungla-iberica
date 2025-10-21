@@ -208,9 +208,65 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
     }
   };
 
-  const handleJustify = (record: AttendanceRecord) => {
+  const handleJustify = async (record: AttendanceRecord) => {
+    // Cargar historial del empleado antes de abrir el modal
+    await loadEmployeeHistory(record.employee_id);
     setEditingRecord(record);
     setShowJustifyModal(true);
+  };
+
+  const [employeeHistory, setEmployeeHistory] = useState<{
+    thisMonth: number;
+    thisMonthByType: { [key: string]: number };
+    last3Months: number;
+    totalRecords: AttendanceRecord[];
+  }>({
+    thisMonth: 0,
+    thisMonthByType: {},
+    last3Months: 0,
+    totalRecords: []
+  });
+
+  const loadEmployeeHistory = async (employeeId: number) => {
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0];
+
+      // Cargar todos los registros del empleado
+      const { data: allRecords } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .order('date', { ascending: false });
+
+      if (!allRecords) {
+        setEmployeeHistory({ thisMonth: 0, thisMonthByType: {}, last3Months: 0, totalRecords: [] });
+        return;
+      }
+
+      // Filtrar por mes actual
+      const thisMonthRecords = allRecords.filter(r => r.date >= monthStart);
+      
+      // Filtrar últimos 3 meses
+      const last3MonthsRecords = allRecords.filter(r => r.date >= threeMonthsAgo);
+
+      // Contar por tipo en el mes actual
+      const byType: { [key: string]: number } = {};
+      thisMonthRecords.forEach(r => {
+        byType[r.type] = (byType[r.type] || 0) + 1;
+      });
+
+      setEmployeeHistory({
+        thisMonth: thisMonthRecords.length,
+        thisMonthByType: byType,
+        last3Months: last3MonthsRecords.length,
+        totalRecords: allRecords
+      });
+    } catch (error) {
+      console.error('Error cargando historial del empleado:', error);
+      setEmployeeHistory({ thisMonth: 0, thisMonthByType: {}, last3Months: 0, totalRecords: [] });
+    }
   };
 
   const handleSaveJustification = async () => {
@@ -331,6 +387,53 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
               })}
               {editingRecord.center_name && ` • ${editingRecord.center_name}`}
             </div>
+          </div>
+
+          {/* Historial del empleado */}
+          <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #fde68a' }}>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#92400e', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={18} />
+              Historial de Incidencias del Empleado
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Este mes</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: employeeHistory.thisMonth > 3 ? '#dc2626' : '#111827' }}>
+                  {employeeHistory.thisMonth}
+                </div>
+              </div>
+              <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Últimos 3 meses</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: employeeHistory.last3Months > 10 ? '#dc2626' : '#111827' }}>
+                  {employeeHistory.last3Months}
+                </div>
+              </div>
+            </div>
+
+            {/* Desglose por tipo este mes */}
+            {Object.keys(employeeHistory.thisMonthByType).length > 0 && (
+              <div style={{ fontSize: '13px', color: '#92400e', marginTop: '8px' }}>
+                <strong>Este mes:</strong>{' '}
+                {Object.entries(employeeHistory.thisMonthByType).map(([type, count]) => (
+                  <span key={type} style={{ marginRight: '12px' }}>
+                    {getTypeLabel(type)}: {count}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Alertas */}
+            {employeeHistory.thisMonth > 3 && (
+              <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#fee2e2', borderRadius: '4px', fontSize: '12px', color: '#991b1b' }}>
+                ⚠️ <strong>Alerta:</strong> Más de 3 incidencias este mes. Considerar reunión de seguimiento.
+              </div>
+            )}
+            {employeeHistory.thisMonthByType['late'] >= 3 && (
+              <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fee2e2', borderRadius: '4px', fontSize: '12px', color: '#991b1b' }}>
+                ⚠️ <strong>Reincidente:</strong> {employeeHistory.thisMonthByType['late']} retrasos este mes.
+              </div>
+            )}
           </div>
 
           {/* Tipo de incidencia */}
