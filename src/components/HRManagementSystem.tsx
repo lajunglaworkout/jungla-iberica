@@ -10,6 +10,7 @@ import ShiftManagementSystemAdvanced from './hr/ShiftManagementSystemAdvanced';
 import ShiftAssignmentSystem from './hr/ShiftAssignmentSystem';
 import TimeclockDashboard from './hr/TimeclockDashboard';
 import MobileTimeClock from './hr/MobileTimeClock';
+import TimeTrackingDashboard from './hr/TimeTrackingDashboard';
 import DatabaseVerification from './DatabaseVerification';
 import EmployeeProfile from './hr/EmployeeProfile';
 import ComingSoon from './hr/ComingSoon';
@@ -635,6 +636,8 @@ const HRManagementSystem: React.FC = () => {
   }
 
   switch (currentView) {
+    case 'time-tracking':
+      return <TimeTrackingDashboard />;
     case 'timeclock':
       return <TimeclockDashboard />;
     case 'mobile-timeclock':
