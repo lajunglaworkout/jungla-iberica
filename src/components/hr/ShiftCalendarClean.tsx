@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Calendar as CalendarIcon, RefreshCw, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, RefreshCw, Trash2, ChevronLeft, ChevronRight, Filter, Download, X } from 'lucide-react';
 import { Holiday } from '../../services/holidayService';
 
 interface ShiftAssignment {
@@ -32,6 +32,9 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const [showQuickAssign, setShowQuickAssign] = useState(false);
   const [quickAssignData, setQuickAssignData] = useState<{employeeId: number; date: Date} | null>(null);
   const [availableShifts, setAvailableShifts] = useState<any[]>([]);
+  const [filterEmployee, setFilterEmployee] = useState<number | null>(null);
+  const [filterShiftType, setFilterShiftType] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
 
@@ -175,6 +178,23 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     return '#6b7280'; // Gris por defecto
   };
 
+  // Filtrar empleados
+  const getFilteredEmployees = () => {
+    if (filterEmployee) {
+      return employees.filter(e => e.id === filterEmployee);
+    }
+    return employees;
+  };
+
+  // Filtrar turnos por tipo
+  const filterShiftsByType = (shifts: ShiftAssignment[]) => {
+    if (filterShiftType === 'all') return shifts;
+    return shifts.filter(s => {
+      const name = s.shift?.name?.toLowerCase() || '';
+      return name.includes(filterShiftType.toLowerCase());
+    });
+  };
+
   // Limpiar TODO
   const clearEverything = async () => {
     console.log('🗑️ Limpiando TODO...');
@@ -286,34 +306,128 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
           
           <div style={{ display: 'flex', gap: 8 }}>
           <button
+            onClick={() => setShowFilters(!showFilters)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: showFilters ? '#059669' : '#f3f4f6',
+              color: showFilters ? 'white' : '#374151',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            <Filter size={16} /> Filtros
+          </button>
+
+          <button
             onClick={loadAssignments}
             style={{
               padding: '10px 20px',
               backgroundColor: '#059669',
               color: 'white',
               border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500'
             }}
           >
             <RefreshCw size={16} /> Recargar
           </button>
-
-          <button
-            onClick={clearEverything}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            <Trash2 size={16} /> Limpiar TODO
-          </button>
           </div>
         </div>
+
+        {/* Panel de Filtros */}
+        {showFilters && (
+          <div style={{ 
+            marginTop: '16px', 
+            padding: '16px', 
+            backgroundColor: '#f9fafb', 
+            borderRadius: '8px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px'
+          }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                Empleado
+              </label>
+              <select
+                value={filterEmployee || ''}
+                onChange={(e) => setFilterEmployee(e.target.value ? Number(e.target.value) : null)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">Todos los empleados</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.nombre} {emp.apellidos}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                Tipo de Turno
+              </label>
+              <select
+                value={filterShiftType}
+                onChange={(e) => setFilterShiftType(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="all">Todos los turnos</option>
+                <option value="mañana">🌅 Mañana</option>
+                <option value="tarde">🌆 Tarde</option>
+                <option value="noche">🌙 Noche</option>
+                <option value="partido">⏰ Partido</option>
+                <option value="completo">📅 Completo</option>
+                <option value="apoyo">🤝 Apoyo</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setFilterEmployee(null);
+                  setFilterShiftType('all');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <X size={16} /> Limpiar filtros
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Navegación de mes estilo Factorial */}
@@ -355,7 +469,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
             ))}
 
             {/* Filas de empleados */}
-            {employees.map(employee => (
+            {getFilteredEmployees().map(employee => (
               <React.Fragment key={employee.id}>
                 {/* Columna empleado */}
                 <div style={{ backgroundColor: 'white', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -382,7 +496,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
 
                 {/* Celdas de turnos por día */}
                 {getWeekDates().map((date, dayIndex) => {
-                  const shifts = getEmployeeShifts(employee.id, date);
+                  const shifts = filterShiftsByType(getEmployeeShifts(employee.id, date));
                   const dateStr = fmt(date);
                   const holiday = isHoliday(dateStr);
                   
