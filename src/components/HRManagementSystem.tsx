@@ -687,7 +687,7 @@ const HRManagementSystem: React.FC = () => {
     case 'hr-contact':
       return <IncidentManagementSystem />;
     case 'shifts':
-      return <ShiftManagementSystemAdvanced />;
+      return <ShiftManagementSystemAdvanced onBack={() => setCurrentView('dashboard')} />;
     case 'shift-assignment':
       return <ShiftAssignmentSystem />;
     case 'employees':
