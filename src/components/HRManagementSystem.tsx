@@ -665,6 +665,7 @@ const HRManagementSystem: React.FC = () => {
       );
     case 'vacations':
     case 'employee-vacations':
+    case 'admin-vacations':
       return (
         <VacationApproval
           onBack={() => setCurrentView('dashboard')}
