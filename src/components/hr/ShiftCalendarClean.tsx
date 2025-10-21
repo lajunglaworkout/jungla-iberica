@@ -29,6 +29,9 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
+  const [showQuickAssign, setShowQuickAssign] = useState(false);
+  const [quickAssignData, setQuickAssignData] = useState<{employeeId: number; date: Date} | null>(null);
+  const [availableShifts, setAvailableShifts] = useState<any[]>([]);
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
 
@@ -88,6 +91,61 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     }
   };
 
+  // Cargar turnos disponibles
+  const loadAvailableShifts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('is_active', true)
+        .order('start_time');
+
+      if (!error && data) {
+        setAvailableShifts(data);
+      }
+    } catch (error) {
+      console.error('Error cargando turnos:', error);
+    }
+  };
+
+  // Abrir modal de asignación rápida
+  const handleCellClick = (employeeId: number, date: Date) => {
+    const holiday = isHoliday(fmt(date));
+    if (holiday) {
+      alert('⚠️ No se pueden asignar turnos en días festivos');
+      return;
+    }
+    setQuickAssignData({ employeeId, date });
+    setShowQuickAssign(true);
+  };
+
+  // Asignar turno rápido
+  const handleQuickAssign = async (shiftId: number) => {
+    if (!quickAssignData) return;
+
+    try {
+      const { error } = await supabase
+        .from('employee_shifts')
+        .insert({
+          employee_id: quickAssignData.employeeId,
+          shift_id: shiftId,
+          date: fmt(quickAssignData.date)
+        });
+
+      if (!error) {
+        alert('✅ Turno asignado correctamente');
+        setShowQuickAssign(false);
+        setQuickAssignData(null);
+        loadAssignments();
+      } else {
+        alert('❌ Error al asignar turno');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('❌ Error al asignar turno');
+    }
+  };
+
   // Obtener semana actual
   const getWeekDates = () => {
     const start = new Date(selectedMonth);
@@ -103,6 +161,18 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const getEmployeeShifts = (employeeId: number, date: Date) => {
     const dateStr = fmt(date);
     return assignments.filter(a => a.employee_id === employeeId && a.date === dateStr);
+  };
+
+  // Obtener color según tipo de turno
+  const getShiftColor = (shiftName: string) => {
+    const name = shiftName?.toLowerCase() || '';
+    if (name.includes('mañana') || name.includes('morning')) return '#10b981'; // Verde
+    if (name.includes('tarde') || name.includes('afternoon')) return '#3b82f6'; // Azul
+    if (name.includes('noche') || name.includes('night')) return '#8b5cf6'; // Morado
+    if (name.includes('partido') || name.includes('split')) return '#f59e0b'; // Naranja
+    if (name.includes('completo') || name.includes('full')) return '#ec4899'; // Rosa
+    if (name.includes('apoyo') || name.includes('support')) return '#06b6d4'; // Cyan
+    return '#6b7280'; // Gris por defecto
   };
 
   // Limpiar TODO
@@ -135,6 +205,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   useEffect(() => {
     loadAssignments();
     loadEmployees();
+    loadAvailableShifts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
@@ -318,22 +389,42 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                   return (
                     <div 
                       key={dayIndex} 
+                      onClick={() => handleCellClick(employee.id, date)}
                       style={{ 
                         backgroundColor: holiday ? '#fef2f2' : 'white', 
                         padding: '8px',
-                        minHeight: '80px'
+                        minHeight: '80px',
+                        cursor: holiday ? 'not-allowed' : 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        if (!holiday) e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseOut={(e) => {
+                        if (!holiday) e.currentTarget.style.backgroundColor = 'white';
                       }}
                     >
                       {shifts.map((shift, idx) => (
                         <div 
                           key={idx}
                           style={{
-                            backgroundColor: '#10b981',
+                            backgroundColor: getShiftColor(shift.shift?.name || ''),
                             color: 'white',
                             padding: '8px',
                             borderRadius: '6px',
                             marginBottom: '4px',
-                            fontSize: '12px'
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.02)';
+                            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.15)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                           }}
                         >
                           <div style={{ fontWeight: '600' }}>{shift.shift?.name}</div>
@@ -439,6 +530,89 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
           <li>Última actualización: {new Date().toLocaleTimeString()}</li>
         </ul>
       </div>
+
+      {/* Modal de Asignación Rápida */}
+      {showQuickAssign && quickAssignData && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0,0,0,0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowQuickAssign(false)}
+        >
+          <div 
+            style={{ 
+              backgroundColor: 'white', 
+              borderRadius: '12px', 
+              padding: '24px', 
+              maxWidth: '500px', 
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>
+              ⚡ Asignación Rápida
+            </h3>
+            <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+              Fecha: {quickAssignData.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {availableShifts.map(shift => (
+                <button
+                  key={shift.id}
+                  onClick={() => handleQuickAssign(shift.id)}
+                  style={{
+                    padding: '16px',
+                    backgroundColor: getShiftColor(shift.name),
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'transform 0.2s',
+                    fontSize: '14px'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>{shift.name}</div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                    {shift.start_time} - {shift.end_time}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowQuickAssign(false)}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                padding: '12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
