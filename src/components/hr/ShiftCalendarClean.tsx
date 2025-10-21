@@ -36,6 +36,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const [filterShiftType, setFilterShiftType] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // Para navegar entre semanas
+  const [draggedAssignment, setDraggedAssignment] = useState<ShiftAssignment | null>(null);
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
 
@@ -177,6 +178,57 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   // Navegar semanas
   const navigateWeek = (direction: 'prev' | 'next') => {
     setWeekOffset(prev => direction === 'next' ? prev + 1 : prev - 1);
+  };
+
+  // Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, assignment: ShiftAssignment) => {
+    setDraggedAssignment(assignment);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, newDate: string) => {
+    e.preventDefault();
+    
+    if (!draggedAssignment) return;
+
+    // Verificar si es festivo
+    const holiday = isHoliday(newDate);
+    if (holiday) {
+      alert('⚠️ No se pueden mover turnos a días festivos');
+      setDraggedAssignment(null);
+      return;
+    }
+
+    // Verificar si es la misma fecha
+    if (draggedAssignment.date === newDate) {
+      setDraggedAssignment(null);
+      return;
+    }
+
+    try {
+      // Actualizar en Supabase
+      const { error } = await supabase
+        .from('employee_shifts')
+        .update({ date: newDate })
+        .eq('id', draggedAssignment.id);
+
+      if (!error) {
+        alert('✅ Turno movido correctamente');
+        loadAssignments();
+      } else {
+        alert('❌ Error al mover turno');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('❌ Error al mover turno');
+    } finally {
+      setDraggedAssignment(null);
+    }
   };
 
   // Obtener asignaciones de un empleado en una fecha
@@ -685,13 +737,16 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
             
             return (
               <div 
-                key={date} 
+                key={date}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, date)}
                 style={{ 
-                  backgroundColor: isHolidayDay ? '#fef2f2' : 'white', 
+                  backgroundColor: isHolidayDay ? '#fef2f2' : (draggedAssignment ? '#f0fdf4' : 'white'), 
                   minHeight: '100px', 
                   padding: '5px', 
                   border: isHolidayDay ? '2px solid #ef4444' : '1px solid #e5e7eb',
-                  position: 'relative'
+                  position: 'relative',
+                  transition: 'background-color 0.2s'
                 }}
               >
                 <div style={{ fontWeight: 'bold', marginBottom: '5px', color: isHolidayDay ? '#dc2626' : '#111827' }}>
@@ -715,21 +770,30 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                 )}
                 
                 {assignments.map((assignment, idx) => (
-                  <div key={idx} style={{
-                    fontSize: '10px',
-                    padding: '6px',
-                    marginBottom: '4px',
-                    backgroundColor: getShiftColor(assignment.shift?.name || ''),
-                    color: 'white',
-                    borderRadius: '4px',
-                    opacity: isHolidayDay ? 0.6 : 1,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  <div 
+                    key={idx}
+                    draggable={!isHolidayDay}
+                    onDragStart={(e) => handleDragStart(e, assignment)}
+                    style={{
+                      fontSize: '10px',
+                      padding: '6px',
+                      marginBottom: '4px',
+                      backgroundColor: getShiftColor(assignment.shift?.name || ''),
+                      color: 'white',
+                      borderRadius: '4px',
+                      opacity: isHolidayDay ? 0.6 : (draggedAssignment?.id === assignment.id ? 0.5 : 1),
+                      cursor: isHolidayDay ? 'not-allowed' : 'grab',
+                      transition: 'transform 0.2s, opacity 0.2s',
+                      border: draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isHolidayDay) e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
-                    <div style={{ fontWeight: '600', marginBottom: '2px' }}>{assignment.shift?.name}</div>
+                    <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                      🔄 {assignment.shift?.name}
+                    </div>
                     <div style={{ fontSize: '9px', opacity: 0.9 }}>{assignment.employee?.name}</div>
                     <div style={{ fontSize: '9px', opacity: 0.9 }}>
                       {assignment.shift?.start_time} - {assignment.shift?.end_time}
