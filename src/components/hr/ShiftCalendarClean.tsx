@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Calendar as CalendarIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, RefreshCw, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Holiday } from '../../services/holidayService';
 
 interface ShiftAssignment {
@@ -123,13 +123,14 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const calendarDays = generateCalendarDays();
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CalendarIcon size={20} /> Calendario de Turnos - VERSIÓN LIMPIA
-        </h2>
-
-        <div style={{ display: 'flex', gap: 8 }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', padding: '0' }}>
+      {/* Header estilo Factorial */}
+      <div style={{ backgroundColor: 'white', padding: '20px 24px', borderBottom: '1px solid #e5e7eb', marginBottom: '0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0, color: '#111827' }}>
+            📅 Turnos
+          </h2>
+          <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={loadAssignments}
             style={{
@@ -157,15 +158,27 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
           >
             <Trash2 size={16} /> Limpiar TODO
           </button>
+          </div>
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() - 1); setSelectedMonth(m); }}>← Mes Anterior</button>
-        <span style={{ margin: '0 20px', fontWeight: 'bold' }}>
-          {selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+      {/* Navegación de mes estilo Factorial */}
+      <div style={{ backgroundColor: 'white', padding: '16px 24px', marginBottom: '0', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
+        <button 
+          onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() - 1); setSelectedMonth(m); }}
+          style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827', minWidth: '200px', textAlign: 'center' }}>
+          {selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}
         </span>
-        <button onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() + 1); setSelectedMonth(m); }}>Mes Siguiente →</button>
+        <button 
+          onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() + 1); setSelectedMonth(m); }}
+          style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          <ChevronRight size={20} />
+        </button>
       </div>
 
       {assignments.length === 0 ? (
