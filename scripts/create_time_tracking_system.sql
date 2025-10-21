@@ -77,12 +77,23 @@ $$ LANGUAGE plpgsql;
 -- =====================================================
 CREATE OR REPLACE FUNCTION update_total_hours()
 RETURNS TRIGGER AS $$
+DECLARE
+  break_minutes INTEGER := 0;
 BEGIN
+  -- Calcular duración del break si existe
+  IF NEW.break_start IS NOT NULL AND NEW.break_end IS NOT NULL THEN
+    break_minutes := EXTRACT(EPOCH FROM (NEW.break_end - NEW.break_start)) / 60;
+  END IF;
+  
+  -- Actualizar break_duration
+  NEW.break_duration := break_minutes;
+  
+  -- Calcular horas totales si hay clock_out
   IF NEW.clock_out IS NOT NULL AND NEW.status = 'completed' THEN
     NEW.total_hours := calculate_work_hours(
       NEW.clock_in,
       NEW.clock_out,
-      NEW.break_duration
+      break_minutes
     );
   END IF;
   
