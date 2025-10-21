@@ -35,6 +35,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const [filterEmployee, setFilterEmployee] = useState<number | null>(null);
   const [filterShiftType, setFilterShiftType] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0); // Para navegar entre semanas
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
 
@@ -149,15 +150,33 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     }
   };
 
-  // Obtener semana actual
+  // Obtener semana actual (con navegación)
   const getWeekDates = () => {
-    const start = new Date(selectedMonth);
-    start.setDate(start.getDate() - start.getDay() + 1); // Lunes
+    // Usar la fecha actual si estamos en el mes actual, sino el primer día del mes
+    const today = new Date();
+    const isCurrentMonth = selectedMonth.getMonth() === today.getMonth() && 
+                          selectedMonth.getFullYear() === today.getFullYear();
+    
+    const start = isCurrentMonth ? new Date(today) : new Date(selectedMonth);
+    
+    // Ajustar al lunes de esa semana
+    const dayOfWeek = start.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Si es domingo, retroceder 6 días
+    start.setDate(start.getDate() + diff);
+    
+    // Aplicar offset de semanas
+    start.setDate(start.getDate() + (weekOffset * 7));
+    
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(start);
       date.setDate(start.getDate() + i);
       return date;
     });
+  };
+
+  // Navegar semanas
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setWeekOffset(prev => direction === 'next' ? prev + 1 : prev - 1);
   };
 
   // Obtener asignaciones de un empleado en una fecha
@@ -486,19 +505,43 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
         )}
       </div>
 
-      {/* Navegación de mes estilo Factorial */}
+      {/* Navegación estilo Factorial */}
       <div style={{ backgroundColor: 'white', padding: '16px 24px', marginBottom: '0', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
         <button 
-          onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() - 1); setSelectedMonth(m); }}
+          onClick={() => {
+            if (viewMode === 'week') {
+              navigateWeek('prev');
+            } else {
+              const m = new Date(selectedMonth);
+              m.setMonth(m.getMonth() - 1);
+              setSelectedMonth(m);
+              setWeekOffset(0);
+            }
+          }}
           style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
         >
           <ChevronLeft size={20} />
         </button>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827', minWidth: '200px', textAlign: 'center' }}>
-          {selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}
+        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827', minWidth: '250px', textAlign: 'center' }}>
+          {viewMode === 'week' ? (
+            <>
+              Semana del {getWeekDates()[0].getDate()} al {getWeekDates()[6].getDate()} de {selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+            </>
+          ) : (
+            selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
+          )}
         </span>
         <button 
-          onClick={() => { const m = new Date(selectedMonth); m.setMonth(m.getMonth() + 1); setSelectedMonth(m); }}
+          onClick={() => {
+            if (viewMode === 'week') {
+              navigateWeek('next');
+            } else {
+              const m = new Date(selectedMonth);
+              m.setMonth(m.getMonth() + 1);
+              setSelectedMonth(m);
+              setWeekOffset(0);
+            }
+          }}
           style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
         >
           <ChevronRight size={20} />
@@ -748,30 +791,39 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
             </p>
 
             <div style={{ display: 'grid', gap: '12px' }}>
-              {availableShifts.map(shift => (
-                <button
-                  key={shift.id}
-                  onClick={() => handleQuickAssign(shift.id)}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: getShiftColor(shift.name),
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'transform 0.2s',
-                    fontSize: '14px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <div style={{ fontWeight: '600', marginBottom: '4px' }}>{shift.name}</div>
-                  <div style={{ fontSize: '13px', opacity: 0.9 }}>
-                    {shift.start_time} - {shift.end_time}
-                  </div>
-                </button>
-              ))}
+              {availableShifts.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                  <p style={{ margin: 0, color: '#92400e' }}>
+                    ⚠️ No hay turnos disponibles.<br/>
+                    <small>Crea turnos en la pestaña "Gestión de Turnos"</small>
+                  </p>
+                </div>
+              ) : (
+                availableShifts.map(shift => (
+                  <button
+                    key={shift.id}
+                    onClick={() => handleQuickAssign(shift.id)}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: getShiftColor(shift.name),
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'transform 0.2s',
+                      fontSize: '14px'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>{shift.name}</div>
+                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                      {shift.start_time} - {shift.end_time}
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
 
             <button
