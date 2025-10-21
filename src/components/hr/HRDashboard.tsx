@@ -303,10 +303,11 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
   // Seleccionar tarjetas según el rol
   const isManager = userRole?.includes('manager') || userRole?.includes('encargado') || userRole === 'center_manager';
   const isCEO = userRole === 'superadmin' || userRole === 'ceo';
+  const isAdmin = userRole === 'admin' || userRole === 'hr_admin';
   
   // Seleccionar tarjetas según el rol del usuario
-  const dashboardCards = isCEO
-    ? [...dailyOperationsCards, ...hrCards, ...adminCards] // CEO ve TODO
+  const dashboardCards = isCEO || isAdmin
+    ? adminCards // CEO/Admin solo ven tarjetas de gestión
     : isManager 
       ? managerCards 
       : isRegularEmployee 
