@@ -643,7 +643,7 @@ const HRManagementSystem: React.FC = () => {
     case 'time-tracking':
       return <TimeTrackingDashboard />;
     case 'timeclock':
-      return <TimeclockDashboard />;
+      return <TimeclockDashboard onBack={() => setCurrentView('dashboard')} />;
     case 'mobile-timeclock':
       return <MobileTimeClock />;
     case 'daily-operations':
