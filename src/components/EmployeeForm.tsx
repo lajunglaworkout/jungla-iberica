@@ -63,8 +63,21 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     boxSizing: 'border-box'
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
+    
+    console.log('🔍 Validando campos:', {
+      nombre: formData.nombre,
+      apellidos: formData.apellidos,
+      email: formData.email,
+      telefono: formData.telefono,
+      dni: formData.dni,
+      center_id: formData.center_id,
+      departamento: formData.departamento,
+      cargo: formData.cargo,
+      numero_cuenta: formData.numero_cuenta
+    });
+    
     if (!formData.nombre?.trim()) newErrors.nombre = 'El nombre es obligatorio';
     if (!formData.apellidos?.trim()) newErrors.apellidos = 'Los apellidos son obligatorios';
     if (!formData.email?.trim()) newErrors.email = 'El email es obligatorio';
@@ -86,7 +99,15 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    
+    console.log('📊 Resultado validación:', {
+      isValid,
+      errorsCount: Object.keys(newErrors).length,
+      errors: newErrors
+    });
+    
+    return { isValid, errors: newErrors };
   };
 
   const handleSave = async () => {
@@ -94,12 +115,13 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     console.log('📝 Datos del formulario:', formData);
     console.log('👤 Empleado existente:', employee);
     
-    const isValid = validateForm();
-    console.log('✅ Validación:', isValid ? 'PASÓ' : 'FALLÓ');
-    console.log('❌ Errores:', errors);
+    const validation = validateForm();
+    console.log('✅ Validación:', validation.isValid ? 'PASÓ' : 'FALLÓ');
+    console.log('❌ Errores encontrados:', validation.errors);
     
-    if (!isValid) {
+    if (!validation.isValid) {
       console.log('⚠️ Formulario no válido, abortando...');
+      alert('⚠️ Por favor completa todos los campos obligatorios:\n' + Object.values(validation.errors).join('\n'));
       return;
     }
 
