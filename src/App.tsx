@@ -176,16 +176,6 @@ const NavigationDashboard: React.FC = () => {
         isDefault: true
       },
       {
-        id: 'checklist',
-        title: 'Checklist',
-        description: 'Tareas diarias del centro',
-        icon: CheckCircle,
-        color: '#059669',
-        component: null,
-        available: true,
-        onClick: () => setShowChecklist(true)
-      },
-      {
         id: 'meetings',
         title: 'Reuniones',
         description: 'Gestión de reuniones y calendario',
