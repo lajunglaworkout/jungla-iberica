@@ -83,17 +83,21 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   // Cargar empleados
   const loadEmployees = async () => {
     try {
+      console.log('🔄 Cargando empleados...');
       const { data, error } = await supabase
         .from('employees')
         .select('id, nombre, apellidos')
-        .eq('activo', true)
+        .eq('is_active', true)
         .order('nombre');
 
-      if (!error && data) {
+      if (error) {
+        console.error('❌ Error cargando empleados:', error);
+      } else if (data) {
+        console.log('✅ Empleados cargados:', data.length);
         setEmployees(data);
       }
     } catch (error) {
-      console.error('Error cargando empleados:', error);
+      console.error('❌ Error:', error);
     }
   };
 
