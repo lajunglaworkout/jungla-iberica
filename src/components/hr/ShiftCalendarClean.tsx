@@ -656,11 +656,11 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                     fontSize: '14px',
                     fontWeight: '600'
                   }}>
-                    {employee.nombre.charAt(0)}{employee.apellidos.charAt(0)}
+                    {(employee.nombre || 'N').charAt(0)}{(employee.apellidos || 'A').charAt(0)}
                   </div>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                      {employee.nombre} {employee.apellidos}
+                      {employee.nombre || 'Sin nombre'} {employee.apellidos || ''}
                     </div>
                   </div>
                 </div>
