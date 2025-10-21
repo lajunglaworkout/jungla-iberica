@@ -89,7 +89,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
       
       let query = supabase
         .from('employees')
-        .select('id, nombre, apellidos, center_id')
+        .select('id, nombre, apellidos, name, center_id')
         .eq('is_active', true)
         .order('nombre');
       
