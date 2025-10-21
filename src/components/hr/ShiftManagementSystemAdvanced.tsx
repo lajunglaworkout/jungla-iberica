@@ -288,7 +288,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
         {/* Contenido de pestañas */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
           {activeTab === 'shifts' && <ShiftManager shifts={shifts} centers={centers} selectedCenter={selectedCenter} onRefresh={loadData} />}
-          {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} holidays={holidays} />}
+          {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} holidays={holidays} onSaveSuccess={() => setActiveTab('calendar')} />}
           {activeTab === 'substitutions' && <SubstitutionManager shifts={shifts} employees={employees} />}
           {activeTab === 'calendar' && <ShiftCalendarClean holidays={holidays} />}
           {activeTab === 'holidays' && <HolidayList holidays={holidays} selectedCenter={selectedCenter} onRefresh={loadData} />}
@@ -542,7 +542,8 @@ const ShiftAssignments: React.FC<{
   shifts: Shift[];
   employees: Employee[];
   holidays?: Holiday[];
-}> = ({ shifts, employees, holidays = [] }) => {
+  onSaveSuccess?: () => void;
+}> = ({ shifts, employees, holidays = [], onSaveSuccess }) => {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -608,11 +609,13 @@ const ShiftAssignments: React.FC<{
 
       if (error) throw error;
 
-      alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente para ${dates.length} días`);
+      alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente para ${dates.length} días. Redirigiendo al calendario...`);
       setPendingAssignments({});
       
-      // Recargar la página para actualizar el calendario
-      window.location.reload();
+      // Cambiar a la pestaña del calendario
+      if (onSaveSuccess) {
+        setTimeout(() => onSaveSuccess(), 500);
+      }
     } catch (error: any) {
       console.error('❌ Error guardando asignaciones:', error);
       alert(`❌ Error: ${error.message}`);
