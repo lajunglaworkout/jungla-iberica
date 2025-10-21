@@ -50,8 +50,9 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     console.log('🔄 Cargando SOLO desde base de datos...');
     setLoading(true);
     try {
-      const startDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
-      const endDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+      // Cargar un rango más amplio para incluir semanas completas
+      const startDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 15);
+      const endDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 2, 15);
 
       const { data, error } = await supabase
         .from('employee_shifts')
