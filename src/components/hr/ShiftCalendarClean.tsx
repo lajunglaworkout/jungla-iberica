@@ -235,7 +235,13 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   // Obtener asignaciones de un empleado en una fecha
   const getEmployeeShifts = (employeeId: number, date: Date) => {
     const dateStr = fmt(date);
-    return assignments.filter(a => a.employee_id === employeeId && a.date === dateStr);
+    const filtered = assignments.filter(a => a.employee_id === employeeId && a.date === dateStr);
+    
+    if (filtered.length > 0) {
+      console.log(`📅 ${dateStr} - Empleado ${employeeId}: ${filtered.length} turnos`, filtered);
+    }
+    
+    return filtered;
   };
 
   // Obtener color según tipo de turno
@@ -577,9 +583,18 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
         </button>
         <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827', minWidth: '250px', textAlign: 'center' }}>
           {viewMode === 'week' ? (
-            <>
-              Semana del {getWeekDates()[0].getDate()} al {getWeekDates()[6].getDate()} de {selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-            </>
+            (() => {
+              const weekDates = getWeekDates();
+              const firstDate = weekDates[0];
+              const lastDate = weekDates[6];
+              const sameMonth = firstDate.getMonth() === lastDate.getMonth();
+              
+              if (sameMonth) {
+                return `Semana del ${firstDate.getDate()} al ${lastDate.getDate()} de ${firstDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
+              } else {
+                return `Semana del ${firstDate.getDate()} de ${firstDate.toLocaleDateString('es-ES', { month: 'long' })} al ${lastDate.getDate()} de ${lastDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
+              }
+            })()
           ) : (
             selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
           )}
@@ -785,13 +800,48 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                       opacity: isHolidayDay ? 0.6 : (draggedAssignment?.id === assignment.id ? 0.5 : 1),
                       cursor: isHolidayDay ? 'not-allowed' : 'grab',
                       transition: 'transform 0.2s, opacity 0.2s',
-                      border: draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none'
+                      border: draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none',
+                      position: 'relative'
                     }}
                     onMouseOver={(e) => {
                       if (!isHolidayDay) e.currentTarget.style.transform = 'scale(1.02)';
                     }}
                     onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`¿Eliminar turno de ${assignment.employee?.name}?`)) {
+                          try {
+                            const { error } = await supabase
+                              .from('employee_shifts')
+                              .delete()
+                              .eq('id', assignment.id);
+                            
+                            if (error) throw error;
+                            alert('✅ Turno eliminado');
+                            loadAssignments();
+                          } catch (error: any) {
+                            alert(`❌ Error: ${error.message}`);
+                          }
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '2px',
+                        right: '2px',
+                        background: 'rgba(0,0,0,0.3)',
+                        border: 'none',
+                        borderRadius: '3px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        fontSize: '10px',
+                        lineHeight: '1'
+                      }}
+                    >
+                      ✕
+                    </button>
                     <div style={{ fontWeight: '600', marginBottom: '2px' }}>
                       🔄 {assignment.shift?.name}
                     </div>
