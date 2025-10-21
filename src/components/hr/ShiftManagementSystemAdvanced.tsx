@@ -1,7 +1,7 @@
 // src/components/hr/ShiftManagementSystemAdvanced.tsx - Sistema Completo de Gestión de Turnos
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Clock, Calendar, Users, RefreshCw, Plus, Edit, Trash2, AlertCircle, ChevronLeft, ChevronRight, X, Save, MapPin, ArrowLeftRight
+  Clock, Calendar, Users, RefreshCw, Plus, Edit, Trash2, AlertCircle, ChevronLeft, ChevronRight, X, Save, MapPin, ArrowLeftRight, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
@@ -58,7 +58,11 @@ interface ShiftAssignment {
 }
 
 // ============ COMPONENTE PRINCIPAL ============
-const ShiftManagementSystemAdvanced: React.FC = () => {
+interface ShiftManagementSystemAdvancedProps {
+  onBack?: () => void;
+}
+
+const ShiftManagementSystemAdvanced: React.FC<ShiftManagementSystemAdvancedProps> = ({ onBack }) => {
   const { employee, userRole } = useSession();
   const { centers } = useData();
   
@@ -187,6 +191,39 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header con selector de centro */}
         <div style={{ marginBottom: '32px' }}>
+          {/* Botón Volver */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                backgroundColor: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '16px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                e.currentTarget.style.borderColor = '#9ca3af';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.borderColor = '#d1d5db';
+              }}
+            >
+              <ArrowLeft size={18} />
+              Volver a RRHH
+            </button>
+          )}
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
               <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
