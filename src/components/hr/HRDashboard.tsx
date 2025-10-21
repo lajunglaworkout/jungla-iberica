@@ -224,15 +224,15 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       count: '12 pendientes',
       status: 'active'
     },
-    // 6. Documentos (POR DESARROLLAR)
+    // 6. Documentos (COMPLETO)
     {
       id: 'documents',
       title: '6. Documentos',
       icon: <FileText size={32} />,
-      description: 'Gestión documental y contratos',
+      description: 'Contratos, nóminas, certificados y bajas médicas',
       color: '#84cc16',
-      count: 'Próximamente',
-      status: 'coming-soon'
+      count: 'Gestionar',
+      status: 'active'
     },
     // 7. Reportes y Analíticas (POR DESARROLLAR)
     {
