@@ -104,6 +104,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
         console.error('❌ Error cargando empleados:', error);
       } else if (data) {
         console.log('✅ Empleados cargados:', data.length, 'del centro', selectedCenter);
+        console.log('📋 Datos de empleados:', data);
         setEmployees(data);
       }
     } catch (error) {
