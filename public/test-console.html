@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test de Datos - Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section {
+      background: #252526;
+      border: 1px solid #3e3e42;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      color: #4ec9b0;
+      margin-top: 0;
+    }
+    .success { color: #4ec9b0; }
+    .error { color: #f48771; }
+    .info { color: #569cd6; }
+    .data-item {
+      padding: 8px;
+      margin: 4px 0;
+      background: #1e1e1e;
+      border-left: 3px solid #4ec9b0;
+      border-radius: 4px;
+    }
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #1177bb;
+    }
+    #output {
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Verificación de Datos - Supabase</h1>
+  
+  <div class="section">
+    <button onclick="testAllData()">🚀 Ejecutar Todas las Pruebas</button>
+    <button onclick="testEmployees()">👥 Solo Empleados</button>
+    <button onclick="testShifts()">⏰ Solo Turnos</button>
+    <button onclick="testAssignments()">📋 Solo Asignaciones</button>
+    <button onclick="clearOutput()">🗑️ Limpiar</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    // Verificar que la librería de Supabase esté cargada
+    if (typeof supabase === 'undefined') {
+      document.getElementById('output').innerHTML = '<div class="error">❌ Error: Librería de Supabase no cargada. Recarga la página.</div>';
+    }
+
+    const supabaseUrl = 'https://vbvhxqxpfxmhbxhvqgxl.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidmh4cXhwZnhtaGJ4aHZxZ3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkyNjQ0NzgsImV4cCI6MjA0NDg0MDQ3OH0.ygDWcQrNJWQrjCg_zNnCzxFRXKWHqGFqCPxjWgXfQhM';
+    
+    const { createClient } = supabase;
+    
+    // Configurar cliente con opciones adicionales
+    const client = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        headers: {
+          'apikey': supabaseKey
+        }
+      }
+    });
+
+    function log(message, type = 'info') {
+      const output = document.getElementById('output');
+      const div = document.createElement('div');
+      div.className = `section ${type}`;
+      div.innerHTML = message;
+      output.appendChild(div);
+    }
+
+    function clearOutput() {
+      document.getElementById('output').innerHTML = '';
+    }
+
+    async function testEmployees() {
+      log('<h2>1️⃣ EMPLEADOS</h2>', 'info');
+      
+      const { data, error } = await client
+        .from('employees')
+        .select('id, nombre, apellidos, activo, center_id')
+        .eq('activo', true);
+      
+      if (error) {
+        log(`<span class="error">❌ Error: ${error.message}</span>`, 'error');
+      } else {
+        log(`<span class="success">✅ Total empleados activos: ${data.length}</span>`, 'success');
+        data.slice(0, 10).forEach(emp => {
+          log(`<div class="data-item">👤 ${emp.nombre} ${emp.apellidos} (ID: ${emp.id}, Centro: ${emp.center_id})</div>`);
+        });
+        if (data.length > 10) log(`<span class="info">... y ${data.length - 10} más</span>`);
+      }
+    }
+
+    async function testShifts() {
+      log('<h2>2️⃣ TURNOS</h2>', 'info');
+      
+      const { data, error } = await client
+        .from('shifts')
+        .select('id, name, start_time, end_time, is_active, center_id')
+        .eq('is_active', true);
+      
+      if (error) {
+        log(`<span class="error">❌ Error: ${error.message}</span>`, 'error');
+      } else {
+        log(`<span class="success">✅ Total turnos activos: ${data.length}</span>`, 'success');
+        data.forEach(shift => {
+          log(`<div class="data-item">⏰ ${shift.name}: ${shift.start_time} - ${shift.end_time} (ID: ${shift.id}, Centro: ${shift.center_id})</div>`);
+        });
+      }
+    }
+
+    async function testAssignments() {
+      log('<h2>3️⃣ ASIGNACIONES DE TURNOS</h2>', 'info');
+      
+      const { data, error } = await client
+        .from('employee_shifts')
+        .select(`
+          id,
+          date,
+          employee_id,
+          shift_id
+        `)
+        .order('date', { ascending: false })
+        .limit(20);
+      
+      if (error) {
+        log(`<span class="error">❌ Error: ${error.message}</span>`, 'error');
+      } else {
+        log(`<span class="success">✅ Total asignaciones (últimas 20): ${data.length}</span>`, 'success');
+        
+        // Agrupar por fecha
+        const byDate = {};
+        data.forEach(assign => {
+          if (!byDate[assign.date]) byDate[assign.date] = [];
+          byDate[assign.date].push(assign);
+        });
+        
+        Object.keys(byDate).sort().reverse().forEach(date => {
+          log(`<div class="data-item">📅 ${date}: ${byDate[date].length} asignaciones</div>`);
+        });
+      }
+    }
+
+    async function testCenters() {
+      log('<h2>4️⃣ CENTROS</h2>', 'info');
+      
+      const { data, error } = await client
+        .from('centers')
+        .select('id, name');
+      
+      if (error) {
+        log(`<span class="error">❌ Error: ${error.message}</span>`, 'error');
+      } else {
+        log(`<span class="success">✅ Total centros: ${data.length}</span>`, 'success');
+        data.forEach(center => {
+          log(`<div class="data-item">🏢 ${center.name} (ID: ${center.id})</div>`);
+        });
+      }
+    }
+
+    async function testHolidays() {
+      log('<h2>5️⃣ FESTIVOS (2025)</h2>', 'info');
+      
+      const { data, error } = await client
+        .from('holidays')
+        .select('id, name, date, type')
+        .gte('date', '2025-01-01')
+        .lte('date', '2025-12-31')
+        .order('date');
+      
+      if (error) {
+        log(`<span class="error">❌ Error: ${error.message}</span>`, 'error');
+      } else {
+        log(`<span class="success">✅ Total festivos 2025: ${data.length}</span>`, 'success');
+        data.slice(0, 10).forEach(holiday => {
+          log(`<div class="data-item">🎉 ${holiday.date}: ${holiday.name} (${holiday.type})</div>`);
+        });
+        if (data.length > 10) log(`<span class="info">... y ${data.length - 10} más</span>`);
+      }
+    }
+
+    async function testStats() {
+      log('<h2>6️⃣ ESTADÍSTICAS</h2>', 'info');
+      
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      
+      const { data, error } = await client
+        .from('employee_shifts')
+        .select('id', { count: 'exact', head: true })
+        .gte('date', `${currentMonth}-01`)
+        .lte('date', `${currentMonth}-31`);
+      
+      if (!error) {
+        log(`<div class="data-item">📊 Asignaciones mes actual (${currentMonth}): ${data?.length || 0}</div>`);
+      }
+
+      // Total general
+      const { data: total } = await client
+        .from('employee_shifts')
+        .select('id', { count: 'exact', head: true });
+      
+      log(`<div class="data-item">📊 Total asignaciones en BD: ${total?.length || 0}</div>`);
+    }
+
+    async function testAllData() {
+      clearOutput();
+      log('<h1>🔍 VERIFICACIÓN COMPLETA DE DATOS</h1>', 'info');
+      log('<p>Conectando a Supabase...</p>');
+      
+      await testEmployees();
+      await testShifts();
+      await testAssignments();
+      await testCenters();
+      await testHolidays();
+      await testStats();
+      
+      log('<h2 class="success">✅ Verificación completada</h2>', 'success');
+    }
+
+    // Auto-ejecutar al cargar
+    window.onload = () => {
+      log('<p class="info">✨ Página de pruebas cargada. Click en "Ejecutar Todas las Pruebas" para comenzar.</p>');
+    };
+  </script>
+</body>
+</html>
