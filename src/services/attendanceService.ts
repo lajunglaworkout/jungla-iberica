@@ -234,10 +234,137 @@ export const processAttendanceForDateRange = async (
 };
 
 /**
- * Procesa incidencias del día actual
+ * Procesa incidencias del día actual y registra en el log
  */
 export const processTodayAttendance = async (centerId?: number): Promise<number> => {
   const today = new Date().toISOString().split('T')[0];
   const incidents = await detectDailyAttendanceIncidents(today, centerId);
+  
+  // Registrar en el log de procesamiento
+  await logAttendanceProcessing(today, incidents, centerId);
+  
   return incidents.length;
+};
+
+/**
+ * Registra el procesamiento en el log
+ */
+const logAttendanceProcessing = async (
+  date: string,
+  incidents: AttendanceIncident[],
+  centerId?: number
+): Promise<void> => {
+  try {
+    const lateCount = incidents.filter(i => i.type === 'late').length;
+    const absenceCount = incidents.filter(i => i.type === 'absence').length;
+    const earlyDepartureCount = incidents.filter(i => i.type === 'early_departure').length;
+
+    // Verificar si ya existe un registro para esta fecha
+    const { data: existing } = await supabase
+      .from('attendance_processing_log')
+      .select('id')
+      .eq('process_date', date)
+      .maybeSingle();
+
+    if (existing) {
+      // Actualizar registro existente
+      await supabase
+        .from('attendance_processing_log')
+        .update({
+          incidents_detected: incidents.length,
+          late_count: lateCount,
+          absence_count: absenceCount,
+          early_departure_count: earlyDepartureCount,
+          processed_at: new Date().toISOString(),
+          status: 'completed'
+        })
+        .eq('id', existing.id);
+    } else {
+      // Crear nuevo registro
+      await supabase
+        .from('attendance_processing_log')
+        .insert({
+          process_date: date,
+          center_id: centerId || null,
+          incidents_detected: incidents.length,
+          late_count: lateCount,
+          absence_count: absenceCount,
+          early_departure_count: earlyDepartureCount,
+          status: 'completed'
+        });
+    }
+  } catch (error) {
+    console.error('Error registrando procesamiento:', error);
+  }
+};
+
+/**
+ * Obtiene el historial de procesamientos
+ */
+export const getProcessingLog = async (
+  startDate?: string,
+  endDate?: string,
+  centerId?: number
+): Promise<any[]> => {
+  try {
+    let query = supabase
+      .from('attendance_processing_log')
+      .select('*')
+      .order('process_date', { ascending: false });
+
+    if (startDate) {
+      query = query.gte('process_date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('process_date', endDate);
+    }
+    if (centerId) {
+      query = query.eq('center_id', centerId);
+    }
+
+    const { data } = await query;
+    return data || [];
+  } catch (error) {
+    console.error('Error obteniendo log de procesamiento:', error);
+    return [];
+  }
+};
+
+/**
+ * Verifica si ya se procesó hoy
+ */
+export const wasProcessedToday = async (): Promise<boolean> => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    const { data } = await supabase
+      .from('attendance_processing_log')
+      .select('id')
+      .eq('process_date', today)
+      .eq('status', 'completed')
+      .maybeSingle();
+
+    return !!data;
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
+ * Auto-procesamiento: Ejecuta automáticamente si no se ha procesado hoy
+ * Se puede llamar al cargar el módulo de asistencia
+ */
+export const autoProcessIfNeeded = async (): Promise<{ processed: boolean; count: number }> => {
+  const alreadyProcessed = await wasProcessedToday();
+  
+  if (alreadyProcessed) {
+    console.log('✅ Ya se procesó la asistencia hoy');
+    return { processed: false, count: 0 };
+  }
+
+  console.log('🤖 Ejecutando auto-procesamiento de asistencia...');
+  const count = await processTodayAttendance();
+  console.log(`✅ Auto-procesamiento completado: ${count} incidencias detectadas`);
+  
+  return { processed: true, count };
 };
