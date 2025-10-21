@@ -175,6 +175,15 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
   // Tarjetas adicionales para encargados y roles superiores
   const adminCards: DashboardCard[] = [
     {
+      id: 'hr-reports',
+      title: 'Reportes y Analíticas',
+      icon: <BarChart size={32} />,
+      description: 'Dashboard ejecutivo con métricas clave de RRHH',
+      color: '#8b5cf6',
+      count: 'Dashboard',
+      status: 'active'
+    },
+    {
       id: 'employees',
       title: 'Gestión de Empleados',
       icon: <Users size={32} />,
