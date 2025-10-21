@@ -21,9 +21,10 @@ interface Employee {
 
 interface ShiftCalendarCleanProps {
   holidays?: Holiday[];
+  selectedCenter?: number | null;
 }
 
-const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }) => {
+const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], selectedCenter = null }) => {
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,17 +85,25 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   // Cargar empleados
   const loadEmployees = async () => {
     try {
-      console.log('🔄 Cargando empleados...');
-      const { data, error } = await supabase
+      console.log('🔄 Cargando empleados del centro:', selectedCenter);
+      
+      let query = supabase
         .from('employees')
-        .select('id, nombre, apellidos')
+        .select('id, nombre, apellidos, center_id')
         .eq('is_active', true)
         .order('nombre');
+      
+      // Filtrar por centro si está seleccionado
+      if (selectedCenter) {
+        query = query.eq('center_id', selectedCenter);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ Error cargando empleados:', error);
       } else if (data) {
-        console.log('✅ Empleados cargados:', data.length);
+        console.log('✅ Empleados cargados:', data.length, 'del centro', selectedCenter);
         setEmployees(data);
       }
     } catch (error) {
@@ -382,7 +391,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     loadEmployees();
     loadAvailableShifts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedCenter]);
 
   // Generar días del mes
   const generateCalendarDays = () => {
