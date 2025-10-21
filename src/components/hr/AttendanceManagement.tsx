@@ -43,6 +43,8 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
   const [processingLog, setProcessingLog] = useState<any[]>([]);
   const [showLog, setShowLog] = useState(false);
   const [autoProcessed, setAutoProcessed] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [showJustifyModal, setShowJustifyModal] = useState(false);
   
   const [formData, setFormData] = useState<AttendanceRecord>({
     employee_id: 0,
@@ -206,6 +208,35 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
     }
   };
 
+  const handleJustify = (record: AttendanceRecord) => {
+    setEditingRecord(record);
+    setShowJustifyModal(true);
+  };
+
+  const handleSaveJustification = async () => {
+    if (!editingRecord || !editingRecord.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('attendance_records')
+        .update({
+          reason: editingRecord.reason,
+          notes: editingRecord.notes,
+          type: editingRecord.type
+        })
+        .eq('id', editingRecord.id);
+
+      if (error) throw error;
+
+      alert('✅ Justificación guardada correctamente');
+      setShowJustifyModal(false);
+      setEditingRecord(null);
+      loadRecords();
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
+    }
+  };
+
   const handleAutoDetect = async () => {
     if (!confirm('¿Procesar incidencias automáticamente desde los fichajes de hoy?')) return;
 
@@ -256,6 +287,166 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
     sickLeave: filteredRecords.filter(r => r.type === 'sick_leave').length,
     absence: filteredRecords.filter(r => r.type === 'absence').length
   };
+
+  // Modal de justificación
+  if (showJustifyModal && editingRecord) {
+    return (
+      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+          <button 
+            onClick={() => {
+              setShowJustifyModal(false);
+              setEditingRecord(null);
+            }} 
+            style={{ 
+              padding: '8px 16px', 
+              backgroundColor: '#f3f4f6', 
+              border: 'none', 
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <ArrowLeft size={16} /> Volver
+          </button>
+          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
+            ✏️ Justificar/Editar Incidencia
+          </h1>
+        </div>
+
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          {/* Info del empleado */}
+          <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+            <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+              {editingRecord.employee_name}
+            </div>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              📅 {new Date(editingRecord.date).toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+              {editingRecord.center_name && ` • ${editingRecord.center_name}`}
+            </div>
+          </div>
+
+          {/* Tipo de incidencia */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+              Tipo de incidencia *
+            </label>
+            <select
+              value={editingRecord.type}
+              onChange={(e) => setEditingRecord({ ...editingRecord, type: e.target.value as any })}
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            >
+              <option value="late">⏰ Retraso</option>
+              <option value="sick_leave">🤒 Baja médica</option>
+              <option value="absence">❌ Ausencia injustificada</option>
+              <option value="personal">👤 Asunto personal</option>
+              <option value="early_departure">🚪 Salida temprana</option>
+              <option value="other">📋 Otro</option>
+            </select>
+          </div>
+
+          {/* Motivo */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+              Motivo *
+            </label>
+            <input
+              type="text"
+              value={editingRecord.reason}
+              onChange={(e) => setEditingRecord({ ...editingRecord, reason: e.target.value })}
+              placeholder="Ej: Cita médica, Tráfico, etc."
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          {/* Justificación/Notas */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+              Justificación / Notas de RRHH
+            </label>
+            <textarea
+              value={editingRecord.notes || ''}
+              onChange={(e) => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+              rows={4}
+              placeholder="Añade aquí la justificación del empleado o notas de seguimiento..."
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                resize: 'vertical'
+              }}
+            />
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              💡 Ejemplo: "Presentó justificante médico", "Avisó con antelación", "Reincidente - 3ª vez este mes"
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setShowJustifyModal(false);
+                setEditingRecord(null);
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <X size={16} />
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveJustification}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Save size={16} />
+              Guardar Justificación
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showForm) {
     return (
@@ -857,21 +1048,42 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDelete(record.id!)}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#fee2e2',
-                        color: '#991b1b',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Eliminar
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleJustify(record)}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#dbeafe',
+                          color: '#1e40af',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <FileText size={14} />
+                        Justificar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(record.id!)}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#fee2e2',
+                          color: '#991b1b',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '500'
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 );
               })}
