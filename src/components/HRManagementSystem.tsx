@@ -655,6 +655,7 @@ const HRManagementSystem: React.FC = () => {
         />
       );
     case 'vacation-request':
+    case 'employee-vacation-request':
       return (
         <VacationRequest
           onBack={() => setCurrentView('dashboard')}
@@ -662,6 +663,7 @@ const HRManagementSystem: React.FC = () => {
         />
       );
     case 'vacations':
+    case 'employee-vacations':
       return (
         <VacationApproval
           onBack={() => setCurrentView('dashboard')}
