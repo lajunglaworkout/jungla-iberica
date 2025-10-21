@@ -68,33 +68,22 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     
     console.log('🔍 Validando campos:', {
       nombre: formData.nombre,
-      apellidos: formData.apellidos,
-      email: formData.email,
-      telefono: formData.telefono,
-      dni: formData.dni,
-      center_id: formData.center_id,
-      departamento: formData.departamento,
-      cargo: formData.cargo,
-      numero_cuenta: formData.numero_cuenta
+      email: formData.email
     });
     
+    // Solo validar campos realmente obligatorios
     if (!formData.nombre?.trim()) newErrors.nombre = 'El nombre es obligatorio';
-    if (!formData.apellidos?.trim()) newErrors.apellidos = 'Los apellidos son obligatorios';
     if (!formData.email?.trim()) newErrors.email = 'El email es obligatorio';
-    if (!formData.telefono?.trim()) newErrors.telefono = 'El teléfono es obligatorio';
-    if (!formData.dni?.trim()) newErrors.dni = 'El DNI es obligatorio';
-    if (!formData.center_id) newErrors.center_id = 'El centro es obligatorio';
-    if (!formData.departamento?.trim()) newErrors.departamento = 'El departamento es obligatorio';
-    if (!formData.cargo?.trim()) newErrors.cargo = 'El cargo es obligatorio';
-    if (!formData.numero_cuenta?.trim()) newErrors.numero_cuenta = 'El número de cuenta es obligatorio';
 
+    // Validar formato de email si está presente
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formData.email && !emailRegex.test(formData.email)) {
       newErrors.email = 'El email no es válido';
     }
 
+    // Validar formato de DNI solo si está presente
     const dniRegex = /^[0-9]{8}[TRWAGMYFPDXBNJZSQVHLCKE]$/i;
-    if (formData.dni && !dniRegex.test(formData.dni)) {
+    if (formData.dni && formData.dni.trim() && !dniRegex.test(formData.dni)) {
       newErrors.dni = 'El DNI no es válido (formato: 12345678A)';
     }
 
@@ -278,7 +267,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
               
               <div>
-                <label style={labelStyle}>Apellidos *</label>
+                <label style={labelStyle}>Apellidos</label>
                 <input
                   type="text"
                   value={formData.apellidos || ''}
@@ -290,7 +279,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>DNI/NIE *</label>
+                <label style={labelStyle}>DNI/NIE</label>
                 <input
                   type="text"
                   value={formData.dni || ''}
@@ -315,7 +304,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Teléfono *</label>
+                <label style={labelStyle}>Teléfono</label>
                 <input
                   type="tel"
                   value={formData.telefono || ''}
@@ -375,7 +364,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
           {activeTab === 'laboral' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
               <div>
-                <label style={labelStyle}>Centro de Trabajo *</label>
+                <label style={labelStyle}>Centro de Trabajo</label>
                 <select
                   value={formData.center_id || ''}
                   onChange={(e) => setFormData({...formData, center_id: e.target.value})}
@@ -392,7 +381,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Departamento *</label>
+                <label style={labelStyle}>Departamento</label>
                 <select
                   value={formData.departamento || ''}
                   onChange={(e) => setFormData({...formData, departamento: e.target.value})}
@@ -415,7 +404,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Cargo *</label>
+                <label style={labelStyle}>Cargo</label>
                 <input
                   type="text"
                   value={formData.cargo || ''}
@@ -428,7 +417,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Rol en el Sistema *</label>
+                <label style={labelStyle}>Rol en el Sistema</label>
                 <select
                   value={formData.rol || 'employee'}
                   onChange={(e) => setFormData({...formData, rol: e.target.value as any})}
@@ -457,7 +446,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Fecha de Alta *</label>
+                <label style={labelStyle}>Fecha de Alta</label>
                 <input
                   type="date"
                   value={formData.fecha_alta ? new Date(formData.fecha_alta).toISOString().split('T')[0] : ''}
@@ -468,7 +457,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Tipo de Contrato *</label>
+                <label style={labelStyle}>Tipo de Contrato</label>
                 <select
                   value={formData.tipo_contrato || ''}
                   onChange={(e) => setFormData({...formData, tipo_contrato: e.target.value as any})}
@@ -484,7 +473,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Jornada *</label>
+                <label style={labelStyle}>Jornada</label>
                 <select
                   value={formData.jornada || ''}
                   onChange={(e) => setFormData({...formData, jornada: e.target.value as any})}
@@ -500,7 +489,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               </div>
 
               <div>
-                <label style={labelStyle}>Salario Bruto Anual *</label>
+                <label style={labelStyle}>Salario Bruto Anual</label>
                 <input
                   type="number"
                   value={formData.salario_bruto_anual || ''}
@@ -517,7 +506,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
           {activeTab === 'bancario' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={labelStyle}>IBAN / Número de Cuenta *</label>
+                <label style={labelStyle}>IBAN / Número de Cuenta</label>
                 <input
                   type="text"
                   value={formData.numero_cuenta || ''}
