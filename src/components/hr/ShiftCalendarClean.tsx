@@ -37,6 +37,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
   const [showFilters, setShowFilters] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0); // Para navegar entre semanas
   const [draggedAssignment, setDraggedAssignment] = useState<ShiftAssignment | null>(null);
+  const [selectedAssignments, setSelectedAssignments] = useState<Set<number>>(new Set());
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
 
@@ -233,6 +234,41 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
       alert('❌ Error al mover turno');
     } finally {
       setDraggedAssignment(null);
+    }
+  };
+
+  // Manejar selección de turnos
+  const toggleAssignmentSelection = (assignmentId: number) => {
+    setSelectedAssignments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(assignmentId)) {
+        newSet.delete(assignmentId);
+      } else {
+        newSet.add(assignmentId);
+      }
+      return newSet;
+    });
+  };
+
+  // Eliminar turnos seleccionados
+  const handleDeleteSelected = async () => {
+    if (selectedAssignments.size === 0) return;
+    
+    if (!confirm(`¿Eliminar ${selectedAssignments.size} turno(s) seleccionado(s)?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('employee_shifts')
+        .delete()
+        .in('id', Array.from(selectedAssignments));
+      
+      if (error) throw error;
+      
+      alert(`✅ ${selectedAssignments.size} turno(s) eliminado(s)`);
+      setSelectedAssignments(new Set());
+      loadAssignments();
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
     }
   };
 
@@ -804,49 +840,32 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                       opacity: isHolidayDay ? 0.6 : (draggedAssignment?.id === assignment.id ? 0.5 : 1),
                       cursor: isHolidayDay ? 'not-allowed' : 'grab',
                       transition: 'transform 0.2s, opacity 0.2s',
-                      border: draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none',
-                      position: 'relative'
+                      border: selectedAssignments.has(assignment.id) ? '3px solid #fbbf24' : (draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none'),
+                      position: 'relative',
+                      boxShadow: selectedAssignments.has(assignment.id) ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none'
                     }}
                     onMouseOver={(e) => {
                       if (!isHolidayDay) e.currentTarget.style.transform = 'scale(1.02)';
                     }}
                     onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
-                    <button
-                      onClick={async (e) => {
+                    <input
+                      type="checkbox"
+                      checked={selectedAssignments.has(assignment.id)}
+                      onChange={(e) => {
                         e.stopPropagation();
-                        if (confirm(`¿Eliminar turno de ${assignment.employee?.name}?`)) {
-                          try {
-                            const { error } = await supabase
-                              .from('employee_shifts')
-                              .delete()
-                              .eq('id', assignment.id);
-                            
-                            if (error) throw error;
-                            alert('✅ Turno eliminado');
-                            loadAssignments();
-                          } catch (error: any) {
-                            alert(`❌ Error: ${error.message}`);
-                          }
-                        }
+                        toggleAssignmentSelection(assignment.id);
                       }}
                       style={{
                         position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        background: 'rgba(0,0,0,0.3)',
-                        border: 'none',
-                        borderRadius: '3px',
-                        color: 'white',
+                        top: '4px',
+                        left: '4px',
                         cursor: 'pointer',
-                        padding: '2px 4px',
-                        fontSize: '10px',
-                        lineHeight: '1'
+                        width: '14px',
+                        height: '14px'
                       }}
-                    >
-                      ✕
-                    </button>
-                    <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                    />
+                    <div style={{ fontWeight: '600', marginBottom: '2px', marginLeft: '18px' }}>
                       🔄 {assignment.shift?.name}
                     </div>
                     <div style={{ fontSize: '9px', opacity: 0.9 }}>{assignment.employee?.name}</div>
@@ -962,6 +981,60 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
               Cancelar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* BOTÓN FLOTANTE PARA ELIMINAR SELECCIONADOS */}
+      {selectedAssignments.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          alignItems: 'flex-end'
+        }}>
+          <div style={{
+            backgroundColor: '#fbbf24',
+            color: '#78350f',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }}>
+            {selectedAssignments.size} turno(s) seleccionado(s)
+          </div>
+          <button
+            onClick={handleDeleteSelected}
+            style={{
+              padding: '14px 28px',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#b91c1c';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#dc2626';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <Trash2 size={20} />
+            Eliminar Seleccionados
+          </button>
         </div>
       )}
     </div>
