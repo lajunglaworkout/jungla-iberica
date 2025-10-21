@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Calendar as CalendarIcon, RefreshCw, Trash2 } from 'lucide-react';
+import { Holiday } from '../../services/holidayService';
 
 interface ShiftAssignment {
   id: number;
@@ -11,12 +12,21 @@ interface ShiftAssignment {
   shift?: { name: string; start_time: string; end_time: string };
 }
 
-const ShiftCalendarClean: React.FC = () => {
+interface ShiftCalendarCleanProps {
+  holidays?: Holiday[];
+}
+
+const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }) => {
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
   const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+  // Verificar si una fecha es festivo
+  const isHoliday = (dateStr: string): Holiday | undefined => {
+    return holidays.find(h => h.date === dateStr);
+  };
 
   // SOLO cargar desde BD - NADA hardcodeado
   const loadAssignments = async () => {
@@ -176,18 +186,58 @@ const ShiftCalendarClean: React.FC = () => {
             <div key={`empty-${i}`} style={{ backgroundColor: '#f9fafb' }} />
           ))}
 
-          {calendarDays.map(({ date, day, assignments }) => (
-            <div key={date} style={{ backgroundColor: 'white', minHeight: '100px', padding: '5px', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{day}</div>
-              {assignments.map((assignment, idx) => (
-                <div key={idx} style={{ fontSize: '11px', padding: '2px', marginBottom: '2px', backgroundColor: '#dbeafe', borderRadius: '2px' }}>
-                  <strong>{assignment.shift?.name}</strong><br />
-                  {assignment.employee?.name}<br />
-                  {assignment.shift?.start_time} - {assignment.shift?.end_time}
+          {calendarDays.map(({ date, day, assignments }) => {
+            const holiday = isHoliday(date);
+            const isHolidayDay = !!holiday;
+            
+            return (
+              <div 
+                key={date} 
+                style={{ 
+                  backgroundColor: isHolidayDay ? '#fef2f2' : 'white', 
+                  minHeight: '100px', 
+                  padding: '5px', 
+                  border: isHolidayDay ? '2px solid #ef4444' : '1px solid #e5e7eb',
+                  position: 'relative'
+                }}
+              >
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: isHolidayDay ? '#dc2626' : '#111827' }}>
+                  {day}
+                  {isHolidayDay && <span style={{ marginLeft: '4px' }}>🎉</span>}
                 </div>
-              ))}
-            </div>
-          ))}
+                
+                {isHolidayDay && (
+                  <div style={{ 
+                    fontSize: '10px', 
+                    padding: '4px', 
+                    marginBottom: '4px', 
+                    backgroundColor: '#fee2e2', 
+                    borderRadius: '4px',
+                    color: '#991b1b',
+                    fontWeight: '600',
+                    border: '1px solid #fca5a5'
+                  }}>
+                    {holiday.name}
+                  </div>
+                )}
+                
+                {assignments.map((assignment, idx) => (
+                  <div key={idx} style={{ 
+                    fontSize: '11px', 
+                    padding: '2px', 
+                    marginBottom: '2px', 
+                    backgroundColor: isHolidayDay ? '#fecaca' : '#dbeafe', 
+                    borderRadius: '2px',
+                    opacity: isHolidayDay ? 0.6 : 1
+                  }}>
+                    <strong>{assignment.shift?.name}</strong><br />
+                    {assignment.employee?.name}<br />
+                    {assignment.shift?.start_time} - {assignment.shift?.end_time}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
 
