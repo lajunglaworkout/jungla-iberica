@@ -195,6 +195,43 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
     });
   };
 
+  // Exportar a CSV (compatible con Excel)
+  const exportToExcel = () => {
+    const weekDates = getWeekDates();
+    const filteredEmployees = getFilteredEmployees();
+    
+    // Header
+    let csv = 'Empleado,' + weekDates.map(d => 
+      d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
+    ).join(',') + '\n';
+
+    // Filas de empleados
+    filteredEmployees.forEach(employee => {
+      const row = [`"${employee.nombre} ${employee.apellidos}"`];
+      
+      weekDates.forEach(date => {
+        const shifts = filterShiftsByType(getEmployeeShifts(employee.id, date));
+        const shiftNames = shifts.map(s => `${s.shift?.name} (${s.shift?.start_time}-${s.shift?.end_time})`).join('; ');
+        row.push(`"${shiftNames || '-'}"`);
+      });
+      
+      csv += row.join(',') + '\n';
+    });
+
+    // Descargar
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `turnos_${fmt(weekDates[0])}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    alert('✅ Calendario exportado correctamente');
+  };
+
   // Limpiar TODO
   const clearEverything = async () => {
     console.log('🗑️ Limpiando TODO...');
@@ -322,6 +359,25 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
             }}
           >
             <Filter size={16} /> Filtros
+          </button>
+
+          <button
+            onClick={exportToExcel}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            <Download size={16} /> Exportar
           </button>
 
           <button
