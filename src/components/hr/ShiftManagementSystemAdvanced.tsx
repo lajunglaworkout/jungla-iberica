@@ -592,11 +592,9 @@ const ShiftAssignments: React.FC<{
         for (const [key, assignment] of Object.entries(pendingAssignments)) {
           if (assignment.employeeId) {
             assignmentsToInsert.push({
-              employee_id: assignment.employeeId,
-              shift_id: assignment.shiftId,
-              date: date,
-              status: 'confirmed',
-              is_substitute: false
+              employee_id: Number(assignment.employeeId),
+              shift_id: Number(assignment.shiftId),
+              date: date
             });
           }
         }
