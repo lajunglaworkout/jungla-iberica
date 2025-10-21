@@ -610,6 +610,9 @@ const ShiftAssignments: React.FC<{
 
       alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente para ${dates.length} días`);
       setPendingAssignments({});
+      
+      // Recargar la página para actualizar el calendario
+      window.location.reload();
     } catch (error: any) {
       console.error('❌ Error guardando asignaciones:', error);
       alert(`❌ Error: ${error.message}`);
