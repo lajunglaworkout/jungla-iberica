@@ -242,7 +242,8 @@ const ShiftAssignmentSystem: React.FC = () => {
   const [quickAssignData, setQuickAssignData] = useState({
     shift_id: null as number | null,
     employee_id: null as number | null,
-    date: new Date().toISOString().split('T')[0]
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0]
   });
   const [error, setError] = useState<string | null>(null);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
@@ -330,49 +331,64 @@ const ShiftAssignmentSystem: React.FC = () => {
           throw new Error('Usuario no autenticado');
         }
 
-        const assignmentDate = toLocalYMD(new Date(quickAssignData.date ? new Date(quickAssignData.date) : new Date()));
+        // Generar todas las fechas del rango
+        const startDate = new Date(quickAssignData.start_date);
+        const endDate = new Date(quickAssignData.end_date);
+        const dates: string[] = [];
+        
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          dates.push(toLocalYMD(new Date(d)));
+        }
         
         console.log('🚀 Creando asignaciones:', {
           user: user.email,
           selectedShift: quickAssignData.shift_id,
           selectedEmployees: selectedEmployeeIds,
-          assignmentDate,
+          dateRange: `${quickAssignData.start_date} - ${quickAssignData.end_date}`,
+          totalDays: dates.length,
           quickAssignData
         });
 
-        // Crear asignaciones una por una para mejor control de errores
+        // Crear asignaciones para cada empleado y cada fecha
         const results = [];
         for (const empId of selectedEmployeeIds) {
-          try {
-            const payload = {
-              employee_id: Number(empId),
-              shift_id: Number(quickAssignData.shift_id),
-              date: assignmentDate
-            };
+          for (const date of dates) {
+            try {
+              const payload = {
+                employee_id: Number(empId),
+                shift_id: Number(quickAssignData.shift_id),
+                date: date
+              };
 
-            console.log('📦 Insertando:', payload);
+              console.log('📦 Insertando:', payload);
 
-            const { data, error } = await supabase
-              .from('employee_shifts')
-              .insert([payload])
-              .select();
+              const { data, error } = await supabase
+                .from('employee_shifts')
+                .insert([payload])
+                .select();
 
-            if (error) {
-              console.error('❌ Error en inserción:', error);
-              throw error;
+              if (error) {
+                console.error('❌ Error en inserción:', error);
+                throw error;
+              }
+
+              console.log('✅ Inserción exitosa:', data);
+              results.push(data);
+            } catch (empError: any) {
+              console.error(`❌ Error asignando empleado ${empId} en fecha ${date}:`, empError);
+              // Continuar con las demás asignaciones
             }
-
-            console.log('✅ Inserción exitosa:', data);
-            results.push(data);
-          } catch (empError: any) {
-            console.error(`❌ Error asignando empleado ${empId}:`, empError);
-            throw new Error(`Error asignando empleado ${empId}: ${empError.message}`);
           }
         }
 
-        alert(`✅ ${results.length} asignación(es) creada(s) correctamente`);
+        alert(`✅ ${results.length} asignación(es) creada(s) correctamente para ${dates.length} días`);
         setSelectedEmployeeIds([]);
-        setQuickAssignData({ shift_id: null, employee_id: null, date: toLocalYMD(new Date()) });
+        setQuickAssignData({ 
+          shift_id: null, 
+          employee_id: null, 
+          start_date: toLocalYMD(new Date()),
+          end_date: toLocalYMD(new Date())
+        });
         await loadAssignments();
       } catch (error: any) {
         const extra = [
@@ -578,25 +594,100 @@ const ShiftAssignmentSystem: React.FC = () => {
           />
         )}
 
+        {/* SELECTOR DE RANGO DE FECHAS */}
+        <div style={{ marginBottom: '20px', marginTop: '20px' }}>
+          <h4 style={{ color: '#374151', marginBottom: '10px' }}>3. Selecciona el Periodo:</h4>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '15px',
+            backgroundColor: '#f9fafb',
+            padding: '15px',
+            borderRadius: '8px',
+            border: '2px solid #e5e7eb'
+          }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                📅 Fecha Inicio
+              </label>
+              <input
+                type="date"
+                value={quickAssignData.start_date}
+                onChange={(e) => setQuickAssignData({...quickAssignData, start_date: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                📅 Fecha Fin
+              </label>
+              <input
+                type="date"
+                value={quickAssignData.end_date}
+                onChange={(e) => setQuickAssignData({...quickAssignData, end_date: e.target.value})}
+                min={quickAssignData.start_date}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ 
+            marginTop: '10px', 
+            padding: '10px', 
+            backgroundColor: '#dbeafe', 
+            borderRadius: '6px',
+            fontSize: '14px',
+            color: '#1e40af'
+          }}>
+            💡 <strong>Tip:</strong> Selecciona todo el mes para asignar turnos de una vez. Por ejemplo: 01/11/2025 - 30/11/2025
+          </div>
+        </div>
+
         <button 
           onClick={handleQuickAssign}
           disabled={!quickAssignData.shift_id || selectedEmployeeIds.length === 0 || loading}
           style={{
-            padding: '12px 24px',
+            padding: '16px 32px',
             backgroundColor: '#059669',
             color: 'white',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '8px',
             cursor: 'pointer',
             opacity: (!quickAssignData.shift_id || selectedEmployeeIds.length === 0 || loading) ? 0.5 : 1,
             fontWeight: 'bold',
+            fontSize: '16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            justifyContent: 'center',
+            gap: '10px',
+            width: '100%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!loading && quickAssignData.shift_id && selectedEmployeeIds.length > 0) {
+              e.currentTarget.style.backgroundColor = '#047857';
+              e.currentTarget.style.transform = 'scale(1.02)';
+            }
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = '#059669';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
-          <span>💾</span>
-          {loading ? 'Asignando...' : 'Asignar Turnos'}
+          <span style={{ fontSize: '20px' }}>💾</span>
+          {loading ? 'Guardando Asignaciones...' : 'GUARDAR ASIGNACIONES DE TURNOS'}
         </button>
       </div>
     );
