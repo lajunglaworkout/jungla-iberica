@@ -14,8 +14,9 @@ interface ShiftAssignment {
 
 interface Employee {
   id: number;
-  nombre: string;
-  apellidos: string;
+  nombre?: string;
+  apellidos?: string;
+  name?: string;
   avatar?: string;
 }
 
@@ -702,11 +703,12 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
                     fontSize: '14px',
                     fontWeight: '600'
                   }}>
-                    {(employee.nombre || 'N').charAt(0)}{(employee.apellidos || 'A').charAt(0)}
+                    {((employee.nombre || employee.name || 'N').charAt(0))}
+                    {((employee.apellidos || employee.name?.split(' ')[1] || 'A').charAt(0))}
                   </div>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                      {employee.nombre || 'Sin nombre'} {employee.apellidos || ''}
+                      {employee.nombre || employee.name || 'Sin nombre'} {employee.apellidos || ''}
                     </div>
                   </div>
                 </div>
