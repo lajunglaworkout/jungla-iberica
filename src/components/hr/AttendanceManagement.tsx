@@ -513,6 +513,25 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
+                onClick={() => setShowLog(!showLog)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  backgroundColor: showLog ? '#6366f1' : '#e0e7ff',
+                  color: showLog ? 'white' : '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                <FileText size={18} />
+                {showLog ? 'Ver Incidencias' : 'Ver Historial'}
+              </button>
+              <button
                 onClick={handleAutoDetect}
                 style={{
                   display: 'flex',
@@ -674,11 +693,103 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
           </div>
         </div>
 
-        {/* Lista de registros */}
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111827' }}>
-            Registros de Asistencia ({filteredRecords.length})
-          </h2>
+        {/* Historial de Procesamientos o Lista de Registros */}
+        {showLog ? (
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111827' }}>
+              📅 Historial de Procesamientos ({processingLog.length})
+            </h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
+              Resumen de procesamientos automáticos diarios. Cada día se procesa una vez automáticamente.
+            </p>
+
+            {processingLog.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <Calendar size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+                <p>No hay procesamientos registrados para este periodo</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {processingLog.map(log => (
+                  <div
+                    key={log.id}
+                    style={{
+                      padding: '20px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: log.status === 'completed' ? '#f9fafb' : '#fef2f2'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                            📅 {new Date(log.process_date).toLocaleDateString('es-ES', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                          {log.center_id && (
+                            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                              • {centers.find(c => c.id === log.center_id)?.name}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                          Procesado: {new Date(log.processed_at).toLocaleString('es-ES')}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: log.status === 'completed' ? '#dcfce7' : '#fee2e2',
+                          color: log.status === 'completed' ? '#166534' : '#991b1b',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {log.status === 'completed' ? '✅ Completado' : '❌ Error'}
+                      </div>
+                    </div>
+
+                    {/* Resumen de incidencias */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                      <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total Incidencias</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{log.incidents_detected}</div>
+                      </div>
+                      <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>⏰ Retrasos</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#92400e' }}>{log.late_count}</div>
+                      </div>
+                      <div style={{ padding: '12px', backgroundColor: '#fecaca', borderRadius: '8px', border: '1px solid #fca5a5' }}>
+                        <div style={{ fontSize: '12px', color: '#7f1d1d', marginBottom: '4px' }}>❌ Ausencias</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7f1d1d' }}>{log.absence_count}</div>
+                      </div>
+                      <div style={{ padding: '12px', backgroundColor: '#fed7aa', borderRadius: '8px', border: '1px solid #fdba74' }}>
+                        <div style={{ fontSize: '12px', color: '#9a3412', marginBottom: '4px' }}>🚪 Salidas Tempranas</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9a3412' }}>{log.early_departure_count}</div>
+                      </div>
+                    </div>
+
+                    {log.error_message && (
+                      <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+                        ⚠️ Error: {log.error_message}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111827' }}>
+              Registros de Asistencia ({filteredRecords.length})
+            </h2>
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
@@ -766,7 +877,8 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
               })}
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
