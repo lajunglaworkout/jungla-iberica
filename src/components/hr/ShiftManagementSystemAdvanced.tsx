@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
 import { useData } from '../../contexts/DataContext';
 import ShiftCalendarClean from './ShiftCalendarClean';
+import { holidayService, Holiday } from '../../services/holidayService';
+import HolidayList from './HolidayList';
 
 // ============ INTERFACES ============
 interface Shift {
@@ -60,11 +62,12 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
   const { employee, userRole } = useSession();
   const { centers } = useData();
   
-  const [activeTab, setActiveTab] = useState<'shifts' | 'assignments' | 'substitutions' | 'calendar'>('shifts');
+  const [activeTab, setActiveTab] = useState<'shifts' | 'assignments' | 'substitutions' | 'calendar' | 'holidays'>('shifts');
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +116,17 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
         }));
       
       setEmployees(mappedEmployees);
+
+      // Cargar festivos del año actual y siguiente (para planificación)
+      const currentYear = new Date().getFullYear();
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear + 1}-12-31`;
+      
+      const centerIdStr = selectedCenter.toString();
+      const holidaysData = await holidayService.getHolidaysByDateRange(startDate, endDate, centerIdStr);
+      setHolidays(holidaysData);
+      
+      console.log(`📅 Festivos cargados: ${holidaysData.length} (${currentYear}-${currentYear + 1})`);
 
     } catch (err: any) {
       setError(err.message);
@@ -262,6 +276,13 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
             isActive={activeTab === 'calendar'}
             onClick={() => setActiveTab('calendar')}
           />
+          <TabButton
+            id="holidays"
+            label="Festivos"
+            icon={<span>🎉</span>}
+            isActive={activeTab === 'holidays'}
+            onClick={() => setActiveTab('holidays')}
+          />
         </div>
 
         {/* Contenido de pestañas */}
@@ -270,6 +291,7 @@ const ShiftManagementSystemAdvanced: React.FC = () => {
           {activeTab === 'assignments' && <ShiftAssignments shifts={shifts} employees={employees} />}
           {activeTab === 'substitutions' && <SubstitutionManager shifts={shifts} employees={employees} />}
           {activeTab === 'calendar' && <ShiftCalendarClean />}
+          {activeTab === 'holidays' && <HolidayList holidays={holidays} />}
         </div>
       </div>
     </div>
