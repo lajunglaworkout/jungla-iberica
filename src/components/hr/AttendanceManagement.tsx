@@ -6,7 +6,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useData } from '../../contexts/DataContext';
-import { detectDailyAttendanceIncidents, processTodayAttendance } from '../../services/attendanceService';
+import { 
+  detectDailyAttendanceIncidents, 
+  processTodayAttendance, 
+  autoProcessIfNeeded,
+  getProcessingLog 
+} from '../../services/attendanceService';
 
 interface AttendanceManagementProps {
   onBack?: () => void;
@@ -35,6 +40,9 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [processingLog, setProcessingLog] = useState<any[]>([]);
+  const [showLog, setShowLog] = useState(false);
+  const [autoProcessed, setAutoProcessed] = useState(false);
   
   const [formData, setFormData] = useState<AttendanceRecord>({
     employee_id: 0,
@@ -46,6 +54,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
 
   useEffect(() => {
     loadRecords();
+    loadProcessingLog();
   }, [selectedCenter, selectedDate]);
 
   useEffect(() => {
@@ -53,6 +62,45 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
       setSelectedCenter(centers[0].id);
     }
   }, [centers]);
+
+  // Auto-procesamiento al cargar el componente
+  useEffect(() => {
+    const runAutoProcess = async () => {
+      const result = await autoProcessIfNeeded();
+      if (result.processed) {
+        setAutoProcessed(true);
+        console.log(`🤖 Auto-procesamiento ejecutado: ${result.count} incidencias`);
+        // Recargar datos después del auto-procesamiento
+        setTimeout(() => {
+          loadRecords();
+          loadProcessingLog();
+        }, 1000);
+      }
+    };
+    
+    runAutoProcess();
+  }, []);
+
+  const getMonthStart = () => {
+    const date = new Date(selectedDate);
+    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+  };
+
+  const getMonthEnd = () => {
+    const date = new Date(selectedDate);
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
+  };
+
+  const loadProcessingLog = async () => {
+    try {
+      const monthStart = getMonthStart();
+      const monthEnd = getMonthEnd();
+      const log = await getProcessingLog(monthStart, monthEnd, selectedCenter || undefined);
+      setProcessingLog(log);
+    } catch (error) {
+      console.error('Error cargando log:', error);
+    }
+  };
 
   const loadRecords = async () => {
     try {
@@ -100,16 +148,6 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ onBack }) =
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMonthStart = () => {
-    const date = new Date(selectedDate);
-    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
-  };
-
-  const getMonthEnd = () => {
-    const date = new Date(selectedDate);
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
