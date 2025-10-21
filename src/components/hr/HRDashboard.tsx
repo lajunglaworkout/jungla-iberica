@@ -172,113 +172,95 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
     }
   ];
 
-  // Tarjetas adicionales para encargados y roles superiores
+  // Tarjetas para CEO/Director de RRHH - Orden específico
   const adminCards: DashboardCard[] = [
+    // 1. Gestión de Empleados (COMPLETO)
     {
       id: 'employees',
-      title: 'Gestión de Empleados',
+      title: '1. Gestión de Empleados',
       icon: <Users size={32} />,
       description: 'Administrar empleados, contratos y datos personales',
       color: '#059669',
       count: stats.totalEmployees,
       status: 'active'
     },
+    // 2. Gestión de Turnos (COMPLETO)
     {
       id: 'shifts',
-      title: 'Gestión de Turnos',
+      title: '2. Gestión de Turnos',
       icon: <Clock size={32} />,
       description: 'Crear y asignar turnos de trabajo',
       color: '#0ea5e9',
       count: stats.activeShifts,
       status: 'active'
     },
+    // 3. Sistema de Fichajes (COMPLETO)
     {
       id: 'timeclock',
-      title: 'Sistema de Fichajes',
+      title: '3. Sistema de Fichajes',
       icon: <UserCheck size={32} />,
       description: 'Fichajes con QR dinámico y control horario',
       color: '#8b5cf6',
       count: stats.presentToday,
       status: 'active'
     },
-    {
-      id: 'admin-mobile-timeclock',
-      title: 'Fichaje Móvil',
-      icon: <MapPin size={32} />,
-      description: 'Escaneo QR desde móvil para empleados',
-      color: '#059669',
-      count: 'QR Activo',
-      status: 'active'
-    },
+    // 4. Asistencia (COMPLETO)
     {
       id: 'attendance',
-      title: 'Asistencia',
+      title: '4. Asistencia',
       icon: <Calendar size={32} />,
       description: 'Registro de retrasos, ausencias y bajas médicas',
       color: '#f59e0b',
       count: 'Gestionar',
       status: 'active'
     },
+    // 5. Gestión de Vacaciones (COMPLETO)
     {
       id: 'admin-vacations',
-      title: 'Vacaciones',
+      title: '5. Gestión de Vacaciones',
       icon: <Palmtree size={32} />,
       description: 'Gestión de vacaciones y permisos',
       color: '#10b981',
       count: '12 pendientes',
       status: 'active'
     },
-    {
-      id: 'evaluations',
-      title: 'Evaluaciones',
-      icon: <Award size={32} />,
-      description: 'Evaluaciones de desempeño',
-      color: '#ef4444',
-      count: '3 pendientes',
-      status: 'coming-soon'
-    },
-    {
-      id: 'training',
-      title: 'Formación',
-      icon: <BookOpen size={32} />,
-      description: 'Cursos y formación del personal',
-      color: '#6366f1',
-      count: '5 cursos',
-      status: 'coming-soon'
-    },
+    // 6. Documentos (POR DESARROLLAR)
     {
       id: 'documents',
-      title: 'Documentos',
+      title: '6. Documentos',
       icon: <FileText size={32} />,
       description: 'Gestión documental y contratos',
       color: '#84cc16',
-      count: stats.pendingDocuments,
+      count: 'Próximamente',
       status: 'coming-soon'
     },
+    // 7. Reportes y Analíticas (POR DESARROLLAR)
     {
       id: 'hr-reports',
-      title: 'Reportes y Analíticas',
+      title: '7. Reportes y Analíticas',
       icon: <BarChart size={32} />,
       description: 'Dashboard ejecutivo con métricas clave de RRHH',
       color: '#8b5cf6',
-      count: 'Dashboard',
-      status: 'active'
+      count: 'Próximamente',
+      status: 'coming-soon'
     },
+    // 8. Formación (MÁS ADELANTE)
     {
-      id: 'db-verify',
-      title: 'Verificar BD',
-      description: 'Comprobar tablas de turnos',
-      icon: '🔍',
-      color: '#059669',
-      status: 'active',
-      count: 'Temporal'
+      id: 'training',
+      title: '8. Formación',
+      icon: <BookOpen size={32} />,
+      description: 'Cursos y formación del personal',
+      color: '#6366f1',
+      count: 'Próximamente',
+      status: 'coming-soon'
     },
+    // 9. Evaluaciones (MÁS ADELANTE)
     {
-      id: 'absence-management',
-      title: 'Gestión Ausencias',
-      icon: <Palmtree style={{ height: '48px', width: '48px' }} />,
-      description: 'Gestión de ausencias',
-      color: '#eab308',
+      id: 'evaluations',
+      title: '9. Evaluaciones',
+      icon: <Award size={32} />,
+      description: 'Evaluaciones de desempeño',
+      color: '#ef4444',
       count: 'Próximamente',
       status: 'coming-soon'
     }
