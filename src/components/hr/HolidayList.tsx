@@ -17,14 +17,40 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays }) => {
     return styles[type as keyof typeof styles] || styles.local;
   };
 
+  // Filtrar solo festivos del año actual y eliminar duplicados
+  const currentYear = new Date().getFullYear();
+  const uniqueHolidays = holidays
+    .filter(h => h.date.startsWith(currentYear.toString()))
+    .reduce((acc, current) => {
+      // Eliminar duplicados por fecha y nombre
+      const exists = acc.find(h => h.date === current.date && h.name === current.name);
+      if (!exists) {
+        acc.push(current);
+      }
+      return acc;
+    }, [] as Holiday[])
+    .sort((a, b) => a.date.localeCompare(b.date)); // Ordenar por fecha
+
   return (
     <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
-      <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
-        📅 Festivos del Año
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>
+          📅 Festivos {currentYear}
+        </h2>
+        <span style={{ 
+          fontSize: '14px', 
+          color: '#6b7280',
+          backgroundColor: '#f3f4f6',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontWeight: '500'
+        }}>
+          {uniqueHolidays.length} festivos
+        </span>
+      </div>
       
       <div style={{ display: 'grid', gap: '12px' }}>
-        {holidays.map(holiday => {
+        {uniqueHolidays.map(holiday => {
           const badge = getBadge(holiday.type);
           return (
             <div key={holiday.id} style={{
