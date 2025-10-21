@@ -575,28 +575,43 @@ const ShiftAssignments: React.FC<{
 
     setIsSaving(true);
     try {
-      // Generar todas las fechas del rango
+      // Obtener información de los turnos seleccionados
+      const shiftIds = [...new Set(Object.values(pendingAssignments).map(a => a.shiftId))];
+      const { data: shiftsData } = await supabase
+        .from('shifts')
+        .select('*')
+        .in('id', shiftIds);
+      
+      const shiftsMap = new Map(shiftsData?.map(s => [s.id, s]) || []);
+
+      // Generar fechas del rango y filtrar por días de la semana del turno
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const dates: string[] = [];
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      const assignmentsToInsert = [];
       
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().split('T')[0];
-        if (!isHoliday(dateStr)) {
-          dates.push(dateStr);
-        }
-      }
-
-      // Crear asignaciones para cada fecha y cada empleado seleccionado
-      const assignmentsToInsert = [];
-      for (const date of dates) {
+        const dayOfWeek = d.getDay();
+        const dayName = dayNames[dayOfWeek];
+        
+        // Saltar festivos
+        if (isHoliday(dateStr)) continue;
+        
+        // Crear asignaciones solo si el turno está activo ese día
         for (const [key, assignment] of Object.entries(pendingAssignments)) {
           if (assignment.employeeId) {
-            assignmentsToInsert.push({
-              employee_id: Number(assignment.employeeId),
-              shift_id: Number(assignment.shiftId),
-              date: date
-            });
+            const shift = shiftsMap.get(assignment.shiftId);
+            
+            // Verificar si el turno está configurado para este día de la semana
+            if (shift && shift[dayName] === true) {
+              assignmentsToInsert.push({
+                employee_id: Number(assignment.employeeId),
+                shift_id: Number(assignment.shiftId),
+                date: dateStr
+              });
+            }
           }
         }
       }
@@ -609,7 +624,7 @@ const ShiftAssignments: React.FC<{
 
       if (error) throw error;
 
-      alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente para ${dates.length} días. Redirigiendo al calendario...`);
+      alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente (respetando días de la semana del turno). Redirigiendo al calendario...`);
       setPendingAssignments({});
       
       // Cambiar a la pestaña del calendario
