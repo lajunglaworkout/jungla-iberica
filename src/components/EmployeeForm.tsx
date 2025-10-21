@@ -90,9 +90,22 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log('🔵 handleSave llamado en EmployeeForm');
+    console.log('📝 Datos del formulario:', formData);
+    console.log('👤 Empleado existente:', employee);
+    
+    const isValid = validateForm();
+    console.log('✅ Validación:', isValid ? 'PASÓ' : 'FALLÓ');
+    console.log('❌ Errores:', errors);
+    
+    if (!isValid) {
+      console.log('⚠️ Formulario no válido, abortando...');
+      return;
+    }
 
     setLoading(true);
+    console.log('⏳ Preparando datos para guardar...');
+    
     try {
       const employeeData: Employee = {
         id: employee?.id || crypto.randomUUID(),
@@ -132,11 +145,14 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
         updated_at: new Date()
       };
 
+      console.log('📤 Llamando a onSave con:', employeeData);
       onSave(employeeData);
+      console.log('✅ onSave ejecutado correctamente');
     } catch (error) {
-      console.error('Error guardando empleado:', error);
+      console.error('❌ Error guardando empleado:', error);
     } finally {
       setLoading(false);
+      console.log('🏁 handleSave finalizado');
     }
   };
 
@@ -722,7 +738,12 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
           </button>
           
           <button
-            onClick={handleSave}
+            onClick={() => {
+              console.log('🖱️ Click en botón Actualizar/Crear');
+              console.log('⏳ Loading:', loading);
+              console.log('👤 Employee:', employee ? 'Editando' : 'Nuevo');
+              handleSave();
+            }}
             disabled={loading}
             style={{
               padding: '10px 20px',
