@@ -459,6 +459,9 @@ const HRManagementSystem: React.FC = () => {
   }, [currentView, loadEmployees]);
 
   const handleSaveEmployee = async (employeeData: Partial<Employee>) => {
+    console.log('🔄 handleSaveEmployee llamado con:', employeeData);
+    console.log('📝 Empleado seleccionado:', selectedEmployee);
+    
     setIsLoading(true);
     setError(null);
     try {
