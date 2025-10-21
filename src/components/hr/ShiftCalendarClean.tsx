@@ -624,10 +624,11 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
           <p>NO hay datos hardcodeados ni información fantasma</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', backgroundColor: '#e5e7eb' }}>
+        <div style={{ backgroundColor: 'white', padding: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
           {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-            <div key={day} style={{ padding: '10px', backgroundColor: '#374151', color: 'white', textAlign: 'center', fontWeight: 'bold' }}>
-              {day}
+            <div key={day} style={{ padding: '12px', backgroundColor: '#f9fafb', textAlign: 'center', fontWeight: '600', fontSize: '13px', color: '#6b7280' }}>
+              {day.toUpperCase()}
             </div>
           ))}
 
@@ -671,22 +672,31 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [] }
                 )}
                 
                 {assignments.map((assignment, idx) => (
-                  <div key={idx} style={{ 
-                    fontSize: '11px', 
-                    padding: '2px', 
-                    marginBottom: '2px', 
-                    backgroundColor: isHolidayDay ? '#fecaca' : '#dbeafe', 
-                    borderRadius: '2px',
-                    opacity: isHolidayDay ? 0.6 : 1
-                  }}>
-                    <strong>{assignment.shift?.name}</strong><br />
-                    {assignment.employee?.name}<br />
-                    {assignment.shift?.start_time} - {assignment.shift?.end_time}
+                  <div key={idx} style={{
+                    fontSize: '10px',
+                    padding: '6px',
+                    marginBottom: '4px',
+                    backgroundColor: getShiftColor(assignment.shift?.name || ''),
+                    color: 'white',
+                    borderRadius: '4px',
+                    opacity: isHolidayDay ? 0.6 : 1,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '2px' }}>{assignment.shift?.name}</div>
+                    <div style={{ fontSize: '9px', opacity: 0.9 }}>{assignment.employee?.name}</div>
+                    <div style={{ fontSize: '9px', opacity: 0.9 }}>
+                      {assignment.shift?.start_time} - {assignment.shift?.end_time}
+                    </div>
                   </div>
                 ))}
               </div>
             );
           })}
+          </div>
         </div>
       )
       )}
