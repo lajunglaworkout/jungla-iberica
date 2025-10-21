@@ -543,15 +543,82 @@ const ShiftAssignments: React.FC<{
   employees: Employee[];
   holidays?: Holiday[];
 }> = ({ shifts, employees, holidays = [] }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [pendingAssignments, setPendingAssignments] = useState<Record<string, { shiftId: number; employeeId: string }>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Verificar si la fecha seleccionada es festivo
   const isHoliday = (dateStr: string): Holiday | undefined => {
     return holidays.find(h => h.date === dateStr);
   };
 
-  const selectedHoliday = isHoliday(selectedDate);
+  const selectedHoliday = isHoliday(startDate);
+
+  // Manejar cambio de empleado en un slot
+  const handleEmployeeChange = (shiftId: number, slotIndex: number, employeeId: string) => {
+    const key = `${shiftId}-${slotIndex}`;
+    setPendingAssignments(prev => ({
+      ...prev,
+      [key]: { shiftId, employeeId }
+    }));
+  };
+
+  // Guardar todas las asignaciones
+  const handleSaveAssignments = async () => {
+    if (Object.keys(pendingAssignments).length === 0) {
+      alert('⚠️ No hay asignaciones para guardar');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Generar todas las fechas del rango
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dates: string[] = [];
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        if (!isHoliday(dateStr)) {
+          dates.push(dateStr);
+        }
+      }
+
+      // Crear asignaciones para cada fecha y cada empleado seleccionado
+      const assignmentsToInsert = [];
+      for (const date of dates) {
+        for (const [key, assignment] of Object.entries(pendingAssignments)) {
+          if (assignment.employeeId) {
+            assignmentsToInsert.push({
+              employee_id: assignment.employeeId,
+              shift_id: assignment.shiftId,
+              date: date,
+              status: 'confirmed',
+              is_substitute: false
+            });
+          }
+        }
+      }
+
+      console.log('📦 Insertando asignaciones:', assignmentsToInsert);
+
+      const { error } = await supabase
+        .from('employee_shifts')
+        .insert(assignmentsToInsert);
+
+      if (error) throw error;
+
+      alert(`✅ ${assignmentsToInsert.length} asignaciones guardadas correctamente para ${dates.length} días`);
+      setPendingAssignments({});
+    } catch (error: any) {
+      console.error('❌ Error guardando asignaciones:', error);
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div>
@@ -559,44 +626,77 @@ const ShiftAssignments: React.FC<{
         <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
           Asignaciones de Empleados
         </h2>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-            Fecha:
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+              📅 Fecha Inicio
+            </label>
             <input
               type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               style={{ 
-                marginLeft: '8px', 
-                padding: '8px', 
+                width: '100%',
+                padding: '10px', 
                 border: selectedHoliday ? '2px solid #ef4444' : '1px solid #d1d5db', 
                 borderRadius: '6px',
-                backgroundColor: selectedHoliday ? '#fef2f2' : 'white'
+                backgroundColor: selectedHoliday ? '#fef2f2' : 'white',
+                fontSize: '14px'
               }}
             />
-          </label>
-          
-          {selectedHoliday && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              backgroundColor: '#fee2e2',
-              border: '2px solid #ef4444',
-              borderRadius: '8px',
-              color: '#991b1b',
-              fontWeight: '600',
-              fontSize: '14px'
-            }}>
-              <span>🎉</span>
-              <span>{selectedHoliday.name}</span>
-              <span style={{ fontSize: '12px', fontWeight: '400' }}>
-                ({selectedHoliday.type === 'national' ? 'Nacional' : selectedHoliday.type === 'regional' ? 'Regional' : 'Local'})
-              </span>
-            </div>
-          )}
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+              📅 Fecha Fin
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate}
+              style={{ 
+                width: '100%',
+                padding: '10px', 
+                border: '1px solid #d1d5db', 
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
         </div>
+        
+        <div style={{ 
+          padding: '12px', 
+          backgroundColor: '#dbeafe', 
+          borderRadius: '8px',
+          fontSize: '14px',
+          color: '#1e40af',
+          marginBottom: '16px'
+        }}>
+          💡 <strong>Tip:</strong> Selecciona empleados para cada turno y luego haz click en GUARDAR. Las asignaciones se aplicarán a todo el periodo seleccionado.
+        </div>
+        
+        {selectedHoliday && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 16px',
+            backgroundColor: '#fee2e2',
+            border: '2px solid #ef4444',
+            borderRadius: '8px',
+            color: '#991b1b',
+            fontWeight: '600',
+            fontSize: '14px',
+            marginBottom: '16px'
+          }}>
+            <span>🎉</span>
+            <span>{selectedHoliday.name}</span>
+            <span style={{ fontSize: '12px', fontWeight: '400' }}>
+              ({selectedHoliday.type === 'national' ? 'Nacional' : selectedHoliday.type === 'regional' ? 'Regional' : 'Local'})
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Alerta de bloqueo si es festivo */}
@@ -653,6 +753,8 @@ const ShiftAssignments: React.FC<{
                   <p style={{ fontSize: '14px' }}>Empleado {i + 1}</p>
                   <select
                     disabled={!!selectedHoliday}
+                    value={pendingAssignments[`${shift.id}-${i}`]?.employeeId || ''}
+                    onChange={(e) => handleEmployeeChange(shift.id, i, e.target.value)}
                     style={{
                       width: '100%',
                       padding: '6px',
@@ -676,6 +778,57 @@ const ShiftAssignments: React.FC<{
           </div>
         ))}
       </div>
+
+      {/* BOTÓN DE GUARDAR */}
+      <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={handleSaveAssignments}
+          disabled={isSaving || Object.keys(pendingAssignments).length === 0}
+          style={{
+            padding: '16px 48px',
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: (isSaving || Object.keys(pendingAssignments).length === 0) ? 'not-allowed' : 'pointer',
+            opacity: (isSaving || Object.keys(pendingAssignments).length === 0) ? 0.5 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (!isSaving && Object.keys(pendingAssignments).length > 0) {
+              e.currentTarget.style.backgroundColor = '#047857';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = '#059669';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <Save size={20} />
+          {isSaving ? 'GUARDANDO...' : 'GUARDAR ASIGNACIONES DE TURNOS'}
+        </button>
+      </div>
+
+      {Object.keys(pendingAssignments).length > 0 && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#d1fae5',
+          borderRadius: '8px',
+          textAlign: 'center',
+          color: '#065f46',
+          fontSize: '14px'
+        }}>
+          ✅ {Object.keys(pendingAssignments).length} empleado(s) seleccionado(s). Haz click en GUARDAR para aplicar las asignaciones.
+        </div>
+      )}
     </div>
   );
 };
