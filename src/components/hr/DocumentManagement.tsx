@@ -315,6 +315,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                   let displayName = center.name;
                   if (center.name.toLowerCase().includes('tablet')) {
                     displayName = center.name.replace('Tablet', '🏋️ Gimnasio');
+                  } else if (center.name.toLowerCase().includes('central') || center.name.toLowerCase().includes('almacén')) {
+                    displayName = '🏢 Marca Corporativa / Almacén';
                   } else if (center.name.toLowerCase().includes('marca') || center.name.toLowerCase().includes('corporativa')) {
                     displayName = '🏢 ' + center.name;
                   }
@@ -598,6 +600,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                   let displayName = center.name;
                   if (center.name.toLowerCase().includes('tablet')) {
                     displayName = center.name.replace('Tablet', '🏋️ Gimnasio');
+                  } else if (center.name.toLowerCase().includes('central') || center.name.toLowerCase().includes('almacén')) {
+                    displayName = '🏢 Marca Corporativa / Almacén';
                   } else if (center.name.toLowerCase().includes('marca') || center.name.toLowerCase().includes('corporativa')) {
                     displayName = '🏢 ' + center.name;
                   }
@@ -710,6 +714,8 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                                 {' '}
                                 {doc.center_name.toLowerCase().includes('tablet') 
                                   ? doc.center_name.replace('Tablet', 'Gimnasio')
+                                  : doc.center_name.toLowerCase().includes('central') || doc.center_name.toLowerCase().includes('almacén')
+                                  ? 'Marca Corporativa / Almacén'
                                   : doc.center_name
                                 }
                               </div>
