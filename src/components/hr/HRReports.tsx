@@ -860,16 +860,15 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
 
               <div style={{
                 padding: '16px',
-                backgroundColor: '#fef3c7',
+                backgroundColor: '#d1fae5',
                 borderRadius: '8px',
-                border: '1px solid #fbbf24'
+                border: '1px solid #10b981'
               }}>
-                <div style={{ fontSize: '14px', color: '#92400e', fontWeight: '600', marginBottom: '8px' }}>
-                  ℹ️ Nota sobre costes
+                <div style={{ fontSize: '14px', color: '#065f46', fontWeight: '600', marginBottom: '8px' }}>
+                  ✅ Datos reales de Contabilidad
                 </div>
-                <div style={{ fontSize: '13px', color: '#78350f' }}>
-                  Los costes mostrados son estimaciones basadas en un salario promedio de 1.500€/mes por empleado. 
-                  Para obtener datos precisos, es necesario integrar la información real de nóminas desde el sistema de contabilidad.
+                <div style={{ fontSize: '13px', color: '#064e3b' }}>
+                  Costes obtenidos del módulo de Contabilidad ({new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}).
                 </div>
               </div>
             </div>
