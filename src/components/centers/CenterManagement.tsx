@@ -12,7 +12,7 @@ import ComingSoon from '../hr/ComingSoon';
 import UniformRequestPanel from '../logistics/UniformRequestPanel';
 import EmployeeQRGenerator from '../hr/EmployeeQRGenerator';
 import ChecklistCompleteSystem from '../ChecklistCompleteSystem';
-import EmployeeDocuments from '../hr/EmployeeDocuments';
+import DocumentManagement from '../hr/DocumentManagement';
 import QRScanner from '../hr/QRScanner';
 import CenterQRDisplay from '../hr/CenterQRDisplay';
 import { LocationType } from '../../types/logistics';
@@ -279,8 +279,10 @@ const CenterManagement: React.FC = () => {
         );
       case 'my-documents':
         return (
-          <EmployeeDocuments
+          <DocumentManagement
             onBack={() => setActiveAction('summary')}
+            currentEmployee={employee}
+            isEmployee={true}
           />
         );
       case 'hr-contact':
