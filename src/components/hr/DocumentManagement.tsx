@@ -87,12 +87,15 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
         .select('*')
         .order('uploaded_at', { ascending: false });
 
-      if (selectedEmployee) {
-        query = query.eq('employee_id', selectedEmployee);
-      }
-
+      // Si es empleado, buscar su ID numérico por email
       if (isEmployee && currentEmployee) {
-        query = query.eq('employee_id', currentEmployee.id);
+        const employee = employees.find(e => e.email === currentEmployee.email);
+        if (employee) {
+          query = query.eq('employee_id', employee.id);
+        }
+      } else if (selectedEmployee) {
+        // Si es admin y hay un empleado seleccionado
+        query = query.eq('employee_id', selectedEmployee);
       }
 
       const { data } = await query;
