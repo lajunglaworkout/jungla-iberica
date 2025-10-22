@@ -29,12 +29,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Cargar solo los 3 centros reales: Sevilla, Jerez, Puerto
+        // Cargar centros: 3 gimnasios + Central (marca/almacén)
         const { data: centersData, error: centersError } = await supabase
           .from('centers')
           .select('*')
-          .or('name.eq.Sevilla,name.eq.Jerez,name.eq.Puerto')
-          .eq('status', 'Activo');
+          .or('name.eq.Sevilla,name.eq.Jerez,name.eq.Puerto,name.ilike.%Central%,name.ilike.%Almacén%');
         
         if (centersError) {
           console.error('Error cargando centros:', centersError);
