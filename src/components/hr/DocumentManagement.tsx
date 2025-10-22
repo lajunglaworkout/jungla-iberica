@@ -57,6 +57,11 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
     file: null
   });
 
+  // Filtrar empleados por centro seleccionado
+  const filteredEmployees = uploadForm.center_id > 0
+    ? employees.filter(emp => emp.center_id === uploadForm.center_id)
+    : employees;
+
   useEffect(() => {
     if (isEmployee && currentEmployee) {
       setSelectedEmployee(currentEmployee.id);
@@ -264,35 +269,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
         </div>
 
         <form onSubmit={handleUpload} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          {/* Empleado */}
-          {!isEmployee && (
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
-                Empleado *
-              </label>
-              <select
-                value={uploadForm.employee_id}
-                onChange={(e) => setUploadForm({ ...uploadForm, employee_id: Number(e.target.value) })}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              >
-                <option value={0}>Seleccionar empleado</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Centro/Marca */}
+          {/* Centro/Marca - PRIMERO */}
           {!isEmployee && (
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
@@ -330,6 +307,44 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                 💡 Selecciona el gimnasio o la marca corporativa según corresponda
               </div>
+            </div>
+          )}
+
+          {/* Empleado - DESPUÉS del centro */}
+          {!isEmployee && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                Empleado *
+              </label>
+              <select
+                value={uploadForm.employee_id}
+                onChange={(e) => setUploadForm({ ...uploadForm, employee_id: Number(e.target.value) })}
+                required
+                disabled={uploadForm.center_id === 0}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  backgroundColor: uploadForm.center_id === 0 ? '#f9fafb' : 'white',
+                  cursor: uploadForm.center_id === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <option value={0}>
+                  {uploadForm.center_id === 0 ? 'Primero selecciona un centro' : 'Seleccionar empleado'}
+                </option>
+                {filteredEmployees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </option>
+                ))}
+              </select>
+              {uploadForm.center_id > 0 && (
+                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  📋 Mostrando {filteredEmployees.length} empleado(s) del centro seleccionado
+                </div>
+              )}
             </div>
           )}
 
