@@ -17,6 +17,8 @@ interface EmployeeDocument {
   id?: number;
   employee_id: number;
   employee_name?: string;
+  center_id?: number;
+  center_name?: string;
   document_type: 'contract' | 'payroll' | 'irpf' | 'sick_leave' | 'certificate' | 'other';
   document_name: string;
   file_url: string;
@@ -29,11 +31,12 @@ interface EmployeeDocument {
 }
 
 const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, currentEmployee, isEmployee = false }) => {
-  const { employees } = useData();
+  const { employees, centers } = useData();
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -41,12 +44,14 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
   const [uploadForm, setUploadForm] = useState<{
     employee_id: number;
     document_type: string;
+    center_id: number;
     period: string;
     notes: string;
     file: File | null;
   }>({
     employee_id: 0,
     document_type: isEmployee ? 'sick_leave' : 'contract',
+    center_id: 0,
     period: '',
     notes: '',
     file: null
@@ -80,11 +85,16 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
       const { data } = await query;
 
       if (data) {
-        // Enriquecer con nombres de empleados
-        const enriched = data.map(doc => ({
-          ...doc,
-          employee_name: employees.find(e => e.id === doc.employee_id)?.name || 'Desconocido'
-        }));
+        // Enriquecer con nombres de empleados y centros
+        const enriched = data.map(doc => {
+          const employee = employees.find(e => e.id === doc.employee_id);
+          const center = centers.find(c => c.id === doc.center_id);
+          return {
+            ...doc,
+            employee_name: employee?.name || 'Desconocido',
+            center_name: center?.name || (doc.center_id ? 'Centro desconocido' : '')
+          };
+        });
         setDocuments(enriched);
       }
     } catch (error) {
@@ -153,6 +163,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
         .from('employee_documents')
         .insert({
           employee_id: uploadForm.employee_id,
+          center_id: uploadForm.center_id || null,
           document_type: uploadForm.document_type,
           document_name: uploadForm.file.name,
           file_url: publicUrl,
@@ -170,6 +181,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
       setUploadForm({
         employee_id: isEmployee ? currentEmployee.id : 0,
         document_type: isEmployee ? 'sick_leave' : 'contract',
+        center_id: 0,
         period: '',
         notes: '',
         file: null
@@ -208,9 +220,10 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
   // Filtrar documentos
   const filteredDocuments = documents.filter(doc => {
     const typeMatch = selectedType === 'all' || doc.document_type === selectedType;
+    const centerMatch = !selectedCenter || doc.center_id === selectedCenter;
     const searchMatch = doc.document_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        doc.employee_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    return typeMatch && searchMatch;
+    return typeMatch && centerMatch && searchMatch;
   });
 
   // Agrupar por empleado
@@ -273,6 +286,33 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Centro/Marca */}
+          {!isEmployee && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+                Centro/Marca
+              </label>
+              <select
+                value={uploadForm.center_id}
+                onChange={(e) => setUploadForm({ ...uploadForm, center_id: Number(e.target.value) })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value={0}>Sin asignar</option>
+                {centers.map(center => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
                   </option>
                 ))}
               </select>
@@ -527,6 +567,29 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
               </div>
             )}
 
+            {/* Filtro por centro */}
+            <div style={{ minWidth: '200px' }}>
+              <select
+                value={selectedCenter || ''}
+                onChange={(e) => setSelectedCenter(Number(e.target.value) || null)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">Todos los centros</option>
+                {centers.map(center => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtro por tipo */}
             <div style={{ minWidth: '200px' }}>
               <select
@@ -619,6 +682,11 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                             {doc.period && (
                               <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
                                 📅 Periodo: {doc.period}
+                              </div>
+                            )}
+                            {doc.center_name && (
+                              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
+                                🏢 Centro: {doc.center_name}
                               </div>
                             )}
                             <div style={{ fontSize: '12px', color: '#6b7280' }}>
