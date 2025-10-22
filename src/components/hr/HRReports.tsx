@@ -22,6 +22,13 @@ interface DashboardMetrics {
   shiftCoverage: number;
   pendingVacations: number;
   expiredDocuments: number;
+  // Nuevas métricas
+  totalAbsences: number;
+  totalLateArrivals: number;
+  totalSickLeaves: number;
+  totalIncidents: number;
+  incidentsUnanswered: number;
+  incidentsOverdue: number;
 }
 
 const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
@@ -36,7 +43,13 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
     absenteeismRate: 0,
     shiftCoverage: 0,
     pendingVacations: 0,
-    expiredDocuments: 0
+    expiredDocuments: 0,
+    totalAbsences: 0,
+    totalLateArrivals: 0,
+    totalSickLeaves: 0,
+    totalIncidents: 0,
+    incidentsUnanswered: 0,
+    incidentsOverdue: 0
   });
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
@@ -48,41 +61,90 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
   const loadDashboardMetrics = async () => {
     setLoading(true);
     try {
-      // Cargar empleados
+      const periodStart = getPeriodStart(selectedPeriod);
+      const now = new Date().toISOString().split('T')[0];
+
+      // 1. EMPLEADOS
       const { data: employees } = await supabase
         .from('employees')
         .select('*');
 
       const activeEmployees = employees?.filter(e => e.is_active) || [];
-      
-      // Calcular métricas básicas
       const totalEmployees = employees?.length || 0;
       const activeCount = activeEmployees.length;
 
-      // Cargar turnos del periodo
-      const periodStart = getPeriodStart(selectedPeriod);
-      const { data: shifts } = await supabase
-        .from('employee_shifts')
+      // 2. AUSENCIAS E INCIDENCIAS DE ASISTENCIA
+      const { data: attendanceRecords } = await supabase
+        .from('attendance_records')
         .select('*')
-        .gte('date', periodStart);
+        .gte('date', periodStart)
+        .lte('date', now);
 
-      // Cargar vacaciones pendientes
+      const totalAbsences = attendanceRecords?.filter(r => r.type === 'absence').length || 0;
+      const totalLateArrivals = attendanceRecords?.filter(r => r.type === 'late').length || 0;
+      const totalSickLeaves = attendanceRecords?.filter(r => r.type === 'sick_leave').length || 0;
+      
+      // Calcular tasa de absentismo
+      const workingDays = Math.max(1, Math.ceil((new Date(now).getTime() - new Date(periodStart).getTime()) / (1000 * 60 * 60 * 24)));
+      const expectedAttendance = activeCount * workingDays;
+      const absenteeismRate = expectedAttendance > 0 ? ((totalAbsences / expectedAttendance) * 100) : 0;
+
+      // 3. INCIDENCIAS DEL SISTEMA
+      const { data: incidents } = await supabase
+        .from('checklist_incidents')
+        .select('*')
+        .gte('created_at', periodStart);
+
+      const totalIncidents = incidents?.length || 0;
+      const incidentsUnanswered = incidents?.filter(i => 
+        !i.rrhh_response || i.rrhh_response === ''
+      ).length || 0;
+      
+      const incidentsOverdue = incidents?.filter(i => 
+        i.due_date && new Date(i.due_date) < new Date() && i.status !== 'resolved'
+      ).length || 0;
+
+      // 4. VACACIONES
       const { data: vacations } = await supabase
         .from('vacation_requests')
         .select('*')
         .eq('status', 'pending');
 
+      const pendingVacations = vacations?.length || 0;
+
+      // 5. TURNOS
+      const { data: shifts } = await supabase
+        .from('employee_shifts')
+        .select('*')
+        .gte('date', periodStart);
+
       setMetrics({
         totalEmployees,
         activeEmployees: activeCount,
-        newHires: 0, // TODO: calcular desde fecha de alta
+        newHires: 0,
         terminations: totalEmployees - activeCount,
         turnoverRate: totalEmployees > 0 ? ((totalEmployees - activeCount) / totalEmployees * 100) : 0,
-        avgTenure: 0, // TODO: calcular antigüedad promedio
-        absenteeismRate: 0, // TODO: calcular desde fichajes
+        avgTenure: 0,
+        absenteeismRate,
         shiftCoverage: shifts?.length || 0,
-        pendingVacations: vacations?.length || 0,
-        expiredDocuments: 0 // TODO: calcular documentos vencidos
+        pendingVacations,
+        expiredDocuments: 0,
+        totalAbsences,
+        totalLateArrivals,
+        totalSickLeaves,
+        totalIncidents,
+        incidentsUnanswered,
+        incidentsOverdue
+      });
+
+      console.log('📊 Métricas cargadas:', {
+        ausencias: totalAbsences,
+        retrasos: totalLateArrivals,
+        bajas: totalSickLeaves,
+        incidencias: totalIncidents,
+        sinRespuesta: incidentsUnanswered,
+        vencidas: incidentsOverdue,
+        vacacionesPendientes: pendingVacations
       });
     } catch (error) {
       console.error('Error cargando métricas:', error);
@@ -331,6 +393,66 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                 icon={<Calendar size={24} />}
                 color="#f59e0b"
                 subtitle="Por aprobar"
+              />
+            </div>
+
+            {/* Métricas de Asistencia */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px',
+              marginBottom: '32px'
+            }}>
+              <MetricCard
+                title="Ausencias"
+                value={metrics.totalAbsences}
+                icon={<AlertCircle size={24} />}
+                color="#ef4444"
+                subtitle={`Tasa: ${metrics.absenteeismRate.toFixed(1)}%`}
+              />
+              <MetricCard
+                title="Retrasos"
+                value={metrics.totalLateArrivals}
+                icon={<Clock size={24} />}
+                color="#f59e0b"
+                subtitle="Este periodo"
+              />
+              <MetricCard
+                title="Bajas Médicas"
+                value={metrics.totalSickLeaves}
+                icon={<Activity size={24} />}
+                color="#8b5cf6"
+                subtitle="Registradas"
+              />
+            </div>
+
+            {/* Métricas de Incidencias */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '20px',
+              marginBottom: '32px'
+            }}>
+              <MetricCard
+                title="Incidencias Totales"
+                value={metrics.totalIncidents}
+                icon={<AlertCircle size={24} />}
+                color="#3b82f6"
+                subtitle="Creadas este periodo"
+              />
+              <MetricCard
+                title="Sin Respuesta RRHH"
+                value={metrics.incidentsUnanswered}
+                icon={<FileText size={24} />}
+                color="#ef4444"
+                subtitle="Requieren atención"
+              />
+              <MetricCard
+                title="Incidencias Vencidas"
+                value={metrics.incidentsOverdue}
+                icon={<Calendar size={24} />}
+                color="#dc2626"
+                subtitle="Fuera de plazo"
               />
             </div>
 
