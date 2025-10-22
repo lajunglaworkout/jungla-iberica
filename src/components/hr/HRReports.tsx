@@ -56,10 +56,35 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [selectedCenter, setSelectedCenter] = useState<number | 'all'>('all');
+  const [accountingData, setAccountingData] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardMetrics();
+    loadAccountingData();
   }, [selectedPeriod]);
+
+  const loadAccountingData = async () => {
+    try {
+      // Obtener datos de contabilidad del mes actual
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const { data, error } = await supabase
+        .from('accounting_data')
+        .select('*')
+        .eq('año', currentYear)
+        .eq('mes', currentMonth);
+
+      if (error) {
+        console.error('Error cargando datos de contabilidad:', error);
+        return;
+      }
+
+      setAccountingData(data || []);
+    } catch (error) {
+      console.error('Error cargando datos de contabilidad:', error);
+    }
+  };
 
   const loadDashboardMetrics = async () => {
     setLoading(true);
@@ -742,15 +767,21 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
 
         {/* TAB COSTES */}
         {activeTab === 'costs' && (() => {
-          // Calcular empleados según centro seleccionado
+          // Obtener datos reales de contabilidad según centro seleccionado
+          const filteredAccountingData = selectedCenter === 'all'
+            ? accountingData
+            : accountingData.filter(d => d.center_id === selectedCenter.toString());
+          
+          // Sumar nóminas y seguridad social de los datos de contabilidad
+          const payrollCost = filteredAccountingData.reduce((sum, d) => sum + (d.nominas || 0), 0);
+          const socialSecurityCost = filteredAccountingData.reduce((sum, d) => sum + (d.seguridad_social || 0), 0);
+          const totalCost = payrollCost + socialSecurityCost;
+          
+          // Contar empleados para referencia
           const filteredEmployees = selectedCenter === 'all' 
             ? employees.filter(e => e.is_active)
             : employees.filter(e => e.is_active && e.center_id === selectedCenter);
-          
           const employeeCount = filteredEmployees.length;
-          const payrollCost = employeeCount * 1500;
-          const socialSecurityCost = payrollCost * 0.30;
-          const totalCost = payrollCost + socialSecurityCost;
 
           return (
             <div>
@@ -800,7 +831,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(payrollCost)}
                   </div>
                   <div style={{ fontSize: '12px', color: '#065f46', marginTop: '4px' }}>
-                    {employeeCount} empleado{employeeCount !== 1 ? 's' : ''} × 1.500€
+                    {employeeCount} empleado{employeeCount !== 1 ? 's' : ''} activo{employeeCount !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <div style={{ padding: '20px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
@@ -811,7 +842,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(socialSecurityCost)}
                   </div>
                   <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px' }}>
-                    30% sobre nóminas
+                    Datos de contabilidad
                   </div>
                 </div>
                 <div style={{ padding: '20px', backgroundColor: '#e0e7ff', borderRadius: '8px' }}>
