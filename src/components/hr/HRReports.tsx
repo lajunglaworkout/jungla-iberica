@@ -741,41 +741,52 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
         )}
 
         {/* TAB COSTES */}
-        {activeTab === 'costs' && (
-          <div>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>
-                  💰 Costes Laborales Estimados
-                </h2>
-                
-                <select
-                  value={selectedCenter}
-                  onChange={(e) => setSelectedCenter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                  style={{
-                    padding: '10px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="all">🌍 Global (Todos)</option>
-                  {centers.map(center => (
-                    <option key={center.id} value={center.id}>
-                      {center.name.includes('Tablet') ? center.name.replace('Tablet', '🏋️') : center.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
+        {activeTab === 'costs' && (() => {
+          // Calcular empleados según centro seleccionado
+          const filteredEmployees = selectedCenter === 'all' 
+            ? employees.filter(e => e.is_active)
+            : employees.filter(e => e.is_active && e.center_id === selectedCenter);
+          
+          const employeeCount = filteredEmployees.length;
+          const payrollCost = employeeCount * 1500;
+          const socialSecurityCost = payrollCost * 0.30;
+          const totalCost = payrollCost + socialSecurityCost;
+
+          return (
+            <div>
               <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                    💰 Costes Laborales Estimados
+                  </h2>
+                  
+                  <select
+                    value={selectedCenter}
+                    onChange={(e) => setSelectedCenter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                    style={{
+                      padding: '10px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all">🌍 Global (Todos)</option>
+                    {centers.map(center => (
+                      <option key={center.id} value={center.id}>
+                        {center.name.includes('Tablet') ? center.name.replace('Tablet', '🏋️') : center.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                 gap: '16px',
@@ -786,10 +797,10 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                     Coste Nóminas Mensual
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#065f46' }}>
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500)}
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(payrollCost)}
                   </div>
                   <div style={{ fontSize: '12px', color: '#065f46', marginTop: '4px' }}>
-                    Estimado: {metrics.activeEmployees} empleados × 1.500€
+                    {employeeCount} empleado{employeeCount !== 1 ? 's' : ''} × 1.500€
                   </div>
                 </div>
                 <div style={{ padding: '20px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
@@ -797,7 +808,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                     Seguridad Social (30%)
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e40af' }}>
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500 * 0.30)}
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(socialSecurityCost)}
                   </div>
                   <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px' }}>
                     30% sobre nóminas
@@ -808,7 +819,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                     Coste Total Mensual
                   </div>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#3730a3' }}>
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500 * 1.30)}
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalCost)}
                   </div>
                   <div style={{ fontSize: '12px', color: '#3730a3', marginTop: '4px' }}>
                     Nóminas + Seguridad Social
@@ -832,7 +843,8 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
