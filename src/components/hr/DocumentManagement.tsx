@@ -296,7 +296,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
           {!isEmployee && (
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
-                Centro/Marca
+                Ubicación del Documento
               </label>
               <select
                 value={uploadForm.center_id}
@@ -310,12 +310,24 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                 }}
               >
                 <option value={0}>Sin asignar</option>
-                {centers.map(center => (
-                  <option key={center.id} value={center.id}>
-                    {center.name}
-                  </option>
-                ))}
+                {centers.map(center => {
+                  // Formatear nombre para que sea más claro
+                  let displayName = center.name;
+                  if (center.name.toLowerCase().includes('tablet')) {
+                    displayName = center.name.replace('Tablet', '🏋️ Gimnasio');
+                  } else if (center.name.toLowerCase().includes('marca') || center.name.toLowerCase().includes('corporativa')) {
+                    displayName = '🏢 ' + center.name;
+                  }
+                  return (
+                    <option key={center.id} value={center.id}>
+                      {displayName}
+                    </option>
+                  );
+                })}
               </select>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                💡 Selecciona el gimnasio o la marca corporativa según corresponda
+              </div>
             </div>
           )}
 
@@ -568,7 +580,7 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
             )}
 
             {/* Filtro por centro */}
-            <div style={{ minWidth: '200px' }}>
+            <div style={{ minWidth: '220px' }}>
               <select
                 value={selectedCenter || ''}
                 onChange={(e) => setSelectedCenter(Number(e.target.value) || null)}
@@ -581,12 +593,20 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                   cursor: 'pointer'
                 }}
               >
-                <option value="">Todos los centros</option>
-                {centers.map(center => (
-                  <option key={center.id} value={center.id}>
-                    {center.name}
-                  </option>
-                ))}
+                <option value="">Todas las ubicaciones</option>
+                {centers.map(center => {
+                  let displayName = center.name;
+                  if (center.name.toLowerCase().includes('tablet')) {
+                    displayName = center.name.replace('Tablet', '🏋️ Gimnasio');
+                  } else if (center.name.toLowerCase().includes('marca') || center.name.toLowerCase().includes('corporativa')) {
+                    displayName = '🏢 ' + center.name;
+                  }
+                  return (
+                    <option key={center.id} value={center.id}>
+                      {displayName}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -686,7 +706,12 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
                             )}
                             {doc.center_name && (
                               <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-                                🏢 Centro: {doc.center_name}
+                                {doc.center_name.toLowerCase().includes('tablet') ? '🏋️' : '🏢'} 
+                                {' '}
+                                {doc.center_name.toLowerCase().includes('tablet') 
+                                  ? doc.center_name.replace('Tablet', 'Gimnasio')
+                                  : doc.center_name
+                                }
                               </div>
                             )}
                             <div style={{ fontSize: '12px', color: '#6b7280' }}>
