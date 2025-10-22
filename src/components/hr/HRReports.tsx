@@ -608,22 +608,204 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Otros tabs - Próximamente */}
-        {activeTab !== 'dashboard' && (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '60px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}>
-            <Activity size={64} style={{ margin: '0 auto 16px', color: '#9ca3af' }} />
-            <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-              Reporte de {activeTab === 'staff' ? 'Plantilla' : activeTab === 'shifts' ? 'Turnos' : activeTab === 'vacations' ? 'Vacaciones' : 'Costes'}
-            </h3>
-            <p style={{ color: '#6b7280', fontSize: '16px' }}>
-              Este reporte detallado estará disponible próximamente
-            </p>
+        {/* TAB PLANTILLA */}
+        {activeTab === 'staff' && (
+          <div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                👥 Resumen de Plantilla
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px'
+              }}>
+                <div style={{ padding: '16px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#065f46' }}>
+                    {metrics.activeEmployees}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#064e3b' }}>Empleados Activos</div>
+                </div>
+                <div style={{ padding: '16px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e40af' }}>
+                    {metrics.totalEmployees}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#1e3a8a' }}>Total Empleados</div>
+                </div>
+                <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#92400e' }}>
+                    {metrics.turnoverRate.toFixed(1)}%
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#78350f' }}>Tasa de Rotación</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB TURNOS */}
+        {activeTab === 'shifts' && (
+          <div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                🕐 Cobertura de Turnos
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px'
+              }}>
+                <div style={{ padding: '20px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#1e40af', marginBottom: '8px' }}>
+                    {metrics.shiftCoverage}
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e3a8a', marginBottom: '4px' }}>
+                    Turnos Asignados
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#1e40af' }}>
+                    En el periodo seleccionado
+                  </div>
+                </div>
+                <div style={{ padding: '20px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#065f46', marginBottom: '8px' }}>
+                    {metrics.activeEmployees}
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#064e3b', marginBottom: '4px' }}>
+                    Empleados Disponibles
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#065f46' }}>
+                    Para asignación de turnos
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB VACACIONES */}
+        {activeTab === 'vacations' && (
+          <div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                🏖️ Estado de Vacaciones
+              </h2>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px'
+              }}>
+                <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#92400e', marginBottom: '8px' }}>
+                    {metrics.pendingVacations}
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#78350f', marginBottom: '4px' }}>
+                    Solicitudes Pendientes
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#92400e' }}>
+                    Requieren aprobación o rechazo
+                  </div>
+                </div>
+                <div style={{ padding: '20px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#065f46', marginBottom: '8px' }}>
+                    {metrics.activeEmployees}
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#064e3b', marginBottom: '4px' }}>
+                    Empleados Activos
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#065f46' }}>
+                    Con derecho a vacaciones
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB COSTES */}
+        {activeTab === 'costs' && (
+          <div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                💰 Costes Laborales Estimados
+              </h2>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ padding: '20px', backgroundColor: '#d1fae5', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '14px', color: '#064e3b', marginBottom: '8px' }}>
+                    Coste Nóminas Mensual
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#065f46' }}>
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500)}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#065f46', marginTop: '4px' }}>
+                    Estimado: {metrics.activeEmployees} empleados × 1.500€
+                  </div>
+                </div>
+                <div style={{ padding: '20px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '14px', color: '#1e3a8a', marginBottom: '8px' }}>
+                    Seguridad Social (30%)
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e40af' }}>
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500 * 0.30)}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px' }}>
+                    30% sobre nóminas
+                  </div>
+                </div>
+                <div style={{ padding: '20px', backgroundColor: '#e0e7ff', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '14px', color: '#312e81', marginBottom: '8px' }}>
+                    Coste Total Mensual
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#3730a3' }}>
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(metrics.activeEmployees * 1500 * 1.30)}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#3730a3', marginTop: '4px' }}>
+                    Nóminas + Seguridad Social
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '8px',
+                border: '1px solid #fbbf24'
+              }}>
+                <div style={{ fontSize: '14px', color: '#92400e', fontWeight: '600', marginBottom: '8px' }}>
+                  ℹ️ Nota sobre costes
+                </div>
+                <div style={{ fontSize: '13px', color: '#78350f' }}>
+                  Los costes mostrados son estimaciones basadas en un salario promedio de 1.500€/mes por empleado. 
+                  Para obtener datos precisos, es necesario integrar la información real de nóminas desde el sistema de contabilidad.
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
