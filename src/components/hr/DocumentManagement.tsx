@@ -138,14 +138,14 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
       // Subir archivo a Supabase Storage
       const fileName = `${uploadForm.employee_id}/${uploadForm.document_type}/${Date.now()}_${uploadForm.file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('EMPLOYEE-DOCUMENTS')
+        .from('employee-documents')
         .upload(fileName, uploadForm.file);
 
       if (uploadError) throw uploadError;
 
       // Obtener URL pública
       const { data: { publicUrl } } = supabase.storage
-        .from('EMPLOYEE-DOCUMENTS')
+        .from('employee-documents')
         .getPublicUrl(fileName);
 
       // Guardar registro en BD
