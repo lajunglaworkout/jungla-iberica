@@ -6,6 +6,7 @@ import {
   Download, Filter, RefreshCw, ArrowLeft, ChevronRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useData } from '../../contexts/DataContext';
 
 interface HRReportsProps {
   onBack?: () => void;
@@ -32,6 +33,7 @@ interface DashboardMetrics {
 }
 
 const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
+  const { employees, centers } = useData();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'staff' | 'shifts' | 'vacations' | 'costs'>('dashboard');
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalEmployees: 0,
@@ -53,6 +55,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [selectedCenter, setSelectedCenter] = useState<number | 'all'>('all');
 
   useEffect(() => {
     loadDashboardMetrics();
@@ -746,9 +749,31 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
               padding: '24px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
-                💰 Costes Laborales Estimados
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                  💰 Costes Laborales Estimados
+                </h2>
+                
+                <select
+                  value={selectedCenter}
+                  onChange={(e) => setSelectedCenter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  style={{
+                    padding: '10px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="all">🌍 Global (Todos)</option>
+                  {centers.map(center => (
+                    <option key={center.id} value={center.id}>
+                      {center.name.includes('Tablet') ? center.name.replace('Tablet', '🏋️') : center.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               
               <div style={{
                 display: 'grid',
