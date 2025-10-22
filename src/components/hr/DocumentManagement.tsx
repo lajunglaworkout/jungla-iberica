@@ -63,12 +63,20 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
     : employees;
 
   useEffect(() => {
-    if (isEmployee && currentEmployee) {
-      setSelectedEmployee(currentEmployee.id);
-      setUploadForm(prev => ({ ...prev, employee_id: currentEmployee.id }));
-    }
-    loadDocuments();
-  }, [selectedEmployee, isEmployee, currentEmployee]);
+    const initEmployee = async () => {
+      if (isEmployee && currentEmployee) {
+        // Buscar el employee real por email para obtener el ID numérico
+        const employee = employees.find(e => e.email === currentEmployee.email);
+        if (employee) {
+          setSelectedEmployee(employee.id);
+          setUploadForm(prev => ({ ...prev, employee_id: employee.id }));
+        }
+      }
+      loadDocuments();
+    };
+    
+    initEmployee();
+  }, [selectedEmployee, isEmployee, currentEmployee, employees]);
 
   const loadDocuments = async () => {
     try {
