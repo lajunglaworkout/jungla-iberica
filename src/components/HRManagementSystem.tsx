@@ -683,7 +683,6 @@ const HRManagementSystem: React.FC = () => {
         />
       );
     case 'my-documents':
-    case 'employee-documents':
       return (
         <DocumentManagement 
           onBack={() => setCurrentView('dashboard')} 
