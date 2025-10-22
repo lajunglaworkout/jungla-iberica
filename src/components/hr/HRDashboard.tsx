@@ -234,15 +234,15 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       count: 'Gestionar',
       status: 'active'
     },
-    // 7. Reportes y Analíticas (POR DESARROLLAR)
+    // 7. Reportes y Analíticas (COMPLETO)
     {
       id: 'hr-reports',
       title: '7. Reportes y Analíticas',
       icon: <BarChart size={32} />,
-      description: 'Dashboard ejecutivo con métricas clave de RRHH',
+      description: 'Ausencias, incidencias, peticiones y costes por centro',
       color: '#8b5cf6',
-      count: 'Próximamente',
-      status: 'coming-soon'
+      count: 'Ver Dashboard',
+      status: 'active'
     },
     // 8. Formación (MÁS ADELANTE)
     {
