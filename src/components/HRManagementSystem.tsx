@@ -683,11 +683,12 @@ const HRManagementSystem: React.FC = () => {
         />
       );
     case 'my-documents':
+    case 'employee-documents':
       return (
-        <ComingSoon
-          onBack={() => setCurrentView('dashboard')}
-          title="📄 Mis Documentos"
-          description="Accede a tu contrato, nóminas y documentos laborales."
+        <DocumentManagement 
+          onBack={() => setCurrentView('dashboard')} 
+          currentEmployee={employee}
+          isEmployee={true}
         />
       );
     case 'hr-contact':
