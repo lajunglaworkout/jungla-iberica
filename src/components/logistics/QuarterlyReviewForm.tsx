@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Save, Send, ArrowLeft } from 'lucide-react';
+import quarterlyInventoryService from '../../services/quarterlyInventoryService';
 
 interface QuarterlyReviewFormProps {
   onBack: () => void;
@@ -37,6 +38,62 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
     totalDeteriorated: 0,
     discrepancies: 0
   });
+
+  const handleSave = async () => {
+    console.log('💾 Guardando progreso...', items);
+    
+    try {
+      // Transformar items al formato esperado por el servicio
+      const reviewItems = items.map((item: any) => ({
+        inventory_item_id: item.id,
+        product_name: item.name,
+        category: item.category,
+        current_system_quantity: item.system,
+        counted_quantity: item.counted || 0,
+        regular_quantity: item.regular || 0,
+        deteriorated_quantity: item.deteriorated || 0,
+        to_remove_quantity: item.deteriorated || 0, // Los deteriorados se marcan para eliminar
+        observations: item.obs || ''
+      }));
+
+      // Guardar en la base de datos
+      const result = await quarterlyInventoryService.saveReviewItems(reviewData.id, reviewItems);
+      
+      if (result.success) {
+        alert('✅ Progreso guardado correctamente. Puedes continuar más tarde.');
+        console.log('✅ Items guardados:', result.items);
+      } else {
+        alert('❌ Error guardando el progreso. Inténtalo de nuevo.');
+        console.error('❌ Error guardando:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      alert('❌ Error inesperado guardando el progreso.');
+    }
+  };
+
+  const handleSend = async () => {
+    console.log('📤 Enviando a Beni...', items);
+    
+    try {
+      // Primero guardar todo
+      await handleSave();
+      
+      // Luego marcar como completada
+      const result = await quarterlyInventoryService.completeAssignment(reviewData.id, 'franciscogiraldezmorales@gmail.com');
+      
+      if (result.success) {
+        alert('✅ Revisión enviada a Beni para autorización de eliminación de items.');
+        onBack(); // Volver al panel principal
+      } else {
+        alert('❌ Error enviando la revisión.');
+        console.error('❌ Error completando:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      alert('❌ Error inesperado enviando la revisión.');
+    }
+  };
 
   return (
     <div style={{ padding: '2rem' }}>
@@ -139,10 +196,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
 
         <div style={{ padding: '1rem', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <button 
-            onClick={() => {
-              console.log('💾 Guardando progreso...', items);
-              alert('Progreso guardado. Puedes continuar más tarde.');
-            }}
+            onClick={handleSave}
             style={{ 
               padding: '10px 16px', 
               backgroundColor: '#6b7280', 
@@ -158,10 +212,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
             <Save size={16} /> Guardar
           </button>
           <button 
-            onClick={() => {
-              console.log('📤 Enviando a Beni...', items);
-              alert('Revisión enviada a Beni para autorización de eliminación de items.');
-            }}
+            onClick={handleSend}
             style={{ 
               padding: '10px 16px', 
               backgroundColor: '#059669', 

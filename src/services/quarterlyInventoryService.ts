@@ -220,6 +220,21 @@ class QuarterlyInventoryService {
   async saveReviewItems(assignmentId: number, items: QuarterlyReviewItem[]) {
     try {
       console.log('💾 Guardando items de revisión...');
+      console.log('📋 Items a guardar:', items.length);
+      console.log('📋 Primer item:', items[0]);
+
+      // Primero verificar estructura de la tabla
+      const { data: testData, error: testError } = await supabase
+        .from('quarterly_review_items')
+        .select('*')
+        .limit(1);
+
+      if (testError) {
+        console.error('❌ Error verificando tabla:', testError);
+        throw testError;
+      }
+
+      console.log('📋 Estructura de la tabla (primer registro):', testData?.[0] || 'Tabla vacía');
 
       const { data, error } = await supabase
         .from('quarterly_review_items')
