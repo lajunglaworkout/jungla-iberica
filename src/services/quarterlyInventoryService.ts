@@ -45,6 +45,69 @@ interface QuarterlyReviewItem {
 
 class QuarterlyInventoryService {
   
+  // Eliminar revisión completa (Beni)
+  async deleteReview(quarter: string, year: number) {
+    try {
+      console.log(`🗑️ Eliminando revisión ${quarter}-${year}...`);
+
+      // 1. Eliminar items de revisión
+      const { error: itemsError } = await supabase
+        .from('quarterly_review_items')
+        .delete()
+        .in('assignment_id', 
+          supabase
+            .from('quarterly_inventory_assignments')
+            .select('id')
+            .in('review_id',
+              supabase
+                .from('quarterly_reviews')
+                .select('id')
+                .eq('quarter', quarter)
+                .eq('year', year)
+            )
+        );
+
+      if (itemsError) {
+        console.error('❌ Error eliminando items:', itemsError);
+      } else {
+        console.log('✅ Items de revisión eliminados');
+      }
+
+      // 2. Eliminar asignaciones
+      const { error: assignmentsError } = await supabase
+        .from('quarterly_inventory_assignments')
+        .delete()
+        .in('review_id',
+          supabase
+            .from('quarterly_reviews')
+            .select('id')
+            .eq('quarter', quarter)
+            .eq('year', year)
+        );
+
+      if (assignmentsError) {
+        console.error('❌ Error eliminando asignaciones:', assignmentsError);
+      } else {
+        console.log('✅ Asignaciones eliminadas');
+      }
+
+      // 3. Eliminar revisiones
+      const { error: reviewsError } = await supabase
+        .from('quarterly_reviews')
+        .delete()
+        .eq('quarter', quarter)
+        .eq('year', year);
+
+      if (reviewsError) throw reviewsError;
+
+      console.log(`✅ Revisión ${quarter}-${year} eliminada completamente`);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error eliminando revisión:', error);
+      return { success: false, error };
+    }
+  }
+
   // Crear nueva revisión (Beni)
   async createReview(data: {
     quarter: string;
@@ -57,25 +120,14 @@ class QuarterlyInventoryService {
     try {
       console.log('📋 Creando revisión trimestral de inventario...');
       
+      // Primero eliminar cualquier revisión existente para este quarter/year
+      console.log(`🗑️ Eliminando revisión existente ${data.quarter}-${data.year} si existe...`);
+      await this.deleteReview(data.quarter, data.year);
+      
       const reviews: QuarterlyReview[] = [];
       
       // Crear una revisión por cada centro
       for (const center of data.centers) {
-        // Verificar si ya existe una revisión para este centro, quarter y year
-        const { data: existingReview, error: checkError } = await supabase
-          .from('quarterly_reviews')
-          .select('*')
-          .eq('center_id', center.id)
-          .eq('quarter', data.quarter)
-          .eq('year', data.year)
-          .single();
-
-        if (existingReview) {
-          console.log(`⚠️ Revisión ya existe para ${center.name} ${data.quarter}-${data.year}:`, existingReview.id);
-          reviews.push(existingReview);
-          continue;
-        }
-
         const reviewData: QuarterlyReview = {
           center_id: center.id,
           center_name: center.name,
