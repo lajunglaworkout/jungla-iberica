@@ -60,37 +60,63 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
   const loadInventoryItems = async (assignment: any) => {
     console.log('📦 Cargando items del inventario para centro:', employee?.center_id);
     
-    const { data: items, error } = await supabase
+    // Primero cargar items del inventario base
+    const { data: inventoryItems, error: inventoryError } = await supabase
       .from('inventory_items')
       .select('*')
       .eq('center_id', Number(employee?.center_id));
 
-    if (error) {
-      console.error('❌ Error cargando items:', error);
+    if (inventoryError) {
+      console.error('❌ Error cargando items del inventario:', inventoryError);
       return;
     }
 
-    console.log('✅ Items cargados:', items?.length || 0);
+    console.log('✅ Items del inventario cargados:', inventoryItems?.length || 0);
 
-    // Preparar reviewData para el formulario
+    // Cargar datos ya guardados de la revisión
+    const { data: savedReviewItems, error: reviewError } = await supabase
+      .from('quarterly_review_items')
+      .select('*')
+      .eq('assignment_id', assignment.id);
+
+    if (reviewError) {
+      console.error('❌ Error cargando items guardados:', reviewError);
+      // Continuar sin datos guardados
+    }
+
+    console.log('✅ Items guardados cargados:', savedReviewItems?.length || 0);
+
+    // Crear mapa de items guardados para acceso rápido
+    const savedItemsMap = new Map();
+    savedReviewItems?.forEach((saved: any) => {
+      savedItemsMap.set(saved.inventory_item_id, saved);
+    });
+
+    // Preparar reviewData combinando inventario base + datos guardados
     const preparedReviewData = {
-      id: assignment.review.id,
+      id: assignment.id,
       quarter: assignment.review.quarter,
       year: assignment.review.year,
       center: assignment.center_name,
-      reviewItems: items?.map((item: any) => ({
-        id: item.id,
-        name: item.nombre_item || item.codigo || 'Sin nombre',
-        category: item.categoria || 'Sin categoría',
-        system: item.cantidad_actual || 0,
-        counted: 0,
-        regular: 0,
-        deteriorated: 0,
-        obs: ''
-      })) || []
+      reviewItems: inventoryItems?.map((item: any) => {
+        const savedData = savedItemsMap.get(item.id);
+        
+        return {
+          id: item.id,
+          name: item.nombre_item || item.codigo || 'Sin nombre',
+          category: item.categoria || 'Sin categoría',
+          system: item.cantidad_actual || 0,
+          counted: savedData?.counted_quantity || 0,
+          regular: savedData?.regular_quantity || 0,
+          deteriorated: savedData?.deteriorated_quantity || 0,
+          obs: savedData?.observations || ''
+        };
+      }) || []
     };
 
     console.log('📋 ReviewData preparado con', preparedReviewData.reviewItems.length, 'items');
+    console.log('📋 Items con datos guardados:', preparedReviewData.reviewItems.filter(item => item.counted > 0).length);
+    
     setReviewData(preparedReviewData);
   };
 
