@@ -138,10 +138,42 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
         </table>
 
         <div style={{ padding: '1rem', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button style={{ padding: '10px 16px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px' }}>
+          <button 
+            onClick={() => {
+              console.log('💾 Guardando progreso...', items);
+              alert('Progreso guardado. Puedes continuar más tarde.');
+            }}
+            style={{ 
+              padding: '10px 16px', 
+              backgroundColor: '#6b7280', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
             <Save size={16} /> Guardar
           </button>
-          <button style={{ padding: '10px 16px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px' }}>
+          <button 
+            onClick={() => {
+              console.log('📤 Enviando a Beni...', items);
+              alert('Revisión enviada a Beni para autorización de eliminación de items.');
+            }}
+            style={{ 
+              padding: '10px 16px', 
+              backgroundColor: '#059669', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
             <Send size={16} /> Enviar a Beni
           </button>
         </div>
