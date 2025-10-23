@@ -77,20 +77,20 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       id: assignment.review.id,
       quarter: assignment.review.quarter,
       year: assignment.review.year,
-      centerName: assignment.center_name,
-      items: items?.map((item: any) => ({
+      center: assignment.center_name,
+      reviewItems: items?.map((item: any) => ({
         id: item.id,
         name: item.product_name,
         category: item.category,
-        systemQuantity: item.quantity,
-        countedQuantity: 0,
-        regularQuantity: 0,
-        deterioratedQuantity: 0,
-        toRemoveQuantity: 0,
-        observations: ''
+        system: item.quantity,
+        counted: 0,
+        regular: 0,
+        deteriorated: 0,
+        obs: ''
       })) || []
     };
 
+    console.log('📋 ReviewData preparado con', preparedReviewData.reviewItems.length, 'items');
     setReviewData(preparedReviewData);
   };
 
