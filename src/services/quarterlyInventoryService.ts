@@ -223,6 +223,19 @@ class QuarterlyInventoryService {
       console.log('📋 Items a guardar:', items.length);
       console.log('📋 Primer item:', items[0]);
 
+      // Verificar que la tabla existe y tiene las columnas correctas
+      const { data: testData, error: testError } = await supabase
+        .from('quarterly_review_items')
+        .select('id, assignment_id, inventory_item_id')
+        .limit(1);
+
+      if (testError) {
+        console.error('❌ Error verificando tabla:', testError);
+        throw new Error(`Tabla quarterly_review_items no existe o no tiene las columnas correctas. Error: ${testError.message}`);
+      }
+
+      console.log('📋 Tabla verificada, primer registro:', testData?.[0] || 'Tabla vacía');
+
       const { data, error } = await supabase
         .from('quarterly_review_items')
         .upsert(items.map(item => ({
