@@ -80,9 +80,9 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       center: assignment.center_name,
       reviewItems: items?.map((item: any) => ({
         id: item.id,
-        name: item.product_name,
-        category: item.category,
-        system: item.quantity,
+        name: item.nombre_item || item.codigo || 'Sin nombre',
+        category: item.categoria || 'Sin categoría',
+        system: item.cantidad_actual || 0,
         counted: 0,
         regular: 0,
         deteriorated: 0,
