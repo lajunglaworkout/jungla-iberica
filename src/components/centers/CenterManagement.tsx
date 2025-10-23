@@ -57,8 +57,8 @@ const CenterManagement: React.FC = () => {
       { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y consultas', icon: <MessageCircle size={24} /> }
     ];
 
-    // Añadir opciones de revisiones solo para Encargados
-    if (employee?.role === 'Encargado') {
+    // Añadir opciones de revisiones para Encargados y center_manager
+    if (employee?.role === 'Encargado' || employee?.role === 'center_manager') {
       baseCards.push(
         { id: 'inventory-review', title: 'Revisión Inventario', description: 'Revisión trimestral de inventario', icon: <Package size={24} /> },
         { id: 'maintenance-review', title: 'Revisión Mantenimiento', description: 'Revisión trimestral de mantenimiento', icon: <Wrench size={24} /> }
@@ -122,8 +122,8 @@ const CenterManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Panel de Revisiones Pendientes (solo para Encargados) */}
-      {employee?.role === 'Encargado' && (
+      {/* Panel de Revisiones Pendientes (para Encargados y center_manager) */}
+      {(employee?.role === 'Encargado' || employee?.role === 'center_manager') && (
         <div style={{ marginBottom: '32px' }}>
           <ManagerReviewsPanel
             onStartInventoryReview={() => setActiveAction('inventory-review')}
