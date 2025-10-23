@@ -185,6 +185,8 @@ class QuarterlyInventoryService {
   // Obtener asignaciones de un encargado
   async getAssignments(centerId: number, status?: string) {
     try {
+      console.log('🔍 Buscando asignaciones para centro:', centerId, 'con status:', status);
+      
       let query = supabase
         .from('quarterly_inventory_assignments')
         .select(`
@@ -199,7 +201,14 @@ class QuarterlyInventoryService {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en query:', error);
+        throw error;
+      }
+      
+      console.log('✅ Asignaciones encontradas:', data?.length || 0);
+      console.log('📋 Datos:', data);
+      
       return { success: true, assignments: data };
     } catch (error) {
       console.error('❌ Error obteniendo asignaciones:', error);
