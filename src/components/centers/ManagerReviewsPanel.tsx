@@ -37,6 +37,8 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
     }
 
     console.log('🔍 Cargando revisiones pendientes para centro:', employee.center_id);
+    console.log('🔍 Tipo de center_id:', typeof employee.center_id);
+    console.log('🔍 Empleado completo:', employee);
     setLoading(true);
     
     // Cargar asignaciones de inventario pendientes
