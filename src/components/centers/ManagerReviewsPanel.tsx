@@ -31,8 +31,12 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
   }, [employee?.center_id]);
 
   const loadPendingReviews = async () => {
-    if (!employee?.center_id) return;
+    if (!employee?.center_id) {
+      console.log('⚠️ No hay center_id para el empleado');
+      return;
+    }
 
+    console.log('🔍 Cargando revisiones pendientes para centro:', employee.center_id);
     setLoading(true);
     
     // Cargar asignaciones de inventario pendientes
@@ -41,11 +45,18 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
       'pending'
     );
 
+    console.log('📋 Resultado de asignaciones:', inventoryResult);
+
     const reviews: PendingReview[] = [];
 
     if (inventoryResult.success && inventoryResult.assignments) {
+      console.log('✅ Asignaciones encontradas:', inventoryResult.assignments.length);
+      
       inventoryResult.assignments.forEach((assignment: any) => {
+        console.log('🔍 Evaluando asignación:', assignment);
+        
         if (assignment.review && assignment.review.status === 'active') {
+          console.log('✅ Revisión activa encontrada:', assignment.review.quarter);
           reviews.push({
             id: assignment.id,
             type: 'inventory',
@@ -55,13 +66,18 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
             itemCount: assignment.review.total_items,
             centerName: assignment.center_name
           });
+        } else {
+          console.log('⚠️ Revisión no activa o sin datos:', assignment.review?.status);
         }
       });
+    } else {
+      console.log('❌ No se encontraron asignaciones o error:', inventoryResult.error);
     }
 
     // TODO: Cargar asignaciones de mantenimiento pendientes
     // const maintenanceResult = await quarterlyMaintenanceService.getAssignments(...)
 
+    console.log('📊 Total de revisiones pendientes:', reviews.length);
     setPendingReviews(reviews);
     setLoading(false);
   };
