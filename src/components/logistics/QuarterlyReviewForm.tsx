@@ -75,6 +75,18 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
   const handleSend = async () => {
     console.log('📤 Enviando a Beni...', items);
     
+    // Validar que todos los items estén completados
+    const incompleteItems = items.filter(item => {
+      const total = (item.counted || 0) + (item.regular || 0) + (item.deteriorated || 0);
+      return total !== item.system;
+    });
+
+    if (incompleteItems.length > 0) {
+      alert(`❌ No se puede enviar. ${incompleteItems.length} productos no están completamente contabilizados.`);
+      console.log('❌ Items incompletos:', incompleteItems);
+      return;
+    }
+
     try {
       // Primero guardar todo
       await handleSave();

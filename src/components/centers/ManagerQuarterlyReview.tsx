@@ -79,12 +79,18 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       .select('*')
       .eq('assignment_id', assignment.id);
 
+    console.log('🔍 Buscando items con assignment_id:', assignment.id);
+    console.log('🔍 Assignment completo:', assignment);
+
     if (reviewError) {
       console.error('❌ Error cargando items guardados:', reviewError);
       // Continuar sin datos guardados
     }
 
-    console.log('✅ Items guardados cargados:', savedReviewItems?.length || 0);
+    console.log('✅ Items guardados encontrados:', savedReviewItems?.length || 0);
+    if (savedReviewItems?.length > 0) {
+      console.log('📋 Primer item guardado:', savedReviewItems[0]);
+    }
 
     // Crear mapa de items guardados para acceso rápido
     const savedItemsMap = new Map();
