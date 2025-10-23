@@ -61,6 +61,21 @@ class QuarterlyInventoryService {
       
       // Crear una revisión por cada centro
       for (const center of data.centers) {
+        // Verificar si ya existe una revisión para este centro, quarter y year
+        const { data: existingReview, error: checkError } = await supabase
+          .from('quarterly_reviews')
+          .select('*')
+          .eq('center_id', center.id)
+          .eq('quarter', data.quarter)
+          .eq('year', data.year)
+          .single();
+
+        if (existingReview) {
+          console.log(`⚠️ Revisión ya existe para ${center.name} ${data.quarter}-${data.year}:`, existingReview.id);
+          reviews.push(existingReview);
+          continue;
+        }
+
         const reviewData: QuarterlyReview = {
           center_id: center.id,
           center_name: center.name,
