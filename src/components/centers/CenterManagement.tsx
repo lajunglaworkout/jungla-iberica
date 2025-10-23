@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSession } from '../../contexts/SessionContext';
-import { ArrowLeft, User, Clock, ClipboardList, CheckCircle, Calendar, Shirt, FileText, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, Clock, ClipboardList, CheckCircle, Calendar, Shirt, FileText, MessageCircle, Package, Wrench } from 'lucide-react';
 import MobileTimeClock from '../hr/MobileTimeClock';
 import TimeclockDashboard from '../hr/TimeclockDashboard';
 import DailyOperations from '../hr/DailyOperations';
@@ -15,6 +15,8 @@ import ChecklistCompleteSystem from '../ChecklistCompleteSystem';
 import DocumentManagement from '../hr/DocumentManagement';
 import QRScanner from '../hr/QRScanner';
 import CenterQRDisplay from '../hr/CenterQRDisplay';
+import QuarterlyReviewSystem from '../logistics/QuarterlyReviewSystem';
+import MaintenanceInspectionSystem from '../maintenance/MaintenanceInspectionSystem';
 import { LocationType } from '../../types/logistics';
 
 interface EmployeeAction {
@@ -40,18 +42,30 @@ const CenterManagement: React.FC = () => {
     return centerNames[centerId || 9] || 'Centro Sevilla';
   };
 
-  const actionCards: EmployeeAction[] = useMemo(() => [
-    { id: 'my-profile', title: 'Mi Perfil', description: 'Ver y editar datos personales', icon: <User size={24} /> },
-    { id: 'qr-scanner', title: 'Fichar (Escanear QR)', description: 'Escanear QR del centro', icon: <Clock size={24} /> },
-    { id: 'mobile-timeclock', title: 'Mi QR Personal', description: 'Generar mi QR único', icon: <Clock size={24} /> },
-    { id: 'timeclock', title: 'Historial de Fichajes', description: 'Ver entradas y salidas', icon: <ClipboardList size={24} /> },
-    { id: 'daily-operations', title: 'Checklist Diaria', description: 'Tareas y operaciones del día', icon: <CheckCircle size={24} /> },
-    { id: 'vacation-request', title: 'Solicitar Vacaciones', description: 'Nueva solicitud de vacaciones', icon: <Calendar size={24} /> },
-    { id: 'vacations', title: 'Mis Vacaciones', description: 'Estado de solicitudes', icon: <Calendar size={24} /> },
-    { id: 'uniform-request', title: 'Solicitar Uniformes', description: 'Vestuario y material', icon: <Shirt size={24} /> },
-    { id: 'my-documents', title: 'Mis Documentos', description: 'Contratos y nóminas', icon: <FileText size={24} /> },
-    { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y consultas', icon: <MessageCircle size={24} /> }
-  ], []);
+  const actionCards: EmployeeAction[] = useMemo(() => {
+    const baseCards = [
+      { id: 'my-profile', title: 'Mi Perfil', description: 'Ver y editar datos personales', icon: <User size={24} /> },
+      { id: 'qr-scanner', title: 'Fichar (Escanear QR)', description: 'Escanear QR del centro', icon: <Clock size={24} /> },
+      { id: 'mobile-timeclock', title: 'Mi QR Personal', description: 'Generar mi QR único', icon: <Clock size={24} /> },
+      { id: 'timeclock', title: 'Historial de Fichajes', description: 'Ver entradas y salidas', icon: <ClipboardList size={24} /> },
+      { id: 'daily-operations', title: 'Checklist Diaria', description: 'Tareas y operaciones del día', icon: <CheckCircle size={24} /> },
+      { id: 'vacation-request', title: 'Solicitar Vacaciones', description: 'Nueva solicitud de vacaciones', icon: <Calendar size={24} /> },
+      { id: 'vacations', title: 'Mis Vacaciones', description: 'Estado de solicitudes', icon: <Calendar size={24} /> },
+      { id: 'uniform-request', title: 'Solicitar Uniformes', description: 'Vestuario y material', icon: <Shirt size={24} /> },
+      { id: 'my-documents', title: 'Mis Documentos', description: 'Contratos y nóminas', icon: <FileText size={24} /> },
+      { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y consultas', icon: <MessageCircle size={24} /> }
+    ];
+
+    // Añadir opciones de revisiones solo para Encargados
+    if (employee?.role === 'Encargado') {
+      baseCards.push(
+        { id: 'inventory-review', title: 'Revisión Inventario', description: 'Revisión trimestral de inventario', icon: <Package size={24} /> },
+        { id: 'maintenance-review', title: 'Revisión Mantenimiento', description: 'Revisión trimestral de mantenimiento', icon: <Wrench size={24} /> }
+      );
+    }
+
+    return baseCards;
+  }, [employee?.role]);
 
   if (!employee) {
     return (
@@ -287,6 +301,63 @@ const CenterManagement: React.FC = () => {
         );
       case 'hr-contact':
         return <IncidentManagementSystem />;
+      case 'inventory-review':
+        return (
+          <div>
+            <button
+              onClick={() => setActiveAction('summary')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                marginBottom: '20px',
+                backgroundColor: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151'
+              }}
+            >
+              <ArrowLeft size={16} />
+              Volver a mis gestiones
+            </button>
+            <QuarterlyReviewSystem />
+          </div>
+        );
+      case 'maintenance-review':
+        return (
+          <div>
+            <button
+              onClick={() => setActiveAction('summary')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                marginBottom: '20px',
+                backgroundColor: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151'
+              }}
+            >
+              <ArrowLeft size={16} />
+              Volver a mis gestiones
+            </button>
+            <MaintenanceInspectionSystem 
+              userEmail={employee?.email || ''}
+              userName={employee?.name || ''}
+              centerName={getCenterName(Number(employee?.center_id) || 9)}
+              centerId={employee?.center_id?.toString() || ''}
+            />
+          </div>
+        );
       default:
         return renderSummary();
     }
