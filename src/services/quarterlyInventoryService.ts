@@ -50,55 +50,71 @@ class QuarterlyInventoryService {
     try {
       console.log(`🗑️ Eliminando revisión ${quarter}-${year}...`);
 
-      // 1. Eliminar items de revisión
-      const { error: itemsError } = await supabase
-        .from('quarterly_review_items')
-        .delete()
-        .in('assignment_id', 
-          supabase
-            .from('quarterly_inventory_assignments')
-            .select('id')
-            .in('review_id',
-              supabase
-                .from('quarterly_reviews')
-                .select('id')
-                .eq('quarter', quarter)
-                .eq('year', year)
-            )
-        );
-
-      if (itemsError) {
-        console.error('❌ Error eliminando items:', itemsError);
-      } else {
-        console.log('✅ Items de revisión eliminados');
-      }
-
-      // 2. Eliminar asignaciones
-      const { error: assignmentsError } = await supabase
-        .from('quarterly_inventory_assignments')
-        .delete()
-        .in('review_id',
-          supabase
-            .from('quarterly_reviews')
-            .select('id')
-            .eq('quarter', quarter)
-            .eq('year', year)
-        );
-
-      if (assignmentsError) {
-        console.error('❌ Error eliminando asignaciones:', assignmentsError);
-      } else {
-        console.log('✅ Asignaciones eliminadas');
-      }
-
-      // 3. Eliminar revisiones
-      const { error: reviewsError } = await supabase
+      // 1. Obtener IDs de las revisiones a eliminar
+      const { data: reviews, error: reviewsError } = await supabase
         .from('quarterly_reviews')
-        .delete()
+        .select('id')
         .eq('quarter', quarter)
         .eq('year', year);
 
-      if (reviewsError) throw reviewsError;
+      if (reviewsError) {
+        console.error('❌ Error obteniendo revisiones:', reviewsError);
+        return { success: false, error: reviewsError };
+      }
+
+      if (!reviews || reviews.length === 0) {
+        console.log('⚠️ No hay revisiones para eliminar');
+        return { success: true };
+      }
+
+      const reviewIds = reviews.map(r => r.id);
+      console.log('📋 IDs de revisiones a eliminar:', reviewIds);
+
+      // 2. Obtener IDs de asignaciones
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('quarterly_inventory_assignments')
+        .select('id')
+        .in('review_id', reviewIds);
+
+      if (assignments && assignments.length > 0) {
+        const assignmentIds = assignments.map(a => a.id);
+        console.log('📋 IDs de asignaciones a eliminar:', assignmentIds);
+
+        // 3. Eliminar items de revisión
+        const { error: itemsError } = await supabase
+          .from('quarterly_review_items')
+          .delete()
+          .in('assignment_id', assignmentIds);
+
+        if (itemsError) {
+          console.error('❌ Error eliminando items:', itemsError);
+        } else {
+          console.log('✅ Items de revisión eliminados');
+        }
+
+        // 4. Eliminar asignaciones
+        const { error: assignmentsDeleteError } = await supabase
+          .from('quarterly_inventory_assignments')
+          .delete()
+          .in('id', assignmentIds);
+
+        if (assignmentsDeleteError) {
+          console.error('❌ Error eliminando asignaciones:', assignmentsDeleteError);
+        } else {
+          console.log('✅ Asignaciones eliminadas');
+        }
+      }
+
+      // 5. Eliminar revisiones
+      const { error: reviewsDeleteError } = await supabase
+        .from('quarterly_reviews')
+        .delete()
+        .in('id', reviewIds);
+
+      if (reviewsDeleteError) {
+        console.error('❌ Error eliminando revisiones:', reviewsDeleteError);
+        return { success: false, error: reviewsDeleteError };
+      }
 
       console.log(`✅ Revisión ${quarter}-${year} eliminada completamente`);
       return { success: true };
