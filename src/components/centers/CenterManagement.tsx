@@ -18,6 +18,7 @@ import CenterQRDisplay from '../hr/CenterQRDisplay';
 import QuarterlyReviewSystem from '../logistics/QuarterlyReviewSystemWithSupabase';
 import MaintenanceInspectionSystem from '../maintenance/MaintenanceInspectionSystem';
 import ManagerReviewsPanel from './ManagerReviewsPanel';
+import ManagerQuarterlyReview from './ManagerQuarterlyReview';
 import { LocationType } from '../../types/logistics';
 
 interface EmployeeAction {
@@ -313,31 +314,7 @@ const CenterManagement: React.FC = () => {
       case 'hr-contact':
         return <IncidentManagementSystem />;
       case 'inventory-review':
-        return (
-          <div>
-            <button
-              onClick={() => setActiveAction('summary')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                backgroundColor: 'white',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151'
-              }}
-            >
-              <ArrowLeft size={16} />
-              Volver a mis gestiones
-            </button>
-            <QuarterlyReviewSystem />
-          </div>
-        );
+        return <ManagerQuarterlyReview onBack={() => setActiveAction('summary')} />;
       case 'maintenance-review':
         return (
           <div>
