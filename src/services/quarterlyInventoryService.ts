@@ -223,18 +223,8 @@ class QuarterlyInventoryService {
       console.log('📋 Items a guardar:', items.length);
       console.log('📋 Primer item:', items[0]);
 
-      // Primero verificar estructura de la tabla
-      const { data: testData, error: testError } = await supabase
-        .from('quarterly_review_items')
-        .select('*')
-        .limit(1);
-
-      if (testError) {
-        console.error('❌ Error verificando tabla:', testError);
-        throw testError;
-      }
-
-      console.log('📋 Estructura de la tabla (primer registro):', testData?.[0] || 'Tabla vacía');
+      // Primero verificar/crear tabla si no existe
+      await this.createReviewItemsTableIfNotExists();
 
       const { data, error } = await supabase
         .from('quarterly_review_items')
@@ -251,6 +241,58 @@ class QuarterlyInventoryService {
     } catch (error) {
       console.error('❌ Error guardando items:', error);
       return { success: false, error };
+    }
+  }
+
+  // Crear tabla quarterly_review_items si no existe
+  async createReviewItemsTableIfNotExists() {
+    try {
+      console.log('🔧 Verificando/creando tabla quarterly_review_items...');
+
+      const createTableSQL = `
+        CREATE TABLE IF NOT EXISTS quarterly_review_items (
+          id BIGSERIAL PRIMARY KEY,
+          assignment_id BIGINT NOT NULL REFERENCES quarterly_inventory_assignments(id) ON DELETE CASCADE,
+          inventory_item_id BIGINT NOT NULL REFERENCES inventory_items(id),
+          product_name TEXT NOT NULL,
+          category TEXT,
+          current_system_quantity INTEGER NOT NULL DEFAULT 0,
+          counted_quantity INTEGER DEFAULT 0,
+          regular_quantity INTEGER DEFAULT 0,
+          deteriorated_quantity INTEGER DEFAULT 0,
+          to_remove_quantity INTEGER DEFAULT 0,
+          observations TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(assignment_id, inventory_item_id)
+        );
+      `;
+
+      const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
+
+      if (error) {
+        console.error('❌ Error creando tabla:', error);
+        // Intentar ejecutar directamente con supabase
+        const { error: directError } = await supabase.from('quarterly_review_items').select('id').limit(1);
+        if (directError && directError.message.includes('does not exist')) {
+          console.log('⚠️ Tabla no existe, intentando crear manualmente...');
+          // Aquí podríamos mostrar un mensaje al usuario para que ejecute el SQL manualmente
+          throw new Error('Tabla quarterly_review_items no existe. Ejecuta el script SQL create-quarterly-review-items-table.sql');
+        }
+      } else {
+        console.log('✅ Tabla quarterly_review_items verificada/creada');
+
+        // Crear índices
+        const indexSQL = `
+          CREATE INDEX IF NOT EXISTS idx_quarterly_review_items_assignment_id ON quarterly_review_items(assignment_id);
+          CREATE INDEX IF NOT EXISTS idx_quarterly_review_items_inventory_item_id ON quarterly_review_items(inventory_item_id);
+        `;
+
+        await supabase.rpc('exec_sql', { sql: indexSQL });
+      }
+    } catch (error) {
+      console.error('❌ Error en createReviewItemsTableIfNotExists:', error);
+      throw error;
     }
   }
 
