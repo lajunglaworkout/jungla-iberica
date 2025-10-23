@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Package, ShoppingCart, Settings, Building, Activity, FileText, AlertTriangle, Edit, Save, X, RefreshCw, User, Calendar, Clock, MapPin, Phone, Mail, Star, TrendingUp, TrendingDown, Minus, Trash2, Bell } from 'lucide-react';
 import InventoryKPIDashboard from './logistics/InventoryKPIDashboard';
 import RealInventoryTable from './logistics/RealInventoryTable';
-import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystem';
+import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystemWithSupabase';
 import UniformRequestsPanel from './logistics/UniformRequestsPanel';
 
 interface InventoryItem {

@@ -15,7 +15,7 @@ import ChecklistCompleteSystem from '../ChecklistCompleteSystem';
 import DocumentManagement from '../hr/DocumentManagement';
 import QRScanner from '../hr/QRScanner';
 import CenterQRDisplay from '../hr/CenterQRDisplay';
-import QuarterlyReviewSystem from '../logistics/QuarterlyReviewSystem';
+import QuarterlyReviewSystem from '../logistics/QuarterlyReviewSystemWithSupabase';
 import MaintenanceInspectionSystem from '../maintenance/MaintenanceInspectionSystem';
 import { LocationType } from '../../types/logistics';
 
