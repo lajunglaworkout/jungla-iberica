@@ -223,9 +223,6 @@ class QuarterlyInventoryService {
       console.log('📋 Items a guardar:', items.length);
       console.log('📋 Primer item:', items[0]);
 
-      // Primero verificar/crear tabla si no existe
-      await this.createReviewItemsTableIfNotExists();
-
       const { data, error } = await supabase
         .from('quarterly_review_items')
         .upsert(items.map(item => ({
