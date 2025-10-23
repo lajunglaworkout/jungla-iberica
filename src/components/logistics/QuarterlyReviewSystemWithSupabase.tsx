@@ -47,7 +47,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     loadReviews(); // Recargar al volver
   };
 
-  // CREAR NUEVA REVISIÓN (Beni)
+  // CONVOCAR NUEVA REVISIÓN TRIMESTRAL (Beni convoca, no la hace)
   const handleCreateReview = async () => {
     if (!deadlineDate) {
       alert('⚠️ Por favor establece una fecha límite');
@@ -87,6 +87,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
 
     const { quarter, year } = getCurrentQuarter();
     
+    // Crear revisiones en estado DRAFT (sin activar aún)
     const result = await quarterlyInventoryService.createReview({
       quarter,
       year,
@@ -96,13 +97,16 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     });
 
     if (result.success) {
-      alert(`✅ Se han creado ${result.reviews?.length} revisiones para ${quarter}\n\n` +
-            centersWithItems.map(c => `🏪 ${c.name}: ${c.items.length} productos`).join('\n'));
+      alert(`✅ Revisión Trimestral ${quarter} convocada\n\n` +
+            `Se han creado ${result.reviews?.length} revisiones:\n` +
+            centersWithItems.map(c => `🏪 ${c.name}: ${c.items.length} productos`).join('\n') +
+            `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
+            `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
       setShowCreateModal(false);
       setDeadlineDate('');
       loadReviews();
     } else {
-      alert('❌ Error creando revisiones');
+      alert('❌ Error convocando revisión');
     }
 
     setLoading(false);
@@ -200,7 +204,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
             gap: '8px'
           }}
         >
-          <Plus size={20} /> Nueva Revisión {getCurrentQuarter().quarter}
+          <Plus size={20} /> Convocar Revisión {getCurrentQuarter().quarter}
         </button>
       </div>
 
@@ -225,9 +229,9 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
             maxWidth: '500px',
             width: '90%'
           }}>
-            <h3 style={{ marginTop: 0 }}>📋 Nueva Revisión Trimestral</h3>
+            <h3 style={{ marginTop: 0 }}>📋 Convocar Revisión Trimestral</h3>
             <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-              Se crearán revisiones para todos los centros con inventario
+              Se convocará la revisión para todos los centros. Los encargados recibirán una notificación y podrán completar el conteo desde su módulo de Gestión.
             </p>
 
             <div style={{ marginBottom: '1.5rem' }}>
@@ -278,7 +282,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                   cursor: deadlineDate && !loading ? 'pointer' : 'not-allowed'
                 }}
               >
-                Crear Revisiones
+                Convocar Revisión
               </button>
             </div>
           </div>
