@@ -192,42 +192,42 @@ class ChecklistHistoryService {
 
   private getDefaultAperturaTasks() {
     return [
-      { id: 1, texto: 'Encender luces y climatización', completada: false, responsable: '', hora: '' },
-      { id: 2, texto: 'Revisar limpieza general del centro', completada: false, responsable: '', hora: '' },
-      { id: 3, texto: 'Verificar funcionamiento de equipos', completada: false, responsable: '', hora: '' },
-      { id: 4, texto: 'Comprobar stock de productos de limpieza', completada: false, responsable: '', hora: '' },
-      { id: 5, texto: 'Revisar vestuarios y duchas', completada: false, responsable: '', hora: '' },
-      { id: 6, texto: 'Verificar sistema de música y pantallas', completada: false, responsable: '', hora: '' },
-      { id: 7, texto: 'Comprobar temperatura del agua', completada: false, responsable: '', hora: '' },
-      { id: 8, texto: 'Revisar recepción y zona de espera', completada: false, responsable: '', hora: '' },
-      { id: 9, texto: 'Verificar accesos y control de entrada', completada: false, responsable: '', hora: '' },
-      { id: 10, texto: 'Comprobar botiquín y equipos de emergencia', completada: false, responsable: '', hora: '' },
-      { id: 11, texto: 'Abrir puertas y portón principal', completada: false, responsable: '', hora: '' }
+      { id: 'ap1', titulo: 'Avisar apertura vía WhatsApp', descripcion: 'Enviar mensaje de apertura del centro para que quede constancia', completado: false, estado: 'pendiente' },
+      { id: 'ap2', titulo: 'Encender pantallas y equipo de música', descripcion: 'Activar todas las pantallas necesarias para el entrenamiento y el sistema de audio', completado: false, estado: 'pendiente' },
+      { id: 'ap3', titulo: 'Vuelta de reconocimiento de instalaciones', descripcion: 'Revisar rápidamente todas las instalaciones del centro', completado: false, estado: 'pendiente' },
+      { id: 'ap4', titulo: 'Revisar preparación de sala y pizarras', descripcion: 'Comprobar que la sala está preparada para el entrenamiento del día y las pizarras están actualizadas', completado: false, estado: 'pendiente' },
+      { id: 'ap5', titulo: 'Apertura de puertas y portón principal', descripcion: 'Abrir las puertas para la llegada de clientes (lluvia o frío solo puerta pequeña)', completado: false, estado: 'pendiente' },
+      { id: 'ap6', titulo: 'Actualizar listado de pagos', descripcion: 'Actualizar el listado de pagos realizados durante la jornada', completado: false, estado: 'pendiente' },
+      { id: 'ap7', titulo: 'Comprobar máquina de agua', descripcion: 'Verificar capacidad de la máquina de agua y recargar si es necesario', completado: false, estado: 'pendiente' },
+      { id: 'ap8', titulo: 'Revisión de baños', descripcion: 'Retirar bolsas de basura, comprobar grifos cerrados, dejar puertas abiertas para ventilación', completado: false, estado: 'pendiente' },
+      { id: 'ap9', titulo: 'Encender aire central', descripcion: 'Activar el aire central si es necesario o si los clientes lo solicitan', completado: false, estado: 'pendiente' },
+      { id: 'ap10', titulo: 'Activar música', descripcion: 'Poner música ambiental para el centro', completado: false, estado: 'pendiente' },
+      { id: 'ap11', titulo: 'Preparar zona funcional y calistenia', descripcion: 'A la llegada del segundo entrenador, preparar la zona para funcional y calistenia', completado: false, estado: 'pendiente' }
     ];
   }
 
   private getDefaultLimpiezaTasks() {
     return [
-      { id: 1, texto: 'Limpieza de vestuarios', completada: false, responsable: '', hora: '' },
-      { id: 2, texto: 'Limpieza de duchas', completada: false, responsable: '', hora: '' },
-      { id: 3, texto: 'Reposición de papel y jabón', completada: false, responsable: '', hora: '' },
-      { id: 4, texto: 'Limpieza de zona de entrenamiento', completada: false, responsable: '', hora: '' },
-      { id: 5, texto: 'Desinfección de equipos', completada: false, responsable: '', hora: '' }
+      { id: 'lz1', titulo: 'Zona 1 - Caucho t.inf', completado: false, estado: 'pendiente', responsable: '' },
+      { id: 'lz2', titulo: 'Zona 2 - Cubo lima', completado: false, estado: 'pendiente', responsable: '' },
+      { id: 'lz3', titulo: 'Zona 3 - Interior barras', completado: false, estado: 'pendiente', responsable: '' },
+      { id: 'lz4', titulo: 'Zona 4 - Cubo negro', completado: false, estado: 'pendiente', responsable: '' },
+      { id: 'lz5', titulo: 'Zona 5 - Recepción / Entrada', completado: false, estado: 'pendiente', responsable: '' }
     ];
   }
 
   private getDefaultCierreTasks() {
     return [
-      { id: 1, texto: 'Verificar que todos los clientes han salido', completada: false, responsable: '', hora: '' },
-      { id: 2, texto: 'Apagar equipos y máquinas', completada: false, responsable: '', hora: '' },
-      { id: 3, texto: 'Revisar vestuarios y recoger objetos olvidados', completada: false, responsable: '', hora: '' },
-      { id: 4, texto: 'Cerrar ventanas y puertas interiores', completada: false, responsable: '', hora: '' },
-      { id: 5, texto: 'Apagar luces y climatización', completada: false, responsable: '', hora: '' },
-      { id: 6, texto: 'Verificar sistema de alarma', completada: false, responsable: '', hora: '' },
-      { id: 7, texto: 'Comprobar que no hay incidencias pendientes', completada: false, responsable: '', hora: '' },
-      { id: 8, texto: 'Cerrar caja y cuadrar efectivo', completada: false, responsable: '', hora: '' },
-      { id: 9, texto: 'Activar alarma de seguridad', completada: false, responsable: '', hora: '' },
-      { id: 10, texto: 'Cerrar portón principal', completada: false, responsable: '', hora: '' }
+      { id: 'ci1', titulo: 'Redactar entrenamiento del día siguiente', descripcion: 'Escribir en las pizarras el entrenamiento para el día siguiente', completado: false, estado: 'pendiente' },
+      { id: 'ci2', titulo: 'Montaje de zonas de entrenamiento', descripcion: 'Montar las zonas según los bloques dispuestos en la pizarra', completado: false, estado: 'pendiente' },
+      { id: 'ci3', titulo: 'Recogida de material', descripcion: 'Recoger material tanto en zona interior como exterior', completado: false, estado: 'pendiente' },
+      { id: 'ci4', titulo: 'Actualizar listado de pagos', descripcion: 'Actualizar pagos realizados durante la jornada', completado: false, estado: 'pendiente' },
+      { id: 'ci5', titulo: 'Comprobar máquina de agua', descripcion: 'Verificar capacidad y recargar si es necesario', completado: false, estado: 'pendiente' },
+      { id: 'ci6', titulo: 'Revisión de baños', descripcion: 'Retirar basura, comprobar grifos, dejar puertas abiertas', completado: false, estado: 'pendiente' },
+      { id: 'ci7', titulo: 'Revisión de duchas', descripcion: 'Comprobar anomalías, que no quede nadie, secar exceso de agua', completado: false, estado: 'pendiente' },
+      { id: 'ci8', titulo: 'Vuelta de reconocimiento final', descripcion: 'No dejar desechos (agua, papeles, prendas). Recepción y sala despejados', completado: false, estado: 'pendiente' },
+      { id: 'ci9', titulo: 'Apagar material electrónico', descripcion: 'Apagar todo excepto luces exteriores y cuadro de luz', completado: false, estado: 'pendiente' },
+      { id: 'ci10', titulo: 'Cerrar centro y tirar basura', descripcion: 'Asegurar correcto cierre del centro y tirar la basura', completado: false, estado: 'pendiente' }
     ];
   }
 }
