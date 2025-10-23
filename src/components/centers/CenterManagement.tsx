@@ -17,6 +17,7 @@ import QRScanner from '../hr/QRScanner';
 import CenterQRDisplay from '../hr/CenterQRDisplay';
 import QuarterlyReviewSystem from '../logistics/QuarterlyReviewSystemWithSupabase';
 import MaintenanceInspectionSystem from '../maintenance/MaintenanceInspectionSystem';
+import ManagerReviewsPanel from './ManagerReviewsPanel';
 import { LocationType } from '../../types/logistics';
 
 interface EmployeeAction {
@@ -120,6 +121,16 @@ const CenterManagement: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Panel de Revisiones Pendientes (solo para Encargados) */}
+      {employee?.role === 'Encargado' && (
+        <div style={{ marginBottom: '32px' }}>
+          <ManagerReviewsPanel
+            onStartInventoryReview={() => setActiveAction('inventory-review')}
+            onStartMaintenanceReview={() => setActiveAction('maintenance-review')}
+          />
+        </div>
+      )}
 
       {/* Grid de tarjetas optimizado */}
       <div style={{ 
