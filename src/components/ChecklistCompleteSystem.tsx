@@ -573,7 +573,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             color: tarea.completado ? '#6b7280' : '#111827',
             margin: '0 0 4px 0'
           }}>
-            {index + 1}. {tarea.texto || tarea.titulo}
+            {index + 1}. {tarea.titulo}
           </p>
           {tarea.descripcion && (
             <p style={{ 
