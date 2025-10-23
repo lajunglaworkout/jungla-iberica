@@ -140,42 +140,70 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         throw new Error(`Usuario ${email} no está autorizado`);
       }
 
-      // Crear empleado básico sin consultar BD para evitar errores de conexión
-      console.log('✅ Creando empleado básico para:', email);
+      // Intentar cargar empleado desde la base de datos
+      console.log('✅ Consultando empleado en base de datos para:', email);
       
-      // Determinar rol específico por email
-      let roleToUse = 'employee';
-      if (email === 'carlossuarezparra@gmail.com') {
-        roleToUse = 'superadmin';
-      } else if (email === 'beni.jungla@gmail.com') {
-        roleToUse = 'admin'; // Beni es admin con acceso a logística
-      } else if (email === 'lajunglacentral@gmail.com') {
-        roleToUse = 'admin'; // Vicente es admin con acceso a logística y mantenimiento
-      } else if (email === 'diego@lajungla.es') {
-        roleToUse = 'admin'; // Diego es admin con acceso a marketing
-      } else if (email === 'jonathan@lajungla.es') {
-        roleToUse = 'admin'; // Jonathan es admin con acceso a online
-      } else if (email === 'antonio@lajungla.es') {
-        roleToUse = 'admin'; // Antonio es admin con acceso a eventos
-      } else if (email === 'franciscogiraldezmorales@gmail.com') {
-        roleToUse = 'center_manager'; // Francisco es encargado de Centro Sevilla
+      const { data: employeeData, error: dbError } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', email)
+        .eq('is_active', true)
+        .single();
+
+      let basicEmployee: Employee;
+      let roleToUse: string;
+
+      if (employeeData && !dbError) {
+        // Empleado encontrado en la BD
+        console.log('✅ Empleado encontrado en BD:', employeeData);
+        roleToUse = employeeData.role || 'employee';
+        
+        basicEmployee = {
+          id: employeeData.id?.toString() || userId,
+          user_id: userId,
+          name: employeeData.name || email.split('@')[0],
+          email: email,
+          role: roleToUse,
+          center_id: employeeData.center_id?.toString(),
+          is_active: true,
+          workType: employeeData.center_id ? 'centro' : 'marca',
+          profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.name || email.split('@')[0])}&background=059669&color=fff`,
+          phone: employeeData.phone,
+          dni: employeeData.dni,
+          position: employeeData.position,
+          hire_date: employeeData.hire_date,
+          // Campos de compatibilidad
+          nombre: employeeData.name || email.split('@')[0],
+          correo_electronico: email,
+          esta_activo: true,
+          imagen_de_perfil: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.name || email.split('@')[0])}&background=059669&color=fff`
+        };
+      } else {
+        // Fallback: crear empleado básico si no está en BD
+        console.log('⚠️ Empleado no encontrado en BD, creando básico');
+        roleToUse = 'employee';
+        
+        // Solo para casos especiales conocidos
+        if (email === 'carlossuarezparra@gmail.com') {
+          roleToUse = 'SUPERADMIN';
+        }
+
+        basicEmployee = {
+          id: userId,
+          user_id: userId,
+          name: email.split('@')[0],
+          email: email,
+          role: roleToUse,
+          is_active: true,
+          workType: 'marca',
+          profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
+          nombre: email.split('@')[0],
+          correo_electronico: email,
+          esta_activo: true,
+          imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
+        };
       }
 
-      const basicEmployee: Employee = {
-        id: userId,
-        user_id: userId,
-        name: email.split('@')[0],
-        email: email,
-        role: roleToUse === 'superadmin' ? 'superadmin' : roleToUse === 'admin' ? 'admin' : roleToUse === 'center_manager' ? 'center_manager' : 'employee',
-        is_active: true,
-        workType: 'marca',
-        profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
-        // Campos de compatibilidad
-        nombre: email.split('@')[0],
-        correo_electronico: email,
-        esta_activo: true,
-        imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
-      };
       const mappedRole = ROLE_MAPPING[roleToUse] || 'employee';
       const config = DASHBOARD_CONFIGS[mappedRole] || DASHBOARD_CONFIGS.employee;
 
