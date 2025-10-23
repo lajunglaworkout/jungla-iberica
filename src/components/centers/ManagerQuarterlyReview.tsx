@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
 import QuarterlyReviewForm from '../logistics/QuarterlyReviewForm';
-import { useInventory } from '../../hooks/useInventory';
 import { useSession } from '../../contexts/SessionContext';
 import quarterlyInventoryService from '../../services/quarterlyInventoryService';
+import { supabase } from '../../lib/supabase';
 
 interface ManagerQuarterlyReviewProps {
   onBack: () => void;
@@ -11,10 +11,10 @@ interface ManagerQuarterlyReviewProps {
 
 const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack }) => {
   const { employee } = useSession();
-  const { inventoryItems } = useInventory();
   const [assignment, setAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [reviewData, setReviewData] = useState<any>(null);
 
   useEffect(() => {
     loadAssignment();
@@ -46,12 +46,52 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       if (activeAssignment) {
         console.log('✅ Asignación activa encontrada:', activeAssignment);
         setAssignment(activeAssignment);
+        
+        // Cargar items del inventario para este centro
+        await loadInventoryItems(activeAssignment);
       } else {
         console.log('⚠️ No hay asignaciones activas');
       }
     }
 
     setLoading(false);
+  };
+
+  const loadInventoryItems = async (assignment: any) => {
+    console.log('📦 Cargando items del inventario para centro:', employee?.center_id);
+    
+    const { data: items, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('center_id', Number(employee?.center_id));
+
+    if (error) {
+      console.error('❌ Error cargando items:', error);
+      return;
+    }
+
+    console.log('✅ Items cargados:', items?.length || 0);
+
+    // Preparar reviewData para el formulario
+    const preparedReviewData = {
+      id: assignment.review.id,
+      quarter: assignment.review.quarter,
+      year: assignment.review.year,
+      centerName: assignment.center_name,
+      items: items?.map((item: any) => ({
+        id: item.id,
+        name: item.product_name,
+        category: item.category,
+        systemQuantity: item.quantity,
+        countedQuantity: 0,
+        regularQuantity: 0,
+        deterioratedQuantity: 0,
+        toRemoveQuantity: 0,
+        observations: ''
+      })) || []
+    };
+
+    setReviewData(preparedReviewData);
   };
 
   const handleComplete = async () => {
@@ -107,22 +147,7 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
     );
   }
 
-  if (showForm) {
-    // Filtrar items del centro del encargado
-    const centerMap: Record<string, number> = {
-      'sevilla': 9,
-      'jerez': 10,
-      'puerto': 11
-    };
-
-    const centerItems = inventoryItems.filter(item => {
-      const itemCenterId = centerMap[item.center?.toLowerCase() || ''];
-      return itemCenterId === Number(employee?.center_id);
-    });
-
-    console.log('📦 Items del centro:', centerItems.length);
-    console.log('🏢 Centro ID:', employee?.center_id);
-
+  if (showForm && reviewData) {
     return (
       <div>
         <button
@@ -147,38 +172,8 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
         </button>
 
         <QuarterlyReviewForm
-          centerName={assignment.center_name}
-          items={centerItems}
-          onSave={async (reviewData) => {
-            console.log('💾 Guardando revisión:', reviewData);
-            
-            // Guardar items en la asignación
-            const items = reviewData.items.map(item => ({
-              inventory_item_id: item.id,
-              product_name: item.name,
-              category: item.category,
-              current_system_quantity: item.systemQuantity,
-              counted_quantity: item.countedQuantity,
-              regular_quantity: item.regularQuantity || 0,
-              deteriorated_quantity: item.deterioratedQuantity || 0,
-              to_remove_quantity: item.toRemoveQuantity || 0,
-              observations: item.observations || ''
-            }));
-
-            const result = await quarterlyInventoryService.saveReviewItems(
-              assignment.id,
-              items
-            );
-
-            if (result.success) {
-              alert('✅ Revisión guardada correctamente');
-              setShowForm(false);
-              loadAssignment();
-            } else {
-              alert('❌ Error al guardar la revisión');
-            }
-          }}
-          onComplete={handleComplete}
+          onBack={() => setShowForm(false)}
+          reviewData={reviewData}
         />
       </div>
     );
