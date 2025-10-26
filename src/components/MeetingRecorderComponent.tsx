@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Download, Loader } from 'lucide-react';
 import {
   AudioRecorder,
@@ -10,6 +10,7 @@ import {
   saveRecordingToStorage
 } from '../services/transcriptionBackendService';
 import MeetingResultsPanel from './meetings/MeetingResultsPanel';
+import { supabase } from '../lib/supabase';
 
 interface MeetingRecorderProps {
   meetingId: number;
@@ -36,10 +37,34 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   const [tasksAssigned, setTasksAssigned] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
   const [showResults, setShowResults] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
 
   const recorderRef = useRef(new AudioRecorder());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob | null>(null);
+
+  // Cargar empleados al montar el componente
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('employees')
+          .select('id, name, email, departamento')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Error cargando empleados:', error);
+          return;
+        }
+
+        setEmployees(data || []);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    loadEmployees();
+  }, []);
 
   const handleStartRecording = async () => {
     setError('');
@@ -285,7 +310,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
           tasks={tasksAssigned}
           meetingTitle={meetingTitle}
           participants={participants}
-          employees={[]}
+          employees={employees}
         />
       )}
 
