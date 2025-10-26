@@ -60,6 +60,13 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
         const pendingCount = userTasks.filter((t: any) => t.estado === 'pendiente').length;
         const completedCount = userTasks.filter((t: any) => t.estado === 'completada').length;
 
+        console.log(`📊 Tareas del usuario ${userEmail}:`, {
+          total: userTasks.length,
+          pending: pendingCount,
+          completed: completedCount,
+          tareas: userTasks.map((t: any) => ({ id: t.id, titulo: t.titulo, asignado_a: t.asignado_a, estado: t.estado }))
+        });
+
         // Asignar las mismas estadísticas a todos los departamentos accesibles
         // (ya que el usuario ve sus tareas en todos los departamentos)
         for (const dept of departments) {
