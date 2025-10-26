@@ -21,13 +21,15 @@ interface MeetingRecorderProps {
     minutes: string;
     tasks: any[];
   }) => void;
+  onClose?: () => void;
 }
 
 export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   meetingId,
   meetingTitle,
   participants,
-  onRecordingComplete
+  onRecordingComplete,
+  onClose
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -311,6 +313,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
           meetingTitle={meetingTitle}
           participants={participants}
           employees={employees}
+          onClose={onClose}
         />
       )}
 
