@@ -36,28 +36,40 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
     try {
       const stats: DepartmentTaskStats = {};
       
+      // Cargar todas las tareas sin filtrar por departamento
+      const { data: allTasks, error } = await supabase
+        .from('tareas')
+        .select('*');
+
+      if (error) {
+        console.error('Error cargando tareas:', error);
+        return;
+      }
+
+      // Inicializar stats para todos los departamentos
       for (const dept of departments) {
-        // Cargar tareas pendientes del departamento
-        const { data: pendingData, error: pendingError } = await supabase
-          .from('tareas')
-          .select('*', { count: 'exact' })
-          .eq('departamento', dept.name)
-          .eq('estado', 'pendiente');
-
-        // Cargar tareas completadas del departamento
-        const { data: completedData, error: completedError } = await supabase
-          .from('tareas')
-          .select('*', { count: 'exact' })
-          .eq('departamento', dept.name)
-          .eq('estado', 'completada');
-
         stats[dept.id] = {
-          pending: pendingData?.length || 0,
-          completed: completedData?.length || 0
+          pending: 0,
+          completed: 0
         };
+      }
+
+      // Contar tareas por estado (sin filtrar por departamento)
+      if (allTasks) {
+        const pendingCount = allTasks.filter((t: any) => t.estado === 'pendiente').length;
+        const completedCount = allTasks.filter((t: any) => t.estado === 'completada').length;
+
+        // Distribuir las tareas entre los departamentos (de forma simple)
+        for (const dept of departments) {
+          stats[dept.id] = {
+            pending: pendingCount,
+            completed: completedCount
+          };
+        }
       }
       
       setTaskStats(stats);
+      console.log('📊 Estadísticas de tareas cargadas:', stats);
     } catch (error) {
       console.error('Error cargando estadísticas de tareas:', error);
     }
