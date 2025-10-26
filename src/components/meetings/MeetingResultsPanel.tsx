@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { createTaskNotification } from '../../services/notificationService';
 
 interface Task {
   id?: string;
@@ -148,16 +149,31 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
       console.log('📝 Tareas a guardar:', tasksToSave);
 
       if (tasksToSave.length > 0) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tareas')
-          .insert(tasksToSave);
+          .insert(tasksToSave)
+          .select();
 
         if (error) {
           console.error('❌ Error guardando tareas:', error);
           alert('Error al guardar las tareas: ' + error.message);
           return;
         }
+        
         console.log('✅ Tareas guardadas correctamente');
+
+        // Enviar notificaciones a los usuarios asignados
+        if (data) {
+          for (const task of data) {
+            await createTaskNotification(
+              task.id,
+              task.asignado_a,
+              task.titulo,
+              meetingTitle
+            );
+          }
+          console.log('🔔 Notificaciones enviadas a los usuarios asignados');
+        }
       } else {
         console.warn('⚠️ No hay tareas para guardar');
       }
