@@ -115,22 +115,32 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
       editingTasks.forEach(task => {
         const assignedPeople = Array.isArray(task.assignedTo) 
           ? task.assignedTo 
-          : task.assignedTo ? [task.assignedTo] : ['Sin asignar'];
+          : task.assignedTo ? [task.assignedTo] : [];
+        
+        // Si no hay personas asignadas, no guardar la tarea
+        if (assignedPeople.length === 0) {
+          console.warn('⚠️ Tarea sin asignar:', task.title);
+          return;
+        }
         
         // Crear una tarea para cada persona asignada
         assignedPeople.forEach(person => {
-          tasksToSave.push({
-            titulo: task.title,
-            descripcion: `Acta: ${minutes.substring(0, 200)}...`,
-            asignado_a: person,
-            creado_por: 'Sistema',
-            prioridad: task.priority || 'media',
-            estado: 'pendiente',
-            fecha_limite: task.deadline,
-            verificacion_requerida: true
-          });
+          if (person && person.trim()) {
+            tasksToSave.push({
+              titulo: task.title,
+              descripcion: `Acta: ${minutes.substring(0, 200)}...`,
+              asignado_a: person.trim(),
+              creado_por: 'Sistema',
+              prioridad: task.priority || 'media',
+              estado: 'pendiente',
+              fecha_limite: task.deadline,
+              verificacion_requerida: true
+            });
+          }
         });
       });
+
+      console.log('📝 Tareas a guardar:', tasksToSave);
 
       if (tasksToSave.length > 0) {
         const { error } = await supabase
@@ -138,10 +148,13 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
           .insert(tasksToSave);
 
         if (error) {
-          console.error('Error guardando tareas:', error);
+          console.error('❌ Error guardando tareas:', error);
           alert('Error al guardar las tareas: ' + error.message);
           return;
         }
+        console.log('✅ Tareas guardadas correctamente');
+      } else {
+        console.warn('⚠️ No hay tareas para guardar');
       }
 
       alert('✅ Reunión y tareas guardadas correctamente');
