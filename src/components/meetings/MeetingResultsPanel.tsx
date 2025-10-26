@@ -134,7 +134,12 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
               prioridad: task.priority || 'media',
               estado: 'pendiente',
               fecha_limite: task.deadline,
-              verificacion_requerida: true
+              verificacion_requerida: true,
+              // Información de contexto de la reunión
+              reunion_titulo: meetingTitle,
+              reunion_participantes: participants.join(', '),
+              reunion_fecha: new Date().toISOString().split('T')[0],
+              reunion_acta: minutes
             });
           }
         });
