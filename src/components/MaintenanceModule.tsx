@@ -7,11 +7,15 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Users
+  Users,
+  Wrench
 } from 'lucide-react';
 import MaintenanceDashboard from './maintenance/MaintenanceDashboardStyled';
+import MaintenanceDashboardBeni from './maintenance/MaintenanceDashboardBeni';
+import ManagerQuarterlyMaintenance from './centers/ManagerQuarterlyMaintenance';
 import InspectionStepByStep from './maintenance/InspectionStepByStep';
 import maintenanceService from '../services/maintenanceService';
+import quarterlyMaintenanceService from '../services/quarterlyMaintenanceService';
 
 interface MaintenanceModuleProps {
   userEmail: string;
@@ -24,30 +28,73 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
   userName,
   onBack
 }) => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'inspection'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'inspection' | 'quarterly'>('dashboard');
   const [centerInfo, setCenterInfo] = useState({
     centerId: 'sevilla',
-    centerName: 'Centro Sevilla'
+    centerName: 'Centro Sevilla',
+    centerNumId: 9
   });
+  const [isBeni, setIsBeni] = useState(false);
+  const [hasActiveQuarterly, setHasActiveQuarterly] = useState(false);
 
-  // Detectar centro basado en el email del usuario
+  // Detectar si es Beni y cargar revisiones activas
   useEffect(() => {
-    const detectCenter = () => {
+    const detectUserAndLoadData = async () => {
       const email = userEmail.toLowerCase();
       
-      if (email.includes('jerez') || email.includes('ivan') || email.includes('pablo')) {
-        setCenterInfo({ centerId: 'jerez', centerName: 'Centro Jerez' });
-      } else if (email.includes('puerto') || email.includes('adrian') || email.includes('guillermo')) {
-        setCenterInfo({ centerId: 'puerto', centerName: 'Centro Puerto' });
-      } else if (email.includes('sevilla') || email.includes('francisco') || email.includes('salva')) {
-        setCenterInfo({ centerId: 'sevilla', centerName: 'Centro Sevilla' });
+      // Detectar si es Beni (director de mantenimiento) o CEO/superadmin
+      const beniEmail = email.includes('beni') || email.includes('carlossuarezparra');
+      setIsBeni(beniEmail);
+
+      // Si es Beni, mostrar dashboard de revisiones (NO verificar revisiones activas)
+      if (beniEmail) {
+        setCurrentView('quarterly');
+        setHasActiveQuarterly(false); // Beni siempre ve su dashboard, no la interfaz de inspección
+        return; // Salir aquí para Beni
       } else {
-        // Por defecto Sevilla para usuarios de marca/central
-        setCenterInfo({ centerId: 'sevilla', centerName: 'Centro Sevilla' });
+        // Si es encargado, detectar centro
+        let centerId = 'sevilla';
+        let centerNumId = 9;
+        let centerName = 'Centro Sevilla';
+        
+        if (email.includes('jerez') || email.includes('ivan') || email.includes('pablo')) {
+          centerId = 'jerez';
+          centerNumId = 10;
+          centerName = 'Centro Jerez';
+        } else if (email.includes('puerto') || email.includes('adrian') || email.includes('guillermo')) {
+          centerId = 'puerto';
+          centerNumId = 11;
+          centerName = 'Centro Puerto';
+        } else if (email.includes('sevilla') || email.includes('francisco') || email.includes('salva')) {
+          centerId = 'sevilla';
+          centerNumId = 9;
+          centerName = 'Centro Sevilla';
+        }
+
+        // Actualizar centerInfo
+        setCenterInfo({ centerId, centerName, centerNumId });
+
+        // Verificar si hay revisión trimestral activa
+        console.log('🔍 Verificando revisiones activas para centro:', centerNumId);
+        const result = await quarterlyMaintenanceService.getAssignments(
+          centerNumId,
+          undefined
+        );
+        
+        console.log('📋 Resultado de búsqueda:', result.assignments?.length || 0, 'asignaciones');
+        
+        if (result.success && result.assignments && result.assignments.length > 0) {
+          console.log('✅ Hay revisión trimestral activa');
+          setHasActiveQuarterly(true);
+          setCurrentView('quarterly');
+        } else {
+          console.log('ℹ️ No hay revisión trimestral activa');
+          setCurrentView('dashboard');
+        }
       }
     };
 
-    detectCenter();
+    detectUserAndLoadData();
   }, [userEmail]);
 
   const handleStartInspection = () => {
@@ -55,6 +102,14 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
   };
 
   const handleBackToDashboard = () => {
+    setCurrentView('dashboard');
+  };
+
+  const handleOpenQuarterly = () => {
+    setCurrentView('quarterly');
+  };
+
+  const handleCloseQuarterly = () => {
     setCurrentView('dashboard');
   };
 
@@ -101,7 +156,7 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
               color: '#111827',
               margin: 0
             }}>
-              {currentView === 'dashboard' ? 'Mantenimiento' : 'Nueva Inspección'}
+              {currentView === 'dashboard' ? 'Mantenimiento' : currentView === 'inspection' ? 'Nueva Inspección' : 'Revisión Trimestral'}
             </h1>
             <p style={{
               color: '#6b7280',
@@ -176,7 +231,14 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
         overflow: 'auto',
         maxHeight: 'calc(100vh - 120px)'
       }}>
-        {currentView === 'dashboard' ? (
+        {isBeni ? (
+          // VISTA PARA BENI (Director de Mantenimiento) - SIEMPRE SU DASHBOARD
+          <MaintenanceDashboardBeni onClose={handleCloseQuarterly} />
+        ) : hasActiveQuarterly ? (
+          // VISTA PARA ENCARGADO CON REVISIÓN TRIMESTRAL ACTIVA
+          <ManagerQuarterlyMaintenance onBack={handleBackToDashboard} centerId={centerInfo.centerNumId} />
+        ) : currentView === 'dashboard' ? (
+          // VISTA NORMAL DE DASHBOARD (Inspecciones mensuales)
           <MaintenanceDashboard
             userEmail={userEmail}
             userName={userName}
@@ -185,6 +247,7 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
             onStartInspection={handleStartInspection}
           />
         ) : (
+          // VISTA DE INSPECCIÓN MENSUAL
           <InspectionStepByStep
             userEmail={userEmail}
             userName={userName}
