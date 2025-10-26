@@ -13,9 +13,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Upload,
-  Eye,
-  FileText,
-  Settings
+  Eye
 } from 'lucide-react';
 import { 
   MAINTENANCE_ZONES, 
@@ -34,7 +32,6 @@ import type {
   MaintenanceConcept
 } from '../../types/maintenance';
 import maintenanceService from '../../services/maintenanceService';
-import QuarterlyMaintenanceSystemWithSupabase from './QuarterlyMaintenanceSystemWithSupabase';
 
 interface MaintenanceInspectionSystemProps {
   userEmail: string;
@@ -59,7 +56,6 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   centerId,
   onClose
 }) => {
-  const [activeTab, setActiveTab] = useState('monthly'); // 'monthly' | 'quarterly'
   const [currentStep, setCurrentStep] = useState(0);
   const [currentZone, setCurrentZone] = useState<MaintenanceZone | null>(null);
   const [inspectionData, setInspectionData] = useState<InspectionFormData>({
@@ -690,141 +686,64 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
       backgroundColor: '#f9fafb',
       padding: '24px'
     }}>
-      {/* Header con pestañas */}
+      {/* Barra de progreso */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '12px',
+        borderRadius: '8px',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '24px',
+        padding: '16px',
         marginBottom: '24px'
       }}>
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: 'bold',
-          color: '#1f2937',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <Settings size={32} style={{ color: '#059669' }} />
-          Sistema de Mantenimiento
-        </h1>
-        
-        {/* Pestañas */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid #e5e7eb',
-          marginBottom: '16px'
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '8px'
         }}>
-          <button
-            onClick={() => setActiveTab('monthly')}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              backgroundColor: activeTab === 'monthly' ? '#059669' : 'transparent',
-              color: activeTab === 'monthly' ? 'white' : '#6b7280',
-              fontWeight: activeTab === 'monthly' ? '600' : '500',
-              cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Calendar size={16} />
-            Inspecciones Mensuales
-          </button>
-          <button
-            onClick={() => setActiveTab('quarterly')}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              backgroundColor: activeTab === 'quarterly' ? '#059669' : 'transparent',
-              color: activeTab === 'quarterly' ? 'white' : '#6b7280',
-              fontWeight: activeTab === 'quarterly' ? '600' : '500',
-              cursor: 'pointer',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FileText size={16} />
-            Revisiones Trimestrales
-          </button>
+          <span style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151'
+          }}>
+            Progreso de Inspección
+          </span>
+          <span style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#059669'
+          }}>
+            {getProgress()}%
+          </span>
+        </div>
+        <div style={{
+          width: '100%',
+          backgroundColor: '#e5e7eb',
+          borderRadius: '9999px',
+          height: '8px'
+        }}>
+          <div style={{
+            backgroundColor: '#059669',
+            height: '8px',
+            borderRadius: '9999px',
+            transition: 'width 0.3s ease',
+            width: `${getProgress()}%`
+          }}></div>
         </div>
       </div>
 
-      {/* Contenido según pestaña activa */}
-      {activeTab === 'monthly' && (
-        <>
-          {/* Barra de progreso */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-            padding: '16px',
-            marginBottom: '24px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px'
-            }}>
-              <span style={{
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151'
-              }}>
-                Progreso de Inspección
-              </span>
-              <span style={{
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#059669'
-              }}>
-                {getProgress()}%
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              backgroundColor: '#e5e7eb',
-              borderRadius: '9999px',
-              height: '8px'
-            }}>
-              <div style={{
-                backgroundColor: '#059669',
-                height: '8px',
-                borderRadius: '9999px',
-                transition: 'width 0.3s ease',
-                width: `${getProgress()}%`
-              }}></div>
-            </div>
-          </div>
+      {/* Contenido principal */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '0 16px'
+      }}>
+        {currentStep === 0 && renderStartStep()}
+        {currentStep > 0 && currentStep <= MAINTENANCE_ZONES.length && renderZoneStep()}
+        {currentStep === MAINTENANCE_ZONES.length + 1 && renderSummaryStep()}
+      </div>
 
-          {/* Contenido principal de inspección mensual */}
-          <div style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            padding: '0 16px'
-          }}>
-            {currentStep === 0 && renderStartStep()}
-            {currentStep > 0 && currentStep <= MAINTENANCE_ZONES.length && renderZoneStep()}
-            {currentStep === MAINTENANCE_ZONES.length + 1 && renderSummaryStep()}
-          </div>
-
-          {/* Modal de fotos */}
-          {renderPhotoModal()}
-        </>
-      )}
-
-      {activeTab === 'quarterly' && (
-        <QuarterlyMaintenanceSystemWithSupabase />
-      )}
+      {/* Modal de fotos */}
+      {renderPhotoModal()}
     </div>
   );
 };

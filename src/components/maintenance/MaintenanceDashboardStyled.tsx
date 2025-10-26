@@ -31,6 +31,7 @@ interface MaintenanceDashboardProps {
   centerName: string;
   centerId: string;
   onStartInspection: () => void;
+  onOpenQuarterly?: () => void;
 }
 
 interface DashboardStats {
@@ -45,7 +46,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   userName,
   centerName,
   centerId,
-  onStartInspection
+  onStartInspection,
+  onOpenQuarterly
 }) => {
   const [stats, setStats] = useState<DashboardStats>({
     totalInspections: 0,

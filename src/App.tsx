@@ -48,6 +48,7 @@ import BrandAccountingModule from './components/accounting/BrandAccountingModule
 import MeetingHistorySystem from './components/MeetingHistorySystem';
 import MarketingContentSystem from './components/MarketingContentSystem';
 import ChecklistHistory from './components/ChecklistHistory';
+import MeetingsMainPage from './pages/MeetingsMainPage';
 import SignaturePage from './pages/SignaturePage';
 import CenterManagement from './components/centers/CenterManagement';
 import DailyOperations from './components/hr/DailyOperations';
@@ -181,9 +182,8 @@ const NavigationDashboard: React.FC = () => {
         description: 'Gestión de reuniones y calendario',
         icon: Calendar,
         color: '#059669',
-        component: null,
-        available: true,
-        onClick: () => setShowMeetingModal(true)
+        component: MeetingsMainPage,
+        available: true
       }
     ];
 
