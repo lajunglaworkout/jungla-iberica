@@ -25,10 +25,18 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// Aumentar límite de payload para archivos de audio largos (hasta 500MB)
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // Configurar multer para subidas de archivos
-const upload = multer({ storage: multer.memoryStorage() });
+// Aumentar límite a 500MB para soportar audios de 45+ minutos
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 500 * 1024 * 1024 // 500MB
+  }
+});
 
 // Inicializar cliente de Anthropic
 const anthropic = new Anthropic({
@@ -129,10 +137,11 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const transcriptData = await transcriptResponse.json();
     const transcriptId = transcriptData.id;
 
-    // Esperar resultado (máximo 60 segundos)
+    // Esperar resultado (máximo 10 minutos para audios largos de 45 minutos)
+    // AssemblyAI típicamente tarda 1/4 del tiempo del audio
     let transcript = null;
     let attempts = 0;
-    const maxAttempts = 60;
+    const maxAttempts = 600; // 10 minutos máximo
 
     while (attempts < maxAttempts) {
       const statusResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
@@ -150,9 +159,15 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       if (statusData.status === 'completed') {
         transcript = statusData.text;
         console.log('✅ Transcripción completada');
+        console.log(`📊 Tiempo total: ${attempts} segundos`);
         break;
       } else if (statusData.status === 'error') {
         throw new Error(`Transcription error: ${statusData.error}`);
+      }
+
+      // Log cada 30 segundos para audios largos
+      if (attempts % 30 === 0) {
+        console.log(`⏳ Transcribiendo... ${attempts}s (${Math.round(attempts/60)} min)`);
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
