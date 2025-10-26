@@ -347,28 +347,56 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
                         fontSize: '14px'
                       }}
                     />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <select
-                        multiple
-                        value={Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : [])}
-                        onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
-                          handleTaskChange(index, 'assignedTo', JSON.stringify(selected));
-                        }}
-                        style={{
-                          padding: '8px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '4px',
-                          fontSize: '14px',
-                          minHeight: '80px'
-                        }}
-                      >
-                        {employees.map(emp => (
-                          <option key={emp.id} value={emp.email}>
-                            {emp.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <div style={{
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        padding: '8px',
+                        maxHeight: '150px',
+                        overflowY: 'auto',
+                        backgroundColor: '#fafafa'
+                      }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', color: '#6b7280' }}>
+                          Seleccionar personas (puedes elegir varias):
+                        </div>
+                        {employees.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>No hay empleados disponibles</div>
+                        ) : (
+                          employees.map(emp => {
+                            const assignedArray = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+                            const isChecked = assignedArray.includes(emp.email);
+                            return (
+                              <label key={emp.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                borderRadius: '3px',
+                                backgroundColor: isChecked ? '#dbeafe' : 'transparent'
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const assignedArray = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+                                    let updated;
+                                    if (e.target.checked) {
+                                      updated = [...assignedArray, emp.email];
+                                    } else {
+                                      updated = assignedArray.filter(email => email !== emp.email);
+                                    }
+                                    handleTaskChange(index, 'assignedTo', JSON.stringify(updated));
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span>{emp.name}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
                       <input
                         type="date"
                         value={task.deadline}
