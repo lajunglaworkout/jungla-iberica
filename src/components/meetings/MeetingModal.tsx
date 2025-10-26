@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Plus, Trash2, Loader } from 'lucide-react';
+import { X, ChevronDown, Plus, Trash2, Loader, Check } from 'lucide-react';
 import MeetingRecorderComponent from '../MeetingRecorderComponent';
 import { supabase } from '../../lib/supabase';
+import { completeTask } from '../../services/taskService';
 
 interface MeetingModalProps {
   departmentId: string;
@@ -59,11 +60,32 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const loadPreviousTasks = async () => {
     setLoadingTasks(true);
     try {
-      // Por ahora, no cargamos tareas anteriores hasta que tengamos la tabla correcta
-      setPreviousTasks([]);
-      console.log('ℹ️ Tareas anteriores: No hay tareas pendientes');
+      // Cargar tareas pendientes de reuniones anteriores
+      const { data, error } = await supabase
+        .from('tareas')
+        .select('*')
+        .eq('estado', 'pendiente')
+        .order('fecha_limite', { ascending: true });
+
+      if (error) {
+        console.error('Error cargando tareas anteriores:', error);
+        setPreviousTasks([]);
+        return;
+      }
+
+      const formattedTasks = (data || []).map((task: any) => ({
+        id: task.id,
+        titulo: task.titulo,
+        asignado_a: task.asignado_a,
+        estado: task.estado,
+        fecha_limite: task.fecha_limite
+      }));
+
+      setPreviousTasks(formattedTasks);
+      console.log(`ℹ️ Tareas anteriores cargadas: ${formattedTasks.length} tareas pendientes`);
     } catch (error) {
       console.error('Error:', error);
+      setPreviousTasks([]);
     } finally {
       setLoadingTasks(false);
     }
@@ -279,37 +301,67 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         padding: '16px',
                         backgroundColor: '#f0fdf4',
                         border: '1px solid #bbf7d0',
-                        borderRadius: '8px'
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: '12px'
                       }}
                     >
-                      <div style={{
-                        fontWeight: '600',
-                        color: '#166534',
-                        marginBottom: '8px'
-                      }}>
-                        {task.titulo}
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: '8px'
-                      }}>
-                        <div>👤 {task.asignado_a}</div>
-                        <div>📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}</div>
-                        <div>
-                          Estado: <span style={{
-                            backgroundColor: task.estado === 'completada' ? '#dcfce7' : '#fef3c7',
-                            color: task.estado === 'completada' ? '#166534' : '#92400e',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px'
-                          }}>
-                            {task.estado}
-                          </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: '600',
+                          color: '#166534',
+                          marginBottom: '8px'
+                        }}>
+                          {task.titulo}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '8px'
+                        }}>
+                          <div>👤 {task.asignado_a}</div>
+                          <div>📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}</div>
+                          <div>
+                            Estado: <span style={{
+                              backgroundColor: task.estado === 'completada' ? '#dcfce7' : '#fef3c7',
+                              color: task.estado === 'completada' ? '#166534' : '#92400e',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px'
+                            }}>
+                              {task.estado}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <button
+                        onClick={async () => {
+                          const result = await completeTask(task.id);
+                          if (result.success) {
+                            loadPreviousTasks();
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          backgroundColor: '#dcfce7',
+                          color: '#166534',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Check size={14} />
+                        Completar
+                      </button>
                     </div>
                   ))}
                 </div>
