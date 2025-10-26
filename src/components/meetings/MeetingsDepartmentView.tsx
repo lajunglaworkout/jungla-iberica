@@ -77,7 +77,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
-      // Cargar tareas asignadas al usuario actual
+      // Cargar solo tareas pendientes asignadas al usuario actual
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
@@ -101,7 +101,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }));
 
       setTasks(formattedTasks);
-      console.log(`ℹ️ Tareas cargadas: ${formattedTasks.length} tareas pendientes`);
+      console.log(`ℹ️ Tareas del usuario ${userEmail}: ${formattedTasks.length} tareas pendientes`);
     } catch (error) {
       console.error('Error:', error);
       setTasks([]);
@@ -331,6 +331,226 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
             loadMeetings();
           }}
         />
+      )}
+
+      {/* Modal de Historial */}
+      {showHistoryModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '95%',
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                📋 Historial de Reuniones
+              </h2>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '24px'
+            }}>
+              {meetings.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#6b7280',
+                  padding: '48px 24px'
+                }}>
+                  No hay reuniones registradas
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {meetings.map(meeting => (
+                    <div
+                      key={meeting.id}
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '8px'
+                      }}>
+                        {meeting.title}
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: '8px'
+                      }}>
+                        <div>📅 {new Date(meeting.date).toLocaleDateString('es-ES')}</div>
+                        <div>🕐 {meeting.start_time}</div>
+                        <div>👥 {meeting.participants?.length || 0} participantes</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Tareas */}
+      {showTasksModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '95%',
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                ✅ Mis Tareas Pendientes
+              </h2>
+              <button
+                onClick={() => setShowTasksModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '24px'
+            }}>
+              {tasks.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#6b7280',
+                  padding: '48px 24px'
+                }}>
+                  ¡No hay tareas pendientes! 🎉
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {tasks.map(task => (
+                    <div
+                      key={task.id}
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#166534',
+                        marginBottom: '8px'
+                      }}>
+                        {task.title}
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: '8px'
+                      }}>
+                        <div>📅 {new Date(task.deadline).toLocaleDateString('es-ES')}</div>
+                        <div>
+                          Prioridad:{' '}
+                          <span style={{
+                            backgroundColor: task.priority === 'critica' ? '#fee2e2' : task.priority === 'alta' ? '#fef3c7' : '#dbeafe',
+                            color: task.priority === 'critica' ? '#dc2626' : task.priority === 'alta' ? '#92400e' : '#1e40af',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            fontSize: '11px'
+                          }}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
