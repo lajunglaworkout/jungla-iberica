@@ -107,24 +107,31 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   // Guardar reunión en Supabase
   const handleSaveMeeting = async () => {
     try {
-      const { error } = await supabase
-        .from('meetings')
-        .insert([{
-          title: meetingTitle,
-          transcript: transcript,
-          acta: minutes,
-          participants: participants,
-          tasks: editingTasks,
-          created_at: new Date().toISOString()
-        }]);
+      // Guardar tareas en la tabla tareas
+      const tasksToSave = editingTasks.map(task => ({
+        titulo: task.title,
+        descripcion: `Acta: ${minutes.substring(0, 200)}...`,
+        asignado_a: task.assignedTo || 'Sin asignar',
+        creado_por: 'Sistema',
+        prioridad: task.priority || 'media',
+        estado: 'pendiente',
+        fecha_limite: task.deadline,
+        verificacion_requerida: true
+      }));
 
-      if (error) {
-        console.error('Error guardando reunión:', error);
-        alert('Error al guardar la reunión: ' + error.message);
-        return;
+      if (tasksToSave.length > 0) {
+        const { error } = await supabase
+          .from('tareas')
+          .insert(tasksToSave);
+
+        if (error) {
+          console.error('Error guardando tareas:', error);
+          alert('Error al guardar las tareas: ' + error.message);
+          return;
+        }
       }
 
-      alert('✅ Reunión guardada correctamente');
+      alert('✅ Reunión y tareas guardadas correctamente');
       onTasksUpdate?.(editingTasks);
     } catch (error) {
       console.error('Error:', error);
