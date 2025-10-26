@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   type TEXT NOT NULL, -- 'task_assigned', 'task_completed', 'task_due_soon'
   title TEXT NOT NULL,
   message TEXT,
-  task_id BIGINT REFERENCES tareas(id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tareas(id) ON DELETE CASCADE,
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
