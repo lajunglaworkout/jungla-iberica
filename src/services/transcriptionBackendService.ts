@@ -14,18 +14,6 @@ export const transcribeAudioViaBackend = async (
   try {
     console.log('📝 Iniciando transcripción via backend...');
 
-    // Convertir blob a base64
-    const reader = new FileReader();
-    const base64Audio = await new Promise<string>((resolve, reject) => {
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(audioBlob);
-    });
-
     // Usar Netlify Function en producción, backend local en desarrollo
     const isProduction = import.meta.env.PROD;
     const backendUrl = isProduction 
@@ -36,20 +24,23 @@ export const transcribeAudioViaBackend = async (
       ? '/.netlify/functions/transcribe'
       : `${backendUrl}/api/transcribe`;
 
+    // Usar FormData para enviar el archivo directamente (evita problema de tamaño)
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        audioBase64: base64Audio,
-        mimeType: audioBlob.type || 'audio/webm'
-      })
+      body: formData
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || `Error ${response.status}`);
+      const text = await response.text();
+      try {
+        const error = JSON.parse(text);
+        throw new Error(error.error || `Error ${response.status}`);
+      } catch {
+        throw new Error(`Error ${response.status}: ${text}`);
+      }
     }
 
     const data = await response.json();
