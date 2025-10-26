@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, History, ListTodo } from 'lucide-react';
+import { ArrowLeft, Plus, History, ListTodo, Check } from 'lucide-react';
 import { DEPARTMENTS_CONFIG } from '../../config/departmentPermissions';
 import { supabase } from '../../lib/supabase';
+import { completeTask } from '../../services/taskService';
 import MeetingModal from './MeetingModal';
 import ParticipantsSelectionModal from './ParticipantsSelectionModal';
 
@@ -512,37 +513,69 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                         padding: '16px',
                         backgroundColor: '#f0fdf4',
                         border: '1px solid #bbf7d0',
-                        borderRadius: '8px'
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: '12px'
                       }}
                     >
-                      <div style={{
-                        fontWeight: '600',
-                        color: '#166534',
-                        marginBottom: '8px'
-                      }}>
-                        {task.title}
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: '8px'
-                      }}>
-                        <div>📅 {new Date(task.deadline).toLocaleDateString('es-ES')}</div>
-                        <div>
-                          Prioridad:{' '}
-                          <span style={{
-                            backgroundColor: task.priority === 'critica' ? '#fee2e2' : task.priority === 'alta' ? '#fef3c7' : '#dbeafe',
-                            color: task.priority === 'critica' ? '#dc2626' : task.priority === 'alta' ? '#92400e' : '#1e40af',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            fontSize: '11px'
-                          }}>
-                            {task.priority}
-                          </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: '600',
+                          color: '#166534',
+                          marginBottom: '8px'
+                        }}>
+                          {task.title}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '8px'
+                        }}>
+                          <div>👤 {task.assigned_to}</div>
+                          <div>📅 {new Date(task.deadline).toLocaleDateString('es-ES')}</div>
+                          <div>
+                            Prioridad:{' '}
+                            <span style={{
+                              backgroundColor: task.priority === 'critica' ? '#fee2e2' : task.priority === 'alta' ? '#fef3c7' : '#dbeafe',
+                              color: task.priority === 'critica' ? '#dc2626' : task.priority === 'alta' ? '#92400e' : '#1e40af',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              fontSize: '11px'
+                            }}>
+                              {task.priority}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <button
+                        onClick={async () => {
+                          const result = await completeTask(task.id);
+                          if (result.success) {
+                            loadTasks();
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          backgroundColor: '#dcfce7',
+                          color: '#166534',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <Check size={14} />
+                        Completar
+                      </button>
                     </div>
                   ))}
                 </div>
