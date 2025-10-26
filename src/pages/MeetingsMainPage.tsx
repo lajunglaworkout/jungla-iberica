@@ -36,16 +36,6 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
     try {
       const stats: DepartmentTaskStats = {};
       
-      // Cargar todas las tareas sin filtrar por departamento
-      const { data: allTasks, error } = await supabase
-        .from('tareas')
-        .select('*');
-
-      if (error) {
-        console.error('Error cargando tareas:', error);
-        return;
-      }
-
       // Inicializar stats para todos los departamentos
       for (const dept of departments) {
         stats[dept.id] = {
@@ -54,12 +44,24 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
         };
       }
 
-      // Contar tareas por estado (sin filtrar por departamento)
-      if (allTasks) {
-        const pendingCount = allTasks.filter((t: any) => t.estado === 'pendiente').length;
-        const completedCount = allTasks.filter((t: any) => t.estado === 'completada').length;
+      // Cargar tareas del usuario actual
+      const { data: userTasks, error } = await supabase
+        .from('tareas')
+        .select('*')
+        .eq('asignado_a', userEmail);
 
-        // Distribuir las tareas entre los departamentos (de forma simple)
+      if (error) {
+        console.error('Error cargando tareas:', error);
+        return;
+      }
+
+      // Contar tareas por estado
+      if (userTasks) {
+        const pendingCount = userTasks.filter((t: any) => t.estado === 'pendiente').length;
+        const completedCount = userTasks.filter((t: any) => t.estado === 'completada').length;
+
+        // Asignar las mismas estadísticas a todos los departamentos accesibles
+        // (ya que el usuario ve sus tareas en todos los departamentos)
         for (const dept of departments) {
           stats[dept.id] = {
             pending: pendingCount,
@@ -69,7 +71,7 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
       }
       
       setTaskStats(stats);
-      console.log('📊 Estadísticas de tareas cargadas:', stats);
+      console.log(`📊 Estadísticas de tareas del usuario ${userEmail}:`, stats);
     } catch (error) {
       console.error('Error cargando estadísticas de tareas:', error);
     }
