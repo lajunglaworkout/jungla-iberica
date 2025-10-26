@@ -17,6 +17,9 @@ ALTER TABLE tareas ADD COLUMN IF NOT EXISTS reunion_participantes TEXT;
 ALTER TABLE tareas ADD COLUMN IF NOT EXISTS reunion_fecha DATE;
 ALTER TABLE tareas ADD COLUMN IF NOT EXISTS reunion_acta TEXT;
 ALTER TABLE tareas ADD COLUMN IF NOT EXISTS departamento TEXT;
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS completada_por TEXT;
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS notas_cierre TEXT;
+ALTER TABLE tareas ADD COLUMN IF NOT EXISTS fecha_completada TIMESTAMP WITH TIME ZONE;
 
 -- Crear índices para mejorar el rendimiento
 CREATE INDEX IF NOT EXISTS idx_tareas_reunion_titulo ON tareas(reunion_titulo);
