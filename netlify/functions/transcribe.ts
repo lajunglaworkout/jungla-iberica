@@ -1,12 +1,13 @@
 /**
- * Netlify Function para transcribir audio
+ * Netlify Function para transcribir audio con AssemblyAI
  * Endpoint: /.netlify/functions/transcribe
  * 
- * Genera una transcripción de prueba usando Claude
- * En producción, se puede integrar con servicios como Deepgram, AssemblyAI, etc.
+ * Usa AssemblyAI para transcripción precisa de audio
  */
 
 import { Handler } from '@netlify/functions';
+
+const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
 
 const handler: Handler = async (event) => {
   // Solo aceptar POST
@@ -37,45 +38,100 @@ const handler: Handler = async (event) => {
       };
     }
 
-    console.log('🔄 Generando transcripción con Claude...');
+    if (!ASSEMBLYAI_API_KEY) {
+      console.error('❌ ASSEMBLYAI_API_KEY no configurada');
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'AssemblyAI API key no configurada' })
+      };
+    }
 
-    // Llamar a la API de Anthropic para generar una transcripción de prueba
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    console.log('🔄 Enviando audio a AssemblyAI...');
+
+    // Convertir base64 a buffer
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+
+    // Subir archivo a AssemblyAI
+    const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01'
+        'Authorization': ASSEMBLYAI_API_KEY,
+        'Content-Type': 'application/octet-stream'
+      },
+      body: audioBuffer
+    });
+
+    if (!uploadResponse.ok) {
+      const error = await uploadResponse.text();
+      console.error('❌ Error subiendo a AssemblyAI:', error);
+      throw new Error(`Upload failed: ${uploadResponse.status}`);
+    }
+
+    const uploadData = await uploadResponse.json();
+    const audioUrl = uploadData.upload_url;
+
+    console.log('✅ Audio subido, iniciando transcripción...');
+
+    // Iniciar transcripción
+    const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+      method: 'POST',
+      headers: {
+        'Authorization': ASSEMBLYAI_API_KEY,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `Se ha grabado un audio de reunión. Genera una transcripción de ejemplo profesional que podría contener:
-- Saludos iniciales
-- Presentación de temas a tratar
-- Discusión de 3-4 puntos principales
-- Conclusiones y próximos pasos
-- Nombres de participantes ficticios
-
-Formato: Proporciona una transcripción realista de una reunión empresarial de 5-10 minutos.`
-          }
-        ]
+        audio_url: audioUrl,
+        language_code: 'es',
+        speaker_labels: true,
+        speakers_expected: 2
       })
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ Error de Anthropic:', errorData);
-      throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorData)}`);
+    if (!transcriptResponse.ok) {
+      const error = await transcriptResponse.text();
+      console.error('❌ Error iniciando transcripción:', error);
+      throw new Error(`Transcription failed: ${transcriptResponse.status}`);
     }
 
-    const data = await response.json();
-    const transcript = data.content[0]?.text || 'No se pudo generar la transcripción';
+    const transcriptData = await transcriptResponse.json();
+    const transcriptId = transcriptData.id;
 
-    console.log('✅ Transcripción completada');
+    console.log('⏳ Esperando resultado de transcripción...');
+
+    // Esperar a que se complete la transcripción (máximo 60 segundos)
+    let transcript = null;
+    let attempts = 0;
+    const maxAttempts = 120; // 2 minutos máximo
+
+    while (attempts < maxAttempts) {
+      const statusResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+        headers: {
+          'Authorization': ASSEMBLYAI_API_KEY
+        }
+      });
+
+      if (!statusResponse.ok) {
+        throw new Error(`Status check failed: ${statusResponse.status}`);
+      }
+
+      const statusData = await statusResponse.json();
+
+      if (statusData.status === 'completed') {
+        transcript = statusData.text;
+        console.log('✅ Transcripción completada');
+        break;
+      } else if (statusData.status === 'error') {
+        throw new Error(`Transcription error: ${statusData.error}`);
+      }
+
+      // Esperar 1 segundo antes de reintentar
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+    }
+
+    if (!transcript) {
+      throw new Error('Transcription timeout');
+    }
 
     return {
       statusCode: 200,
@@ -87,33 +143,11 @@ Formato: Proporciona una transcripción realista de una reunión empresarial de 
 
   } catch (error) {
     console.error('❌ Error en transcripción:', error);
-    
-    // Fallback: devolver una transcripción de ejemplo
-    const fallbackTranscript = `[Transcripción de Ejemplo - Reunión del Equipo]
-
-00:00 - Bienvenida
-"Buenos días a todos, gracias por venir. Hoy vamos a discutir los avances del proyecto Q4 y los objetivos para el próximo trimestre."
-
-02:15 - Punto 1: Progreso del Proyecto
-"El equipo de desarrollo ha completado el 75% de las funcionalidades principales. Esperamos terminar el 90% para fin de mes."
-
-05:30 - Punto 2: Presupuesto y Recursos
-"Necesitamos asignar dos desarrolladores más para acelerar el timeline. El presupuesto ha sido aprobado por dirección."
-
-08:45 - Punto 3: Próximos Hitos
-"El siguiente hito importante es la revisión de seguridad en dos semanas. Todos los módulos deben estar listos para entonces."
-
-11:20 - Conclusiones
-"Resumiendo: continuamos con el plan, asignamos los recursos adicionales, y nos reunimos nuevamente en una semana para revisar el progreso."
-
-12:00 - Fin de la reunión`;
-
     return {
-      statusCode: 200,
+      statusCode: 500,
       body: JSON.stringify({
-        success: true,
-        transcript: fallbackTranscript,
-        note: 'Usando transcripción de ejemplo. Para transcripción real, integra con Deepgram, AssemblyAI u otro servicio.'
+        success: false,
+        error: error instanceof Error ? error.message : 'Error en la transcripción'
       })
     };
   }
