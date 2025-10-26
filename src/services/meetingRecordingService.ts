@@ -325,7 +325,7 @@ Por favor, formatea la respuesta como JSON con las siguientes claves:
   }
 };
 
-// Guardar grabación en Supabase
+// Guardar grabación en Supabase (solo transcripción y acta, sin audio)
 export const saveMeetingRecording = async (
   meetingId: number,
   audioBlob: Blob,
@@ -334,20 +334,20 @@ export const saveMeetingRecording = async (
   tasksAssigned: any[]
 ): Promise<{ success: boolean; recordingId?: string; error?: string }> => {
   try {
-    console.log('💾 Guardando grabación en Supabase...');
+    console.log('💾 Guardando transcripción y acta en Supabase (sin audio)...');
 
-    // Intentar guardar registro en tabla (sin archivo de audio por ahora)
-    // El archivo de audio se puede guardar después con permisos adecuados
+    // Guardar solo transcripción y acta, sin el archivo de audio
+    // Esto evita llenar Supabase con archivos de audio grandes
     const { data, error } = await supabase
       .from('meeting_recordings')
       .insert([{
         meeting_id: meetingId,
-        audio_url: null, // Por ahora no guardamos la URL
+        audio_url: null, // No guardamos audio
         transcript: transcript,
         meeting_minutes: meetingMinutes,
         tasks_assigned: tasksAssigned,
         status: 'completed',
-        duration_seconds: Math.round(audioBlob.size / 16000) // Aproximación
+        duration_seconds: Math.round(audioBlob.size / 16000) // Aproximación solo para referencia
       }])
       .select()
       .single();
@@ -359,11 +359,11 @@ export const saveMeetingRecording = async (
       return {
         success: true,
         recordingId: 'local',
-        error: 'Grabación guardada localmente (sin almacenamiento en servidor)'
+        error: 'Grabación guardada localmente (sin almacenamiento de audio en servidor)'
       };
     }
 
-    console.log('✅ Grabación guardada');
+    console.log('✅ Transcripción y acta guardadas (audio no almacenado)');
     return {
       success: true,
       recordingId: data.id
