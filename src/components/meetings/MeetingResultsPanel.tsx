@@ -112,7 +112,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         .insert([{
           title: meetingTitle,
           transcript: transcript,
-          minutes: minutes,
+          acta: minutes,
           participants: participants,
           tasks: editingTasks,
           created_at: new Date().toISOString()
@@ -120,7 +120,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
 
       if (error) {
         console.error('Error guardando reunión:', error);
-        alert('Error al guardar la reunión');
+        alert('Error al guardar la reunión: ' + error.message);
         return;
       }
 
