@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 
 // Crear notificación de tarea asignada
 export const createTaskNotification = async (
-  taskId: number,
+  taskId: string | number,
   userEmail: string,
   taskTitle: string,
   meetingTitle: string
@@ -39,7 +39,7 @@ export const createTaskNotification = async (
 
 // Crear notificación de tarea completada
 export const createTaskCompletedNotification = async (
-  taskId: number,
+  taskId: string | number,
   userEmail: string,
   taskTitle: string
 ): Promise<{ success: boolean; error?: string }> => {
@@ -165,7 +165,7 @@ export const sendEmailNotification = async (
 
 // Crear notificación de tarea próxima a vencer
 export const createTaskDueNotification = async (
-  taskId: number,
+  taskId: string | number,
   userEmail: string,
   taskTitle: string,
   daysUntilDue: number

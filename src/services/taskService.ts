@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 
 // Marcar tarea como completada
 export const completeTask = async (
-  taskId: number,
+  taskId: string | number,
   completedBy: string,
   completionNotes: string
 ): Promise<{ success: boolean; error?: string }> => {
