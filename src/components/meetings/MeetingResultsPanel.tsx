@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 interface Task {
   id?: string;
   title: string;
-  assignedTo: string;
+  assignedTo: string | string[];
   deadline: string;
   priority: 'baja' | 'media' | 'alta' | 'critica';
 }
@@ -108,16 +108,27 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   const handleSaveMeeting = async () => {
     try {
       // Guardar tareas en la tabla tareas
-      const tasksToSave = editingTasks.map(task => ({
-        titulo: task.title,
-        descripcion: `Acta: ${minutes.substring(0, 200)}...`,
-        asignado_a: task.assignedTo || 'Sin asignar',
-        creado_por: 'Sistema',
-        prioridad: task.priority || 'media',
-        estado: 'pendiente',
-        fecha_limite: task.deadline,
-        verificacion_requerida: true
-      }));
+      const tasksToSave: any[] = [];
+      
+      editingTasks.forEach(task => {
+        const assignedPeople = Array.isArray(task.assignedTo) 
+          ? task.assignedTo 
+          : task.assignedTo ? [task.assignedTo] : ['Sin asignar'];
+        
+        // Crear una tarea para cada persona asignada
+        assignedPeople.forEach(person => {
+          tasksToSave.push({
+            titulo: task.title,
+            descripcion: `Acta: ${minutes.substring(0, 200)}...`,
+            asignado_a: person,
+            creado_por: 'Sistema',
+            prioridad: task.priority || 'media',
+            estado: 'pendiente',
+            fecha_limite: task.deadline,
+            verificacion_requerida: true
+          });
+        });
+      });
 
       if (tasksToSave.length > 0) {
         const { error } = await supabase
@@ -141,7 +152,12 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
 
   const handleTaskChange = (index: number, field: string, value: string) => {
     const updated = [...editingTasks];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'assignedTo' && value.startsWith('[')) {
+      // Es un JSON de múltiples asignados
+      updated[index] = { ...updated[index], [field]: JSON.parse(value) };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     setEditingTasks(updated);
   };
 
@@ -314,16 +330,20 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
                     />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <select
-                        value={task.assignedTo}
-                        onChange={(e) => handleTaskChange(index, 'assignedTo', e.target.value)}
+                        multiple
+                        value={Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : [])}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                          handleTaskChange(index, 'assignedTo', JSON.stringify(selected));
+                        }}
                         style={{
                           padding: '8px',
                           border: '1px solid #d1d5db',
                           borderRadius: '4px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          minHeight: '80px'
                         }}
                       >
-                        <option value="">Seleccionar persona...</option>
                         {employees.map(emp => (
                           <option key={emp.id} value={emp.email}>
                             {emp.name}
@@ -390,7 +410,11 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
                       fontSize: '12px',
                       color: '#6b7280'
                     }}>
-                      <div>👤 {task.assignedTo}</div>
+                      <div>
+                        👤 {Array.isArray(task.assignedTo) 
+                          ? task.assignedTo.join(', ') 
+                          : task.assignedTo}
+                      </div>
                       <div>📅 {task.deadline}</div>
                       <div>
                         Prioridad:{' '}
