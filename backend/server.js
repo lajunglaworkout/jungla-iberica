@@ -17,8 +17,12 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
-// Cargar variables de entorno
-dotenv.config();
+// Cargar variables de entorno desde la carpeta backend
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Log para verificar que se cargó la API key
+console.log('🔑 ANTHROPIC_API_KEY cargada:', process.env.ANTHROPIC_API_KEY ? '✅ Sí' : '❌ No');
+console.log('🔑 ASSEMBLYAI_API_KEY cargada:', process.env.ASSEMBLYAI_API_KEY ? '✅ Sí' : '❌ No');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
