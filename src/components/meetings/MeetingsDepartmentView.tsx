@@ -77,12 +77,34 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
-      // Por ahora, no cargamos tareas anteriores
-      // Ya que no tenemos un campo de departamento_responsable en tareas
-      setTasks([]);
-      console.log('ℹ️ Tareas: No hay tareas pendientes');
+      // Cargar tareas asignadas al usuario actual
+      const { data, error } = await supabase
+        .from('tareas')
+        .select('*')
+        .eq('asignado_a', userEmail)
+        .eq('estado', 'pendiente')
+        .order('fecha_limite', { ascending: true });
+
+      if (error) {
+        console.error('Error cargando tareas:', error);
+        setTasks([]);
+        return;
+      }
+
+      const formattedTasks = (data || []).map((task: any) => ({
+        id: task.id,
+        title: task.titulo,
+        assigned_to: task.asignado_a,
+        deadline: task.fecha_limite,
+        status: task.estado,
+        priority: task.prioridad
+      }));
+
+      setTasks(formattedTasks);
+      console.log(`ℹ️ Tareas cargadas: ${formattedTasks.length} tareas pendientes`);
     } catch (error) {
       console.error('Error:', error);
+      setTasks([]);
     }
   };
 

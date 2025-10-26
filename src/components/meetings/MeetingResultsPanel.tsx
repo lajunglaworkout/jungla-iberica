@@ -18,6 +18,7 @@ interface MeetingResultsPanelProps {
   participants: string[];
   employees: any[];
   onTasksUpdate?: (tasks: Task[]) => void;
+  onClose?: () => void;
 }
 
 export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
@@ -27,7 +28,8 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   meetingTitle,
   participants,
   employees,
-  onTasksUpdate
+  onTasksUpdate,
+  onClose
 }) => {
   const [editingTasks, setEditingTasks] = useState<Task[]>(tasks);
   const [isEditing, setIsEditing] = useState(false);
@@ -144,6 +146,10 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
 
       alert('✅ Reunión y tareas guardadas correctamente');
       onTasksUpdate?.(editingTasks);
+      // Cerrar el modal después de guardar
+      setTimeout(() => {
+        onClose?.();
+      }, 500);
     } catch (error) {
       console.error('Error:', error);
       alert('Error al guardar la reunión');
