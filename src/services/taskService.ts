@@ -5,11 +5,20 @@ import { supabase } from '../lib/supabase';
  */
 
 // Marcar tarea como completada
-export const completeTask = async (taskId: number): Promise<{ success: boolean; error?: string }> => {
+export const completeTask = async (
+  taskId: number,
+  completedBy: string,
+  completionNotes: string
+): Promise<{ success: boolean; error?: string }> => {
   try {
     const { error } = await supabase
       .from('tareas')
-      .update({ estado: 'completada' })
+      .update({
+        estado: 'completada',
+        completada_por: completedBy,
+        notas_cierre: completionNotes,
+        fecha_completada: new Date().toISOString()
+      })
       .eq('id', taskId);
 
     if (error) {
