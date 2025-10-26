@@ -36,49 +36,36 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
     try {
       const stats: DepartmentTaskStats = {};
       
-      // Inicializar stats para todos los departamentos
-      for (const dept of departments) {
-        stats[dept.id] = {
-          pending: 0,
-          completed: 0
-        };
-      }
-
-      // Cargar tareas del usuario actual
-      const { data: userTasks, error } = await supabase
+      // Cargar todas las tareas pendientes y completadas
+      const { data: allTasks, error } = await supabase
         .from('tareas')
-        .select('*')
-        .eq('asignado_a', userEmail);
+        .select('*');
 
       if (error) {
         console.error('Error cargando tareas:', error);
         return;
       }
 
-      // Contar tareas por estado
-      if (userTasks) {
-        const pendingCount = userTasks.filter((t: any) => t.estado === 'pendiente').length;
-        const completedCount = userTasks.filter((t: any) => t.estado === 'completada').length;
+      // Contar tareas totales por estado
+      const totalPending = allTasks?.filter((t: any) => t.estado === 'pendiente').length || 0;
+      const totalCompleted = allTasks?.filter((t: any) => t.estado === 'completada').length || 0;
 
-        console.log(`📊 Tareas del usuario ${userEmail}:`, {
-          total: userTasks.length,
-          pending: pendingCount,
-          completed: completedCount,
-          tareas: userTasks.map((t: any) => ({ id: t.id, titulo: t.titulo, asignado_a: t.asignado_a, estado: t.estado }))
-        });
+      console.log(`📊 Estadísticas totales de tareas:`, {
+        total: allTasks?.length || 0,
+        pending: totalPending,
+        completed: totalCompleted
+      });
 
-        // Asignar las mismas estadísticas a todos los departamentos accesibles
-        // (ya que el usuario ve sus tareas en todos los departamentos)
-        for (const dept of departments) {
-          stats[dept.id] = {
-            pending: pendingCount,
-            completed: completedCount
-          };
-        }
+      // Asignar las mismas estadísticas a todos los departamentos
+      // (todas las tareas son visibles en todos los departamentos)
+      for (const dept of departments) {
+        stats[dept.id] = {
+          pending: totalPending,
+          completed: totalCompleted
+        };
       }
       
       setTaskStats(stats);
-      console.log(`📊 Estadísticas de tareas del usuario ${userEmail}:`, stats);
     } catch (error) {
       console.error('Error cargando estadísticas de tareas:', error);
     }
