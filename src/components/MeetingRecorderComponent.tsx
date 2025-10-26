@@ -9,6 +9,7 @@ import {
   generateMeetingMinutesViaBackend,
   saveRecordingToStorage
 } from '../services/transcriptionBackendService';
+import MeetingResultsPanel from './meetings/MeetingResultsPanel';
 
 interface MeetingRecorderProps {
   meetingId: number;
@@ -278,122 +279,14 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
 
       {/* Resultados */}
       {showResults && (
-        <div style={{ display: 'grid', gap: '20px' }}>
-          {/* Transcripción */}
-          <div>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '12px'
-            }}>
-              📝 Transcripción
-            </h3>
-            <div style={{
-              backgroundColor: '#f9fafb',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '12px',
-              maxHeight: '200px',
-              overflow: 'auto',
-              fontSize: '14px',
-              color: '#374151',
-              lineHeight: '1.5'
-            }}>
-              {transcript}
-            </div>
-          </div>
-
-          {/* Acta */}
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '12px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                📋 Acta de Reunión
-              </h3>
-              <button
-                onClick={downloadMinutes}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                <Download size={14} />
-                Descargar
-              </button>
-            </div>
-            <div style={{
-              backgroundColor: '#f9fafb',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              padding: '12px',
-              maxHeight: '300px',
-              overflow: 'auto',
-              fontSize: '14px',
-              color: '#374151',
-              lineHeight: '1.6',
-              whiteSpace: 'pre-wrap'
-            }}>
-              {meetingMinutes}
-            </div>
-          </div>
-
-          {/* Tareas Asignadas */}
-          {tasksAssigned.length > 0 && (
-            <div>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '12px'
-              }}>
-                ✅ Tareas Asignadas ({tasksAssigned.length})
-              </h3>
-              <div style={{ display: 'grid', gap: '8px' }}>
-                {tasksAssigned.map((task, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <div style={{ fontWeight: '600', color: '#166534' }}>
-                      {task.title}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                      👤 Asignado a: {task.assignedTo}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                      📅 Fecha límite: {new Date(task.deadline).toLocaleDateString('es-ES')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <MeetingResultsPanel
+          transcript={transcript}
+          minutes={meetingMinutes}
+          tasks={tasksAssigned}
+          meetingTitle={meetingTitle}
+          participants={participants}
+          employees={[]}
+        />
       )}
 
       <style>{`
