@@ -4,6 +4,7 @@ import { DEPARTMENTS, CENTERS, getDepartmentByName, getAssignmentResponsible } f
 import { Calendar, Clock, Users, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '../../lib/supabase';
 
 interface DepartmentMeetingHistoryProps {
   tasks: Task[];
@@ -16,9 +17,39 @@ export const DepartmentMeetingHistory: React.FC<DepartmentMeetingHistoryProps> =
 }) => {
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [realMeetings, setRealMeetings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filtrar solo reuniones
-  const meetings = tasks.filter(task => task.category === 'meeting');
+  // Cargar reuniones reales de Supabase
+  useEffect(() => {
+    loadRealMeetings();
+  }, []);
+
+  const loadRealMeetings = async () => {
+    try {
+      console.log('📅 Cargando reuniones reales del historial...');
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error cargando reuniones:', error);
+        setRealMeetings([]);
+      } else {
+        console.log(`✅ Reuniones cargadas del historial: ${data?.length || 0}`);
+        setRealMeetings(data || []);
+      }
+    } catch (error) {
+      console.error('❌ Error:', error);
+      setRealMeetings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Usar reuniones reales en lugar de las del dashboard
+  const meetings = realMeetings;
 
   // Agrupar reuniones por asignación
   const meetingsByAssignment = meetings.reduce((acc, meeting) => {
