@@ -1167,6 +1167,21 @@ const DashboardPage: React.FC = () => {
       selectedDepartment
     });
     
+    // Si es una notificación de tarea, navegar a reuniones con información específica
+    if (alert.id.startsWith('task-notification-')) {
+      console.log('📋 Navegando a tarea específica:', alert.taskId);
+      window.dispatchEvent(
+        new CustomEvent('navigate-module', {
+          detail: {
+            moduleId: 'meetings',
+            taskId: alert.taskId,
+            department: alert.department
+          }
+        })
+      );
+      return;
+    }
+    
     // Si es una alerta de incidencias, abrir el modal de gestión
     if (alert.id.startsWith('incidents-')) {
       console.log('🔥 ABRIENDO MODAL DE GESTIÓN DE INCIDENCIAS:', alert.department);
