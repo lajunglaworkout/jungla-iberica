@@ -16,7 +16,7 @@ interface MeetingRecorderProps {
   meetingId: number;
   meetingTitle: string;
   participants: string[];
-  departmentId?: string;
+  departmentId: string;
   onRecordingComplete?: (data: {
     transcript: string;
     minutes: string;
@@ -33,6 +33,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   onRecordingComplete,
   onClose
 }) => {
+  console.log('🏢 MeetingRecorderComponent recibió departmentId:', departmentId);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
