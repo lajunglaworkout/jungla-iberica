@@ -154,7 +154,9 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
       console.log('📝 Tareas a guardar:', tasksToSave);
 
       // Guardar reunión en historial
+      console.log('🔍 Verificando departmentId para historial:', departmentId);
       if (departmentId) {
+        console.log('📅 Llamando a saveMeetingToHistory...');
         const meetingResult = await saveMeetingToHistory(
           meetingTitle,
           departmentId,
@@ -165,8 +167,12 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         );
         
         if (!meetingResult.success) {
-          console.warn('⚠️ Advertencia al guardar reunión:', meetingResult.error);
+          console.error('❌ Error al guardar reunión:', meetingResult.error);
+        } else {
+          console.log('✅ Reunión guardada en historial exitosamente');
         }
+      } else {
+        console.warn('⚠️ No se puede guardar en historial: departmentId no definido');
       }
 
       if (tasksToSave.length > 0) {
@@ -185,15 +191,20 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
 
         // Enviar notificaciones a los usuarios asignados (solo si tienen email válido)
         if (data) {
+          console.log('📧 Enviando notificaciones a:', data.map(t => t.asignado_a));
           for (const task of data) {
+            console.log('📧 Procesando tarea:', { id: task.id, asignado_a: task.asignado_a, titulo: task.titulo });
             // Solo enviar notificación si el usuario tiene un email válido
             if (task.asignado_a && task.asignado_a !== 'Sin asignar' && task.asignado_a.includes('@')) {
+              console.log('📧 Enviando notificación a:', task.asignado_a);
               await createTaskNotification(
                 task.id,
                 task.asignado_a,
                 task.titulo,
                 meetingTitle
               );
+            } else {
+              console.warn('⚠️ No se envía notificación a:', task.asignado_a, '(email inválido)');
             }
           }
           console.log('🔔 Notificaciones enviadas a los usuarios asignados');
