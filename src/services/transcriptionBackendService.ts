@@ -14,15 +14,13 @@ export const transcribeAudioViaBackend = async (
   try {
     console.log('📝 Iniciando transcripción via backend...');
 
-    // Usar Netlify Function en producción, backend local en desarrollo
+    // Usar Railway en producción, backend local en desarrollo
     const isProduction = import.meta.env.PROD;
     const backendUrl = isProduction 
-      ? '' // En producción, Netlify Functions están en el mismo dominio
+      ? 'https://jungla-iberica-production.up.railway.app' // Backend en Railway
       : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
-    const endpoint = isProduction
-      ? '/.netlify/functions/transcribe'
-      : `${backendUrl}/api/transcribe`;
+    const endpoint = `${backendUrl}/api/transcribe`;
 
     // Usar FormData para enviar el archivo directamente (evita problema de tamaño)
     const formData = new FormData();
@@ -74,15 +72,13 @@ export const generateMeetingMinutesViaBackend = async (
   try {
     console.log('📋 Generando acta de reunión via backend...');
 
-    // Usar Netlify Function en producción, backend local en desarrollo
+    // Usar Railway en producción, backend local en desarrollo
     const isProduction = import.meta.env.PROD;
     const backendUrl = isProduction 
-      ? '' // En producción, Netlify Functions están en el mismo dominio
+      ? 'https://jungla-iberica-production.up.railway.app' // Backend en Railway
       : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
-    const endpoint = isProduction
-      ? '/.netlify/functions/generate-minutes'
-      : `${backendUrl}/api/generate-minutes`;
+    const endpoint = `${backendUrl}/api/generate-minutes`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
