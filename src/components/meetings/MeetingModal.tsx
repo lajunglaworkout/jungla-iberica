@@ -63,11 +63,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const loadPreviousTasks = async () => {
     setLoadingTasks(true);
     try {
-      // Cargar tareas pendientes de reuniones anteriores
+      // Cargar tareas pendientes del departamento actual
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
         .eq('estado', 'pendiente')
+        .eq('departamento', departmentId)
         .order('fecha_limite', { ascending: true });
 
       if (error) {
@@ -85,7 +86,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       }));
 
       setPreviousTasks(formattedTasks);
-      console.log(`ℹ️ Tareas anteriores cargadas: ${formattedTasks.length} tareas pendientes`);
+      console.log(`ℹ️ Tareas anteriores del departamento ${departmentId}: ${formattedTasks.length} tareas pendientes`);
     } catch (error) {
       console.error('Error:', error);
       setPreviousTasks([]);
