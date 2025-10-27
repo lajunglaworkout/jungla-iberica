@@ -16,6 +16,7 @@ interface MeetingRecorderProps {
   meetingId: number;
   meetingTitle: string;
   participants: string[];
+  departmentId?: string;
   onRecordingComplete?: (data: {
     transcript: string;
     minutes: string;
@@ -28,6 +29,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   meetingId,
   meetingTitle,
   participants,
+  departmentId,
   onRecordingComplete,
   onClose
 }) => {
@@ -313,6 +315,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
           meetingTitle={meetingTitle}
           participants={participants}
           employees={employees}
+          departmentId={departmentId}
           onClose={onClose}
         />
       )}

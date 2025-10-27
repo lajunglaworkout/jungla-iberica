@@ -18,6 +18,7 @@ interface MeetingResultsPanelProps {
   meetingTitle: string;
   participants: string[];
   employees: any[];
+  departmentId?: string;
   onTasksUpdate?: (tasks: Task[]) => void;
   onClose?: () => void;
 }
@@ -29,6 +30,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   meetingTitle,
   participants,
   employees,
+  departmentId,
   onTasksUpdate,
   onClose
 }) => {
@@ -140,7 +142,9 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
               reunion_titulo: meetingTitle,
               reunion_participantes: participants.join(', '),
               reunion_fecha: new Date().toISOString().split('T')[0],
-              reunion_acta: minutes
+              reunion_acta: minutes,
+              // Departamento
+              departamento: departmentId || 'Sin asignar'
             });
           }
         });
