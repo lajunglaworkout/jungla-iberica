@@ -395,16 +395,31 @@ export const saveMeetingToHistory = async (
       participants: participants.length
     });
 
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const endTime = new Date(now.getTime() + 60 * 60000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
     const meetingData = {
       title: meetingTitle,
       department: departmentId,
       type: 'weekly',
-      date: new Date().toISOString().split('T')[0],
-      start_time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      date: currentDate,
+      start_time: currentTime,
+      end_time: endTime,
+      duration_minutes: 60,
       participants: participants,
       leader_email: 'carlossuarezparra@gmail.com',
-      agenda: transcript,
-      summary: meetingMinutes,
+      agenda: transcript.substring(0, 500), // Limitar a 500 caracteres
+      objectives: [],
+      kpis: {},
+      tasks: tasksAssigned.map((t: any) => ({
+        title: t.title || t.titulo,
+        assignedTo: t.assignedTo || t.asignado_a,
+        deadline: t.deadline || t.fecha_limite
+      })),
+      notes: null,
+      summary: meetingMinutes.substring(0, 1000), // Limitar a 1000 caracteres
       status: 'completed',
       completion_percentage: 100,
       created_by: 'carlossuarezparra@gmail.com'
