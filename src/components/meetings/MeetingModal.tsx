@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, Plus, Trash2, Loader, Check } from 'lucide-react';
-import MeetingRecorderComponent from '../MeetingRecorderComponent';
 import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
+import { TaskCompletionModal } from './TaskCompletionModal';
 
 interface MeetingModalProps {
   departmentId: string;
@@ -51,6 +51,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [recordingComplete, setRecordingComplete] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [meetingMinutes, setMeetingMinutes] = useState('');
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
 
   useEffect(() => {
     loadPreviousTasks();
@@ -339,11 +341,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         </div>
                       </div>
                       <button
-                        onClick={async () => {
-                          const result = await completeTask(task.id);
-                          if (result.success) {
-                            loadPreviousTasks();
-                          }
+                        onClick={() => {
+                          setSelectedTaskForCompletion(task);
+                          setShowCompletionModal(true);
                         }}
                         style={{
                           display: 'flex',
@@ -615,6 +615,24 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Modal de Completación de Tarea */}
+      {showCompletionModal && selectedTaskForCompletion && (
+        <TaskCompletionModal
+          isOpen={showCompletionModal}
+          taskId={selectedTaskForCompletion.id}
+          taskTitle={selectedTaskForCompletion.titulo}
+          userEmail={userEmail}
+          userName={userName}
+          onClose={() => {
+            setShowCompletionModal(false);
+            setSelectedTaskForCompletion(null);
+          }}
+          onSuccess={() => {
+            loadPreviousTasks();
+          }}
+        />
+      )}
     </div>
   );
 };
