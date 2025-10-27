@@ -389,42 +389,50 @@ export const saveMeetingToHistory = async (
   tasksAssigned: any[]
 ): Promise<{ success: boolean; meetingId?: string; error?: string }> => {
   try {
-    console.log('📅 Guardando reunión en historial...');
+    console.log('📅 Guardando reunión en historial...', {
+      title: meetingTitle,
+      department: departmentId,
+      participants: participants.length
+    });
+
+    const meetingData = {
+      title: meetingTitle,
+      department: departmentId,
+      type: 'weekly',
+      date: new Date().toISOString().split('T')[0],
+      start_time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      participants: participants,
+      leader_email: 'carlossuarezparra@gmail.com',
+      agenda: transcript,
+      summary: meetingMinutes,
+      status: 'completed',
+      completion_percentage: 100,
+      created_by: 'carlossuarezparra@gmail.com'
+    };
+
+    console.log('📋 Datos a guardar:', meetingData);
 
     const { data, error } = await supabase
       .from('meetings')
-      .insert([{
-        title: meetingTitle,
-        department: departmentId,
-        type: 'weekly',
-        date: new Date().toISOString().split('T')[0],
-        start_time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        participants: participants,
-        leader_email: 'carlossuarezparra@gmail.com',
-        agenda: transcript,
-        summary: meetingMinutes,
-        status: 'completed',
-        completion_percentage: 100,
-        created_by: 'carlossuarezparra@gmail.com'
-      }])
+      .insert([meetingData])
       .select()
       .single();
 
     if (error) {
-      console.warn('⚠️ Error guardando reunión en historial:', error.message);
+      console.error('❌ Error guardando reunión en historial:', error);
       return {
         success: false,
         error: error.message
       };
     }
 
-    console.log('✅ Reunión guardada en historial');
+    console.log('✅ Reunión guardada en historial con ID:', data.id);
     return {
       success: true,
       meetingId: data.id
     };
   } catch (error) {
-    console.error('❌ Error guardando reunión:', error);
+    console.error('❌ Error inesperado guardando reunión:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido'
