@@ -498,7 +498,8 @@ const DashboardPage: React.FC = () => {
                 isRead: notification.is_read,
                 department: 'Tareas',
                 actionUrl: '/meetings',
-                moduleId: 'meetings'
+                moduleId: 'meetings',
+                taskId: notification.task_id // Añadir ID de tarea para navegación específica
               });
             });
           }
