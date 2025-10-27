@@ -17,7 +17,7 @@ export const completeTask = async (
         estado: 'completada',
         completada_por: completedBy,
         notas_cierre: completionNotes,
-        fecha_completada: new Date().toISOString()
+        fecha_completada: new Date().toISOString().split('T')[0]
       })
       .eq('id', taskId);
 
