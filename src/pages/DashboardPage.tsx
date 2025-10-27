@@ -33,6 +33,7 @@ import UserManagement from '../components/UserManagement';
 import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
 import IncidentManagementModal from '../components/incidents/IncidentManagementModal';
 import { checklistIncidentService } from '../services/checklistIncidentService';
+import { getUserNotifications } from '../services/notificationService';
 import '../styles/dashboard.css';
 
 // Datos de ejemplo para mostrar funcionalidad completa
@@ -472,6 +473,37 @@ const DashboardPage: React.FC = () => {
           }
         } catch (error) {
           console.error('Error verificando incidencias vencidas:', error);
+        }
+      }
+
+      // Cargar notificaciones de tareas para todos los usuarios
+      if (employee?.email) {
+        console.log('📧 Cargando notificaciones de tareas para:', employee.email);
+        try {
+          const notificationsResult = await getUserNotifications(employee.email, true); // Solo no leídas
+          
+          if (notificationsResult.success && notificationsResult.notifications) {
+            const taskNotifications = notificationsResult.notifications;
+            console.log(`📧 Encontradas ${taskNotifications.length} notificaciones de tareas`);
+            
+            // Convertir notificaciones de tareas a alertas
+            taskNotifications.forEach((notification: any) => {
+              newAlerts.push({
+                id: `task-notification-${notification.id}`,
+                title: notification.title,
+                description: notification.message,
+                type: notification.type === 'task_assigned' ? 'info' : 'success',
+                priority: 'medium',
+                createdAt: notification.created_at,
+                isRead: notification.is_read,
+                department: 'Tareas',
+                actionUrl: '/meetings',
+                moduleId: 'meetings'
+              });
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error cargando notificaciones de tareas:', error);
         }
       }
 
