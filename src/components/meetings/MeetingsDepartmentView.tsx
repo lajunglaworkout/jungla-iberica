@@ -80,11 +80,12 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
-      // Cargar todas las tareas pendientes del departamento
+      // Cargar tareas pendientes del departamento actual
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
         .eq('estado', 'pendiente')
+        .eq('departamento', departmentId)
         .order('fecha_limite', { ascending: true });
 
       if (error) {
@@ -103,7 +104,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }));
 
       setTasks(formattedTasks);
-      console.log(`ℹ️ Tareas pendientes del departamento: ${formattedTasks.length} tareas`);
+      console.log(`ℹ️ Tareas pendientes del departamento ${departmentId}: ${formattedTasks.length} tareas`);
     } catch (error) {
       console.error('Error:', error);
       setTasks([]);
