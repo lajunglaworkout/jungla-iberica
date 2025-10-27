@@ -203,6 +203,7 @@ interface SmartAlert {
   moduleId?: string;
   hrView?: string;
   logisticsView?: string;
+  taskId?: string | number; // Para notificaciones de tareas
 }
 
 const DashboardPage: React.FC = () => {
