@@ -35,6 +35,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   onTasksUpdate,
   onClose
 }) => {
+  console.log('🏢 MeetingResultsPanel recibió departmentId:', departmentId);
   const [editingTasks, setEditingTasks] = useState<Task[]>(tasks);
   const [isEditing, setIsEditing] = useState(false);
 
