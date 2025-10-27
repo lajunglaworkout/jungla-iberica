@@ -11,12 +11,15 @@ export const completeTask = async (
   completionNotes: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔄 Marcando tarea como completada:', { taskId, completedBy });
+    console.log('🔄 Marcando tarea como completada:', { taskId, completedBy, completionNotes });
     
     const { error } = await supabase
       .from('tareas')
       .update({
-        estado: 'completada'
+        estado: 'completada',
+        completada_por: completedBy,
+        notas_cierre: completionNotes,
+        fecha_completada: new Date().toISOString().split('T')[0]
       })
       .eq('id', taskId);
 
@@ -25,7 +28,11 @@ export const completeTask = async (
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Tarea marcada como completada');
+    console.log('✅ Tarea marcada como completada con datos:', {
+      estado: 'completada',
+      completada_por: completedBy,
+      fecha_completada: new Date().toISOString().split('T')[0]
+    });
     return { success: true };
   } catch (error) {
     console.error('Error:', error);
