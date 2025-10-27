@@ -1,0 +1,10 @@
+src/
+public/
+node_modules/
+.git/
+.env.local
+.env.example
+*.md
+.DS_Store
+scripts/
+*.sql
