@@ -3,6 +3,7 @@ import { X, ChevronDown, Plus, Trash2, Loader, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
+import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
 
 interface MeetingModalProps {
   departmentId: string;
