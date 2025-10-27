@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Download, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { createTaskNotification } from '../../services/notificationService';
+import { saveMeetingToHistory } from '../../services/meetingRecordingService';
 
 interface Task {
   id?: string;
@@ -152,6 +153,22 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
 
       console.log('📝 Tareas a guardar:', tasksToSave);
 
+      // Guardar reunión en historial
+      if (departmentId) {
+        const meetingResult = await saveMeetingToHistory(
+          meetingTitle,
+          departmentId,
+          participants,
+          minutes,
+          minutes,
+          editingTasks
+        );
+        
+        if (!meetingResult.success) {
+          console.warn('⚠️ Advertencia al guardar reunión:', meetingResult.error);
+        }
+      }
+
       if (tasksToSave.length > 0) {
         const { data, error } = await supabase
           .from('tareas')
@@ -166,15 +183,18 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         
         console.log('✅ Tareas guardadas correctamente');
 
-        // Enviar notificaciones a los usuarios asignados
+        // Enviar notificaciones a los usuarios asignados (solo si tienen email válido)
         if (data) {
           for (const task of data) {
-            await createTaskNotification(
-              task.id,
-              task.asignado_a,
-              task.titulo,
-              meetingTitle
-            );
+            // Solo enviar notificación si el usuario tiene un email válido
+            if (task.asignado_a && task.asignado_a !== 'Sin asignar' && task.asignado_a.includes('@')) {
+              await createTaskNotification(
+                task.id,
+                task.asignado_a,
+                task.titulo,
+                meetingTitle
+              );
+            }
           }
           console.log('🔔 Notificaciones enviadas a los usuarios asignados');
         }
