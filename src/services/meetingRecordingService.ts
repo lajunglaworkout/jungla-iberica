@@ -426,12 +426,15 @@ export const saveMeetingToHistory = async (
     };
 
     console.log('📋 Datos a guardar:', meetingData);
+    console.log('🔍 Insertando en tabla meetings...');
 
     const { data, error } = await supabase
       .from('meetings')
       .insert([meetingData])
       .select()
       .single();
+
+    console.log('🔍 Resultado de insert:', { data, error });
 
     if (error) {
       console.error('❌ Error guardando reunión en historial:', error);
