@@ -870,12 +870,23 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       zIndex: 9999,
-      overflow: 'auto'
+      overflow: 'auto',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px'
     }}>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ 
+        maxWidth: '1200px', 
+        width: '100%',
+        backgroundColor: '#f9fafb',
+        borderRadius: '16px',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        padding: '24px'
+      }}>
           {/* Header */}
           <div style={{
             background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)',
@@ -971,11 +982,10 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Modal crear contenido */}
-      <CreateContentModal />
+          {/* Modal crear contenido */}
+          <CreateContentModal />
+        </div>
     </div>
   );
 };
