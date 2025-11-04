@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: jungla-meetings-backend
+    env: node
+    region: frankfurt
+    buildCommand: cd backend && npm ci --only=production
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ASSEMBLYAI_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://lajungla-crm.netlify.app
+    healthCheckPath: /health
