@@ -253,9 +253,9 @@ Por favor, genera:
 
 Formato: Markdown profesional.`;
 
-    // Usar REST API directa con modelo estable
+    // Usar REST API directa con modelo gemini-1.5-flash-latest (el que funciona)
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: {
