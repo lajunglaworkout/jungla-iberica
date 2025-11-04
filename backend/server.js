@@ -7,6 +7,8 @@
  * 
  * Uso:
  * node backend/server.js
+ * 
+ * Última actualización: 2025-11-04 - CORS fix para Netlify
  */
 
 const express = require('express');
