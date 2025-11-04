@@ -17,13 +17,13 @@ const dotenv = require('dotenv');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Cargar variables de entorno desde la carpeta backend
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Log para verificar que se cargó la API key
-console.log('🔑 ANTHROPIC_API_KEY cargada:', process.env.ANTHROPIC_API_KEY ? '✅ Sí' : '❌ No');
+console.log('🔑 GOOGLE_API_KEY cargada:', process.env.GOOGLE_API_KEY ? '✅ Sí' : '❌ No');
 console.log('🔑 ASSEMBLYAI_API_KEY cargada:', process.env.ASSEMBLYAI_API_KEY ? '✅ Sí' : '❌ No');
 
 const app = express();
@@ -255,16 +255,13 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       });
     }
 
-    // Llamar a la API de Anthropic para generar acta
-    console.log('🔄 Generando acta con Claude...');
+    // Llamar a la API de Google Gemini para generar acta
+    console.log('🔄 Generando acta con Google Gemini...');
 
-    const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: `Genera un acta profesional de reunión basada en la siguiente transcripción.
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const prompt = `Genera un acta profesional de reunión basada en la siguiente transcripción.
 
 Título de la reunión: ${meetingTitle}
 Participantes: ${participants.join(', ')}
@@ -280,14 +277,11 @@ Por favor, genera:
 4. Acciones pendientes con responsables
 5. Próxima reunión
 
-Formato: Markdown profesional.`
-        }
-      ]
-    });
+Formato: Markdown profesional.`;
 
-    const minutes = message.content[0].type === 'text' 
-      ? message.content[0].text 
-      : 'No se pudo generar el acta';
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const minutes = response.text();
 
     // Extraer tareas del acta
     const tasks = extractTasks(minutes, participants);
