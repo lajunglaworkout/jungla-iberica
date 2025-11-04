@@ -29,6 +29,9 @@ console.log('🔑 ASSEMBLYAI_API_KEY cargada:', process.env.ASSEMBLYAI_API_KEY ?
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+console.log('🔍 PORT from environment:', process.env.PORT);
+console.log('🔍 PORT to use:', PORT);
+
 // Middleware CORS - Permitir Netlify y localhost
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',')
