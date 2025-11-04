@@ -114,7 +114,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       
       // Fallback a Claude si no hay AssemblyAI
       const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20240620',
+        model: 'claude-3-sonnet-20240229',
         max_tokens: 4096,
         messages: [
           {
@@ -259,7 +259,7 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
     console.log('🔄 Generando acta con Claude...');
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-sonnet-20240229',
       max_tokens: 4096,
       messages: [
         {
