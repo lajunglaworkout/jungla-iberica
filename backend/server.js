@@ -3,7 +3,7 @@
  * Evita problemas de CORS al llamar a APIs externas
  * 
  * Instalación:
- * npm install express cors dotenv multer anthropic
+ * npm install express cors dotenv multer @google/generative-ai
  * 
  * Uso:
  * node backend/server.js
@@ -63,10 +63,6 @@ const upload = multer({
   }
 });
 
-// Inicializar cliente de Anthropic
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-});
 
 // Manejar preflight CORS explícitamente
 app.options('/api/transcribe', (req, res) => {
@@ -110,28 +106,9 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const assemblyAiKey = process.env.ASSEMBLYAI_API_KEY;
     
     if (!assemblyAiKey) {
-      console.warn('⚠️ ASSEMBLYAI_API_KEY no configurada, usando Claude como fallback');
-      
-      // Fallback a Claude si no hay AssemblyAI
-      const message = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: 'Se ha grabado un audio de reunión. Genera una transcripción de ejemplo profesional.'
-          }
-        ]
-      });
-
-      const transcript = message.content[0].type === 'text'
-        ? message.content[0].text
-        : 'No se pudo transcribir el audio';
-
-      console.log('✅ Transcripción completada (fallback)');
-      return res.json({
-        success: true,
-        transcript
+      return res.status(500).json({
+        success: false,
+        error: 'ASSEMBLYAI_API_KEY no configurada'
       });
     }
 
