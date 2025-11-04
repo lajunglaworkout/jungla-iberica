@@ -28,6 +28,11 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`
+      },
       onwarn(warning, warn) {
         // Suprimir advertencias de TypeScript durante el build
         if (warning.code === 'PLUGIN_WARNING') return
