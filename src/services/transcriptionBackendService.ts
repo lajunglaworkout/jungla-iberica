@@ -14,10 +14,10 @@ export const transcribeAudioViaBackend = async (
   try {
     console.log('📝 Iniciando transcripción via backend...');
 
-    // Usar Railway en producción, backend local en desarrollo
+    // Usar Render en producción, backend local en desarrollo
     const isProduction = import.meta.env.PROD;
     const backendUrl = isProduction 
-      ? 'https://jungla-iberica-production.up.railway.app' // Backend en Railway
+      ? 'https://jungla-meetings-backend.onrender.com' // Backend en Render
       : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
     const endpoint = `${backendUrl}/api/transcribe`;
@@ -72,10 +72,10 @@ export const generateMeetingMinutesViaBackend = async (
   try {
     console.log('📋 Generando acta de reunión via backend...');
 
-    // Usar Railway en producción, backend local en desarrollo
+    // Usar Render en producción, backend local en desarrollo
     const isProduction = import.meta.env.PROD;
     const backendUrl = isProduction 
-      ? 'https://jungla-iberica-production.up.railway.app' // Backend en Railway
+      ? 'https://jungla-meetings-backend.onrender.com' // Backend en Render
       : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
     const endpoint = `${backendUrl}/api/generate-minutes`;
