@@ -65,13 +65,25 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
+// Manejar preflight CORS explícitamente
+app.options('/api/transcribe', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400');
+  res.sendStatus(204);
+});
+
 /**
  * Endpoint para transcribir audio
  * POST /api/transcribe
  */
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
+    // Log detallado para debugging
     console.log('📝 Recibida solicitud de transcripción...');
+    console.log('🌐 Origin:', req.headers.origin);
+    console.log('📦 Content-Type:', req.headers['content-type']);
 
     if (!req.file) {
       return res.status(400).json({
@@ -212,6 +224,15 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       error: error.message || 'Error en la transcripción'
     });
   }
+});
+
+// Manejar preflight CORS para generate-minutes
+app.options('/api/generate-minutes', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400');
+  res.sendStatus(204);
 });
 
 /**
