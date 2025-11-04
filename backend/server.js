@@ -17,13 +17,12 @@ const dotenv = require('dotenv');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Cargar variables de entorno desde la carpeta backend
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Log para verificar que se cargó la API key
-console.log('🔑 GOOGLE_API_KEY cargada:', process.env.GOOGLE_API_KEY ? '✅ Sí' : '❌ No');
+console.log('🔑 DEEPSEEK_API_KEY cargada:', process.env.DEEPSEEK_API_KEY ? '✅ Sí' : '❌ No');
 console.log('🔑 ASSEMBLYAI_API_KEY cargada:', process.env.ASSEMBLYAI_API_KEY ? '✅ Sí' : '❌ No');
 
 const app = express();
@@ -232,8 +231,8 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       });
     }
 
-    // Generar acta con plantilla (sin IA)
-    console.log('🔄 Generando acta con plantilla...');
+    // Generar acta con DeepSeek AI
+    console.log('🔄 Generando acta con DeepSeek AI...');
 
     const fecha = new Date().toLocaleDateString('es-ES', { 
       weekday: 'long', 
@@ -242,50 +241,51 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       day: 'numeric' 
     });
 
-    const minutes = `# Acta de Reunión: ${meetingTitle}
+    const prompt = `Eres un asistente profesional que genera actas de reunión. Analiza la siguiente transcripción y genera un acta estructurada en formato Markdown.
 
-## Información General
-- **Fecha:** ${fecha}
-- **Participantes:** ${participants.join(', ')}
-- **Departamento:** Dirección
+**Título de la reunión:** ${meetingTitle}
+**Fecha:** ${fecha}
+**Participantes:** ${participants.join(', ')}
 
----
-
-## Transcripción de la Reunión
-
+**Transcripción:**
 ${transcript}
 
----
+Genera un acta profesional con:
+1. Resumen ejecutivo (3-4 líneas)
+2. Puntos principales tratados (lista con viñetas)
+3. Decisiones tomadas (lista numerada)
+4. Acciones pendientes con responsables (formato: "- Acción | Responsable: Nombre")
+5. Próximos pasos
 
-## Resumen Ejecutivo
+Formato: Markdown profesional en español.`;
 
-Esta reunión se llevó a cabo el ${fecha} con la participación de ${participants.join(', ')}.
+    // Llamar a DeepSeek API (compatible con OpenAI)
+    const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
 
-## Puntos Principales Tratados
+    if (!deepseekResponse.ok) {
+      const errorText = await deepseekResponse.text();
+      throw new Error(`DeepSeek API error: ${deepseekResponse.status} - ${errorText}`);
+    }
 
-- Revisión de los temas discutidos durante la reunión
-- Análisis de las propuestas presentadas
-- Evaluación de próximos pasos
-
-## Decisiones Tomadas
-
-- Pendiente de revisión detallada de la transcripción
-- Se requiere seguimiento de los acuerdos alcanzados
-
-## Acciones Pendientes
-
-- Revisar transcripción completa
-- Asignar responsables específicos
-- Establecer fechas límite
-
-## Próxima Reunión
-
-Por definir según disponibilidad de los participantes.
-
----
-
-*Acta generada automáticamente el ${new Date().toLocaleString('es-ES')}*
-`;
+    const deepseekData = await deepseekResponse.json();
+    const minutes = deepseekData.choices[0].message.content;
 
     // Extraer tareas del acta
     const tasks = extractTasks(minutes, participants);
