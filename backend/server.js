@@ -232,11 +232,8 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       });
     }
 
-    // Llamar a la API de Google Gemini para generar acta
+    // Llamar a la API de Google Gemini para generar acta (usando REST API directa)
     console.log('🔄 Generando acta con Google Gemini...');
-
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Genera un acta profesional de reunión basada en la siguiente transcripción.
 
@@ -256,9 +253,31 @@ Por favor, genera:
 
 Formato: Markdown profesional.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const minutes = response.text();
+    // Usar REST API directa con modelo estable
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
+    }
+
+    const geminiData = await geminiResponse.json();
+    const minutes = geminiData.candidates[0].content.parts[0].text;
 
     // Extraer tareas del acta
     const tasks = extractTasks(minutes, participants);
