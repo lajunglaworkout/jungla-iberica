@@ -236,7 +236,7 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
     console.log('🔄 Generando acta con Google Gemini...');
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Genera un acta profesional de reunión basada en la siguiente transcripción.
 
