@@ -341,6 +341,22 @@ function extractTasks(minutes, participants) {
 }
 
 /**
+ * Root endpoint for Railway healthcheck
+ */
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'Jungla Meetings Backend',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      transcribe: 'POST /api/transcribe',
+      minutes: 'POST /api/generate-minutes',
+      health: 'GET /health'
+    }
+  });
+});
+
+/**
  * Health check endpoint
  */
 app.get('/health', (req, res) => {
@@ -350,7 +366,7 @@ app.get('/health', (req, res) => {
 /**
  * Iniciar servidor
  */
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║  🎙️  Backend de Transcripción de Reuniones                ║
