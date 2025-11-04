@@ -13,12 +13,13 @@ RUN npm ci --only=production
 # Copiar código del servidor
 COPY server.js .
 
-# Exponer puerto
-EXPOSE 3001
+# Railway asigna el puerto dinámicamente via $PORT
+EXPOSE ${PORT:-3001}
 
-# Healthcheck
+# Healthcheck (Railway maneja esto, pero lo dejamos como fallback)
+# Nota: El puerto debe ser el asignado por Railway
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "const port = process.env.PORT || 3001; require('http').get(\`http://localhost:\${port}/health\`, (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Comando para iniciar el servidor
 CMD ["node", "server.js"]
