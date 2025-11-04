@@ -232,52 +232,60 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       });
     }
 
-    // Llamar a la API de Google Gemini para generar acta
-    console.log('🔄 Generando acta con Google Gemini...');
+    // Generar acta con plantilla (sin IA)
+    console.log('🔄 Generando acta con plantilla...');
 
-    const prompt = `Genera un acta profesional de reunión basada en la siguiente transcripción.
+    const fecha = new Date().toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
 
-Título de la reunión: ${meetingTitle}
-Participantes: ${participants.join(', ')}
-Fecha: ${new Date().toLocaleDateString('es-ES')}
+    const minutes = `# Acta de Reunión: ${meetingTitle}
 
-Transcripción:
+## Información General
+- **Fecha:** ${fecha}
+- **Participantes:** ${participants.join(', ')}
+- **Departamento:** Dirección
+
+---
+
+## Transcripción de la Reunión
+
 ${transcript}
 
-Por favor, genera:
-1. Un resumen ejecutivo
-2. Puntos principales tratados
-3. Decisiones tomadas
-4. Acciones pendientes con responsables
-5. Próxima reunión
+---
 
-Formato: Markdown profesional.`;
+## Resumen Ejecutivo
 
-    // Probar con gemini-1.5-flash (sin -latest)
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      }
-    );
+Esta reunión se llevó a cabo el ${fecha} con la participación de ${participants.join(', ')}.
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
-    }
+## Puntos Principales Tratados
 
-    const geminiData = await geminiResponse.json();
-    const minutes = geminiData.candidates[0].content.parts[0].text;
+- Revisión de los temas discutidos durante la reunión
+- Análisis de las propuestas presentadas
+- Evaluación de próximos pasos
+
+## Decisiones Tomadas
+
+- Pendiente de revisión detallada de la transcripción
+- Se requiere seguimiento de los acuerdos alcanzados
+
+## Acciones Pendientes
+
+- Revisar transcripción completa
+- Asignar responsables específicos
+- Establecer fechas límite
+
+## Próxima Reunión
+
+Por definir según disponibilidad de los participantes.
+
+---
+
+*Acta generada automáticamente el ${new Date().toLocaleString('es-ES')}*
+`;
 
     // Extraer tareas del acta
     const tasks = extractTasks(minutes, participants);
