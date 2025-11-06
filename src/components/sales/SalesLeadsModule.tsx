@@ -410,12 +410,12 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px' }}>
                 {[
-                  { fase: 'Prospecto', cantidad: 45, color: '#6b7280' },
-                  { fase: 'Contactado', cantidad: 32, color: '#3b82f6' },
-                  { fase: 'Reunión', cantidad: 18, color: '#f59e0b' },
-                  { fase: 'Propuesta', cantidad: 12, color: '#8b5cf6' },
-                  { fase: 'Contrato', cantidad: 8, color: '#10b981' },
-                  { fase: 'Señal', cantidad: 5, color: '#059669' }
+                  { fase: 'Prospecto', cantidad: 0, color: '#6b7280' },
+                  { fase: 'Contactado', cantidad: 0, color: '#3b82f6' },
+                  { fase: 'Reunión', cantidad: 0, color: '#f59e0b' },
+                  { fase: 'Propuesta', cantidad: 0, color: '#8b5cf6' },
+                  { fase: 'Contrato', cantidad: 0, color: '#10b981' },
+                  { fase: 'Señal', cantidad: 0, color: '#059669' }
                 ].map((fase, index) => (
                   <div key={index} style={{ 
                     textAlign: 'center', 
