@@ -6,6 +6,7 @@ import {
   Briefcase, PieChart, BarChart3, Edit, Trash2, Eye
 } from 'lucide-react';
 import ROICalculator from './ROICalculator';
+import LeadManagementSystem from './LeadManagementSystem';
 
 interface SalesLeadsModuleProps {
   onBack: () => void;
@@ -40,7 +41,7 @@ interface Proyecto {
 }
 
 const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'directorio' | 'proyectos' | 'calculadora' | 'pipeline'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'directorio' | 'proyectos' | 'calculadora' | 'pipeline' | 'gestion'>('dashboard');
   const [filtroTipo, setFiltroTipo] = useState<string>('Todos');
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
   const [busqueda, setBusqueda] = useState('');
@@ -220,6 +221,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px' }}>
           {[
             { id: 'dashboard', label: '📊 Dashboard', icon: <BarChart3 style={{ width: '16px', height: '16px' }} /> },
+            { id: 'gestion', label: '🎯 Gestión de Leads', icon: <Target style={{ width: '16px', height: '16px' }} /> },
             { id: 'directorio', label: '📋 Directorio', icon: <Users style={{ width: '16px', height: '16px' }} /> },
             { id: 'proyectos', label: '🏗️ Proyectos', icon: <Building2 style={{ width: '16px', height: '16px' }} /> },
             { id: 'calculadora', label: '💰 Calculadora ROI', icon: <Calculator style={{ width: '16px', height: '16px' }} /> },
@@ -651,6 +653,11 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
             </div>
             <ROICalculator />
           </div>
+        )}
+
+        {/* Gestión de Leads */}
+        {activeTab === 'gestion' && (
+          <LeadManagementSystem />
         )}
 
         {/* Placeholder para otras pestañas */}
