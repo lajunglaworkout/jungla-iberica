@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { 
   ArrowLeft, BarChart3, TrendingUp, Users, Building2, Handshake, Calendar, PieChart, FileText,
   DollarSign, Target, Calculator
@@ -11,6 +12,27 @@ interface BrandAccountingModuleProps {
 }
 const BrandAccountingModule: React.FC<BrandAccountingModuleProps> = ({ onBack }) => {
   const [activeModule, setActiveModule] = useState<string>('dashboard');
+  const [leadsActivos, setLeadsActivos] = useState(0);
+  const [proyectosActivos, setProyectosActivos] = useState(0);
+
+  useEffect(() => {
+    const cargarEstadisticas = async () => {
+      const { count: countLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['prospecto', 'contactado', 'reunion', 'propuesta']);
+      
+      const { count: countProyectos } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      setLeadsActivos(countLeads || 0);
+      setProyectosActivos(countProyectos || 0);
+    };
+    
+    cargarEstadisticas();
+  }, []);
   
   const handleBack = () => {
     if (onBack) {
@@ -144,7 +166,7 @@ const BrandAccountingModule: React.FC<BrandAccountingModuleProps> = ({ onBack })
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Leads Activos</p>
-                  <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', margin: '4px 0 0 0' }}>127</p>
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', margin: '4px 0 0 0' }}>{leadsActivos}</p>
                 </div>
                 <Users style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
               </div>
@@ -176,7 +198,7 @@ const BrandAccountingModule: React.FC<BrandAccountingModuleProps> = ({ onBack })
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Proyectos Activos</p>
-                  <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: '4px 0 0 0' }}>8</p>
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: '4px 0 0 0' }}>{proyectosActivos}</p>
                 </div>
                 <Building2 style={{ width: '32px', height: '32px', color: '#f59e0b' }} />
               </div>

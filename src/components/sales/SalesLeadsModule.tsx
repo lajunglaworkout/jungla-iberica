@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { 
   Users, Building2, Calculator, TrendingUp, ArrowLeft, Plus, Search,
   Filter, MapPin, Euro, Target, FileText, Phone, Mail, Calendar,
@@ -43,6 +44,39 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
   const [filtroTipo, setFiltroTipo] = useState<string>('Todos');
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
   const [busqueda, setBusqueda] = useState('');
+  const [proyectosActivos, setProyectosActivos] = useState(0);
+  const [leadsActivos, setLeadsActivos] = useState(0);
+  const [proyectosReales, setProyectosReales] = useState<any[]>([]);
+
+  // Cargar datos reales de Supabase
+  useEffect(() => {
+    const cargarDatosReales = async () => {
+      // Contar proyectos activos
+      const { count: countProyectos } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      // Contar leads activos
+      const { count: countLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['prospecto', 'contactado', 'reunion', 'propuesta']);
+      
+      // Obtener proyectos reales
+      const { data: proyectos } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('status', 'active')
+        .limit(5);
+      
+      setProyectosActivos(countProyectos || 0);
+      setLeadsActivos(countLeads || 0);
+      setProyectosReales(proyectos || []);
+    };
+    
+    cargarDatosReales();
+  }, []);
 
   // Datos de ejemplo
   const [contactos] = useState<ContactoLead[]>([
@@ -234,7 +268,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Proyectos Activos</p>
-                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', margin: '4px 0 0 0' }}>8</p>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', margin: '4px 0 0 0' }}>{proyectosActivos}</p>
                   </div>
                   <Building2 style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
                 </div>
@@ -250,7 +284,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Leads Activos</p>
-                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981', margin: '4px 0 0 0' }}>127</p>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981', margin: '4px 0 0 0' }}>{leadsActivos}</p>
                   </div>
                   <Users style={{ width: '32px', height: '32px', color: '#10b981' }} />
                 </div>
@@ -302,11 +336,13 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
               </h3>
               
               <div style={{ display: 'grid', gap: '12px' }}>
-                {[
-                  { nombre: 'Proyecto Valladolid', inversion: '€245,000', participaciones: '40%', roi: '19.2%', estado: 'En Análisis' },
-                  { nombre: 'Proyecto Madrid Norte', inversion: '€380,000', participaciones: '70%', roi: '16.8%', estado: 'Vendiendo' },
-                  { nombre: 'Proyecto Valencia Centro', inversion: '€290,000', participaciones: '85%', roi: '21.5%', estado: 'Casi Completo' }
-                ].map((proyecto, index) => (
+                {proyectosReales.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                    <Building2 style={{ width: '48px', height: '48px', margin: '0 auto 16px', opacity: 0.5 }} />
+                    <p>No hay proyectos activos</p>
+                    <p style={{ fontSize: '14px' }}>Los proyectos aparecerán aquí cuando se creen en Supabase</p>
+                  </div>
+                ) : proyectosReales.map((proyecto, index) => (
                   <div key={index} style={{ 
                     padding: '16px', 
                     backgroundColor: '#f8fafc', 
@@ -318,27 +354,27 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
                     alignItems: 'center'
                   }}>
                     <div>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>{proyecto.nombre}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Inversión total: {proyecto.inversion}</div>
+                      <div style={{ fontWeight: '500', color: '#111827' }}>{proyecto.name || 'Sin nombre'}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Inversión total: €{proyecto.investment_total?.toLocaleString() || '0'}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#059669' }}>{proyecto.participaciones}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#059669' }}>{proyecto.shares_sold || 0}%</div>
                       <div style={{ fontSize: '11px', color: '#6b7280' }}>Vendido</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#f59e0b' }}>{proyecto.roi}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#f59e0b' }}>{proyecto.roi || 0}%</div>
                       <div style={{ fontSize: '11px', color: '#6b7280' }}>ROI</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <span style={{ 
                         padding: '4px 8px', 
-                        backgroundColor: proyecto.estado === 'Casi Completo' ? '#ecfdf5' : proyecto.estado === 'Vendiendo' ? '#eff6ff' : '#fef3c7',
-                        color: proyecto.estado === 'Casi Completo' ? '#047857' : proyecto.estado === 'Vendiendo' ? '#1d4ed8' : '#92400e',
+                        backgroundColor: proyecto.status === 'active' ? '#ecfdf5' : '#fef3c7',
+                        color: proyecto.status === 'active' ? '#047857' : '#92400e',
                         borderRadius: '12px', 
                         fontSize: '11px',
                         fontWeight: '500'
                       }}>
-                        {proyecto.estado}
+                        {proyecto.status || 'Sin estado'}
                       </span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
