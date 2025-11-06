@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ROICalculator from './ROICalculator';
 import LeadManagementSystem from './LeadManagementSystem';
+import ProjectManagementSystem from './ProjectManagementSystem';
 
 interface SalesLeadsModuleProps {
   onBack: () => void;
@@ -660,8 +661,13 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
           <LeadManagementSystem />
         )}
 
-        {/* Placeholder para otras pestañas */}
-        {(activeTab === 'proyectos' || activeTab === 'pipeline') && (
+        {/* Gestión de Proyectos */}
+        {activeTab === 'proyectos' && (
+          <ProjectManagementSystem />
+        )}
+
+        {/* Placeholder Pipeline */}
+        {activeTab === 'pipeline' && (
           <div style={{ 
             backgroundColor: 'white', 
             borderRadius: '12px', 
@@ -671,8 +677,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
           }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: '0 0 8px 0' }}>
-              {activeTab === 'proyectos' && 'Gestión de Proyectos'}
-              {activeTab === 'pipeline' && 'Pipeline de Ventas'}
+              Pipeline de Ventas
             </h3>
             <p style={{ color: '#6b7280', margin: 0 }}>
               Módulo en desarrollo. Próximamente disponible.
