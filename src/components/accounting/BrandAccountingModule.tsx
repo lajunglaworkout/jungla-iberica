@@ -20,7 +20,7 @@ const BrandAccountingModule: React.FC<BrandAccountingModuleProps> = ({ onBack })
       const { count: countLeads } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['prospecto', 'contactado', 'reunion', 'propuesta']);
+        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta']);
       
       const { count: countProyectos } = await supabase
         .from('projects')

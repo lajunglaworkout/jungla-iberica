@@ -38,8 +38,8 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, ubicacion, valor_proyecto')
-        .eq('status', 'active');
+        .select('id, name, ubicacion, valor_proyecto, status')
+        .in('status', ['active', 'en_venta', 'planificacion']);
 
       if (error) {
         console.error('❌ Error cargando proyectos:', error);
