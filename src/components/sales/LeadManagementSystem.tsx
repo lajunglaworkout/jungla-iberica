@@ -5,6 +5,7 @@ import {
   FileText, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle,
   Edit, Trash2, Eye, Send, Download, Upload, MoreVertical
 } from 'lucide-react';
+import NewLeadModal from './NewLeadModal';
 
 interface Lead {
   id: string;
@@ -509,45 +510,15 @@ const LeadManagementSystem: React.FC = () => {
         )}
       </div>
 
-      {/* Modal Nuevo Lead - Placeholder */}
+      {/* Modal Nuevo Lead */}
       {showNewLeadModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ marginBottom: '16px' }}>Crear Nuevo Lead</h2>
-            <p style={{ color: '#6b7280' }}>Formulario en desarrollo...</p>
-            <button
-              onClick={() => setShowNewLeadModal(false)}
-              style={{
-                marginTop: '16px',
-                padding: '8px 16px',
-                backgroundColor: '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <NewLeadModal
+          onClose={() => setShowNewLeadModal(false)}
+          onSuccess={() => {
+            cargarLeads();
+            setShowNewLeadModal(false);
+          }}
+        />
       )}
 
       {/* Modal Nueva Interacción - Placeholder */}
