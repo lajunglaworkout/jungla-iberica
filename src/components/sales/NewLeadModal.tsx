@@ -38,10 +38,15 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, ubicacion, investment_total')
+        .select('id, name, ubicacion, valor_proyecto')
         .eq('status', 'active');
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error cargando proyectos:', error);
+        throw error;
+      }
+      
+      console.log('✅ Proyectos cargados:', data);
       setProyectos(data || []);
     } catch (error) {
       console.error('Error cargando proyectos:', error);
@@ -73,7 +78,7 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
         setFormData(prev => ({
           ...prev,
           proyecto_nombre: proyecto.name,
-          valoracion_proyecto: proyecto.investment_total || 0
+          valoracion_proyecto: proyecto.valor_proyecto || 0
         }));
       }
     }
@@ -351,7 +356,7 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
                   <option value="">Seleccionar proyecto...</option>
                   {proyectos.map(proyecto => (
                     <option key={proyecto.id} value={proyecto.id}>
-                      {proyecto.name} - {proyecto.ubicacion} (€{proyecto.investment_total?.toLocaleString()})
+                      {proyecto.name} - {proyecto.ubicacion} (€{proyecto.valor_proyecto?.toLocaleString()})
                     </option>
                   ))}
                   <option value="otro">Otro proyecto</option>

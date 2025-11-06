@@ -63,7 +63,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
       const { count: countLeads } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['prospecto', 'contactado', 'reunion', 'propuesta']);
+        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta']);
       
       // Obtener proyectos reales
       const { data: proyectos } = await supabase
