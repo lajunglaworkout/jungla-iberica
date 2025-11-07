@@ -5,6 +5,7 @@ import {
   MapPin, Calendar, BarChart3, Target, ArrowLeft
 } from 'lucide-react';
 import NewProjectModal from './NewProjectModal';
+import EditProjectModal from './EditProjectModal';
 
 interface Project {
   id: string;
@@ -30,6 +31,7 @@ const ProjectManagementSystem: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -346,16 +348,40 @@ const ProjectManagementSystem: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <span style={{
-                      padding: '6px 12px',
-                      backgroundColor: estado?.color + '20',
-                      color: estado?.color,
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      {estado?.nombre}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        padding: '6px 12px',
+                        backgroundColor: estado?.color + '20',
+                        color: estado?.color,
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}>
+                        {estado?.nombre}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProject(project);
+                          setShowEditProjectModal(true);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <Edit style={{ width: '14px', height: '14px' }} />
+                        Editar
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ 
@@ -411,6 +437,22 @@ const ProjectManagementSystem: React.FC = () => {
           onSuccess={() => {
             cargarProyectos();
             setShowNewProjectModal(false);
+          }}
+        />
+      )}
+
+      {/* Modal Editar Proyecto */}
+      {showEditProjectModal && selectedProject && (
+        <EditProjectModal
+          project={selectedProject}
+          onClose={() => {
+            setShowEditProjectModal(false);
+            setSelectedProject(null);
+          }}
+          onSuccess={() => {
+            cargarProyectos();
+            setShowEditProjectModal(false);
+            setSelectedProject(null);
           }}
         />
       )}
