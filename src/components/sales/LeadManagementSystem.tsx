@@ -3,9 +3,10 @@ import { supabase } from '../../lib/supabase';
 import {
   Users, Plus, Search, Filter, Phone, Mail, Calendar, MessageSquare,
   FileText, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle,
-  Edit, Trash2, Eye, Send, Download, Upload, MoreVertical
+  Edit, Trash2, Eye, Send, Download, Upload, MoreVertical, Video
 } from 'lucide-react';
 import NewLeadModal from './NewLeadModal';
+import NewSalesMeetingModal from './NewSalesMeetingModal';
 
 interface Lead {
   id: string;
@@ -51,6 +52,7 @@ const LeadManagementSystem: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
   const [showInteractionModal, setShowInteractionModal] = useState(false);
+  const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
 
@@ -228,6 +230,26 @@ const LeadManagementSystem: React.FC = () => {
         >
           <Plus style={{ width: '20px', height: '20px' }} />
           Nuevo Lead
+        </button>
+
+        <button
+          onClick={() => setShowNewMeetingModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 24px',
+            backgroundColor: '#8b5cf6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          <Video style={{ width: '20px', height: '20px' }} />
+          Nueva Reunión
         </button>
 
         {filtroEstado !== 'todos' && (
@@ -560,6 +582,21 @@ const LeadManagementSystem: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal Nueva Reunión de Ventas */}
+      {showNewMeetingModal && (
+        <NewSalesMeetingModal
+          onClose={() => setShowNewMeetingModal(false)}
+          onStartMeeting={(leadId, leadName) => {
+            console.log('✅ Iniciando reunión con lead:', leadName);
+            // Aquí se abrirá el módulo de reuniones con el lead preseleccionado
+            // Por ahora guardamos en localStorage para que el módulo de reuniones lo lea
+            localStorage.setItem('selectedLeadForMeeting', JSON.stringify({ id: leadId, nombre: leadName }));
+            setShowNewMeetingModal(false);
+            // TODO: Navegar al módulo de reuniones o abrir modal de reunión
+          }}
+        />
       )}
     </div>
   );
