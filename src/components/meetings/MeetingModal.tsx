@@ -463,6 +463,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
               meetingTitle={meeting?.title || 'Nueva Reunión'}
               participants={meeting?.participants || []}
               departmentId={departmentId}
+              leadId={selectedLeadId || undefined}
               onClose={onClose}
               onRecordingComplete={(data) => {
                 setTranscript(data.transcript);

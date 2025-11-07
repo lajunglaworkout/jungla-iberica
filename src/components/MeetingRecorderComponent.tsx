@@ -17,6 +17,7 @@ interface MeetingRecorderProps {
   meetingTitle: string;
   participants: string[];
   departmentId: string;
+  leadId?: string; // ID del lead asociado (para reuniones de ventas)
   onRecordingComplete?: (data: {
     transcript: string;
     minutes: string;
@@ -30,6 +31,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   meetingTitle,
   participants,
   departmentId,
+  leadId,
   onRecordingComplete,
   onClose
 }) => {
@@ -138,6 +140,41 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
 
       if (!saveResult.success) {
         throw new Error(saveResult.error || 'Error guardando grabación');
+      }
+
+      // Si hay leadId, registrar interacción automáticamente
+      if (leadId) {
+        console.log('📝 Registrando interacción con lead:', leadId);
+        try {
+          const interactionData = {
+            lead_id: leadId,
+            tipo: 'reunion',
+            direccion: 'saliente',
+            asunto: meetingTitle,
+            contenido: `Reunión grabada y transcrita.\n\nResumen:\n${minutesResult.minutes.substring(0, 500)}...`,
+            resultado: 'positivo',
+            fecha: new Date().toISOString(),
+            created_by: 'carlossuarezparra@gmail.com' // TODO: Obtener del contexto
+          };
+
+          const { error: interactionError } = await supabase
+            .from('lead_interactions')
+            .insert([interactionData]);
+
+          if (interactionError) {
+            console.error('⚠️ Error registrando interacción:', interactionError);
+          } else {
+            console.log('✅ Interacción registrada en lead');
+            
+            // Actualizar fecha_ultimo_contacto del lead
+            await supabase
+              .from('leads')
+              .update({ fecha_ultimo_contacto: new Date().toISOString() })
+              .eq('id', leadId);
+          }
+        } catch (err) {
+          console.error('⚠️ Error en registro de interacción:', err);
+        }
       }
 
       setShowResults(true);
