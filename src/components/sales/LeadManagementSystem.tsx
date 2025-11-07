@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import NewLeadModal from './NewLeadModal';
 import NewSalesMeetingModal from './NewSalesMeetingModal';
+import NewInteractionModal from './NewInteractionModal';
 
 interface Lead {
   id: string;
@@ -543,45 +544,17 @@ const LeadManagementSystem: React.FC = () => {
         />
       )}
 
-      {/* Modal Nueva Interacción - Placeholder */}
-      {showInteractionModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ marginBottom: '16px' }}>Registrar Interacción</h2>
-            <p style={{ color: '#6b7280' }}>Formulario en desarrollo...</p>
-            <button
-              onClick={() => setShowInteractionModal(false)}
-              style={{
-                marginTop: '16px',
-                padding: '8px 16px',
-                backgroundColor: '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+      {/* Modal Nueva Interacción */}
+      {showInteractionModal && selectedLead && (
+        <NewInteractionModal
+          leadId={selectedLead.id}
+          leadName={selectedLead.nombre}
+          onClose={() => setShowInteractionModal(false)}
+          onSuccess={() => {
+            cargarInteracciones(selectedLead.id);
+            setShowInteractionModal(false);
+          }}
+        />
       )}
 
       {/* Modal Nueva Reunión de Ventas */}
