@@ -32,13 +32,13 @@ console.log('🔍 PORT from environment:', process.env.PORT);
 console.log('🔍 PORT to use:', PORT);
 
 // Middleware CORS - Permitir Netlify y localhost
-const allowedOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',')
-  : [
-      'https://lajungla-crm.netlify.app',
-      'http://localhost:5173',
-      'http://localhost:3000'
-    ];
+// Siempre incluir localhost para desarrollo
+const allowedOrigins = [
+  'https://lajungla-crm.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').filter(o => o.trim()) : [])
+];
 
 console.log('🌐 CORS Origins permitidos:', allowedOrigins);
 
