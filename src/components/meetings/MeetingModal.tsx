@@ -54,10 +54,20 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [meetingMinutes, setMeetingMinutes] = useState('');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
+  
+  // Estados para leads (cuando departamento = ventas)
+  const [leads, setLeads] = useState<any[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
+  const [loadingLeads, setLoadingLeads] = useState(false);
 
   useEffect(() => {
     loadPreviousTasks();
     loadEmployees();
+    
+    // Si el departamento es ventas, cargar leads
+    if (departmentId === 'ventas' || departmentId === 'sales') {
+      loadLeads();
+    }
   }, [departmentId]);
 
   const loadPreviousTasks = async () => {
@@ -92,6 +102,31 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       setPreviousTasks([]);
     } finally {
       setLoadingTasks(false);
+    }
+  };
+
+  const loadLeads = async () => {
+    setLoadingLeads(true);
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, nombre, email, telefono, empresa, proyecto_nombre, estado')
+        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta', 'negociacion'])
+        .order('nombre', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error cargando leads:', error);
+        setLeads([]);
+        return;
+      }
+
+      console.log('✅ Leads cargados para reunión:', data);
+      setLeads(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+      setLeads([]);
+    } finally {
+      setLoadingLeads(false);
     }
   };
 
@@ -234,6 +269,56 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             ×
           </button>
         </div>
+
+        {/* Selector de Lead (solo para ventas) */}
+        {(departmentId === 'ventas' || departmentId === 'sales') && (
+          <div style={{
+            padding: '16px 24px',
+            backgroundColor: '#f0f9ff',
+            borderBottom: '1px solid #bfdbfe'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#1e40af',
+              marginBottom: '8px'
+            }}>
+              🎯 Lead Asociado a la Reunión
+            </label>
+            {loadingLeads ? (
+              <p style={{ fontSize: '12px', color: '#6b7280' }}>Cargando leads...</p>
+            ) : leads.length === 0 ? (
+              <p style={{ fontSize: '12px', color: '#6b7280' }}>No hay leads disponibles</p>
+            ) : (
+              <select
+                value={selectedLeadId}
+                onChange={(e) => setSelectedLeadId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">-- Seleccionar lead (opcional) --</option>
+                {leads.map(lead => (
+                  <option key={lead.id} value={lead.id}>
+                    {lead.nombre} {lead.empresa ? `(${lead.empresa})` : ''} - {lead.proyecto_nombre || 'Sin proyecto'}
+                  </option>
+                ))}
+              </select>
+            )}
+            {selectedLeadId && (
+              <p style={{ fontSize: '11px', color: '#1e40af', marginTop: '6px', marginBottom: 0 }}>
+                ✅ Esta reunión se registrará automáticamente en el historial del lead
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{
