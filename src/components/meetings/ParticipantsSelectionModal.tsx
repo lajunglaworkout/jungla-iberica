@@ -16,6 +16,14 @@ interface Employee {
   department: string;
 }
 
+interface Lead {
+  id: string;
+  nombre: string;
+  email: string;
+  empresa?: string;
+  proyecto_nombre?: string;
+}
+
 export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProps> = ({
   isOpen,
   departmentId,
@@ -23,17 +31,52 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
   onClose
 }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [otherParticipant, setOtherParticipant] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const isVentasDepartment = departmentId === 'ventas' || departmentId === 'sales';
+
   useEffect(() => {
     if (isOpen) {
-      loadEmployees();
+      if (isVentasDepartment) {
+        loadLeads();
+      } else {
+        loadEmployees();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, departmentId]);
+
+  const loadLeads = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, nombre, email, telefono, empresa, proyecto_nombre, estado')
+        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta', 'negociacion'])
+        .order('nombre', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error cargando leads:', error);
+        setLeads([]);
+        return;
+      }
+
+      console.log('✅ Leads cargados para participantes:', data);
+      setLeads(data || []);
+      setFilteredLeads(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+      setLeads([]);
+      setFilteredLeads([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadEmployees = async () => {
     setLoading(true);
@@ -69,14 +112,29 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     
-    if (value.trim() === '') {
-      setFilteredEmployees(employees);
+    if (isVentasDepartment) {
+      // Filtrar leads
+      if (value.trim() === '') {
+        setFilteredLeads(leads);
+      } else {
+        const filtered = leads.filter(lead =>
+          lead.nombre.toLowerCase().includes(value.toLowerCase()) ||
+          lead.email.toLowerCase().includes(value.toLowerCase()) ||
+          (lead.empresa && lead.empresa.toLowerCase().includes(value.toLowerCase()))
+        );
+        setFilteredLeads(filtered);
+      }
     } else {
-      const filtered = employees.filter(emp =>
-        emp.name.toLowerCase().includes(value.toLowerCase()) ||
-        emp.email.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredEmployees(filtered);
+      // Filtrar empleados
+      if (value.trim() === '') {
+        setFilteredEmployees(employees);
+      } else {
+        const filtered = employees.filter(emp =>
+          emp.name.toLowerCase().includes(value.toLowerCase()) ||
+          emp.email.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredEmployees(filtered);
+      }
     }
   };
 
@@ -170,7 +228,7 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
           overflow: 'auto',
           padding: '24px'
         }}>
-          {/* Empleados del Sistema */}
+          {/* Empleados del Sistema o Leads */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{
               fontSize: '14px',
@@ -178,7 +236,7 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
               color: '#1f2937',
               marginBottom: '12px'
             }}>
-              👥 Empleados del Sistema
+              {isVentasDepartment ? '🎯 Leads del Sistema' : '👥 Empleados del Sistema'}
             </h3>
 
             {/* Campo de Búsqueda */}
@@ -191,10 +249,10 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
               padding: '8px 12px',
               marginBottom: '12px'
             }}>
-              <Search size={16} color="#6b7280" />
+              <Search style={{ width: '16px', height: '16px', color: '#6b7280' }} />
               <input
                 type="text"
-                placeholder="Buscar empleado..."
+                placeholder={isVentasDepartment ? "Buscar lead..." : "Buscar empleado..."}
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 style={{
@@ -210,36 +268,110 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
 
             {loading ? (
               <div style={{ textAlign: 'center', color: '#6b7280' }}>
-                Cargando empleados...
+                {isVentasDepartment ? 'Cargando leads...' : 'Cargando empleados...'}
               </div>
-            ) : employees.length === 0 ? (
-              <div style={{
-                padding: '16px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '8px',
-                color: '#6b7280',
-                fontSize: '14px'
-              }}>
-                No hay empleados disponibles
-              </div>
-            ) : filteredEmployees.length === 0 ? (
-              <div style={{
-                padding: '16px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '8px',
-                color: '#6b7280',
-                fontSize: '14px'
-              }}>
-                No se encontraron empleados con "{searchTerm}"
-              </div>
+            ) : isVentasDepartment ? (
+              // Mostrar LEADS para ventas
+              leads.length === 0 ? (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No hay leads disponibles
+                </div>
+              ) : filteredLeads.length === 0 ? (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No se encontraron leads con "{searchTerm}"
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gap: '8px',
+                  maxHeight: '300px',
+                  overflow: 'auto'
+                }}>
+                  {filteredLeads.map(lead => (
+                    <label
+                      key={lead.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px',
+                        backgroundColor: selectedParticipants.includes(lead.email) ? '#dbeafe' : '#f9fafb',
+                        border: `1px solid ${selectedParticipants.includes(lead.email) ? '#3b82f6' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedParticipants.includes(lead.email)}
+                        onChange={() => handleToggleParticipant(lead.email)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px' }}>
+                          {lead.nombre}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {lead.email}
+                        </div>
+                        {lead.empresa && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                            🏢 {lead.empresa}
+                          </div>
+                        )}
+                        {lead.proyecto_nombre && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                            📊 {lead.proyecto_nombre}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )
             ) : (
-              <div style={{
-                display: 'grid',
-                gap: '8px',
-                maxHeight: '300px',
-                overflow: 'auto'
-              }}>
-                {filteredEmployees.map(emp => (
+              // Mostrar EMPLEADOS para otros departamentos
+              employees.length === 0 ? (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No hay empleados disponibles
+                </div>
+              ) : filteredEmployees.length === 0 ? (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontSize: '14px'
+                }}>
+                  No se encontraron empleados con "{searchTerm}"
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gap: '8px',
+                  maxHeight: '300px',
+                  overflow: 'auto'
+                }}>
+                  {filteredEmployees.map(emp => (
                   <label
                     key={emp.id}
                     style={{
@@ -276,6 +408,7 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
                   </label>
                 ))}
               </div>
+              )
             )}
           </div>
 
