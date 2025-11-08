@@ -313,28 +313,65 @@ Formato: Markdown profesional en español.`;
 function extractTasks(minutes, participants) {
   const tasks = [];
   
-  // Buscar líneas que contengan "Acción", "Tarea", "Responsable"
+  // Buscar sección de "Acciones Pendientes" o similar
   const lines = minutes.split('\n');
+  let inTasksSection = false;
   
   lines.forEach((line, index) => {
-    if (line.toLowerCase().includes('acción') || 
-        line.toLowerCase().includes('tarea') ||
-        line.toLowerCase().includes('pendiente')) {
+    const lowerLine = line.toLowerCase();
+    
+    // Detectar inicio de sección de tareas
+    if (lowerLine.includes('acciones pendientes') || 
+        lowerLine.includes('tareas asignadas') ||
+        lowerLine.includes('próximos pasos') ||
+        lowerLine.includes('action items')) {
+      inTasksSection = true;
+      return;
+    }
+    
+    // Detectar fin de sección (nuevo encabezado)
+    if (inTasksSection && line.match(/^#{1,3}\s+\d+\./)) {
+      inTasksSection = false;
+      return;
+    }
+    
+    // Extraer tareas de la sección
+    if (inTasksSection && (line.trim().startsWith('-') || line.trim().startsWith('*'))) {
+      let taskText = line.replace(/^[-*]\s*/, '').trim();
       
-      // Intentar extraer información
+      // Ignorar líneas vacías o muy cortas
+      if (taskText.length < 5) return;
+      
+      // Extraer responsable si está en formato "Tarea | Responsable: Nombre"
+      let assignedTo = 'Sin asignar';
+      const responsableMatch = taskText.match(/\|\s*Responsable:\s*([^|]+)/i);
+      
+      if (responsableMatch) {
+        assignedTo = responsableMatch[1].trim();
+        taskText = taskText.split('|')[0].trim();
+      } else {
+        // Buscar nombres de participantes en el texto
+        for (const participant of participants) {
+          if (taskText.toLowerCase().includes(participant.toLowerCase())) {
+            assignedTo = participant;
+            break;
+          }
+        }
+      }
+      
+      // Crear tarea
       const task = {
-        title: line.replace(/^[-*]\s*/, '').trim(),
-        assignedTo: participants[0] || 'Sin asignar',
+        title: taskText,
+        assignedTo: assignedTo,
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         priority: 'media'
       };
       
-      if (task.title.length > 5) {
-        tasks.push(task);
-      }
+      tasks.push(task);
     }
   });
-
+  
+  console.log(`📝 Tareas extraídas: ${tasks.length}`);
   return tasks;
 }
 
