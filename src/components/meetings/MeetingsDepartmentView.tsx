@@ -62,7 +62,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       const { data, error } = await supabase
         .from('meetings')
         .select('*')
-        .eq('department', department?.name)
+        .eq('department', departmentId)
         .order('date', { ascending: false });
 
       if (error) {
@@ -70,6 +70,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         return;
       }
 
+      console.log(`📊 Reuniones cargadas para ${departmentId}:`, data?.length || 0);
       setMeetings(data || []);
     } catch (error) {
       console.error('Error:', error);
