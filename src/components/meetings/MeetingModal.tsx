@@ -7,10 +7,11 @@ import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
 
 interface MeetingModalProps {
   departmentId: string;
-  meeting: any;
-  userEmail: string;
-  userName: string;
-  participants: string[];
+  meeting?: any;
+  userEmail?: string;
+  userName?: string;
+  participants?: string[];
+  preselectedLeadId?: string | null;
   onClose: () => void;
 }
 
@@ -42,6 +43,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   userEmail,
   userName,
   participants,
+  preselectedLeadId,
   onClose
 }) => {
   const [activeTab, setActiveTab] = useState<'previous' | 'recording' | 'tasks'>('previous');
@@ -68,7 +70,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     if (departmentId === 'ventas' || departmentId === 'sales') {
       loadLeads();
     }
-  }, [departmentId]);
+    
+    // Si hay un lead preseleccionado, establecerlo
+    if (preselectedLeadId) {
+      setSelectedLeadId(preselectedLeadId);
+    }
+  }, [departmentId, preselectedLeadId]);
 
   const loadPreviousTasks = async () => {
     setLoadingTasks(true);
@@ -247,7 +254,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             }}>
               {meeting?.title || 'Nueva Reunión'}
             </h2>
-            {participants.length > 0 && (
+            {participants && participants.length > 0 && (
               <div style={{
                 fontSize: '12px',
                 color: '#6b7280'
@@ -706,7 +713,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       </div>
 
       {/* Modal de Completación de Tarea */}
-      {showCompletionModal && selectedTaskForCompletion && (
+      {showCompletionModal && selectedTaskForCompletion && userEmail && userName && (
         <TaskCompletionModal
           isOpen={showCompletionModal}
           taskId={selectedTaskForCompletion.id}

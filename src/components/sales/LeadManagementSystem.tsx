@@ -8,6 +8,7 @@ import {
 import NewLeadModal from './NewLeadModal';
 import NewSalesMeetingModal from './NewSalesMeetingModal';
 import NewInteractionModal from './NewInteractionModal';
+import MeetingModal from '../meetings/MeetingModal';
 
 interface Lead {
   id: string;
@@ -54,6 +55,8 @@ const LeadManagementSystem: React.FC = () => {
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
   const [showInteractionModal, setShowInteractionModal] = useState(false);
   const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [meetingLeadId, setMeetingLeadId] = useState<string | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
 
@@ -563,12 +566,22 @@ const LeadManagementSystem: React.FC = () => {
           onClose={() => setShowNewMeetingModal(false)}
           onStartMeeting={(leadId, leadName) => {
             console.log('✅ Iniciando reunión con lead:', leadName);
-            // Aquí se abrirá el módulo de reuniones con el lead preseleccionado
-            // Por ahora guardamos en localStorage para que el módulo de reuniones lo lea
-            localStorage.setItem('selectedLeadForMeeting', JSON.stringify({ id: leadId, nombre: leadName }));
+            setMeetingLeadId(leadId);
             setShowNewMeetingModal(false);
-            // TODO: Navegar al módulo de reuniones o abrir modal de reunión
+            setShowMeetingModal(true);
           }}
+        />
+      )}
+
+      {/* Modal de Reunión con Lead Preseleccionado */}
+      {showMeetingModal && (
+        <MeetingModal
+          departmentId="ventas"
+          onClose={() => {
+            setShowMeetingModal(false);
+            setMeetingLeadId(null);
+          }}
+          preselectedLeadId={meetingLeadId}
         />
       )}
     </div>
