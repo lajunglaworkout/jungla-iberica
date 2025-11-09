@@ -48,6 +48,8 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<any>(null);
+  const [showMeetingDetailModal, setShowMeetingDetailModal] = useState(false);
+  const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<any>(null);
 
   const department = DEPARTMENTS_CONFIG[departmentId];
 
@@ -408,11 +410,25 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                   {meetings.map(meeting => (
                     <div
                       key={meeting.id}
+                      onClick={() => {
+                        setSelectedMeetingDetail(meeting);
+                        setShowMeetingDetailModal(true);
+                      }}
                       style={{
                         padding: '16px',
                         backgroundColor: '#f9fafb',
                         border: '1px solid #e5e7eb',
-                        borderRadius: '8px'
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                        e.currentTarget.style.borderColor = '#d1d5db';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
                       }}
                     >
                       <div style={{
@@ -598,11 +614,170 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
           onClose={() => {
             setShowCompletionModal(false);
             setSelectedTaskForCompletion(null);
+            loadTasks();
           }}
           onSuccess={() => {
             loadTasks();
           }}
         />
+      )}
+
+      {/* Modal de Detalle de Reunión */}
+      {showMeetingDetailModal && selectedMeetingDetail && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '95%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
+                {selectedMeetingDetail.title}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowMeetingDetailModal(false);
+                  setSelectedMeetingDetail(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '24px'
+            }}>
+              {/* Información básica */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px',
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Fecha</div>
+                  <div style={{ fontWeight: '500' }}>📅 {new Date(selectedMeetingDetail.date).toLocaleDateString('es-ES')}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Hora</div>
+                  <div style={{ fontWeight: '500' }}>🕐 {selectedMeetingDetail.start_time}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Participantes</div>
+                  <div style={{ fontWeight: '500' }}>👥 {selectedMeetingDetail.participants?.length || 0}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Estado</div>
+                  <div style={{ fontWeight: '500' }}>✅ {selectedMeetingDetail.status}</div>
+                </div>
+              </div>
+
+              {/* Transcripción */}
+              {selectedMeetingDetail.transcript && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                    📝 Transcripción
+                  </h3>
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {selectedMeetingDetail.transcript}
+                  </div>
+                </div>
+              )}
+
+              {/* Acta */}
+              {selectedMeetingDetail.summary && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                    📋 Acta de Reunión
+                  </h3>
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    lineHeight: '1.6'
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: selectedMeetingDetail.summary.replace(/\n/g, '<br/>')
+                  }}
+                  />
+                </div>
+              )}
+
+              {/* Tareas */}
+              {selectedMeetingDetail.tasks && selectedMeetingDetail.tasks.length > 0 && (
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+                    ✅ Tareas Asignadas ({selectedMeetingDetail.tasks.length})
+                  </h3>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {selectedMeetingDetail.tasks.map((task: any, index: number) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: '#f9fafb',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                          {task.title || task.titulo}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          👤 {task.assignedTo || task.asignado_a} • 📅 {task.deadline || task.fecha_limite}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
