@@ -28,6 +28,7 @@ import { supabase } from '../lib/supabase';
 import LogisticsManagementSystem from '../components/LogisticsManagementSystem';
 import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
 import MaintenanceModule from '../components/MaintenanceModule';
+import TaskCompletionModal from '../components/meetings/TaskCompletionModal';
 import { IncidentVerificationNotification } from '../components/incidents/IncidentVerificationNotification';
 import UserManagement from '../components/UserManagement';
 import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
@@ -225,27 +226,68 @@ const DashboardPage: React.FC = () => {
   const [showIncidentManagementModal, setShowIncidentManagementModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showTaskCompletionModal, setShowTaskCompletionModal] = useState(false);
+  const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<any>(null);
 
-  // Cargar reuniones desde Supabase al inicializar
+  // Cargar reuniones y tareas desde Supabase al inicializar
   useEffect(() => {
-    const loadMeetings = async () => {
+    const loadMeetingsAndTasks = async () => {
       setLoading(true);
       try {
-        const result = await loadMeetingsFromSupabase();
-        if (result.success && result.meetings) {
-          // Combinar reuniones de Supabase con tareas locales (no reuniones)
-          const localTasks = sampleTasks.filter(task => task.category !== 'meeting');
-          setTasks([...localTasks, ...result.meetings]);
+        // Cargar reuniones
+        const meetingsResult = await loadMeetingsFromSupabase();
+        
+        // Cargar tareas pendientes del usuario
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tareas')
+          .select('*')
+          .eq('estado', 'pendiente')
+          .eq('asignado_a', employee?.email || '')
+          .order('fecha_limite', { ascending: true });
+
+        if (tasksError) {
+          console.error('Error cargando tareas:', tasksError);
         }
+
+        // Convertir tareas a formato de calendario
+        const calendarTasks = (tasksData || []).map(task => ({
+          id: `task-${task.id}`,
+          title: task.titulo,
+          date: task.fecha_limite,
+          startDate: task.fecha_limite,
+          time: '00:00',
+          startTime: '00:00',
+          category: 'task' as const,
+          priority: task.prioridad,
+          department: task.departamento,
+          taskId: task.id,
+          description: task.descripcion,
+          isRecurring: false,
+          status: 'pending' as const,
+          createdAt: task.created_at || new Date().toISOString(),
+          updatedAt: task.created_at || new Date().toISOString(),
+          createdBy: task.asignado_a
+        }));
+
+        // Combinar reuniones y tareas
+        const allItems = [
+          ...(meetingsResult.success && meetingsResult.meetings ? meetingsResult.meetings : []),
+          ...calendarTasks
+        ];
+
+        setTasks(allItems);
+        console.log(`📊 Calendario cargado: ${meetingsResult.meetings?.length || 0} reuniones + ${calendarTasks.length} tareas`);
       } catch (error) {
-        console.error('Error cargando reuniones:', error);
+        console.error('Error cargando datos del calendario:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadMeetings();
-  }, []);
+    if (employee?.email) {
+      loadMeetingsAndTasks();
+    }
+  }, [employee?.email]);
 
   // Función para cargar alertas inteligentes según el rol
   const loadSmartAlerts = async () => {
@@ -765,10 +807,17 @@ const DashboardPage: React.FC = () => {
                         key={task.id} 
                         className={`event ${task.category} ${task.priority}`}
                         onClick={() => {
-                          setSelectedTask(task);
-                          setNewTask(task);
-                          setIsCreatingMeeting(task.category === 'meeting');
-                          setShowTaskModal(true);
+                          if (task.category === 'task') {
+                            // Si es una tarea, abrir modal de completar
+                            setSelectedTaskForCompletion(task);
+                            setShowTaskCompletionModal(true);
+                          } else {
+                            // Si es reunión, abrir modal de edición
+                            setSelectedTask(task);
+                            setNewTask(task);
+                            setIsCreatingMeeting(task.category === 'meeting');
+                            setShowTaskModal(true);
+                          }
                         }}
                         style={{
                           marginBottom: '8px',
@@ -776,7 +825,7 @@ const DashboardPage: React.FC = () => {
                           borderRadius: '6px',
                           cursor: 'pointer',
                           border: '1px solid #e5e7eb',
-                          backgroundColor: task.category === 'meeting' ? '#fef3c7' : '#f0f9ff',
+                          backgroundColor: task.category === 'task' ? '#dcfce7' : task.category === 'meeting' ? '#fef3c7' : '#f0f9ff',
                           transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
@@ -842,7 +891,7 @@ const DashboardPage: React.FC = () => {
                         startDate: format(day, 'yyyy-MM-dd'),
                         startTime: '09:00',
                         endTime: '10:00',
-                        category: 'task',
+                        category: 'task' as const,
                         priority: 'medium'
                       });
                       setIsCreatingMeeting(false);
@@ -1072,9 +1121,9 @@ const DashboardPage: React.FC = () => {
                 setIsCreatingMeeting(false);
                 setNewTask({
                   isRecurring: false,
-                  category: 'task',
+                  category: 'task' as const,
                   priority: 'medium',
-                  status: 'pending',
+                  status: 'pending' as const,
                   startDate: format(new Date(), 'yyyy-MM-dd'),
                   startTime: '09:00'
                 });
@@ -1099,7 +1148,7 @@ const DashboardPage: React.FC = () => {
                       category: 'meeting',
                       meetingType: 'weekly',
                       priority: 'high',
-                      status: 'pending',
+                      status: 'pending' as const,
                       startDate: format(new Date(), 'yyyy-MM-dd'),
                       startTime: '10:00',
                       endTime: '11:00'
@@ -1376,6 +1425,64 @@ const DashboardPage: React.FC = () => {
         department={selectedDepartment}
         userEmail={employee?.email || ''}
       />
+
+      {/* Modal de Completar Tarea */}
+      {showTaskCompletionModal && selectedTaskForCompletion && (
+        <TaskCompletionModal
+          isOpen={showTaskCompletionModal}
+          taskId={selectedTaskForCompletion.taskId}
+          taskTitle={selectedTaskForCompletion.title}
+          userEmail={employee?.email || ''}
+          userName={employee?.nombre || ''}
+          onClose={() => {
+            setShowTaskCompletionModal(false);
+            setSelectedTaskForCompletion(null);
+          }}
+          onSuccess={() => {
+            // Recargar calendario después de completar tarea
+            const loadMeetingsAndTasks = async () => {
+              try {
+                const meetingsResult = await loadMeetingsFromSupabase();
+                const { data: tasksData } = await supabase
+                  .from('tareas')
+                  .select('*')
+                  .eq('estado', 'pendiente')
+                  .eq('asignado_a', employee?.email || '')
+                  .order('fecha_limite', { ascending: true });
+
+                const calendarTasks = (tasksData || []).map(task => ({
+                  id: `task-${task.id}`,
+                  title: task.titulo,
+                  date: task.fecha_limite,
+                  startDate: task.fecha_limite,
+                  time: '00:00',
+                  startTime: '00:00',
+                  category: 'task' as const,
+                  priority: task.prioridad,
+                  department: task.departamento,
+                  taskId: task.id,
+                  description: task.descripcion,
+                  isRecurring: false,
+                  status: 'pending' as const,
+                  createdAt: task.created_at || new Date().toISOString(),
+                  updatedAt: task.created_at || new Date().toISOString(),
+                  createdBy: task.asignado_a
+                }));
+
+                const allItems = [
+                  ...(meetingsResult.success && meetingsResult.meetings ? meetingsResult.meetings : []),
+                  ...calendarTasks
+                ];
+
+                setTasks(allItems);
+              } catch (error) {
+                console.error('Error recargando calendario:', error);
+              }
+            };
+            loadMeetingsAndTasks();
+          }}
+        />
+      )}
 
       {/* Notificación de Verificación de Incidencias */}
       {employee?.name && (
