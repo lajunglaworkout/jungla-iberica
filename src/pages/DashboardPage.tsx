@@ -1218,18 +1218,16 @@ const DashboardPage: React.FC = () => {
       selectedDepartment
     });
     
-    // Si es una notificación de tarea, navegar a reuniones con información específica
+    // Si es una notificación de tarea, abrir modal de completar tarea
     if (alert.id.startsWith('task-notification-')) {
-      console.log('📋 Navegando a tarea específica:', alert.taskId);
-      window.dispatchEvent(
-        new CustomEvent('navigate-module', {
-          detail: {
-            moduleId: 'meetings',
-            taskId: alert.taskId,
-            department: alert.department
-          }
-        })
-      );
+      console.log('📋 Abriendo modal de tarea:', alert.taskId);
+      // Crear objeto de tarea para el modal
+      setSelectedTaskForCompletion({
+        taskId: alert.taskId,
+        title: alert.title || 'Tarea pendiente',
+        description: alert.description
+      });
+      setShowTaskCompletionModal(true);
       return;
     }
     
