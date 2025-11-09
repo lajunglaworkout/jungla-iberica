@@ -48,6 +48,8 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
   const [selectedPriority, setSelectedPriority] = useState<string>('todos');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   const isSuperAdmin = userEmail === 'carlossuarezparra@gmail.com';
 
@@ -128,6 +130,54 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
     }
   };
 
+  const deleteMultipleTasks = async () => {
+    if (selectedTaskIds.length === 0) {
+      alert('Selecciona al menos una tarea para eliminar');
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de que quieres eliminar ${selectedTaskIds.length} tarea(s)?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .delete()
+        .in('id', selectedTaskIds);
+
+      if (error) {
+        console.error('Error eliminando tareas:', error);
+        alert('Error al eliminar las tareas');
+        return;
+      }
+
+      console.log(`✅ ${selectedTaskIds.length} tareas eliminadas correctamente`);
+      setSelectedTaskIds([]);
+      setSelectionMode(false);
+      loadTasks();
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar las tareas');
+    }
+  };
+
+  const toggleTaskSelection = (taskId: number) => {
+    setSelectedTaskIds(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const selectAllTasks = () => {
+    if (selectedTaskIds.length === filteredTasks.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(filteredTasks.map(task => task.id));
+    }
+  };
+
   const isOverdue = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
@@ -154,22 +204,112 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
     }}>
       {/* Header */}
       <div style={{
-        marginBottom: '24px'
+        marginBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: '700',
-          color: '#1f2937',
-          marginBottom: '8px'
-        }}>
-          📋 Mis Tareas Pendientes
-        </h1>
-        <p style={{
-          color: '#6b7280',
-          fontSize: '14px'
-        }}>
-          {isSuperAdmin ? 'Vista completa de todas las tareas del sistema' : 'Gestiona tus tareas asignadas'}
-        </p>
+        <div>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1f2937',
+            marginBottom: '8px'
+          }}>
+            📋 Mis Tareas Pendientes
+          </h1>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '14px'
+          }}>
+            {isSuperAdmin ? 'Vista completa de todas las tareas del sistema' : 'Gestiona tus tareas asignadas'}
+          </p>
+        </div>
+
+        {/* Botones de acción masiva */}
+        {isSuperAdmin && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!selectionMode ? (
+              <button
+                onClick={() => setSelectionMode(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 16px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                <Check size={16} />
+                Seleccionar múltiples
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={selectAllTasks}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {selectedTaskIds.length === filteredTasks.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
+                </button>
+                <button
+                  onClick={deleteMultipleTasks}
+                  disabled={selectedTaskIds.length === 0}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 16px',
+                    backgroundColor: selectedTaskIds.length > 0 ? '#fee2e2' : '#f3f4f6',
+                    color: selectedTaskIds.length > 0 ? '#dc2626' : '#9ca3af',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: selectedTaskIds.length > 0 ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Eliminar ({selectedTaskIds.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectionMode(false);
+                    setSelectedTaskIds([]);
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filtros */}
@@ -320,8 +460,8 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                       key={task.id}
                       style={{
                         padding: '16px',
-                        backgroundColor: 'white',
-                        border: `2px solid ${overdue ? '#fca5a5' : '#e5e7eb'}`,
+                        backgroundColor: selectionMode && selectedTaskIds.includes(task.id) ? '#eff6ff' : 'white',
+                        border: `2px solid ${selectionMode && selectedTaskIds.includes(task.id) ? '#3b82f6' : overdue ? '#fca5a5' : '#e5e7eb'}`,
                         borderRadius: '12px',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -331,6 +471,21 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                       }}
                     >
+                      {/* Checkbox de selección */}
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedTaskIds.includes(task.id)}
+                          onChange={() => toggleTaskSelection(task.id)}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                            marginTop: '2px'
+                          }}
+                        />
+                      )}
+
                       {/* Contenido de la tarea */}
                       <div style={{ flex: 1 }}>
                         <div style={{
