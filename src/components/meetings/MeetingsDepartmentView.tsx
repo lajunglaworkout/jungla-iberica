@@ -108,12 +108,12 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
-      // Cargar tareas pendientes del departamento actual
+      // Cargar tareas pendientes asignadas al usuario actual
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
         .eq('estado', 'pendiente')
-        .eq('departamento', departmentId)
+        .eq('asignado_a', userEmail)
         .order('fecha_limite', { ascending: true });
 
       if (error) {
@@ -132,7 +132,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }));
 
       setTasks(formattedTasks);
-      console.log(`ℹ️ Tareas pendientes del departamento ${departmentId}: ${formattedTasks.length} tareas`);
+      console.log(`ℹ️ Tareas pendientes asignadas a ${userEmail}: ${formattedTasks.length} tareas`);
     } catch (error) {
       console.error('Error:', error);
       setTasks([]);
@@ -806,15 +806,44 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                     {selectedMeetingDetail.tasks.map((task: any, index: number) => (
                       <div
                         key={index}
+                        onClick={() => {
+                          // Solo permitir completar si la tarea está asignada al usuario actual
+                          if ((task.assignedTo || task.asignado_a) === userEmail) {
+                            setSelectedTaskForCompletion(task);
+                            setShowCompletionModal(true);
+                          }
+                        }}
                         style={{
                           padding: '12px',
-                          backgroundColor: '#f9fafb',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px'
+                          backgroundColor: (task.assignedTo || task.asignado_a) === userEmail ? '#f0fdf4' : '#f9fafb',
+                          border: (task.assignedTo || task.asignado_a) === userEmail ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          cursor: (task.assignedTo || task.asignado_a) === userEmail ? 'pointer' : 'default',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if ((task.assignedTo || task.asignado_a) === userEmail) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
                         }}
                       >
                         <div style={{ fontWeight: '500', marginBottom: '4px' }}>
                           {task.title || task.titulo}
+                          {(task.assignedTo || task.asignado_a) === userEmail && (
+                            <span style={{ 
+                              marginLeft: '8px', 
+                              fontSize: '12px', 
+                              color: '#059669',
+                              fontWeight: 'normal'
+                            }}>
+                              (Click para completar)
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>
                           👤 {task.assignedTo || task.asignado_a} • 📅 {task.deadline || task.fecha_limite}
