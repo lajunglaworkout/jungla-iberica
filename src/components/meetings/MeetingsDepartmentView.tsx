@@ -86,6 +86,11 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
           return { ...meeting, tasks: [] };
         }
         
+        console.log(`📋 Tareas de reunión "${meeting.title}":`, tasks);
+        tasks?.forEach(task => {
+          console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}", estado="${task.estado}"`);
+        });
+        
         return { ...meeting, tasks: tasks || [] };
       }));
       
@@ -124,6 +129,8 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
+      console.log(`🔍 Buscando tareas para usuario: "${userEmail}"`);
+      
       // Cargar tareas pendientes asignadas al usuario actual
       const { data, error } = await supabase
         .from('tareas')
@@ -137,6 +144,11 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         setTasks([]);
         return;
       }
+
+      console.log(`📊 Tareas encontradas:`, data);
+      data?.forEach(task => {
+        console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}"`);
+      });
 
       const formattedTasks = (data || []).map((task: any) => ({
         id: task.id,
