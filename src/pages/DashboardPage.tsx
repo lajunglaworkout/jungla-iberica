@@ -225,6 +225,7 @@ const DashboardPage: React.FC = () => {
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [showIncidentManagementModal, setShowIncidentManagementModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [showOverdueIncidentsOnly, setShowOverdueIncidentsOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showTaskCompletionModal, setShowTaskCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<any>(null);
@@ -1232,6 +1233,16 @@ const DashboardPage: React.FC = () => {
       return;
     }
     
+    // Si es una alerta de incidencias vencidas o próximas a vencer
+    if (alert.id === 'overdue-incidents' || alert.id === 'near-deadline-incidents') {
+      console.log('🔥 ABRIENDO MODAL DE INCIDENCIAS VENCIDAS');
+      setSelectedDepartment(''); // Sin filtro de departamento para ver todas
+      setShowOverdueIncidentsOnly(true); // Mostrar solo incidencias vencidas
+      setShowIncidentManagementModal(true);
+      console.log('🔥 Estado después de setear:', { showIncidentManagementModal: true, showOverdueIncidentsOnly: true });
+      return;
+    }
+    
     // Si es una alerta de incidencias, abrir el modal de gestión
     if (alert.id.startsWith('incidents-')) {
       console.log('🔥 ABRIENDO MODAL DE GESTIÓN DE INCIDENCIAS:', alert.department);
@@ -1421,9 +1432,11 @@ const DashboardPage: React.FC = () => {
         onClose={() => {
           console.log('🔥 CERRANDO MODAL DE GESTIÓN');
           setShowIncidentManagementModal(false);
+          setShowOverdueIncidentsOnly(false); // Resetear flag al cerrar
         }}
         department={selectedDepartment}
         userEmail={employee?.email || ''}
+        showOverdueOnly={showOverdueIncidentsOnly}
       />
 
       {/* Modal de Completar Tarea */}

@@ -9,13 +9,15 @@ interface IncidentManagementModalProps {
   onClose: () => void;
   department: string;
   userEmail: string;
+  showOverdueOnly?: boolean;
 }
 
 const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
   isOpen,
   onClose,
   department,
-  userEmail
+  userEmail,
+  showOverdueOnly = false
 }) => {
   const { employee } = useSession();
   const [incidents, setIncidents] = useState<ChecklistIncident[]>([]);
@@ -33,28 +35,36 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     setIsLoading(true);
     console.log('🔍 Cargando incidencias para departamento:', department);
     console.log('👤 Usuario actual:', employee?.email, 'Rol:', employee?.role);
+    console.log('⏰ Mostrar solo vencidas:', showOverdueOnly);
     
     try {
       let data;
       
-      // Definir usuarios con visión global (propietarios)
-      const isBeni = employee?.email === 'beni.jungla@gmail.com';
-      const isVicente = employee?.email === 'lajunglacentral@gmail.com';
-      const isCEO = employee?.role === 'superadmin';
-      const isOwner = isBeni || isVicente || isCEO;
-      
-      if (isOwner) {
-        // PROPIETARIOS (CEO, Beni, Vicente) → Visión global de TODAS las incidencias
-        console.log('👑 Propietario - cargando TODAS las incidencias para visión global');
-        data = await checklistIncidentService.getPendingIncidents();
-      } else if (department) {
-        // Otros usuarios (directores, managers) → Solo su departamento
-        console.log('👤 Usuario departamental - filtrando por:', department);
-        data = await checklistIncidentService.getIncidentsByDepartment(department);
+      // Si se solicitan solo incidencias vencidas
+      if (showOverdueOnly) {
+        console.log('⏰ Cargando SOLO incidencias vencidas');
+        data = await checklistIncidentService.getOverdueIncidents();
       } else {
-        // Fallback: sin departamento específico
-        console.log('⚠️ Usuario sin departamento - cargando todas');
-        data = await checklistIncidentService.getPendingIncidents();
+        // Lógica original
+        // Definir usuarios con visión global (propietarios)
+        const isBeni = employee?.email === 'beni.jungla@gmail.com';
+        const isVicente = employee?.email === 'lajunglacentral@gmail.com';
+        const isCEO = employee?.role === 'superadmin';
+        const isOwner = isBeni || isVicente || isCEO;
+        
+        if (isOwner) {
+          // PROPIETARIOS (CEO, Beni, Vicente) → Visión global de TODAS las incidencias
+          console.log('👑 Propietario - cargando TODAS las incidencias para visión global');
+          data = await checklistIncidentService.getPendingIncidents();
+        } else if (department) {
+          // Otros usuarios (directores, managers) → Solo su departamento
+          console.log('👤 Usuario departamental - filtrando por:', department);
+          data = await checklistIncidentService.getIncidentsByDepartment(department);
+        } else {
+          // Fallback: sin departamento específico
+          console.log('⚠️ Usuario sin departamento - cargando todas');
+          data = await checklistIncidentService.getPendingIncidents();
+        }
       }
       
       console.log('📋 Incidencias cargadas:', data);
