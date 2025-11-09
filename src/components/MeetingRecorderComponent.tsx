@@ -143,7 +143,6 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
       }
 
       // Si hay leadId, registrar interacción automáticamente
-      console.log('🔍 Verificando leadId:', leadId, 'tipo:', typeof leadId);
       if (leadId) {
         console.log('📝 Registrando interacción con lead:', leadId);
         try {

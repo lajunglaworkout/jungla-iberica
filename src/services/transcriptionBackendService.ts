@@ -20,9 +20,6 @@ export const transcribeAudioViaBackend = async (
       ? 'https://jungla-meetings-backend.onrender.com' // Backend en Render
       : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
-    console.log('🔍 isProduction:', isProduction);
-    console.log('🔍 backendUrl:', backendUrl);
-
     const endpoint = `${backendUrl}/api/transcribe`;
 
     // Usar FormData para enviar el archivo directamente (evita problema de tamaño)
