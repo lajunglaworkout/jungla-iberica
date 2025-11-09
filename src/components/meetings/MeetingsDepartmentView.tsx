@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, History, ListTodo, Check } from 'lucide-react';
+import { ArrowLeft, Plus, History, ListTodo, Check, Trash2 } from 'lucide-react';
 import { DEPARTMENTS_CONFIG } from '../../config/departmentPermissions';
 import { supabase } from '../../lib/supabase';
 import MeetingModal from './MeetingModal';
@@ -78,6 +78,31 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteTask = async (taskId: number | string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error eliminando tarea:', error);
+        alert('Error al eliminar la tarea');
+        return;
+      }
+
+      console.log('✅ Tarea eliminada correctamente');
+      loadTasks(); // Recargar tareas
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar la tarea');
     }
   };
 
@@ -571,29 +596,53 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          setSelectedTaskForCompletion(task);
-                          setShowCompletionModal(true);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          backgroundColor: '#dcfce7',
-                          color: '#166534',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        <Check size={14} />
-                        Completar
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedTaskForCompletion(task);
+                            setShowCompletionModal(true);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <Check size={14} />
+                          Completar
+                        </button>
+                        {userEmail === 'carlossuarezparra@gmail.com' && (
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <Trash2 size={14} />
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
