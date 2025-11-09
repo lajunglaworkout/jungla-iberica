@@ -73,7 +73,23 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }
 
       console.log(`📊 Reuniones cargadas para ${departmentId}:`, data?.length || 0);
-      setMeetings(data || []);
+      
+      // Cargar tareas para cada reunión
+      const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
+        const { data: tasks, error: tasksError } = await supabase
+          .from('tareas')
+          .select('*')
+          .eq('reunion_titulo', meeting.title);
+        
+        if (tasksError) {
+          console.error('Error cargando tareas de reunión:', tasksError);
+          return { ...meeting, tasks: [] };
+        }
+        
+        return { ...meeting, tasks: tasks || [] };
+      }));
+      
+      setMeetings(meetingsWithTasks);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -656,7 +672,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       {showCompletionModal && selectedTaskForCompletion && (
         <TaskCompletionModal
           isOpen={showCompletionModal}
-          taskId={selectedTaskForCompletion.id}
+          taskId={selectedTaskForCompletion.taskId}
           taskTitle={selectedTaskForCompletion.title}
           userEmail={userEmail}
           userName={userName}
@@ -664,9 +680,11 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
             setShowCompletionModal(false);
             setSelectedTaskForCompletion(null);
             loadTasks();
+            loadMeetings(); // Recargar reuniones para actualizar el historial
           }}
           onSuccess={() => {
             loadTasks();
+            loadMeetings(); // Recargar reuniones para actualizar el historial
           }}
         />
       )}
@@ -807,22 +825,31 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                       <div
                         key={index}
                         onClick={() => {
-                          // Solo permitir completar si la tarea está asignada al usuario actual
-                          if ((task.assignedTo || task.asignado_a) === userEmail) {
-                            setSelectedTaskForCompletion(task);
+                          // Solo permitir completar si la tarea está asignada al usuario actual y está pendiente
+                          if ((task.asignado_a) === userEmail && task.estado === 'pendiente') {
+                            setSelectedTaskForCompletion({
+                              taskId: task.id,
+                              title: task.titulo,
+                              description: task.descripcion || 'Sin descripción'
+                            });
                             setShowCompletionModal(true);
                           }
                         }}
                         style={{
                           padding: '12px',
-                          backgroundColor: (task.assignedTo || task.asignado_a) === userEmail ? '#f0fdf4' : '#f9fafb',
-                          border: (task.assignedTo || task.asignado_a) === userEmail ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
+                          backgroundColor: task.estado === 'completada' 
+                            ? '#f3f4f6' 
+                            : (task.asignado_a === userEmail ? '#f0fdf4' : '#f9fafb'),
+                          border: task.estado === 'completada'
+                            ? '1px solid #d1d5db'
+                            : (task.asignado_a === userEmail ? '1px solid #bbf7d0' : '1px solid #e5e7eb'),
                           borderRadius: '8px',
-                          cursor: (task.assignedTo || task.asignado_a) === userEmail ? 'pointer' : 'default',
-                          transition: 'all 0.2s'
+                          cursor: (task.asignado_a === userEmail && task.estado === 'pendiente') ? 'pointer' : 'default',
+                          transition: 'all 0.2s',
+                          opacity: task.estado === 'completada' ? 0.6 : 1
                         }}
                         onMouseEnter={(e) => {
-                          if ((task.assignedTo || task.asignado_a) === userEmail) {
+                          if (task.asignado_a === userEmail && task.estado === 'pendiente') {
                             e.currentTarget.style.transform = 'translateY(-2px)';
                             e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
                           }
@@ -833,8 +860,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                         }}
                       >
                         <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                          {task.title || task.titulo}
-                          {(task.assignedTo || task.asignado_a) === userEmail && (
+                          {task.estado === 'completada' && '✅ '}
+                          {task.titulo}
+                          {task.asignado_a === userEmail && task.estado === 'pendiente' && (
                             <span style={{ 
                               marginLeft: '8px', 
                               fontSize: '12px', 
@@ -846,7 +874,12 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                           )}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                          👤 {task.assignedTo || task.asignado_a} • 📅 {task.deadline || task.fecha_limite}
+                          👤 {task.asignado_a} • 📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}
+                          {task.estado === 'completada' && task.completada_por && (
+                            <span style={{ marginLeft: '8px', color: '#059669' }}>
+                              • ✓ Completada por {task.completada_por}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
