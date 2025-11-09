@@ -195,3 +195,26 @@ export const createTaskDueNotification = async (
     return { success: false, error: 'Error al crear notificación' };
   }
 };
+
+// Eliminar notificaciones de una tarea específica
+export const deleteTaskNotifications = async (
+  taskId: string | number
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('task_id', taskId);
+
+    if (error) {
+      console.error('Error eliminando notificaciones de tarea:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('🗑️ Notificaciones de tarea eliminadas:', taskId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error:', error);
+    return { success: false, error: 'Error al eliminar notificaciones' };
+  }
+};

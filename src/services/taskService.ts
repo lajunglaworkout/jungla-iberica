@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { deleteTaskNotifications } from './notificationService';
 
 /**
  * Servicio para gestionar tareas
@@ -33,6 +34,10 @@ export const completeTask = async (
       completada_por: completedBy,
       fecha_completada: new Date().toISOString()
     });
+
+    // Eliminar notificaciones de esta tarea
+    await deleteTaskNotifications(taskId);
+    
     return { success: true };
   } catch (error) {
     console.error('Error:', error);
