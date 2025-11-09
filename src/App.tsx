@@ -33,6 +33,7 @@ import {
   AlertTriangle,
   LayoutDashboard,
   DollarSign,
+  ListTodo,
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
@@ -58,6 +59,7 @@ import IncidentManagementSystem from './components/incidents/IncidentManagementS
 import CEODashboard from './components/CEODashboard';
 import PendingTasksSystem from './components/PendingTasksSystem';
 import DashboardPage from './pages/DashboardPage';
+import MyTasksPage from './pages/MyTasksPage';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -175,6 +177,15 @@ const NavigationDashboard: React.FC = () => {
         component: DashboardPage,
         available: true,
         isDefault: true
+      },
+      {
+        id: 'my-tasks',
+        title: 'Mis Tareas',
+        description: 'Gestiona tus tareas pendientes',
+        icon: ListTodo,
+        color: '#8b5cf6',
+        component: MyTasksPage,
+        available: true
       },
       {
         id: 'meetings',
@@ -532,6 +543,14 @@ const NavigationDashboard: React.FC = () => {
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
             userName={employee?.nombre || 'Carlos Suárez'}
             onBack={() => setSelectedModule('main-dashboard')}
+          />
+        );
+      } else if (module.id === 'my-tasks') {
+        return (
+          <Component
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.nombre || 'Carlos Suárez'}
+            userRole={userRole || 'employee'}
           />
         );
       } else {
