@@ -1081,7 +1081,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
             {!showRecorder ? (
               <button
-                onClick={() => setShowRecorder(true)}
+                onClick={() => {
+                  console.log('🎙️ Abriendo grabadora...');
+                  setShowRecorder(true);
+                }}
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -1101,17 +1104,26 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                 🎙️ GRABAR DESDE CRM
               </button>
             ) : (
-              <MeetingRecorderComponent
-                meetingId={meeting?.id || 0}
-                meetingTitle={meeting?.title || 'Nueva Reunión'}
-                participants={participants || []}
-                departmentId={departmentId}
-                onRecordingComplete={(data) => {
-                  setRecordedTranscript(data.transcript);
-                  setShowRecorder(false);
-                }}
-                onClose={() => setShowRecorder(false)}
-              />
+              <>
+                {console.log('📹 Renderizando MeetingRecorderComponent')}
+                <MeetingRecorderComponent
+                  meetingId={meeting?.id || 0}
+                  meetingTitle={meeting?.title || 'Nueva Reunión'}
+                  participants={participants || []}
+                  departmentId={departmentId}
+                  onRecordingComplete={(data) => {
+                    console.log('✅ Grabación completada:', data);
+                    // Solo guardar la transcripción, NO generar acta automáticamente
+                    setManualTranscript(data.transcript);
+                    setShowRecorder(false);
+                    alert('✅ Transcripción guardada. Ahora puedes revisarla y hacer click en "GENERAR ACTA Y ASIGNAR TAREAS"');
+                  }}
+                  onClose={() => {
+                    console.log('❌ Cerrando grabadora');
+                    setShowRecorder(false);
+                  }}
+                />
+              </>
             )}
           </div>
         </div>

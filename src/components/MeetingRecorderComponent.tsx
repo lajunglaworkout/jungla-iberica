@@ -134,78 +134,15 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
 
       setTranscript(transcriptResult.transcript);
 
-      // Generar acta usando backend proxy
-      console.log('📋 Generando acta...');
-      const minutesResult = await generateMeetingMinutesViaBackend(
-        transcriptResult.transcript,
-        meetingTitle,
-        participants
-      );
+      // Solo devolver la transcripción, NO generar acta ni guardar
+      console.log('✅ Transcripción completada, devolviendo al modal...');
 
-      if (!minutesResult.success || !minutesResult.minutes) {
-        throw new Error(minutesResult.error || 'Error generando acta');
-      }
-
-      setMeetingMinutes(minutesResult.minutes);
-      setTasksAssigned(minutesResult.tasks || []);
-
-      // Guardar en Supabase
-      console.log('💾 Guardando en Supabase...');
-      const saveResult = await saveMeetingRecording(
-        meetingId,
-        audioBlob,
-        transcriptResult.transcript,
-        minutesResult.minutes,
-        minutesResult.tasks || []
-      );
-
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Error guardando grabación');
-      }
-
-      // Si hay leadId, registrar interacción automáticamente
-      if (leadId) {
-        console.log('📝 Registrando interacción con lead:', leadId);
-        try {
-          const interactionData = {
-            lead_id: leadId,
-            tipo: 'reunion',
-            direccion: 'saliente',
-            asunto: meetingTitle,
-            contenido: `Reunión grabada y transcrita.\n\nResumen:\n${minutesResult.minutes.substring(0, 500)}...`,
-            resultado: 'positivo',
-            fecha: new Date().toISOString(),
-            created_by: 'carlossuarezparra@gmail.com' // TODO: Obtener del contexto
-          };
-
-          const { error: interactionError } = await supabase
-            .from('lead_interactions')
-            .insert([interactionData]);
-
-          if (interactionError) {
-            console.error('⚠️ Error registrando interacción:', interactionError);
-          } else {
-            console.log('✅ Interacción registrada en lead');
-            
-            // Actualizar fecha_ultimo_contacto del lead
-            await supabase
-              .from('leads')
-              .update({ fecha_ultimo_contacto: new Date().toISOString() })
-              .eq('id', leadId);
-          }
-        } catch (err) {
-          console.error('⚠️ Error en registro de interacción:', err);
-        }
-      }
-
-      setShowResults(true);
-
-      // Callback
+      // Callback con solo la transcripción
       if (onRecordingComplete) {
         onRecordingComplete({
           transcript: transcriptResult.transcript,
-          minutes: minutesResult.minutes,
-          tasks: minutesResult.tasks || []
+          minutes: '',
+          tasks: []
         });
       }
     } catch (err) {
