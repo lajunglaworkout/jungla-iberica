@@ -90,6 +90,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   }, [departmentId, preselectedLeadId]);
 
   const loadRecurringTasks = () => {
+    console.log('🔄 Cargando tareas recurrentes para departamento:', departmentId);
+    
     // Tareas recurrentes por departamento
     const RECURRING_TASKS_BY_DEPT: Record<string, string[]> = {
       contabilidad: [
@@ -116,6 +118,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         'Cierre de ventas',
         'Reuniones programadas'
       ],
+      sales: [
+        'Seguimiento de leads',
+        'Propuestas pendientes',
+        'Cierre de ventas',
+        'Reuniones programadas'
+      ],
       operaciones: [
         'Revisar incidencias',
         'Mantenimiento',
@@ -125,6 +133,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     };
 
     const tasks = RECURRING_TASKS_BY_DEPT[departmentId] || [];
+    console.log('📋 Tareas recurrentes encontradas:', tasks.length, tasks);
     setRecurringTasks(tasks.map(titulo => ({ titulo, notas: '' })));
   };
 
@@ -441,17 +450,29 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           padding: '24px'
         }}>
           {/* Tareas Anteriores */}
-          {previousTasks.length > 0 && (
-            <div>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '16px'
-              }}>
-                Tareas Pendientes de Reuniones Anteriores
-              </h3>
+          <div>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px'
+            }}>
+              📋 Tareas Pendientes de Reuniones Anteriores
+            </h3>
 
+            {previousTasks.length === 0 ? (
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                textAlign: 'center',
+                color: '#6b7280',
+                marginBottom: '24px'
+              }}>
+                No hay tareas pendientes anteriores
+              </div>
+            ) : (
               <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
                 {previousTasks.map(task => (
                   <div
@@ -496,21 +517,33 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Tareas Recurrentes */}
-          {recurringTasks.length > 0 && (
-            <div>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '16px'
-              }}>
-                🔄 Tareas Recurrentes del Departamento
-              </h3>
+          <div>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px'
+            }}>
+              🔄 Tareas Recurrentes del Departamento
+            </h3>
 
+            {recurringTasks.length === 0 ? (
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                textAlign: 'center',
+                color: '#6b7280',
+                marginBottom: '24px'
+              }}>
+                No hay tareas recurrentes para este departamento
+              </div>
+            ) : (
               <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
                 {recurringTasks.map((task, index) => (
                   <div
@@ -548,8 +581,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Separador */}
           <div style={{
