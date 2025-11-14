@@ -58,7 +58,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [meetingType, setMeetingType] = useState<MeetingType>('FISICA');
   const [previousTasks, setPreviousTasks] = useState<PreviousTask[]>([]);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
+  const [recurringTasksCompleted, setRecurringTasksCompleted] = useState<Record<number, boolean>>({});
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
+  const [nextMeetingObjectives, setNextMeetingObjectives] = useState('');
   const [manualTranscript, setManualTranscript] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedTranscript, setRecordedTranscript] = useState('');
@@ -269,6 +271,13 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     setRecurringTasks(recurringTasks.filter((_, i) => i !== index));
   };
 
+  const handleToggleRecurringTaskCompleted = (index: number) => {
+    setRecurringTasksCompleted(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
   const handleGenerateActa = async () => {
     try {
       setGeneratingActa(true);
@@ -284,6 +293,15 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
       console.log('🎯 Generando acta con transcripción:', transcription.substring(0, 100) + '...');
       
+      // Calcular % de cumplimiento de tareas recurrentes
+      const totalRecurringTasks = recurringTasks.length;
+      const completedRecurringTasks = Object.values(recurringTasksCompleted).filter(Boolean).length;
+      const completionPercentage = totalRecurringTasks > 0 
+        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100) 
+        : 0;
+
+      console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
+      
       // Generar acta usando DeepSeek via backend
       const result = await generateMeetingMinutesViaBackend(
         transcription,
@@ -298,10 +316,32 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       console.log('✅ Acta generada:', result.minutes);
       console.log('📋 Tareas extraídas:', result.tasks);
 
-      // TODO: Guardar acta y tareas en base de datos
-      // Por ahora solo mostramos el resultado
+      // TODO: Guardar en base de datos:
+      // 1. Reunión con acta, transcripción, objetivos
+      // 2. % de cumplimiento de tareas recurrentes
+      // 3. Tareas recurrentes completadas/pendientes
+      // 4. Objetivos para próxima reunión
+      // 5. Tareas nuevas extraídas por IA
       
-      alert(`✅ Acta generada correctamente!\n\nTareas encontradas: ${result.tasks?.length || 0}`);
+      const meetingData = {
+        departamento: departmentId,
+        tipo: meetingType,
+        transcripcion: transcription,
+        acta: result.minutes,
+        objetivos_proxima: nextMeetingObjectives,
+        tareas_recurrentes: recurringTasks,
+        tareas_completadas: completedRecurringTasks,
+        total_tareas: totalRecurringTasks,
+        porcentaje_cumplimiento: completionPercentage,
+        tareas_nuevas: result.tasks
+      };
+
+      console.log('💾 Datos a guardar:', meetingData);
+      
+      alert(`✅ Acta generada correctamente!\n\n` +
+            `Tareas nuevas: ${result.tasks?.length || 0}\n` +
+            `Cumplimiento: ${completionPercentage}%\n` +
+            `Objetivos definidos: ${nextMeetingObjectives ? 'Sí' : 'No'}`);
       onClose();
     } catch (error) {
       console.error('Error generando acta:', error);
@@ -624,11 +664,29 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                       marginBottom: '8px'
                     }}>
                       <div style={{
-                        fontWeight: '600',
-                        color: '#92400e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
                         flex: 1
                       }}>
-                        {task.titulo}
+                        <input
+                          type="checkbox"
+                          checked={recurringTasksCompleted[index] || false}
+                          onChange={() => handleToggleRecurringTaskCompleted(index)}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <div style={{
+                          fontWeight: '600',
+                          color: '#92400e',
+                          textDecoration: recurringTasksCompleted[index] ? 'line-through' : 'none',
+                          opacity: recurringTasksCompleted[index] ? 0.6 : 1
+                        }}>
+                          {task.titulo}
+                        </div>
                       </div>
                       <button
                         onClick={() => handleRemoveRecurringTask(index)}
@@ -668,7 +726,47 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             )}
           </div>
 
-          {/* Separador */}
+          {/* Objetivos para Próxima Reunión */}
+          <div style={{
+            borderTop: '2px solid #e5e7eb',
+            margin: '24px 0',
+            paddingTop: '24px'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '8px'
+            }}>
+              🎯 Objetivos para la Próxima Reunión
+            </h3>
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              marginBottom: '12px'
+            }}>
+              Define los objetivos que se revisarán en la siguiente reunión para medir el progreso
+            </p>
+            <textarea
+              placeholder="Ej: Aumentar ventas en un 15%, Completar formación del equipo, Implementar nuevo sistema..."
+              value={nextMeetingObjectives}
+              onChange={(e) => setNextMeetingObjectives(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                minHeight: '100px',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+                marginBottom: '24px'
+              }}
+            />
+          </div>
+
+          {/* Transcripción */}
           <div style={{
             borderTop: '2px solid #e5e7eb',
             margin: '24px 0',
