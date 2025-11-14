@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
+import { generateMeetingMinutesViaBackend } from '../../services/transcriptionBackendService';
 
 interface MeetingModalProps {
   departmentId: string;
@@ -63,6 +64,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [recordedTranscript, setRecordedTranscript] = useState('');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [generatingActa, setGeneratingActa] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
   
@@ -225,24 +227,43 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   const handleGenerateActa = async () => {
     try {
+      setGeneratingActa(true);
+      
       // Obtener transcripción (manual o grabada)
       const transcription = manualTranscript || recordedTranscript;
       
       if (!transcription) {
         alert('Por favor, añade una transcripción o graba la reunión');
+        setGeneratingActa(false);
         return;
       }
 
       console.log('🎯 Generando acta con transcripción:', transcription.substring(0, 100) + '...');
       
-      // TODO: Aquí iría la lógica de generar acta con IA
-      // Por ahora solo guardamos la reunión
+      // Generar acta usando DeepSeek via backend
+      const result = await generateMeetingMinutesViaBackend(
+        transcription,
+        meeting?.title || 'Nueva Reunión',
+        participants || []
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error generando acta');
+      }
+
+      console.log('✅ Acta generada:', result.minutes);
+      console.log('📋 Tareas extraídas:', result.tasks);
+
+      // TODO: Guardar acta y tareas en base de datos
+      // Por ahora solo mostramos el resultado
       
-      alert('✅ Acta generada correctamente');
+      alert(`✅ Acta generada correctamente!\n\nTareas encontradas: ${result.tasks?.length || 0}`);
       onClose();
     } catch (error) {
       console.error('Error generando acta:', error);
-      alert('Error al generar el acta');
+      alert('Error al generar el acta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setGeneratingActa(false);
     }
   };
 
@@ -667,21 +688,32 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
             <button
               onClick={handleGenerateActa}
+              disabled={generatingActa}
               style={{
-                backgroundColor: '#059669',
+                backgroundColor: generatingActa ? '#9ca3af' : '#059669',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: generatingActa ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                opacity: generatingActa ? 0.7 : 1
               }}
             >
-              ✅ GENERAR ACTA Y ASIGNAR TAREAS
+              {generatingActa ? (
+                <>
+                  <Loader size={16} className="animate-spin" />
+                  GENERANDO ACTA...
+                </>
+              ) : (
+                <>
+                  ✅ GENERAR ACTA Y ASIGNAR TAREAS
+                </>
+              )}
             </button>
           </div>
         </div>
