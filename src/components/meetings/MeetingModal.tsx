@@ -87,6 +87,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [manualTranscript, setManualTranscript] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedTranscript, setRecordedTranscript] = useState('');
+  const [showRecorder, setShowRecorder] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [generatingActa, setGeneratingActa] = useState(false);
@@ -1078,9 +1079,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
               O
             </div>
 
-            {!isRecording ? (
+            {!showRecorder ? (
               <button
-                onClick={() => setIsRecording(true)}
+                onClick={() => setShowRecorder(true)}
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -1100,41 +1101,17 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                 🎙️ GRABAR DESDE CRM
               </button>
             ) : (
-              <div style={{
-                padding: '20px',
-                backgroundColor: '#fee2e2',
-                border: '2px solid #dc2626',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: '#dc2626',
-                  marginBottom: '12px'
-                }}>
-                  🔴 GRABANDO...
-                </div>
-                <button
-                  onClick={() => {
-                    setIsRecording(false);
-                    // TODO: Aquí iría la lógica de detener grabación
-                    setRecordedTranscript('Transcripción grabada desde CRM...');
-                  }}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#374151',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ⏹️ DETENER GRABACIÓN
-                </button>
-              </div>
+              <MeetingRecorderComponent
+                meetingId={meeting?.id || 0}
+                meetingTitle={meeting?.title || 'Nueva Reunión'}
+                participants={participants || []}
+                departmentId={departmentId}
+                onRecordingComplete={(data) => {
+                  setRecordedTranscript(data.transcript);
+                  setShowRecorder(false);
+                }}
+                onClose={() => setShowRecorder(false)}
+              />
             )}
           </div>
         </div>
