@@ -129,6 +129,30 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         'Mantenimiento',
         'Inventario',
         'Proveedores'
+      ],
+      logistica: [
+        'Revisar pedidos',
+        'Gestión de inventario',
+        'Proveedores',
+        'Envíos pendientes'
+      ],
+      mantenimiento: [
+        'Incidencias reportadas',
+        'Mantenimiento preventivo',
+        'Equipamiento',
+        'Proveedores de servicios'
+      ],
+      procedimientos: [
+        'Revisar procedimientos vigentes',
+        'Actualizar documentación',
+        'Formación del equipo',
+        'Auditorías internas'
+      ],
+      direccion: [
+        'Revisión de objetivos',
+        'Seguimiento de KPIs',
+        'Reuniones de equipo',
+        'Planificación estratégica'
       ]
     };
 
@@ -232,6 +256,17 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     const updated = [...recurringTasks];
     updated[index] = { ...updated[index], notas: note };
     setRecurringTasks(updated);
+  };
+
+  const handleAddManualTask = () => {
+    const taskTitle = prompt('Título de la tarea:');
+    if (taskTitle && taskTitle.trim()) {
+      setRecurringTasks([...recurringTasks, { titulo: taskTitle.trim(), notas: '' }]);
+    }
+  };
+
+  const handleRemoveRecurringTask = (index: number) => {
+    setRecurringTasks(recurringTasks.filter((_, i) => i !== index));
   };
 
   const handleGenerateActa = async () => {
@@ -522,14 +557,40 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
           {/* Tareas Recurrentes */}
           <div>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#1f2937',
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: '16px'
             }}>
-              🔄 Tareas Recurrentes del Departamento
-            </h3>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                🔄 Tareas Recurrentes del Departamento
+              </h3>
+              <button
+                onClick={handleAddManualTask}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  backgroundColor: '#dbeafe',
+                  color: '#1e40af',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} />
+                Añadir Punto
+              </button>
+            </div>
 
             {recurringTasks.length === 0 ? (
               <div style={{
@@ -541,7 +602,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                 color: '#6b7280',
                 marginBottom: '24px'
               }}>
-                No hay tareas recurrentes para este departamento
+                No hay tareas recurrentes. Click en "Añadir Punto" para crear una.
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
@@ -552,15 +613,38 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                       padding: '16px',
                       backgroundColor: '#fef3c7',
                       border: '1px solid #fbbf24',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      position: 'relative'
                     }}
                   >
                     <div style={{
-                      fontWeight: '600',
-                      color: '#92400e',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
                       marginBottom: '8px'
                     }}>
-                      {task.titulo}
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#92400e',
+                        flex: 1
+                      }}>
+                        {task.titulo}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveRecurringTask(index)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          fontSize: '18px',
+                          lineHeight: 1
+                        }}
+                        title="Eliminar tarea"
+                      >
+                        ×
+                      </button>
                     </div>
                     <textarea
                       placeholder="Notas sobre esta tarea recurrente..."
