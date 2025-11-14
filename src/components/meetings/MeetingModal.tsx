@@ -23,11 +23,26 @@ interface PreviousTask {
   estado: string;
   fecha_limite: string;
   notas?: string;
+  completada?: boolean;
+  motivo_no_completada?: string;
 }
 
 interface RecurringTask {
   titulo: string;
   notas: string;
+}
+
+interface DepartmentObjective {
+  nombre: string;
+  tipo: 'numero' | 'texto' | 'porcentaje';
+  unidad?: string;
+  placeholder?: string;
+}
+
+interface ObjectiveValue {
+  nombre: string;
+  valor: string | number;
+  tipo: 'numero' | 'texto' | 'porcentaje';
 }
 
 type MeetingType = 'FISICA' | 'VIDEOLLAMADA';
@@ -57,10 +72,13 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 }) => {
   const [meetingType, setMeetingType] = useState<MeetingType>('FISICA');
   const [previousTasks, setPreviousTasks] = useState<PreviousTask[]>([]);
+  const [previousTasksCompleted, setPreviousTasksCompleted] = useState<Record<number, boolean>>({});
+  const [previousTasksReasons, setPreviousTasksReasons] = useState<Record<number, string>>({});
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [recurringTasksCompleted, setRecurringTasksCompleted] = useState<Record<number, boolean>>({});
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
-  const [nextMeetingObjectives, setNextMeetingObjectives] = useState('');
+  const [departmentObjectives, setDepartmentObjectives] = useState<DepartmentObjective[]>([]);
+  const [objectiveValues, setObjectiveValues] = useState<Record<string, string | number>>({});
   const [manualTranscript, setManualTranscript] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedTranscript, setRecordedTranscript] = useState('');
@@ -78,6 +96,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   useEffect(() => {
     loadPreviousTasks();
     loadRecurringTasks();
+    loadDepartmentObjectives();
     loadEmployees();
     
     // Si el departamento es ventas, cargar leads
@@ -90,6 +109,48 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       setSelectedLeadId(preselectedLeadId);
     }
   }, [departmentId, preselectedLeadId]);
+
+  const loadDepartmentObjectives = () => {
+    console.log('🎯 Cargando objetivos para departamento:', departmentId);
+    
+    // Objetivos predefinidos por departamento
+    const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
+      mantenimiento: [
+        { nombre: 'Incidencias cerradas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 15' },
+        { nombre: 'Incidencias abiertas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 2' },
+        { nombre: 'Tiempo medio de resolución', tipo: 'numero', unidad: 'horas', placeholder: 'Ej: 24' }
+      ],
+      ventas: [
+        { nombre: 'Ventas cerradas', tipo: 'numero', unidad: '€', placeholder: 'Ej: 15000' },
+        { nombre: 'Leads contactados', tipo: 'numero', unidad: 'leads', placeholder: 'Ej: 25' },
+        { nombre: 'Tasa de conversión', tipo: 'porcentaje', placeholder: 'Ej: 35' }
+      ],
+      marketing: [
+        { nombre: 'Alcance total', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 50000' },
+        { nombre: 'Engagement rate', tipo: 'porcentaje', placeholder: 'Ej: 4.5' },
+        { nombre: 'Leads generados', tipo: 'numero', unidad: 'leads', placeholder: 'Ej: 120' }
+      ],
+      rrhh: [
+        { nombre: 'Candidatos entrevistados', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 8' },
+        { nombre: 'Contrataciones realizadas', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 2' },
+        { nombre: 'Satisfacción del equipo', tipo: 'porcentaje', placeholder: 'Ej: 85' }
+      ],
+      procedimientos: [
+        { nombre: 'Procedimientos actualizados', tipo: 'numero', unidad: 'documentos', placeholder: 'Ej: 5' },
+        { nombre: 'Formaciones completadas', tipo: 'numero', unidad: 'sesiones', placeholder: 'Ej: 3' },
+        { nombre: 'Cumplimiento normativo', tipo: 'porcentaje', placeholder: 'Ej: 100' }
+      ],
+      logistica: [
+        { nombre: 'Pedidos procesados', tipo: 'numero', unidad: 'pedidos', placeholder: 'Ej: 150' },
+        { nombre: 'Entregas a tiempo', tipo: 'porcentaje', placeholder: 'Ej: 95' },
+        { nombre: 'Rotación de inventario', tipo: 'numero', unidad: 'días', placeholder: 'Ej: 30' }
+      ]
+    };
+
+    const objectives = OBJECTIVES_BY_DEPT[departmentId] || [];
+    console.log('📊 Objetivos encontrados:', objectives.length, objectives);
+    setDepartmentObjectives(objectives);
+  };
 
   const loadRecurringTasks = () => {
     console.log('🔄 Cargando tareas recurrentes para departamento:', departmentId);
@@ -254,6 +315,28 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     setTaskNotes(prev => ({ ...prev, [taskId]: note }));
   };
 
+  const handleTogglePreviousTaskCompleted = (taskId: number) => {
+    setPreviousTasksCompleted(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }));
+    // Si se marca como completada, limpiar el motivo
+    if (!previousTasksCompleted[taskId]) {
+      setPreviousTasksReasons(prev => {
+        const updated = { ...prev };
+        delete updated[taskId];
+        return updated;
+      });
+    }
+  };
+
+  const handlePreviousTaskReasonChange = (taskId: number, reason: string) => {
+    setPreviousTasksReasons(prev => ({
+      ...prev,
+      [taskId]: reason
+    }));
+  };
+
   const handleRecurringTaskNoteChange = (index: number, note: string) => {
     const updated = [...recurringTasks];
     updated[index] = { ...updated[index], notas: note };
@@ -323,25 +406,39 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       // 4. Objetivos para próxima reunión
       // 5. Tareas nuevas extraídas por IA
       
+      // Calcular tareas anteriores no completadas
+      const previousTasksNotCompleted = previousTasks.filter(task => !previousTasksCompleted[task.id]);
+      const bottlenecks = previousTasksNotCompleted.map(task => ({
+        tarea: task.titulo,
+        motivo: previousTasksReasons[task.id] || 'No especificado'
+      }));
+
       const meetingData = {
         departamento: departmentId,
         tipo: meetingType,
         transcripcion: transcription,
         acta: result.minutes,
-        objetivos_proxima: nextMeetingObjectives,
+        objetivos: Object.entries(objectiveValues).map(([nombre, valor]) => ({
+          nombre,
+          valor,
+          tipo: departmentObjectives.find(o => o.nombre === nombre)?.tipo || 'texto'
+        })),
         tareas_recurrentes: recurringTasks,
         tareas_completadas: completedRecurringTasks,
         total_tareas: totalRecurringTasks,
         porcentaje_cumplimiento: completionPercentage,
-        tareas_nuevas: result.tasks
+        tareas_nuevas: result.tasks,
+        cuellos_botella: bottlenecks
       };
 
       console.log('💾 Datos a guardar:', meetingData);
       
+      const objetivosDefinidos = Object.keys(objectiveValues).length;
       alert(`✅ Acta generada correctamente!\n\n` +
             `Tareas nuevas: ${result.tasks?.length || 0}\n` +
             `Cumplimiento: ${completionPercentage}%\n` +
-            `Objetivos definidos: ${nextMeetingObjectives ? 'Sí' : 'No'}`);
+            `Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
+            `Cuellos de botella: ${bottlenecks.length}`);
       onClose();
     } catch (error) {
       console.error('Error generando acta:', error);
@@ -560,19 +657,72 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                     }}
                   >
                     <div style={{
-                      fontWeight: '600',
-                      color: '#166534',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                       marginBottom: '8px'
                     }}>
-                      {task.titulo}
+                      <input
+                        type="checkbox"
+                        checked={previousTasksCompleted[task.id] || false}
+                        onChange={() => handleTogglePreviousTaskCompleted(task.id)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#166534',
+                        flex: 1,
+                        textDecoration: previousTasksCompleted[task.id] ? 'line-through' : 'none',
+                        opacity: previousTasksCompleted[task.id] ? 0.6 : 1
+                      }}>
+                        {task.titulo}
+                      </div>
                     </div>
                     <div style={{
                       fontSize: '12px',
                       color: '#6b7280',
-                      marginBottom: '12px'
+                      marginBottom: '12px',
+                      marginLeft: '26px'
                     }}>
                       👤 {task.asignado_a} • 📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}
                     </div>
+                    
+                    {/* Si NO está completada, mostrar campo de motivo */}
+                    {!previousTasksCompleted[task.id] && (
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#dc2626',
+                          display: 'block',
+                          marginBottom: '4px'
+                        }}>
+                          ⚠️ Motivo de no completación:
+                        </label>
+                        <textarea
+                          placeholder="Ej: Falta de recursos, Dependencia externa, Prioridad cambiada..."
+                          value={previousTasksReasons[task.id] || ''}
+                          onChange={(e) => handlePreviousTaskReasonChange(task.id, e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '2px solid #fecaca',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            minHeight: '60px',
+                            fontFamily: 'inherit',
+                            resize: 'vertical',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#fef2f2'
+                          }}
+                        />
+                      </div>
+                    )}
+                    
                     <textarea
                       placeholder="Notas sobre esta tarea..."
                       value={taskNotes[task.id] || ''}
@@ -743,27 +893,77 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             <p style={{
               fontSize: '12px',
               color: '#6b7280',
-              marginBottom: '12px'
+              marginBottom: '16px'
             }}>
-              Define los objetivos que se revisarán en la siguiente reunión para medir el progreso
+              Define los valores objetivo que se revisarán en la siguiente reunión
             </p>
-            <textarea
-              placeholder="Ej: Aumentar ventas en un 15%, Completar formación del equipo, Implementar nuevo sistema..."
-              value={nextMeetingObjectives}
-              onChange={(e) => setNextMeetingObjectives(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #d1d5db',
+
+            {departmentObjectives.length === 0 ? (
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #d1d5db',
                 borderRadius: '8px',
-                fontSize: '14px',
-                minHeight: '100px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                boxSizing: 'border-box',
+                textAlign: 'center',
+                color: '#6b7280',
                 marginBottom: '24px'
-              }}
-            />
+              }}>
+                No hay objetivos predefinidos para este departamento
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
+                {departmentObjectives.map((objective, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <label style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1e40af',
+                      display: 'block',
+                      marginBottom: '8px'
+                    }}>
+                      {objective.nombre}
+                      {objective.unidad && (
+                        <span style={{ fontWeight: 'normal', color: '#6b7280', marginLeft: '4px' }}>
+                          ({objective.unidad})
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type={objective.tipo === 'texto' ? 'text' : 'number'}
+                      placeholder={objective.placeholder}
+                      value={objectiveValues[objective.nombre] || ''}
+                      onChange={(e) => setObjectiveValues(prev => ({
+                        ...prev,
+                        [objective.nombre]: objective.tipo === 'numero' || objective.tipo === 'porcentaje' 
+                          ? parseFloat(e.target.value) || 0
+                          : e.target.value
+                      }))}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    {objective.tipo === 'porcentaje' && (
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                        Valor entre 0 y 100
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Transcripción */}
