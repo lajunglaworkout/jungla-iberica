@@ -6,8 +6,8 @@
 
 -- 1. Tabla de métricas de reuniones
 CREATE TABLE IF NOT EXISTS meeting_metrics (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  id BIGSERIAL PRIMARY KEY,
+  meeting_id BIGINT REFERENCES meetings(id) ON DELETE CASCADE,
   departamento TEXT NOT NULL,
   tipo_reunion TEXT CHECK (tipo_reunion IN ('FISICA', 'VIDEOLLAMADA')),
   
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS meeting_metrics (
 
 -- 2. Tabla de objetivos de reuniones
 CREATE TABLE IF NOT EXISTS meeting_objectives (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  id BIGSERIAL PRIMARY KEY,
+  meeting_id BIGINT REFERENCES meetings(id) ON DELETE CASCADE,
   departamento TEXT NOT NULL,
   
   -- Datos del objetivo
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS meeting_objectives (
 
 -- 3. Tabla de cuellos de botella (tareas no completadas)
 CREATE TABLE IF NOT EXISTS meeting_bottlenecks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  id BIGSERIAL PRIMARY KEY,
+  meeting_id BIGINT REFERENCES meetings(id) ON DELETE CASCADE,
   departamento TEXT NOT NULL,
   
   -- Datos del cuello de botella
