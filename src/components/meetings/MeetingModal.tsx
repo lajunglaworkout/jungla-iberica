@@ -413,7 +413,6 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           date: new Date().toISOString(),
           participants: participants || [],
           summary: result.minutes,
-          transcript: transcription,
           tipo_reunion: meetingType,
           porcentaje_cumplimiento: completionPercentage,
           tiene_cuellos_botella: previousTasks.some(task => !previousTasksCompleted[task.id]),

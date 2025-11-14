@@ -39,6 +39,9 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [maxRecordingTime, setMaxRecordingTime] = useState<number | null>(null);
+  const [showTimerConfig, setShowTimerConfig] = useState(false);
+  const [timerInput, setTimerInput] = useState('30');
   const [transcript, setTranscript] = useState<string>('');
   const [meetingMinutes, setMeetingMinutes] = useState<string>('');
   const [tasksAssigned, setTasksAssigned] = useState<any[]>([]);
@@ -79,12 +82,30 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
     if (success) {
       setIsRecording(true);
       setRecordingTime(0);
+      setShowTimerConfig(false);
+      
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          
+          // Si hay límite de tiempo y se alcanzó, detener automáticamente
+          if (maxRecordingTime && newTime >= maxRecordingTime * 60) {
+            console.log('⏱️ Límite de tiempo alcanzado, deteniendo grabación...');
+            handleStopRecording();
+            return newTime;
+          }
+          
+          return newTime;
+        });
       }, 1000);
     } else {
       setError('No se pudo acceder al micrófono');
     }
+  };
+
+  const handleSetTimer = (minutes: number) => {
+    setMaxRecordingTime(minutes);
+    setShowTimerConfig(false);
   };
 
   const handleStopRecording = async () => {
@@ -232,36 +253,130 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
       </h2>
 
 
+      {/* Selector de Tiempo (antes de grabar) */}
+      {!isRecording && !isProcessing && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '16px',
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bfdbfe',
+          borderRadius: '8px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '12px'
+          }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af' }}>
+              ⏱️ Duración máxima de grabación:
+            </span>
+            {maxRecordingTime ? (
+              <span style={{
+                padding: '6px 12px',
+                backgroundColor: '#dbeafe',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#1e40af'
+              }}>
+                {maxRecordingTime} minutos
+              </span>
+            ) : (
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                Sin límite
+              </span>
+            )}
+            <button
+              onClick={() => setShowTimerConfig(!showTimerConfig)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              {showTimerConfig ? 'Cancelar' : 'Configurar'}
+            </button>
+          </div>
+
+          {showTimerConfig && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+              gap: '8px'
+            }}>
+              {[15, 30, 45, 60, 90, 120].map(minutes => (
+                <button
+                  key={minutes}
+                  onClick={() => handleSetTimer(minutes)}
+                  style={{
+                    padding: '10px',
+                    backgroundColor: maxRecordingTime === minutes ? '#3b82f6' : '#e0e7ff',
+                    color: maxRecordingTime === minutes ? 'white' : '#1e40af',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {minutes}m
+                </button>
+              ))}
+              <button
+                onClick={() => setMaxRecordingTime(null)}
+                style={{
+                  padding: '10px',
+                  backgroundColor: maxRecordingTime === null ? '#6b7280' : '#e5e7eb',
+                  color: maxRecordingTime === null ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Sin límite
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Controles de Grabación */}
       <div style={{
         display: 'flex',
         gap: '12px',
         marginBottom: '20px',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: 'wrap'
       }}>
         {!isRecording && !isProcessing && (
-          <>
-            <button
-              onClick={handleStartRecording}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '12px 20px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              <Mic size={16} />
-              Iniciar Grabación
-            </button>
-
-          </>
+          <button
+            onClick={handleStartRecording}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 20px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            <Mic size={16} />
+            Iniciar Grabación
+          </button>
         )}
 
         {isRecording && (
@@ -269,11 +384,13 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '12px',
               padding: '12px 16px',
               backgroundColor: '#fef2f2',
               borderRadius: '8px',
-              border: '2px solid #ef4444'
+              border: '2px solid #ef4444',
+              flex: 1,
+              minWidth: '250px'
             }}>
               <div style={{
                 width: '12px',
@@ -282,9 +399,18 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
                 borderRadius: '50%',
                 animation: 'pulse 1s infinite'
               }} />
-              <span style={{ fontWeight: '600', color: '#ef4444' }}>
-                Grabando: {formatTime(recordingTime)}
-              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#ef4444', fontSize: '16px' }}>
+                  {formatTime(recordingTime)}
+                </div>
+                {maxRecordingTime && (
+                  <div style={{ fontSize: '12px', color: '#dc2626' }}>
+                    Límite: {formatTime(maxRecordingTime * 60)}
+                    {' '}
+                    ({Math.round((recordingTime / (maxRecordingTime * 60)) * 100)}%)
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
