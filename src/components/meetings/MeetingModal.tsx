@@ -5,6 +5,11 @@ import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
 import { generateMeetingMinutesViaBackend } from '../../services/transcriptionBackendService';
+import { 
+  saveMeetingMetrics, 
+  saveMeetingObjectives, 
+  saveMeetingBottlenecks 
+} from '../../services/meetingAnalyticsService';
 
 interface MeetingModalProps {
   departmentId: string;
@@ -399,46 +404,111 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       console.log('✅ Acta generada:', result.minutes);
       console.log('📋 Tareas extraídas:', result.tasks);
 
-      // TODO: Guardar en base de datos:
-      // 1. Reunión con acta, transcripción, objetivos
-      // 2. % de cumplimiento de tareas recurrentes
-      // 3. Tareas recurrentes completadas/pendientes
-      // 4. Objetivos para próxima reunión
-      // 5. Tareas nuevas extraídas por IA
-      
-      // Calcular tareas anteriores no completadas
-      const previousTasksNotCompleted = previousTasks.filter(task => !previousTasksCompleted[task.id]);
-      const bottlenecks = previousTasksNotCompleted.map(task => ({
-        tarea: task.titulo,
-        motivo: previousTasksReasons[task.id] || 'No especificado'
+      // 1. Guardar reunión en tabla meetings
+      const { data: meetingRecord, error: meetingError } = await supabase
+        .from('meetings')
+        .insert({
+          title: meeting?.title || 'Nueva Reunión',
+          department: departmentId,
+          date: new Date().toISOString(),
+          participants: participants || [],
+          summary: result.minutes,
+          transcript: transcription,
+          tipo_reunion: meetingType,
+          porcentaje_cumplimiento: completionPercentage,
+          tiene_cuellos_botella: previousTasks.some(task => !previousTasksCompleted[task.id]),
+          numero_cuellos_botella: previousTasks.filter(task => !previousTasksCompleted[task.id]).length
+        })
+        .select()
+        .single();
+
+      if (meetingError) {
+        throw new Error('Error guardando reunión: ' + meetingError.message);
+      }
+
+      const meetingId = meetingRecord.id;
+      console.log('✅ Reunión guardada con ID:', meetingId);
+
+      // 2. Guardar métricas
+      const totalPreviousTasks = previousTasks.length;
+      const completedPreviousTasks = previousTasks.filter(task => previousTasksCompleted[task.id]).length;
+
+      await saveMeetingMetrics({
+        meeting_id: meetingId,
+        departamento: departmentId,
+        tipo_reunion: meetingType,
+        tareas_recurrentes_total: totalRecurringTasks,
+        tareas_recurrentes_completadas: completedRecurringTasks,
+        porcentaje_cumplimiento: completionPercentage,
+        tareas_anteriores_total: totalPreviousTasks,
+        tareas_anteriores_completadas: completedPreviousTasks,
+        tareas_anteriores_pendientes: totalPreviousTasks - completedPreviousTasks
+      });
+
+      // 3. Guardar objetivos
+      const objectivesToSave = Object.entries(objectiveValues).map(([nombre, valor]) => ({
+        meeting_id: meetingId,
+        departamento: departmentId,
+        nombre,
+        valor_objetivo: valor.toString(),
+        tipo_objetivo: departmentObjectives.find(o => o.nombre === nombre)?.tipo || 'texto',
+        unidad: departmentObjectives.find(o => o.nombre === nombre)?.unidad
       }));
 
-      const meetingData = {
-        departamento: departmentId,
-        tipo: meetingType,
-        transcripcion: transcription,
-        acta: result.minutes,
-        objetivos: Object.entries(objectiveValues).map(([nombre, valor]) => ({
-          nombre,
-          valor,
-          tipo: departmentObjectives.find(o => o.nombre === nombre)?.tipo || 'texto'
-        })),
-        tareas_recurrentes: recurringTasks,
-        tareas_completadas: completedRecurringTasks,
-        total_tareas: totalRecurringTasks,
-        porcentaje_cumplimiento: completionPercentage,
-        tareas_nuevas: result.tasks,
-        cuellos_botella: bottlenecks
-      };
+      if (objectivesToSave.length > 0) {
+        await saveMeetingObjectives(objectivesToSave);
+      }
 
-      console.log('💾 Datos a guardar:', meetingData);
-      
+      // 4. Guardar cuellos de botella
+      const bottlenecksToSave = previousTasks
+        .filter(task => !previousTasksCompleted[task.id])
+        .map(task => ({
+          meeting_id: meetingId,
+          departamento: departmentId,
+          tarea_titulo: task.titulo,
+          tarea_id: task.id,
+          motivo: previousTasksReasons[task.id] || 'No especificado',
+          asignado_a: task.asignado_a,
+          fecha_limite: task.fecha_limite
+        }));
+
+      if (bottlenecksToSave.length > 0) {
+        await saveMeetingBottlenecks(bottlenecksToSave);
+      }
+
+      // 5. Guardar tareas nuevas extraídas por IA
+      if (result.tasks && result.tasks.length > 0) {
+        const tasksToSave = result.tasks.map((task: any) => ({
+          titulo: task.title || task.titulo,
+          descripcion: task.description || task.descripcion || '',
+          asignado_a: task.assignedTo || task.asignado_a || userEmail,
+          creado_por: userEmail,
+          prioridad: task.priority || task.prioridad || 'media',
+          estado: 'pendiente',
+          fecha_limite: task.deadline || task.fecha_limite || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          departamento: departmentId,
+          reunion_titulo: meeting?.title || 'Nueva Reunión',
+          verificacion_requerida: true
+        }));
+
+        const { error: tasksError } = await supabase
+          .from('tareas')
+          .insert(tasksToSave);
+
+        if (tasksError) {
+          console.error('Error guardando tareas:', tasksError);
+        } else {
+          console.log('✅ Tareas nuevas guardadas:', tasksToSave.length);
+        }
+      }
+
       const objetivosDefinidos = Object.keys(objectiveValues).length;
-      alert(`✅ Acta generada correctamente!\n\n` +
-            `Tareas nuevas: ${result.tasks?.length || 0}\n` +
-            `Cumplimiento: ${completionPercentage}%\n` +
-            `Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
-            `Cuellos de botella: ${bottlenecks.length}`);
+      alert(`✅ Reunión guardada correctamente!\n\n` +
+            `📋 Acta generada\n` +
+            `📊 Tareas nuevas: ${result.tasks?.length || 0}\n` +
+            `✅ Cumplimiento: ${completionPercentage}%\n` +
+            `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
+            `⚠️ Cuellos de botella: ${bottlenecksToSave.length}`);
       onClose();
     } catch (error) {
       console.error('Error generando acta:', error);
