@@ -1356,20 +1356,110 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                     No se extrajeron tareas del acta
                   </p>
                 ) : (
-                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {generatedTasks.map((task: any, index: number) => (
-                      <li key={index} style={{
-                        marginBottom: '8px',
-                        fontSize: '14px',
-                        color: '#374151'
+                      <div key={index} style={{
+                        padding: '12px',
+                        backgroundColor: 'white',
+                        borderRadius: '6px',
+                        border: '1px solid #d1fae5',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
                       }}>
-                        <strong>{task.title || task.titulo}</strong>
-                        {task.assignedTo || task.asignado_a ? (
-                          <span style={{ color: '#6b7280' }}> - Asignado a: {task.assignedTo || task.asignado_a}</span>
-                        ) : null}
-                      </li>
+                        {/* Título de la tarea */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <input
+                            type="text"
+                            value={task.title || task.titulo}
+                            onChange={(e) => {
+                              const newTasks = [...generatedTasks];
+                              newTasks[index] = {
+                                ...newTasks[index],
+                                title: e.target.value,
+                                titulo: e.target.value
+                              };
+                              setGeneratedTasks(newTasks);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              fontWeight: '500'
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              const newTasks = generatedTasks.filter((_, i) => i !== index);
+                              setGeneratedTasks(newTasks);
+                            }}
+                            style={{
+                              padding: '8px 12px',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                            title="Eliminar tarea"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+
+                        {/* Selector de asignado */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <label style={{
+                            fontSize: '13px',
+                            color: '#6b7280',
+                            fontWeight: '500',
+                            minWidth: '80px'
+                          }}>
+                            Asignar a:
+                          </label>
+                          <select
+                            value={task.assignedTo || task.asignado_a || ''}
+                            onChange={(e) => {
+                              const newTasks = [...generatedTasks];
+                              newTasks[index] = {
+                                ...newTasks[index],
+                                assignedTo: e.target.value,
+                                asignado_a: e.target.value
+                              };
+                              setGeneratedTasks(newTasks);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              backgroundColor: 'white'
+                            }}
+                          >
+                            <option value="">Sin asignar</option>
+                            {participants?.map((email: string) => (
+                              <option key={email} value={email}>
+                                {employees.find(emp => emp.email === email)?.name || email}
+                              </option>
+                            ))}
+                            {employees
+                              .filter(emp => !participants?.includes(emp.email))
+                              .map(emp => (
+                                <option key={emp.email} value={emp.email}>
+                                  {emp.name}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
