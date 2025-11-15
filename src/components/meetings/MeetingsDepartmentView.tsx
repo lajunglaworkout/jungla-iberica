@@ -74,6 +74,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         .select('*')
         .eq('department', departmentId)
         .gte('date', today.toISOString())
+        .in('status', ['scheduled', 'in_progress']) // Solo reuniones programadas o en progreso
         .order('date', { ascending: true });
 
       if (error) {
