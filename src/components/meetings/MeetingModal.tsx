@@ -36,7 +36,7 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
-  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias';
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones';
   datos?: any;
 }
 
@@ -272,6 +272,38 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         }
       ];
       setRecurringTasks(direccionTasks);
+      return;
+    }
+
+    // Configuración especial para RRHH con datos expandibles
+    if (departmentId === 'rrhh') {
+      const rrhhTasks: RecurringTask[] = [
+        {
+          titulo: 'Incidencias de personal',
+          notas: '',
+          tipo: 'incidencias_personal',
+          datos: {
+            // Se cargarán automáticamente: bajas, incidencias pendientes
+          }
+        },
+        {
+          titulo: 'Incidencias en checklist a resolver',
+          notas: '',
+          tipo: 'checklist_incidencias',
+          datos: {
+            // Se cargarán automáticamente desde checklist
+          }
+        },
+        {
+          titulo: 'Propuestas, sanciones, cambios de procedimientos',
+          notas: '',
+          tipo: 'propuestas_sanciones',
+          datos: {
+            // Mostrar si hay propuestas o sanciones pendientes
+          }
+        }
+      ];
+      setRecurringTasks(rrhhTasks);
       return;
     }
 
@@ -1225,6 +1257,141 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                               borderRadius: '4px',
                               fontSize: '13px',
                               minHeight: '50px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'incidencias_personal' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #fbbf24',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>🚨 Bajas activas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando bajas de personal...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>⚠️ Incidencias pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando incidencias de personal...</div>
+                          </div>
+                          <textarea
+                            placeholder="Comentarios sobre incidencias de personal..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'checklist_incidencias' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#dbeafe',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📋 Incidencias en checklist</div>
+                            <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                              <div>• <strong>Resueltas esta semana:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Acciones a tomar sobre checklist..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'propuestas_sanciones' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#f3e8ff',
+                        border: '1px solid #a855f7',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Propuestas pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando propuestas...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>⚖️ Sanciones activas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando sanciones...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📝 Cambios de procedimientos</div>
+                            <div style={{ color: '#6b7280' }}>Cargando cambios pendientes...</div>
+                          </div>
+                          <textarea
+                            placeholder="Decisiones tomadas sobre propuestas, sanciones o cambios..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '80px',
                               boxSizing: 'border-box'
                             }}
                           />
