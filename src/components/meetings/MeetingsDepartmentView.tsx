@@ -122,7 +122,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         .from('meetings')
         .select('*')
         .eq('department', departmentId)
-        .lt('date', today.toISOString())
+        .lte('date', today.toISOString()) // Menor o igual para incluir reuniones de hoy completadas
         .order('date', { ascending: false }); // Más recientes primero
 
       if (error) {

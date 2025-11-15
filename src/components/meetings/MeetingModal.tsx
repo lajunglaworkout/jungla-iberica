@@ -99,6 +99,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [generatedTasks, setGeneratedTasks] = useState<any[]>([]);
   const [showActaPreview, setShowActaPreview] = useState(false);
   
+  // Estados para programar siguiente reunión
+  const [showNextMeetingScheduler, setShowNextMeetingScheduler] = useState(false);
+  const [nextMeetingDate, setNextMeetingDate] = useState('');
+  const [nextMeetingTime, setNextMeetingTime] = useState('');
+  
   // Estados para leads (cuando departamento = ventas)
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
@@ -548,26 +553,28 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       setGeneratedMinutes('');
       setGeneratedTasks([]);
       
-      // Preguntar si quiere programar siguiente reunión
-      const programarSiguiente = window.confirm(
+      // Mostrar resumen y preguntar si quiere programar siguiente
+      alert(
         `✅ Reunión guardada correctamente!\n\n` +
         `📋 Acta generada\n` +
         `📊 Tareas nuevas: ${generatedTasks?.length || 0}\n` +
         `✅ Cumplimiento: ${completionPercentage}%\n` +
         `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
-        `⚠️ Cuellos de botella: ${bottlenecksToSave.length}\n\n` +
-        `¿Deseas programar la siguiente reunión?`
+        `⚠️ Cuellos de botella: ${bottlenecksToSave.length}`
       );
       
+      // Preguntar si quiere programar siguiente reunión
+      const programarSiguiente = window.confirm('¿Deseas programar la siguiente reunión?');
+      
       if (programarSiguiente) {
-        // No cerrar el modal, solo limpiar para nueva reunión
+        // Limpiar campos y mostrar scheduler
         setManualTranscript('');
         setRecordedTranscript('');
         setPreviousTasksCompleted({});
         setPreviousTasksReasons({});
         setRecurringTasksCompleted({});
         setObjectiveValues({});
-        alert('📅 Programa la siguiente reunión con los datos necesarios');
+        setShowNextMeetingScheduler(true);
       } else {
         onClose();
       }
@@ -1528,6 +1535,166 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                 }}
               >
                 💾 Guardar Reunión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Programación de Siguiente Reunión */}
+      {showNextMeetingScheduler && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '500px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px'
+          }}>
+            <h2 style={{
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#1f2937',
+              margin: 0
+            }}>
+              📅 Programar Siguiente Reunión
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Fecha de la reunión
+                </label>
+                <input
+                  type="date"
+                  value={nextMeetingDate}
+                  onChange={(e) => setNextMeetingDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Hora de inicio
+                </label>
+                <input
+                  type="time"
+                  value={nextMeetingTime}
+                  onChange={(e) => setNextMeetingTime(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setShowNextMeetingScheduler(false);
+                  setNextMeetingDate('');
+                  setNextMeetingTime('');
+                  onClose();
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌ Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (!nextMeetingDate || !nextMeetingTime) {
+                    alert('Por favor completa la fecha y hora de la reunión');
+                    return;
+                  }
+
+                  try {
+                    const { data, error } = await supabase
+                      .from('meetings')
+                      .insert({
+                        title: meeting?.title || 'Nueva Reunión',
+                        department: departmentId,
+                        date: nextMeetingDate,
+                        start_time: nextMeetingTime,
+                        participants: participants || [],
+                        created_by: userEmail,
+                        status: 'scheduled'
+                      })
+                      .select()
+                      .single();
+
+                    if (error) throw error;
+
+                    alert('✅ Siguiente reunión programada correctamente!');
+                    setShowNextMeetingScheduler(false);
+                    setNextMeetingDate('');
+                    setNextMeetingTime('');
+                    onClose();
+                  } catch (error) {
+                    console.error('Error programando reunión:', error);
+                    alert('Error al programar la reunión');
+                  }
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ✅ Programar
               </button>
             </div>
           </div>
