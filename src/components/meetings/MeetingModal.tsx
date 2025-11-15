@@ -36,7 +36,7 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
-  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes';
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones';
   datos?: any;
 }
 
@@ -136,9 +136,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     // Objetivos predefinidos por departamento
     const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
       mantenimiento: [
-        { nombre: 'Incidencias cerradas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 15' },
-        { nombre: 'Incidencias abiertas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 2' },
-        { nombre: 'Tiempo medio de resolución', tipo: 'numero', unidad: 'horas', placeholder: 'Ej: 24' }
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
       ],
       ventas: [
         { nombre: 'Ventas cerradas', tipo: 'numero', unidad: '€', placeholder: 'Ej: 15000' },
@@ -344,6 +344,38 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         }
       ];
       setRecurringTasks(logisticaTasks);
+      return;
+    }
+
+    // Configuración especial para Mantenimiento con datos expandibles
+    if (departmentId === 'mantenimiento') {
+      const mantenimientoTasks: RecurringTask[] = [
+        {
+          titulo: 'Incidencias abiertas / cerradas',
+          notas: '',
+          tipo: 'incidencias_mantenimiento',
+          datos: {
+            // Se cargarán automáticamente desde módulo de mantenimiento
+          }
+        },
+        {
+          titulo: 'Reparaciones pendientes',
+          notas: '',
+          tipo: 'reparaciones_pendientes',
+          datos: {
+            // Se cargarán automáticamente
+          }
+        },
+        {
+          titulo: 'Coste reparaciones',
+          notas: '',
+          tipo: 'coste_reparaciones',
+          datos: {
+            // Se cargarán automáticamente los costes
+          }
+        }
+      ];
+      setRecurringTasks(mantenimientoTasks);
       return;
     }
 
@@ -1592,6 +1624,149 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                           </div>
                           <textarea
                             placeholder="Plan de envíos y prioridades..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'incidencias_mantenimiento' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>🔴 Incidencias abiertas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando incidencias abiertas...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>✅ Incidencias cerradas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando incidencias cerradas...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Estadísticas</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Tiempo medio resolución:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                              <div>• <strong>Tasa de resolución:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Observaciones sobre incidencias..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'reparaciones_pendientes' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#dbeafe',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>🔧 Reparaciones pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando reparaciones pendientes...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Prioridad</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Urgentes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                              <div>• <strong>Normales:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                              <div>• <strong>Bajas:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Plan de reparaciones y prioridades..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'coste_reparaciones' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#d1fae5',
+                        border: '1px solid #10b981',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#059669' }}>💰 Coste total reparaciones</div>
+                            <div style={{ color: '#6b7280' }}>Cargando costes...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Desglose</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Materiales:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                              <div>• <strong>Mano de obra:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                              <div>• <strong>Externos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Análisis de costes y optimizaciones..."
                             style={{
                               width: '100%',
                               padding: '8px',
