@@ -436,8 +436,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         : 0;
 
       // 1. Guardar reunión en tabla meetings
-      // Para reuniones completadas, siempre usar fecha actual (ahora) para que aparezca en historial
-      const meetingDate = new Date().toISOString();
+      // Para reuniones completadas, usar fecha de ayer para asegurar que aparezca en historial
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(12, 0, 0, 0); // Mediodía de ayer
+      const meetingDate = yesterday.toISOString();
       
       const { data: meetingRecord, error: meetingError} = await supabase
         .from('meetings')
@@ -502,7 +505,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           meeting_id: meetingId,
           departamento: departmentId,
           tarea_titulo: task.titulo,
-          tarea_id: task.id,
+          tarea_id: typeof task.id === 'number' ? task.id : undefined, // Solo si es número, sino undefined
           motivo: previousTasksReasons[task.id] || 'No especificado',
           asignado_a: task.asignado_a,
           fecha_limite: task.fecha_limite
