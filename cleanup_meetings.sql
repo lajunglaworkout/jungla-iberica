@@ -18,11 +18,10 @@ DELETE FROM meeting_bottlenecks;
 DELETE FROM meeting_objectives;
 
 -- 4. Eliminar tareas relacionadas con reuniones
--- (Tareas que tienen reunion_id o que fueron generadas en reuniones)
+-- (Tareas que fueron generadas en reuniones)
 DELETE FROM tareas 
-WHERE reunion_id IS NOT NULL 
-   OR reunion_titulo IS NOT NULL
-   OR reunion_titulo != '';
+WHERE reunion_titulo IS NOT NULL 
+   AND reunion_titulo != '';
 
 -- 5. Eliminar todas las reuniones
 DELETE FROM meetings;
@@ -37,7 +36,7 @@ DELETE FROM meetings;
 -- Descomentar para verificar que todo está limpio:
 
 -- SELECT COUNT(*) as total_reuniones FROM meetings;
--- SELECT COUNT(*) as total_tareas_reunion FROM tareas WHERE reunion_id IS NOT NULL;
+-- SELECT COUNT(*) as total_tareas_reunion FROM tareas WHERE reunion_titulo IS NOT NULL AND reunion_titulo != '';
 -- SELECT COUNT(*) as total_metricas FROM meeting_analytics;
 -- SELECT COUNT(*) as total_bottlenecks FROM meeting_bottlenecks;
 -- SELECT COUNT(*) as total_objetivos FROM meeting_objectives;
