@@ -22,7 +22,7 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Log para verificar que se cargó la API key
-console.log('🔑 DEEPSEEK_API_KEY cargada:', process.env.DEEPSEEK_API_KEY ? '✅ Sí' : '❌ No');
+console.log('🔑 ANTHROPIC_API_KEY cargada:', process.env.ANTHROPIC_API_KEY ? '✅ Sí' : '❌ No');
 console.log('🔑 ASSEMBLYAI_API_KEY cargada:', process.env.ASSEMBLYAI_API_KEY ? '✅ Sí' : '❌ No');
 
 const app = express();
@@ -231,8 +231,8 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
       });
     }
 
-    // Generar acta con DeepSeek AI
-    console.log('🔄 Generando acta con DeepSeek AI...');
+    // Generar acta con Anthropic Claude
+    console.log('🔄 Generando acta con Claude AI...');
 
     const fecha = new Date().toLocaleDateString('es-ES', { 
       weekday: 'long', 
@@ -259,33 +259,33 @@ Genera un acta profesional con:
 
 Formato: Markdown profesional en español.`;
 
-    // Llamar a DeepSeek API (compatible con OpenAI)
-    const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    // Llamar a Anthropic Claude API
+    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
         messages: [
           {
             role: 'user',
             content: prompt
           }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
+        ]
       })
     });
 
-    if (!deepseekResponse.ok) {
-      const errorText = await deepseekResponse.text();
-      throw new Error(`DeepSeek API error: ${deepseekResponse.status} - ${errorText}`);
+    if (!anthropicResponse.ok) {
+      const errorText = await anthropicResponse.text();
+      throw new Error(`Anthropic API error: ${anthropicResponse.status} - ${errorText}`);
     }
 
-    const deepseekData = await deepseekResponse.json();
-    const minutes = deepseekData.choices[0].message.content;
+    const anthropicData = await anthropicResponse.json();
+    const minutes = anthropicData.content[0].text;
 
     // Extraer tareas del acta
     const tasks = extractTasks(minutes, participants);
