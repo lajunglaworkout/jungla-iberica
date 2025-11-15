@@ -162,6 +162,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         { nombre: 'Pedidos procesados', tipo: 'numero', unidad: 'pedidos', placeholder: 'Ej: 150' },
         { nombre: 'Entregas a tiempo', tipo: 'porcentaje', placeholder: 'Ej: 95' },
         { nombre: 'Rotación de inventario', tipo: 'numero', unidad: 'días', placeholder: 'Ej: 30' }
+      ],
+      direccion: [
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
       ]
     };
 
@@ -230,10 +235,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         'Auditorías internas'
       ],
       direccion: [
-        'Revisión de objetivos',
-        'Seguimiento de KPIs',
-        'Reuniones de equipo',
-        'Planificación estratégica'
+        'Incidencias urgentes',
+        'Revisión de contabilidad y clientes de cada centro',
+        'Datos de rendimiento de cada departamento'
       ]
     };
 
