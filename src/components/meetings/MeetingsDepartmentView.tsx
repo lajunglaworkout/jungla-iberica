@@ -61,18 +61,29 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   const loadMeetings = async () => {
     setLoading(true);
     try {
+      // Obtener solo reuniones futuras (fecha >= hoy)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const { data, error } = await supabase
         .from('meetings')
-        .select('*')
+        .select(`
+          *,
+          employees:created_by (
+            name,
+            email
+          )
+        `)
         .eq('department', departmentId)
-        .order('date', { ascending: false });
+        .gte('date', today.toISOString())
+        .order('date', { ascending: true });
 
       if (error) {
         console.error('Error cargando reuniones:', error);
         return;
       }
 
-      console.log(`📊 Reuniones cargadas para ${departmentId}:`, data?.length || 0);
+      console.log(`📊 Reuniones futuras cargadas para ${departmentId}:`, data?.length || 0);
       
       // Cargar tareas para cada reunión
       const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
@@ -353,9 +364,15 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                 </div>
                 <div style={{
                   fontSize: '12px',
-                  color: '#6b7280'
+                  color: '#6b7280',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
                 }}>
-                  📅 {new Date(meeting.date).toLocaleDateString('es-ES')} a las {meeting.start_time}
+                  <div>📅 {new Date(meeting.date).toLocaleDateString('es-ES')} a las {meeting.start_time || 'Por definir'}</div>
+                  {meeting.employees && (
+                    <div>👤 Creada por: {meeting.employees.name}</div>
+                  )}
                 </div>
               </div>
             ))}
