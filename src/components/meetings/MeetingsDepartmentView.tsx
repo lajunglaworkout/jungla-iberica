@@ -115,15 +115,12 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   const loadHistoryMeetings = async () => {
     setLoadingHistory(true);
     try {
-      // Obtener solo reuniones pasadas (fecha < hoy)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
+      // Obtener solo reuniones completadas (sin importar la fecha)
       const { data, error } = await supabase
         .from('meetings')
         .select('*')
         .eq('department', departmentId)
-        .lte('date', today.toISOString()) // Menor o igual para incluir reuniones de hoy completadas
+        .eq('status', 'completed') // Solo reuniones completadas
         .order('date', { ascending: false }); // Más recientes primero
 
       if (error) {
