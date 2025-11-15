@@ -455,7 +455,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           tiene_cuellos_botella: previousTasks.some(task => !previousTasksCompleted[task.id]),
           numero_cuellos_botella: previousTasks.filter(task => !previousTasksCompleted[task.id]).length,
           created_by: userEmail,
-          status: 'completada'
+          status: 'completed'
         })
         .select()
         .single();
