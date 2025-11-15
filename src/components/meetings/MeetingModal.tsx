@@ -36,7 +36,7 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
-  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones';
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones' | 'datos_centros_contabilidad' | 'pagos_pendientes' | 'transferencias_autorizar' | 'gastos_extra';
   datos?: any;
 }
 
@@ -135,6 +135,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     
     // Objetivos predefinidos por departamento
     const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
+      contabilidad: [
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
+      ],
       mantenimiento: [
         { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
         { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
@@ -376,6 +381,46 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         }
       ];
       setRecurringTasks(mantenimientoTasks);
+      return;
+    }
+
+    // Configuración especial para Contabilidad con datos expandibles
+    if (departmentId === 'contabilidad') {
+      const contabilidadTasks: RecurringTask[] = [
+        {
+          titulo: 'Datos de centros activos',
+          notas: '',
+          tipo: 'datos_centros_contabilidad',
+          datos: {
+            centros: ['Sevilla', 'Jerez', 'Puerto']
+          }
+        },
+        {
+          titulo: 'Pagos pendientes de apuntar',
+          notas: '',
+          tipo: 'pagos_pendientes',
+          datos: {
+            // Se cargarán automáticamente pagos sin apuntar
+          }
+        },
+        {
+          titulo: 'Transferencias no recurrentes por autorizar',
+          notas: '',
+          tipo: 'transferencias_autorizar',
+          datos: {
+            // Se cargarán automáticamente transferencias pendientes
+          }
+        },
+        {
+          titulo: 'Gastos extra detectados',
+          notas: '',
+          tipo: 'gastos_extra',
+          datos: {
+            // Se cargarán automáticamente gastos fuera de lo normal
+          }
+        }
+      ];
+      setRecurringTasks(contabilidadTasks);
       return;
     }
 
@@ -1767,6 +1812,180 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                           </div>
                           <textarea
                             placeholder="Análisis de costes y optimizaciones..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'datos_centros_contabilidad' ? (
+                      <div style={{ marginTop: '12px' }}>
+                        {task.datos?.centros?.map((centro: string) => (
+                          <details key={centro} style={{ marginBottom: '8px' }}>
+                            <summary style={{
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              padding: '8px',
+                              backgroundColor: '#dbeafe',
+                              border: '1px solid #3b82f6',
+                              borderRadius: '6px',
+                              marginBottom: '4px'
+                            }}>
+                              🏢 {centro}
+                            </summary>
+                            <div style={{
+                              padding: '12px',
+                              backgroundColor: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              marginTop: '4px'
+                            }}>
+                              <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                                <div><strong>💰 Ingresos del mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
+                                <div><strong>💸 Gastos del mes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                                <div><strong>📊 Balance:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                                <div><strong>📈 Comparativa mes anterior:</strong> <span style={{ color: '#6b7280' }}>Cargando...</span></div>
+                                <textarea
+                                  placeholder="Observaciones contables..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    minHeight: '50px',
+                                    marginTop: '8px',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    ) : task.tipo === 'pagos_pendientes' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>📝 Pagos pendientes de apuntar</div>
+                            <div style={{ color: '#6b7280' }}>Cargando pagos sin apuntar...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                              <div>• <strong>Importe total:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Acciones sobre pagos pendientes..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'transferencias_autorizar' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#e0e7ff',
+                        border: '1px solid #6366f1',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🔐 Transferencias no recurrentes por autorizar</div>
+                            <div style={{ color: '#6b7280' }}>Cargando transferencias pendientes...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Pendientes de autorización:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                              <div>• <strong>Importe total:</strong> <span style={{ color: '#6366f1' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Decisiones sobre autorizaciones..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'gastos_extra' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fee2e2',
+                        border: '1px solid #ef4444',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Gastos extra detectados</div>
+                            <div style={{ color: '#6b7280' }}>Cargando gastos fuera de lo normal...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Por departamento/centro</div>
+                            <div style={{ color: '#6b7280', fontSize: '12px' }}>Cargando desglose...</div>
+                          </div>
+                          <textarea
+                            placeholder="Análisis de gastos extra y justificaciones..."
                             style={{
                               width: '100%',
                               padding: '8px',
