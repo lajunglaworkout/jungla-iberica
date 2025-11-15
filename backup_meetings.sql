@@ -43,35 +43,8 @@ WHERE reunion_titulo IS NOT NULL
 ORDER BY id;
 
 -- ============================================
--- BACKUP DE MÉTRICAS
--- ============================================
-SELECT *
-FROM meeting_analytics
-ORDER BY id;
-
--- ============================================
--- BACKUP DE CUELLOS DE BOTELLA
--- ============================================
-SELECT *
-FROM meeting_bottlenecks
-ORDER BY id;
-
--- ============================================
--- BACKUP DE OBJETIVOS
--- ============================================
-SELECT *
-FROM meeting_objectives
-ORDER BY id;
-
--- ============================================
 -- CONTEO DE REGISTROS
 -- ============================================
 SELECT 'meetings' as tabla, COUNT(*) as total FROM meetings
 UNION ALL
-SELECT 'tareas_reunion' as tabla, COUNT(*) FROM tareas WHERE reunion_titulo IS NOT NULL AND reunion_titulo != ''
-UNION ALL
-SELECT 'meeting_analytics' as tabla, COUNT(*) FROM meeting_analytics
-UNION ALL
-SELECT 'meeting_bottlenecks' as tabla, COUNT(*) FROM meeting_bottlenecks
-UNION ALL
-SELECT 'meeting_objectives' as tabla, COUNT(*) FROM meeting_objectives;
+SELECT 'tareas_reunion' as tabla, COUNT(*) FROM tareas WHERE reunion_titulo IS NOT NULL AND reunion_titulo != '';
