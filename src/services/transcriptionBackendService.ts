@@ -62,7 +62,7 @@ export const transcribeAudioViaBackend = async (
 };
 
 /**
- * Generar acta de reunión usando DeepSeek directamente
+ * Generar acta de reunión usando Claude (Anthropic) directamente
  */
 export const generateMeetingMinutesViaBackend = async (
   transcript: string,
@@ -70,11 +70,11 @@ export const generateMeetingMinutesViaBackend = async (
   participants: string[]
 ): Promise<{ success: boolean; minutes?: string; tasks?: any[]; error?: string }> => {
   try {
-    console.log('📋 Generando acta de reunión via DeepSeek...');
+    console.log('📋 Generando acta de reunión via Claude...');
 
-    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error('VITE_DEEPSEEK_API_KEY no configurada');
+      throw new Error('VITE_ANTHROPIC_API_KEY no configurada');
     }
 
     const prompt = `Eres un asistente especializado en generar actas de reuniones profesionales.
@@ -106,22 +106,22 @@ Por favor, genera:
 
 Responde SOLO con el acta seguida de la lista JSON de tareas.`;
 
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
         messages: [
           {
             role: 'user',
             content: prompt
           }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
+        ]
       })
     });
 
@@ -131,7 +131,7 @@ Responde SOLO con el acta seguida de la lista JSON de tareas.`;
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.content[0].text;
 
     // Extraer el acta y las tareas del contenido
     const jsonMatch = content.match(/\[[\s\S]*\]/);
