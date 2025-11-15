@@ -20,10 +20,7 @@ interface Meeting {
   start_time: string;
   status: string;
   participants: string[];
-  employees?: {
-    name: string;
-    email: string;
-  };
+  created_by?: string;
 }
 
 interface Task {
@@ -73,13 +70,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       
       const { data, error } = await supabase
         .from('meetings')
-        .select(`
-          *,
-          employees:created_by (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .eq('department', departmentId)
         .gte('date', today.toISOString())
         .order('date', { ascending: true });
@@ -128,13 +119,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       
       const { data, error } = await supabase
         .from('meetings')
-        .select(`
-          *,
-          employees:created_by (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .eq('department', departmentId)
         .lt('date', today.toISOString())
         .order('date', { ascending: false }); // Más recientes primero
@@ -429,8 +414,8 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                   gap: '2px'
                 }}>
                   <div>📅 {new Date(meeting.date).toLocaleDateString('es-ES')} a las {meeting.start_time || 'Por definir'}</div>
-                  {meeting.employees && (
-                    <div>👤 Creada por: {meeting.employees.name}</div>
+                  {meeting.created_by && (
+                    <div>👤 Creada por: {meeting.created_by}</div>
                   )}
                 </div>
               </div>
