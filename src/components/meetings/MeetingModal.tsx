@@ -36,6 +36,8 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias';
+  datos?: any;
 }
 
 interface DepartmentObjective {
@@ -241,9 +243,99 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       ]
     };
 
-    const tasks = RECURRING_TASKS_BY_DEPT[departmentId] || [];
+    // Configuración especial para Dirección con datos expandibles
+    if (departmentId === 'direccion') {
+      const direccionTasks: RecurringTask[] = [
+        {
+          titulo: 'Incidencias urgentes',
+          notas: '',
+          tipo: 'incidencias',
+          datos: {
+            // Se cargarán automáticamente desde la BD
+          }
+        },
+        {
+          titulo: 'Revisión de contabilidad y clientes de cada centro',
+          notas: '',
+          tipo: 'expandible_centros',
+          datos: {
+            centros: ['Sevilla', 'Jerez', 'Puerto']
+          }
+        },
+        {
+          titulo: 'Datos de rendimiento de cada departamento',
+          notas: '',
+          tipo: 'expandible_departamentos',
+          datos: {
+            departamentos: ['rrhh', 'procedimientos', 'logistica', 'mantenimiento', 'marketing', 'ventas']
+          }
+        }
+      ];
+      setRecurringTasks(direccionTasks);
+      return;
+    }
+
+    // Para otros departamentos, usar la configuración simple
+    const RECURRING_TASKS_SIMPLE: Record<string, string[]> = {
+      contabilidad: [
+        'Revisar contabilidad',
+        'Pagos pendientes',
+        'Incidencias',
+        'Reconciliación bancaria'
+      ],
+      marketing: [
+        'Revisar campañas activas',
+        'Analizar métricas',
+        'Planificar contenido',
+        'Seguimiento leads'
+      ],
+      rrhh: [
+        'Revisar candidatos',
+        'Incidencias de personal',
+        'Nóminas',
+        'Evaluaciones'
+      ],
+      ventas: [
+        'Seguimiento de leads',
+        'Propuestas pendientes',
+        'Cierre de ventas',
+        'Reuniones programadas'
+      ],
+      sales: [
+        'Seguimiento de leads',
+        'Propuestas pendientes',
+        'Cierre de ventas',
+        'Reuniones programadas'
+      ],
+      operaciones: [
+        'Revisar incidencias',
+        'Mantenimiento',
+        'Inventario',
+        'Proveedores'
+      ],
+      logistica: [
+        'Revisar pedidos',
+        'Gestión de inventario',
+        'Proveedores',
+        'Envíos pendientes'
+      ],
+      mantenimiento: [
+        'Incidencias reportadas',
+        'Mantenimiento preventivo',
+        'Equipamiento',
+        'Proveedores de servicios'
+      ],
+      procedimientos: [
+        'Revisar procedimientos vigentes',
+        'Actualizar documentación',
+        'Formación del equipo',
+        'Auditorías internas'
+      ]
+    };
+
+    const tasks = RECURRING_TASKS_SIMPLE[departmentId] || [];
     console.log('📋 Tareas recurrentes encontradas:', tasks.length, tasks);
-    setRecurringTasks(tasks.map(titulo => ({ titulo, notas: '' })));
+    setRecurringTasks(tasks.map(titulo => ({ titulo, notas: '', tipo: 'simple' })));
   };
 
   const loadPreviousTasks = async () => {
@@ -997,22 +1089,165 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         ×
                       </button>
                     </div>
-                    <textarea
-                      placeholder="Notas sobre esta tarea recurrente..."
-                      value={task.notas}
-                      onChange={(e) => handleRecurringTaskNoteChange(index, e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        minHeight: '60px',
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        boxSizing: 'border-box'
-                      }}
-                    />
+                    {/* Renderizado condicional según el tipo de tarea */}
+                    {task.tipo === 'expandible_centros' ? (
+                      <div style={{ marginTop: '12px' }}>
+                        {task.datos?.centros?.map((centro: string) => (
+                          <details key={centro} style={{ marginBottom: '8px' }}>
+                            <summary style={{
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              padding: '8px',
+                              backgroundColor: '#fff',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              marginBottom: '4px'
+                            }}>
+                              🏢 {centro}
+                            </summary>
+                            <div style={{
+                              padding: '12px',
+                              backgroundColor: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              marginTop: '4px'
+                            }}>
+                              <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                                <div><strong>💰 Ingresos mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
+                                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                                <div><strong>✨ Clientes nuevos:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                                <div><strong>📉 Bajas del mes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                                <textarea
+                                  placeholder="Observaciones..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    minHeight: '50px',
+                                    marginTop: '8px',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    ) : task.tipo === 'expandible_departamentos' ? (
+                      <div style={{ marginTop: '12px' }}>
+                        {task.datos?.departamentos?.map((dept: string) => (
+                          <details key={dept} style={{ marginBottom: '8px' }}>
+                            <summary style={{
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              padding: '8px',
+                              backgroundColor: '#fff',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              marginBottom: '4px'
+                            }}>
+                              📊 {dept.toUpperCase()}
+                            </summary>
+                            <div style={{
+                              padding: '12px',
+                              backgroundColor: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              marginTop: '4px'
+                            }}>
+                              <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                                <div><strong>✅ Cumplimiento:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
+                                <div><strong>📝 Tareas completadas:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                                <div><strong>⏳ Tareas pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                                <div><strong>⚠️ Cuellos de botella:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                                <select style={{
+                                  padding: '6px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  marginTop: '4px'
+                                }}>
+                                  <option>Óptimo</option>
+                                  <option>Normal</option>
+                                  <option>Requiere atención</option>
+                                  <option>Crítico</option>
+                                </select>
+                                <textarea
+                                  placeholder="Acciones a tomar..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    minHeight: '50px',
+                                    marginTop: '4px',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    ) : task.tipo === 'incidencias' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                          <div><strong>🔴 Incidencias abiertas:</strong> <span style={{ color: '#dc2626' }}>Cargando...</span></div>
+                          <div><strong>📊 Nuevas desde última reunión:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                          <textarea
+                            placeholder="Motivos de no cierre..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '50px',
+                              marginTop: '8px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <textarea
+                            placeholder="Comentarios adicionales..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '50px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <textarea
+                        placeholder="Notas sobre esta tarea recurrente..."
+                        value={task.notas}
+                        onChange={(e) => handleRecurringTaskNoteChange(index, e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          minHeight: '60px',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
