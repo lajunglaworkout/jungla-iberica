@@ -19,6 +19,7 @@ interface MeetingModalProps {
   participants?: string[];
   preselectedLeadId?: string | null;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface PreviousTask {
@@ -73,7 +74,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   userName,
   participants,
   preselectedLeadId,
-  onClose
+  onClose,
+  onSuccess
 }) => {
   const [meetingType, setMeetingType] = useState<MeetingType>('FISICA');
   const [previousTasks, setPreviousTasks] = useState<PreviousTask[]>([]);
@@ -576,6 +578,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         setObjectiveValues({});
         setShowNextMeetingScheduler(true);
       } else {
+        onSuccess?.(); // Recargar lista de reuniones
         onClose();
       }
     } catch (error) {
@@ -1634,6 +1637,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                   setShowNextMeetingScheduler(false);
                   setNextMeetingDate('');
                   setNextMeetingTime('');
+                  onSuccess?.(); // Recargar lista de reuniones
                   onClose();
                 }}
                 style={{
@@ -1677,6 +1681,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                     setShowNextMeetingScheduler(false);
                     setNextMeetingDate('');
                     setNextMeetingTime('');
+                    onSuccess?.(); // Recargar lista de reuniones
                     onClose();
                   } catch (error) {
                     console.error('Error programando reunión:', error);

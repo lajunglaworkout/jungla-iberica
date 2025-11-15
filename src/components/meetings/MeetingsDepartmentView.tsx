@@ -451,6 +451,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
             setSelectedParticipants([]);
             loadMeetings();
           }}
+          onSuccess={() => {
+            loadMeetings(); // Recargar lista sin cerrar modal
+          }}
         />
       )}
 
