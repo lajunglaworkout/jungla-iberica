@@ -20,6 +20,10 @@ interface Meeting {
   start_time: string;
   status: string;
   participants: string[];
+  employees?: {
+    name: string;
+    email: string;
+  };
 }
 
 interface Task {
@@ -38,8 +42,10 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   onBack
 }) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [historyMeetings, setHistoryMeetings] = useState<Meeting[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -110,6 +116,56 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHistoryMeetings = async () => {
+    setLoadingHistory(true);
+    try {
+      // Obtener solo reuniones pasadas (fecha < hoy)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await supabase
+        .from('meetings')
+        .select(`
+          *,
+          employees:created_by (
+            name,
+            email
+          )
+        `)
+        .eq('department', departmentId)
+        .lt('date', today.toISOString())
+        .order('date', { ascending: false }); // Más recientes primero
+
+      if (error) {
+        console.error('Error cargando historial:', error);
+        return;
+      }
+
+      console.log(`📚 Historial de reuniones cargado para ${departmentId}:`, data?.length || 0);
+      
+      // Cargar tareas para cada reunión
+      const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
+        const { data: tasks, error: tasksError } = await supabase
+          .from('tareas')
+          .select('*')
+          .eq('reunion_titulo', meeting.title);
+        
+        if (tasksError) {
+          console.error('Error cargando tareas de reunión:', tasksError);
+          return { ...meeting, tasks: [] };
+        }
+        
+        return { ...meeting, tasks: tasks || [] };
+      }));
+      
+      setHistoryMeetings(meetingsWithTasks);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -271,7 +327,10 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         </button>
 
         <button
-          onClick={() => setShowHistoryModal(true)}
+          onClick={() => {
+            setShowHistoryModal(true);
+            loadHistoryMeetings();
+          }}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -467,7 +526,15 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
               overflow: 'auto',
               padding: '24px'
             }}>
-              {meetings.length === 0 ? (
+              {loadingHistory ? (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#6b7280',
+                  padding: '48px 24px'
+                }}>
+                  Cargando historial...
+                </div>
+              ) : historyMeetings.length === 0 ? (
                 <div style={{
                   textAlign: 'center',
                   color: '#6b7280',
@@ -477,7 +544,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: '12px' }}>
-                  {meetings.map(meeting => (
+                  {historyMeetings.map(meeting => (
                     <div
                       key={meeting.id}
                       onClick={() => {
