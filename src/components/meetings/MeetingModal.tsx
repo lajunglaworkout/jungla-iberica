@@ -94,6 +94,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
   
+  // Estados para preview del acta
+  const [generatedMinutes, setGeneratedMinutes] = useState<string>('');
+  const [generatedTasks, setGeneratedTasks] = useState<any[]>([]);
+  const [showActaPreview, setShowActaPreview] = useState(false);
+  
   // Estados para leads (cuando departamento = ventas)
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
@@ -405,15 +410,40 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       console.log('✅ Acta generada:', result.minutes);
       console.log('📋 Tareas extraídas:', result.tasks);
 
+      // Guardar en estado para preview
+      setGeneratedMinutes(result.minutes || '');
+      setGeneratedTasks(result.tasks || []);
+      setShowActaPreview(true);
+      setGeneratingActa(false);
+      
+    } catch (error) {
+      console.error('Error generando acta:', error);
+      alert('❌ Error generando acta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      setGeneratingActa(false);
+    }
+  };
+
+  // Nueva función para guardar después de revisar
+  const handleSaveAfterReview = async () => {
+    try {
+      const transcription = manualTranscript || recordedTranscript;
+      
+      // Calcular métricas
+      const totalRecurringTasks = recurringTasks.length;
+      const completedRecurringTasks = recurringTasks.filter(task => recurringTasksCompleted[task.id]).length;
+      const completionPercentage = totalRecurringTasks > 0 
+        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100) 
+        : 0;
+
       // 1. Guardar reunión en tabla meetings
-      const { data: meetingRecord, error: meetingError } = await supabase
+      const { data: meetingRecord, error: meetingError} = await supabase
         .from('meetings')
         .insert({
           title: meeting?.title || 'Nueva Reunión',
           department: departmentId,
           date: new Date().toISOString(),
           participants: participants || [],
-          summary: result.minutes,
+          summary: generatedMinutes,
           tipo_reunion: meetingType,
           porcentaje_cumplimiento: completionPercentage,
           tiene_cuellos_botella: previousTasks.some(task => !previousTasksCompleted[task.id]),
@@ -477,8 +507,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       }
 
       // 5. Guardar tareas nuevas extraídas por IA
-      if (result.tasks && result.tasks.length > 0) {
-        const tasksToSave = result.tasks.map((task: any) => ({
+      if (generatedTasks && generatedTasks.length > 0) {
+        const tasksToSave = generatedTasks.map((task: any) => ({
           titulo: task.title || task.titulo,
           descripcion: task.description || task.descripcion || '',
           asignado_a: task.assignedTo || task.asignado_a || userEmail,
@@ -505,16 +535,19 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       const objetivosDefinidos = Object.keys(objectiveValues).length;
       alert(`✅ Reunión guardada correctamente!\n\n` +
             `📋 Acta generada\n` +
-            `📊 Tareas nuevas: ${result.tasks?.length || 0}\n` +
+            `📊 Tareas nuevas: ${generatedTasks?.length || 0}\n` +
             `✅ Cumplimiento: ${completionPercentage}%\n` +
             `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
             `⚠️ Cuellos de botella: ${bottlenecksToSave.length}`);
+      
+      // Limpiar estados
+      setShowActaPreview(false);
+      setGeneratedMinutes('');
+      setGeneratedTasks([]);
       onClose();
     } catch (error) {
-      console.error('Error generando acta:', error);
-      alert('Error al generar el acta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    } finally {
-      setGeneratingActa(false);
+      console.error('Error guardando reunión:', error);
+      alert('Error al guardar la reunión: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   };
 
@@ -1208,6 +1241,181 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             loadPreviousTasks();
           }}
         />
+      )}
+
+      {/* Modal de Preview del Acta */}
+      {showActaPreview && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f9fafb'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                📋 Revisar Acta Generada
+              </h2>
+              <button
+                onClick={() => setShowActaPreview(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '24px'
+            }}>
+              {/* Acta */}
+              <div style={{
+                marginBottom: '24px',
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '12px'
+                }}>
+                  📄 Acta de la Reunión
+                </h3>
+                <textarea
+                  value={generatedMinutes}
+                  onChange={(e) => setGeneratedMinutes(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '300px',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Tareas */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '8px',
+                border: '1px solid #86efac'
+              }}>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '12px'
+                }}>
+                  ✅ Tareas Extraídas ({generatedTasks.length})
+                </h3>
+                {generatedTasks.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                    No se extrajeron tareas del acta
+                  </p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {generatedTasks.map((task: any, index: number) => (
+                      <li key={index} style={{
+                        marginBottom: '8px',
+                        fontSize: '14px',
+                        color: '#374151'
+                      }}>
+                        <strong>{task.title || task.titulo}</strong>
+                        {task.assignedTo || task.asignado_a ? (
+                          <span style={{ color: '#6b7280' }}> - Asignado a: {task.assignedTo || task.asignado_a}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+              backgroundColor: '#f9fafb'
+            }}>
+              <button
+                onClick={() => setShowActaPreview(false)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌ Cancelar
+              </button>
+              <button
+                onClick={handleSaveAfterReview}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                💾 Guardar Reunión
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
