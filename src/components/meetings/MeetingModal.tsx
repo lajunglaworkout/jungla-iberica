@@ -436,18 +436,26 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         : 0;
 
       // 1. Guardar reunión en tabla meetings
+      // Usar la fecha de la reunión si existe, sino usar fecha actual como pasada
+      const meetingDate = meeting?.date 
+        ? new Date(meeting.date).toISOString() 
+        : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Ayer para que aparezca en historial
+      
       const { data: meetingRecord, error: meetingError} = await supabase
         .from('meetings')
         .insert({
           title: meeting?.title || 'Nueva Reunión',
           department: departmentId,
-          date: new Date().toISOString(),
+          date: meetingDate,
+          start_time: meeting?.start_time || new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
           participants: participants || [],
           summary: generatedMinutes,
           tipo_reunion: meetingType,
           porcentaje_cumplimiento: completionPercentage,
           tiene_cuellos_botella: previousTasks.some(task => !previousTasksCompleted[task.id]),
-          numero_cuellos_botella: previousTasks.filter(task => !previousTasksCompleted[task.id]).length
+          numero_cuellos_botella: previousTasks.filter(task => !previousTasksCompleted[task.id]).length,
+          created_by: userEmail,
+          status: 'completada'
         })
         .select()
         .single();

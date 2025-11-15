@@ -21,6 +21,7 @@ interface Meeting {
   status: string;
   participants: string[];
   created_by?: string;
+  summary?: string;
 }
 
 interface Task {
@@ -554,11 +555,40 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                       }}
                     >
                       <div style={{
-                        fontWeight: '600',
-                        color: '#1f2937',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
                         marginBottom: '8px'
                       }}>
-                        {meeting.title}
+                        <div style={{
+                          fontWeight: '600',
+                          color: '#1f2937',
+                          flex: 1
+                        }}>
+                          {meeting.title}
+                        </div>
+                        {meeting.summary && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMeetingDetail(meeting);
+                              setShowMeetingDetailModal(true);
+                            }}
+                            style={{
+                              padding: '4px 12px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            📄 Ver Acta
+                          </button>
+                        )}
                       </div>
                       <div style={{
                         fontSize: '12px',
