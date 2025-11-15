@@ -62,7 +62,7 @@ export const transcribeAudioViaBackend = async (
 };
 
 /**
- * Generar acta de reunión usando Claude (Anthropic) directamente
+ * Generar acta de reunión usando backend (que usa Anthropic)
  */
 export const generateMeetingMinutesViaBackend = async (
   transcript: string,
@@ -70,88 +70,40 @@ export const generateMeetingMinutesViaBackend = async (
   participants: string[]
 ): Promise<{ success: boolean; minutes?: string; tasks?: any[]; error?: string }> => {
   try {
-    console.log('📋 Generando acta de reunión via Claude...');
+    console.log('📋 Generando acta de reunión via backend...');
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('VITE_ANTHROPIC_API_KEY no configurada');
-    }
+    // Usar backend local que tiene las APIs configuradas
+    const backendUrl = 'http://localhost:3001';
+    const endpoint = `${backendUrl}/api/generate-minutes`;
 
-    const prompt = `Eres un asistente especializado en generar actas de reuniones profesionales.
-
-Genera un acta detallada basada en la siguiente transcripción de reunión:
-
-**Título de la reunión:** ${meetingTitle}
-**Participantes:** ${participants.join(', ')}
-**Transcripción:**
-${transcript}
-
-Por favor, genera:
-
-1. Un acta profesional con:
-   - Información general (título, fecha, participantes)
-   - Resumen ejecutivo
-   - Puntos principales tratados
-   - Decisiones tomadas
-   - Acciones pendientes
-   - Próximos pasos
-
-2. Una lista de tareas extraídas de la reunión en formato JSON al final, con este formato exacto:
-\`\`\`json
-[
-  {"tarea": "descripción de la tarea", "responsable": "nombre o 'Sin asignar'", "plazo": "fecha estimada o 'Por determinar'"},
-  ...
-]
-\`\`\`
-
-Responde SOLO con el acta seguida de la lista JSON de tareas.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
+        transcript,
+        meetingTitle,
+        participants
       })
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error?.message || `Error ${response.status}`);
+      throw new Error(error.error || `Error ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.content[0].text;
 
-    // Extraer el acta y las tareas del contenido
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    let tasks = [];
-    let minutes = content;
-
-    if (jsonMatch) {
-      try {
-        tasks = JSON.parse(jsonMatch[0]);
-        minutes = content.substring(0, jsonMatch.index).trim();
-      } catch (e) {
-        console.warn('⚠️ No se pudo parsear JSON de tareas');
-      }
+    if (!data.success) {
+      throw new Error(data.error || 'Error generando acta');
     }
 
     console.log('✅ Acta generada');
     return {
       success: true,
-      minutes: minutes,
-      tasks: tasks
+      minutes: data.minutes,
+      tasks: data.tasks || []
     };
   } catch (error) {
     console.error('❌ Error generando acta:', error);
