@@ -36,7 +36,7 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
-  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones';
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes';
   datos?: any;
 }
 
@@ -161,9 +161,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         { nombre: 'Cumplimiento normativo', tipo: 'porcentaje', placeholder: 'Ej: 100' }
       ],
       logistica: [
-        { nombre: 'Pedidos procesados', tipo: 'numero', unidad: 'pedidos', placeholder: 'Ej: 150' },
-        { nombre: 'Entregas a tiempo', tipo: 'porcentaje', placeholder: 'Ej: 95' },
-        { nombre: 'Rotación de inventario', tipo: 'numero', unidad: 'días', placeholder: 'Ej: 30' }
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
       ],
       direccion: [
         { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
@@ -304,6 +304,46 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         }
       ];
       setRecurringTasks(rrhhTasks);
+      return;
+    }
+
+    // Configuración especial para Logística con datos expandibles
+    if (departmentId === 'logistica') {
+      const logisticaTasks: RecurringTask[] = [
+        {
+          titulo: 'Pedidos recibidos y enviados',
+          notas: '',
+          tipo: 'pedidos_logistica',
+          datos: {
+            // Se cargarán automáticamente desde módulo de logística
+          }
+        },
+        {
+          titulo: 'Roturas o pérdidas',
+          notas: '',
+          tipo: 'roturas_perdidas',
+          datos: {
+            // Se cargarán automáticamente
+          }
+        },
+        {
+          titulo: 'Estimación de inversión - Materiales cerca de stock mínimo',
+          notas: '',
+          tipo: 'stock_minimo',
+          datos: {
+            // Se cargarán automáticamente materiales con stock bajo
+          }
+        },
+        {
+          titulo: 'Envíos pendientes',
+          notas: '',
+          tipo: 'envios_pendientes',
+          datos: {
+            // Se cargarán automáticamente envíos pendientes
+          }
+        }
+      ];
+      setRecurringTasks(logisticaTasks);
       return;
     }
 
@@ -1392,6 +1432,173 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                               borderRadius: '4px',
                               fontSize: '13px',
                               minHeight: '80px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'pedidos_logistica' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#dbeafe',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>📦 Pedidos recibidos</div>
+                            <div style={{ color: '#6b7280' }}>Cargando pedidos recibidos...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📤 Pedidos enviados</div>
+                            <div style={{ color: '#6b7280' }}>Cargando pedidos enviados...</div>
+                          </div>
+                          <textarea
+                            placeholder="Observaciones sobre pedidos..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'roturas_perdidas' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fee2e2',
+                        border: '1px solid #ef4444',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>💔 Roturas reportadas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando roturas...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>❓ Pérdidas registradas</div>
+                            <div style={{ color: '#6b7280' }}>Cargando pérdidas...</div>
+                          </div>
+                          <textarea
+                            placeholder="Acciones tomadas sobre roturas y pérdidas..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'stock_minimo' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>⚠️ Materiales cerca de stock mínimo</div>
+                            <div style={{ color: '#6b7280' }}>Cargando materiales con stock bajo...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#059669' }}>💰 Estimación de inversión</div>
+                            <div style={{ color: '#6b7280' }}>Calculando inversión necesaria...</div>
+                          </div>
+                          <textarea
+                            placeholder="Decisiones sobre compras y reposición..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'envios_pendientes' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#e0e7ff',
+                        border: '1px solid #6366f1',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🚚 Envíos pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando envíos pendientes...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                              <div>• <strong>Urgentes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Plan de envíos y prioridades..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
                               boxSizing: 'border-box'
                             }}
                           />
