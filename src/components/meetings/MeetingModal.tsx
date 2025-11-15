@@ -151,9 +151,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         { nombre: 'Leads generados', tipo: 'numero', unidad: 'leads', placeholder: 'Ej: 120' }
       ],
       rrhh: [
-        { nombre: 'Candidatos entrevistados', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 8' },
-        { nombre: 'Contrataciones realizadas', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 2' },
-        { nombre: 'Satisfacción del equipo', tipo: 'porcentaje', placeholder: 'Ej: 85' }
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
       ],
       procedimientos: [
         { nombre: 'Procedimientos actualizados', tipo: 'numero', unidad: 'documentos', placeholder: 'Ej: 5' },
