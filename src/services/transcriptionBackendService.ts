@@ -62,7 +62,7 @@ export const transcribeAudioViaBackend = async (
 };
 
 /**
- * Generar acta de reunión usando Netlify Functions o backend local
+ * Generar acta de reunión usando DeepSeek directamente
  */
 export const generateMeetingMinutesViaBackend = async (
   transcript: string,
@@ -70,44 +70,88 @@ export const generateMeetingMinutesViaBackend = async (
   participants: string[]
 ): Promise<{ success: boolean; minutes?: string; tasks?: any[]; error?: string }> => {
   try {
-    console.log('📋 Generando acta de reunión via backend...');
+    console.log('📋 Generando acta de reunión via DeepSeek...');
 
-    // Usar Render en producción, backend local en desarrollo
-    const isProduction = import.meta.env.PROD;
-    const backendUrl = isProduction 
-      ? 'https://jungla-meetings-backend.onrender.com' // Backend en Render
-      : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      throw new Error('VITE_DEEPSEEK_API_KEY no configurada');
+    }
 
-    const endpoint = `${backendUrl}/api/generate-minutes`;
+    const prompt = `Eres un asistente especializado en generar actas de reuniones profesionales.
 
-    const response = await fetch(endpoint, {
+Genera un acta detallada basada en la siguiente transcripción de reunión:
+
+**Título de la reunión:** ${meetingTitle}
+**Participantes:** ${participants.join(', ')}
+**Transcripción:**
+${transcript}
+
+Por favor, genera:
+
+1. Un acta profesional con:
+   - Información general (título, fecha, participantes)
+   - Resumen ejecutivo
+   - Puntos principales tratados
+   - Decisiones tomadas
+   - Acciones pendientes
+   - Próximos pasos
+
+2. Una lista de tareas extraídas de la reunión en formato JSON al final, con este formato exacto:
+\`\`\`json
+[
+  {"tarea": "descripción de la tarea", "responsable": "nombre o 'Sin asignar'", "plazo": "fecha estimada o 'Por determinar'"},
+  ...
+]
+\`\`\`
+
+Responde SOLO con el acta seguida de la lista JSON de tareas.`;
+
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        transcript,
-        meetingTitle,
-        participants
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
       })
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Error ${response.status}`);
+      throw new Error(error.error?.message || `Error ${response.status}`);
     }
 
     const data = await response.json();
+    const content = data.choices[0].message.content;
 
-    if (!data.success) {
-      throw new Error(data.error || 'Error generando acta');
+    // Extraer el acta y las tareas del contenido
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    let tasks = [];
+    let minutes = content;
+
+    if (jsonMatch) {
+      try {
+        tasks = JSON.parse(jsonMatch[0]);
+        minutes = content.substring(0, jsonMatch.index).trim();
+      } catch (e) {
+        console.warn('⚠️ No se pudo parsear JSON de tareas');
+      }
     }
 
     console.log('✅ Acta generada');
     return {
       success: true,
-      minutes: data.minutes,
-      tasks: data.tasks || []
+      minutes: minutes,
+      tasks: tasks
     };
   } catch (error) {
     console.error('❌ Error generando acta:', error);
