@@ -436,10 +436,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         : 0;
 
       // 1. Guardar reunión en tabla meetings
-      // Usar la fecha de la reunión si existe, sino usar fecha actual como pasada
-      const meetingDate = meeting?.date 
-        ? new Date(meeting.date).toISOString() 
-        : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Ayer para que aparezca en historial
+      // Para reuniones completadas, siempre usar fecha actual (ahora) para que aparezca en historial
+      const meetingDate = new Date().toISOString();
       
       const { data: meetingRecord, error: meetingError} = await supabase
         .from('meetings')
@@ -541,18 +539,35 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       }
 
       const objetivosDefinidos = Object.keys(objectiveValues).length;
-      alert(`✅ Reunión guardada correctamente!\n\n` +
-            `📋 Acta generada\n` +
-            `📊 Tareas nuevas: ${generatedTasks?.length || 0}\n` +
-            `✅ Cumplimiento: ${completionPercentage}%\n` +
-            `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
-            `⚠️ Cuellos de botella: ${bottlenecksToSave.length}`);
       
-      // Limpiar estados
+      // Limpiar estados del preview
       setShowActaPreview(false);
       setGeneratedMinutes('');
       setGeneratedTasks([]);
-      onClose();
+      
+      // Preguntar si quiere programar siguiente reunión
+      const programarSiguiente = window.confirm(
+        `✅ Reunión guardada correctamente!\n\n` +
+        `📋 Acta generada\n` +
+        `📊 Tareas nuevas: ${generatedTasks?.length || 0}\n` +
+        `✅ Cumplimiento: ${completionPercentage}%\n` +
+        `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
+        `⚠️ Cuellos de botella: ${bottlenecksToSave.length}\n\n` +
+        `¿Deseas programar la siguiente reunión?`
+      );
+      
+      if (programarSiguiente) {
+        // No cerrar el modal, solo limpiar para nueva reunión
+        setManualTranscript('');
+        setRecordedTranscript('');
+        setPreviousTasksCompleted({});
+        setPreviousTasksReasons({});
+        setRecurringTasksCompleted({});
+        setObjectiveValues({});
+        alert('📅 Programa la siguiente reunión con los datos necesarios');
+      } else {
+        onClose();
+      }
     } catch (error) {
       console.error('Error guardando reunión:', error);
       alert('Error al guardar la reunión: ' + (error instanceof Error ? error.message : 'Error desconocido'));
