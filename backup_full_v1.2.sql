@@ -103,8 +103,8 @@ FROM meetings;
 SELECT 
   'Tareas' as tabla,
   COUNT(*) as total,
-  COUNT(CASE WHEN completada = true THEN 1 END) as completadas,
-  COUNT(CASE WHEN completada = false THEN 1 END) as pendientes,
+  COUNT(CASE WHEN estado = 'completada' THEN 1 END) as completadas,
+  COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as pendientes,
   COUNT(CASE WHEN reunion_titulo IS NOT NULL THEN 1 END) as de_reuniones
 FROM tareas;
 
