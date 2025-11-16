@@ -109,10 +109,11 @@ SELECT 'tareas' as tabla, COUNT(*) as restantes FROM tareas;
 -- Eliminar pedidos de prueba
 -- DELETE FROM logistica_pedidos;
 
--- Resetear inventario (CUIDADO: esto elimina TODO el inventario)
--- Si prefieres mantener productos pero resetear cantidades:
+-- ⚠️ IMPORTANTE: Mantener productos pero resetear cantidades
+-- Esto NO elimina los productos, solo pone las cantidades en 0
 -- UPDATE logistica_inventario SET cantidad = 0, stock_minimo = 0;
--- Si prefieres eliminar todo:
+
+-- ❌ NO USAR: Esto eliminaría los productos completamente
 -- DELETE FROM logistica_inventario;
 
 -- Verificar
@@ -120,7 +121,7 @@ SELECT 'tareas' as tabla, COUNT(*) as restantes FROM tareas;
 -- UNION ALL
 -- SELECT 'logistica_pedidos' as tabla, COUNT(*) as restantes FROM logistica_pedidos
 -- UNION ALL
--- SELECT 'logistica_inventario' as tabla, COUNT(*) as restantes FROM logistica_inventario;
+-- SELECT 'logistica_inventario (productos)' as tabla, COUNT(*) as total_productos FROM logistica_inventario;
 
 -- ============================================
 -- 5. LIMPIAR CONTABILIDAD (si existe)

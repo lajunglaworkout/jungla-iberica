@@ -35,8 +35,8 @@
 #### 3. **Logística** (si existe)
 - ❌ Notificaciones críticas de prueba
 - ❌ Pedidos de prueba
-- ❌ Inventario de prueba
-- ⚠️ **OPCIÓN:** Mantener productos pero resetear cantidades
+- ✅ **MANTENER:** Productos del inventario (NO se eliminan)
+- ⚠️ **OPCIÓN:** Resetear cantidades a 0 (mantiene los productos)
 
 #### 4. **Contabilidad** (si existe)
 - ❌ Pagos de prueba
@@ -196,6 +196,7 @@ Después de la limpieza, verifica:
 - ✅ Políticas de seguridad (RLS)
 - ✅ Funciones y triggers
 - ✅ Código de la aplicación
+- ✅ **Productos del inventario** (se mantienen, solo se resetean cantidades)
 
 ### Después de la limpieza:
 1. El sistema estará completamente limpio
