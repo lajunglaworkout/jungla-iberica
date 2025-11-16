@@ -25,7 +25,7 @@ WHERE reunion_titulo IS NOT NULL AND reunion_titulo != '';
 
 SELECT * FROM tareas 
 WHERE reunion_titulo IS NOT NULL AND reunion_titulo != ''
-ORDER BY created_at DESC;
+ORDER BY updated_at DESC;
 
 -- ============================================
 -- 2. BACKUP DE CLIENTES
@@ -54,7 +54,7 @@ WHERE reunion_titulo IS NULL OR reunion_titulo = '';
 
 SELECT * FROM tareas 
 WHERE reunion_titulo IS NULL OR reunion_titulo = ''
-ORDER BY created_at DESC;
+ORDER BY updated_at DESC;
 
 -- ============================================
 -- 5. BACKUP DE INCIDENCIAS
@@ -70,7 +70,8 @@ SELECT * FROM incidencias ORDER BY fecha_creacion DESC;
 
 SELECT 'BACKUP: checklist' as info;
 SELECT COUNT(*) as total_checklist FROM checklist;
-SELECT * FROM checklist ORDER BY fecha_creacion DESC;
+-- Ajustar columna de ordenamiento según estructura real
+SELECT * FROM checklist ORDER BY id DESC;
 
 -- ============================================
 -- 7. BACKUP DE LOGISTICA (si existe)
