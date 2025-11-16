@@ -28,23 +28,7 @@ WHERE reunion_titulo IS NOT NULL AND reunion_titulo != ''
 ORDER BY updated_at DESC;
 
 -- ============================================
--- 2. BACKUP DE CLIENTES
--- ============================================
-
-SELECT 'BACKUP: clientes' as info;
-SELECT COUNT(*) as total_clientes FROM clientes;
-SELECT * FROM clientes ORDER BY fecha_registro DESC;
-
--- ============================================
--- 3. BACKUP DE LEADS
--- ============================================
-
-SELECT 'BACKUP: leads' as info;
-SELECT COUNT(*) as total_leads FROM leads;
-SELECT * FROM leads ORDER BY fecha_creacion DESC;
-
--- ============================================
--- 4. BACKUP DE TAREAS GENERALES
+-- 2. BACKUP DE TAREAS GENERALES
 -- ============================================
 
 SELECT 'BACKUP: tareas (generales)' as info;
@@ -53,25 +37,34 @@ FROM tareas
 WHERE reunion_titulo IS NULL OR reunion_titulo = '';
 
 SELECT * FROM tareas 
-WHERE reunion_titulo IS NULL OR reunion_titulo = ''
+WHERE reunion_titulo IS NOT NULL AND reunion_titulo != ''
 ORDER BY updated_at DESC;
 
 -- ============================================
--- 5. BACKUP DE INCIDENCIAS
+-- 3. BACKUP DE OTRAS TABLAS (si existen)
 -- ============================================
 
-SELECT 'BACKUP: incidencias' as info;
-SELECT COUNT(*) as total_incidencias FROM incidencias;
-SELECT * FROM incidencias ORDER BY fecha_creacion DESC;
+-- NOTA: Descomentar solo las tablas que existan en tu base de datos
 
--- ============================================
--- 6. BACKUP DE CHECKLIST
--- ============================================
+-- CLIENTES (descomentar si existe)
+-- SELECT 'BACKUP: clientes' as info;
+-- SELECT COUNT(*) as total_clientes FROM clientes;
+-- SELECT * FROM clientes ORDER BY fecha_registro DESC;
 
-SELECT 'BACKUP: checklist' as info;
-SELECT COUNT(*) as total_checklist FROM checklist;
--- Ajustar columna de ordenamiento según estructura real
-SELECT * FROM checklist ORDER BY id DESC;
+-- LEADS (descomentar si existe)
+-- SELECT 'BACKUP: leads' as info;
+-- SELECT COUNT(*) as total_leads FROM leads;
+-- SELECT * FROM leads ORDER BY fecha_creacion DESC;
+
+-- INCIDENCIAS (descomentar si existe)
+-- SELECT 'BACKUP: incidencias' as info;
+-- SELECT COUNT(*) as total_incidencias FROM incidencias;
+-- SELECT * FROM incidencias ORDER BY fecha_creacion DESC;
+
+-- CHECKLIST (descomentar si existe)
+-- SELECT 'BACKUP: checklist' as info;
+-- SELECT COUNT(*) as total_checklist FROM checklist;
+-- SELECT * FROM checklist ORDER BY id DESC;
 
 -- ============================================
 -- 7. BACKUP DE LOGISTICA (si existe)
@@ -92,53 +85,51 @@ SELECT * FROM checklist ORDER BY id DESC;
 -- SELECT * FROM contabilidad_transferencias ORDER BY fecha DESC;
 
 -- ============================================
--- 9. ESTADISTICAS GENERALES
+-- 4. ESTADISTICAS GENERALES
 -- ============================================
 
 SELECT 'ESTADISTICAS GENERALES' as info;
 
+-- Estadísticas de Reuniones
 SELECT 
   'Reuniones' as tabla,
   COUNT(*) as total,
   COUNT(CASE WHEN status = 'completed' THEN 1 END) as completadas,
-  COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as programadas
-FROM meetings
+  COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as programadas,
+  COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as en_progreso
+FROM meetings;
 
-UNION ALL
-
-SELECT 
-  'Clientes' as tabla,
-  COUNT(*) as total,
-  COUNT(CASE WHEN estado = 'activo' THEN 1 END) as activos,
-  COUNT(CASE WHEN estado = 'inactivo' THEN 1 END) as inactivos
-FROM clientes
-
-UNION ALL
-
-SELECT 
-  'Leads' as tabla,
-  COUNT(*) as total,
-  COUNT(CASE WHEN estado = 'nuevo' THEN 1 END) as nuevos,
-  COUNT(CASE WHEN estado = 'contactado' THEN 1 END) as contactados
-FROM leads
-
-UNION ALL
-
+-- Estadísticas de Tareas
 SELECT 
   'Tareas' as tabla,
   COUNT(*) as total,
   COUNT(CASE WHEN completada = true THEN 1 END) as completadas,
-  COUNT(CASE WHEN completada = false THEN 1 END) as pendientes
-FROM tareas
+  COUNT(CASE WHEN completada = false THEN 1 END) as pendientes,
+  COUNT(CASE WHEN reunion_titulo IS NOT NULL THEN 1 END) as de_reuniones
+FROM tareas;
 
-UNION ALL
+-- ESTADISTICAS ADICIONALES (descomentar si las tablas existen)
 
-SELECT 
-  'Incidencias' as tabla,
-  COUNT(*) as total,
-  COUNT(CASE WHEN estado = 'abierta' THEN 1 END) as abiertas,
-  COUNT(CASE WHEN estado = 'cerrada' THEN 1 END) as cerradas
-FROM incidencias;
+-- SELECT 
+--   'Clientes' as tabla,
+--   COUNT(*) as total,
+--   COUNT(CASE WHEN estado = 'activo' THEN 1 END) as activos,
+--   COUNT(CASE WHEN estado = 'inactivo' THEN 1 END) as inactivos
+-- FROM clientes;
+
+-- SELECT 
+--   'Leads' as tabla,
+--   COUNT(*) as total,
+--   COUNT(CASE WHEN estado = 'nuevo' THEN 1 END) as nuevos,
+--   COUNT(CASE WHEN estado = 'contactado' THEN 1 END) as contactados
+-- FROM leads;
+
+-- SELECT 
+--   'Incidencias' as tabla,
+--   COUNT(*) as total,
+--   COUNT(CASE WHEN estado = 'abierta' THEN 1 END) as abiertas,
+--   COUNT(CASE WHEN estado = 'cerrada' THEN 1 END) as cerradas
+-- FROM incidencias;
 
 -- ============================================
 -- FIN DEL BACKUP
