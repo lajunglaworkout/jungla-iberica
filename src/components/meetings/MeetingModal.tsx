@@ -36,7 +36,7 @@ interface PreviousTask {
 interface RecurringTask {
   titulo: string;
   notas: string;
-  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones' | 'datos_centros_contabilidad' | 'pagos_pendientes' | 'transferencias_autorizar' | 'gastos_extra';
+  tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones' | 'datos_centros_contabilidad' | 'pagos_pendientes' | 'transferencias_autorizar' | 'gastos_extra' | 'incidencias_checklist_operaciones' | 'tendencias_clientes' | 'eventos_actividades' | 'sugerencias_peticiones' | 'comunicados_franquiciados';
   datos?: any;
 }
 
@@ -166,6 +166,11 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         { nombre: 'Cumplimiento normativo', tipo: 'porcentaje', placeholder: 'Ej: 100' }
       ],
       logistica: [
+        { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
+        { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
+      ],
+      operaciones: [
         { nombre: 'Objetivo 1', tipo: 'texto', placeholder: 'Definir en la reunión' },
         { nombre: 'Objetivo 2', tipo: 'texto', placeholder: 'Definir en la reunión' },
         { nombre: 'Objetivo 3', tipo: 'texto', placeholder: 'Definir en la reunión' }
@@ -421,6 +426,54 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         }
       ];
       setRecurringTasks(contabilidadTasks);
+      return;
+    }
+
+    // Configuración especial para Centros Operativos (Operaciones) con datos expandibles
+    if (departmentId === 'operaciones') {
+      const operacionesTasks: RecurringTask[] = [
+        {
+          titulo: 'Incidencias importantes',
+          notas: '',
+          tipo: 'incidencias_checklist_operaciones',
+          datos: {
+            // Se cargarán automáticamente desde checklist
+          }
+        },
+        {
+          titulo: 'Tendencias de clientes / facturación',
+          notas: '',
+          tipo: 'tendencias_clientes',
+          datos: {
+            centros: ['Sevilla', 'Jerez', 'Puerto']
+          }
+        },
+        {
+          titulo: 'Próximos eventos / actividades pendientes',
+          notas: '',
+          tipo: 'eventos_actividades',
+          datos: {
+            // Se cargarán automáticamente eventos y actividades
+          }
+        },
+        {
+          titulo: 'Sugerencias o peticiones',
+          notas: '',
+          tipo: 'sugerencias_peticiones',
+          datos: {
+            // Se cargarán automáticamente sugerencias del sistema
+          }
+        },
+        {
+          titulo: 'Comunicados con franquiciados',
+          notas: '',
+          tipo: 'comunicados_franquiciados',
+          datos: {
+            // Se cargarán automáticamente comunicados pendientes
+          }
+        }
+      ];
+      setRecurringTasks(operacionesTasks);
       return;
     }
 
@@ -1986,6 +2039,222 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                           </div>
                           <textarea
                             placeholder="Análisis de gastos extra y justificaciones..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'incidencias_checklist_operaciones' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Incidencias importantes del checklist</div>
+                            <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Críticas:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                              <div>• <strong>Importantes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Plan de acción sobre incidencias..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'tendencias_clientes' ? (
+                      <div style={{ marginTop: '12px' }}>
+                        {task.datos?.centros?.map((centro: string) => (
+                          <details key={centro} style={{ marginBottom: '8px' }}>
+                            <summary style={{
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              padding: '8px',
+                              backgroundColor: '#d1fae5',
+                              border: '1px solid #10b981',
+                              borderRadius: '6px',
+                              marginBottom: '4px'
+                            }}>
+                              📈 {centro}
+                            </summary>
+                            <div style={{
+                              padding: '12px',
+                              backgroundColor: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              marginTop: '4px'
+                            }}>
+                              <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                                <div><strong>📊 Tendencia clientes:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                                <div><strong>💰 Facturación mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
+                                <div><strong>📈 Tendencia facturación:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
+                                <div><strong>⭐ Satisfacción media:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                                <textarea
+                                  placeholder="Análisis de tendencias..."
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '13px',
+                                    minHeight: '50px',
+                                    marginTop: '8px',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    ) : task.tipo === 'eventos_actividades' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#e0e7ff',
+                        border: '1px solid #6366f1',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>📅 Próximos eventos</div>
+                            <div style={{ color: '#6b7280' }}>Cargando eventos programados...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>✅ Actividades pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando actividades...</div>
+                          </div>
+                          <textarea
+                            placeholder="Planificación y coordinación de eventos..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'sugerencias_peticiones' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#f3e8ff',
+                        border: '1px solid #a855f7',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Sugerencias del sistema</div>
+                            <div style={{ color: '#6b7280' }}>Cargando sugerencias...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📝 Peticiones pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando peticiones...</div>
+                          </div>
+                          <textarea
+                            placeholder="Respuesta a sugerencias y peticiones..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              minHeight: '60px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : task.tipo === 'comunicados_franquiciados' ? (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        backgroundColor: '#dbeafe',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📢 Comunicados pendientes</div>
+                            <div style={{ color: '#6b7280' }}>Cargando comunicados con franquiciados...</div>
+                          </div>
+                          <div style={{ 
+                            padding: '8px',
+                            backgroundColor: '#fff',
+                            borderRadius: '4px',
+                            border: '1px solid #e5e7eb'
+                          }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Estado</div>
+                            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
+                              <div>• <strong>Pendientes de envío:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                              <div>• <strong>Enviados sin respuesta:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
+                            </div>
+                          </div>
+                          <textarea
+                            placeholder="Nuevos comunicados o seguimiento..."
                             style={{
                               width: '100%',
                               padding: '8px',
