@@ -484,24 +484,24 @@ const HRManagementSystem: React.FC = () => {
 
       // Preparar datos para Supabase con mapeo correcto de campos
       const supabaseData = {
-        nombre: employeeData.nombre || (employeeData as any).name,
+        name: employeeData.nombre || (employeeData as any).name, // 🔧 FIX: Usar 'name' en lugar de 'nombre'
         apellidos: employeeData.apellidos,
         email: employeeData.email,
-        telefono: employeeData.telefono || (employeeData as any).phone,
+        phone: employeeData.telefono || (employeeData as any).phone, // 🔧 FIX: Usar 'phone' en lugar de 'telefono'
         dni: employeeData.dni,
-        fecha_nacimiento: employeeData.fecha_nacimiento,
-        direccion: employeeData.direccion,
+        birth_date: employeeData.fecha_nacimiento, // 🔧 FIX: Usar 'birth_date'
+        address: employeeData.direccion, // 🔧 FIX: Usar 'address'
         ciudad: employeeData.ciudad,
         codigo_postal: employeeData.codigo_postal,
         center_id: employeeData.center_id ? parseInt(String(employeeData.center_id)) : null,
-        fecha_alta: employeeData.fecha_alta,
+        hire_date: employeeData.fecha_alta, // 🔧 FIX: Usar 'hire_date'
         fecha_baja: employeeData.fecha_baja,
-        tipo_contrato: employeeData.tipo_contrato,
+        contract_type: employeeData.tipo_contrato, // 🔧 FIX: Usar 'contract_type'
         jornada: employeeData.jornada,
         salario_bruto_anual: employeeData.salario_bruto_anual,
-        base_role: employeeData.rol, // Mapear rol a base_role para Supabase
-        departamento: employeeData.departamento,
-        cargo: employeeData.cargo,
+        role: employeeData.rol, // 🔧 FIX: Usar 'role' en lugar de 'base_role'
+        department_id: employeeData.departamento ? parseInt(String(employeeData.departamento)) : null, // 🔧 FIX CRÍTICO: Guardar department_id
+        position: employeeData.cargo, // 🔧 FIX: Usar 'position'
         numero_cuenta: employeeData.numero_cuenta,
         iban: employeeData.iban,
         banco: employeeData.banco,
@@ -537,11 +537,13 @@ const HRManagementSystem: React.FC = () => {
         console.log(`💾 Actualizando empleado con ID: ${selectedEmployee.id}`);
         console.log('📝 Datos a actualizar:', cleanData);
         
+        // 🔧 FIX CRÍTICO: Usar .select().single() para forzar la actualización
         const { data, error } = await supabase
           .from('employees')
           .update(cleanData)
           .eq('id', selectedEmployee.id)
-          .select();
+          .select()
+          .single();
         
         if (error) {
           console.error('❌ Error de Supabase:', error);
@@ -549,6 +551,11 @@ const HRManagementSystem: React.FC = () => {
         }
         
         console.log('✅ Empleado actualizado correctamente:', data);
+        console.log('🔍 Verificando datos guardados:', {
+          department_id: data?.department_id,
+          role: data?.role,
+          name: data?.name
+        });
         alert('✅ Empleado actualizado correctamente');
       } else {
         console.log('➕ Creando nuevo empleado...');

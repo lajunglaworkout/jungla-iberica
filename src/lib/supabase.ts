@@ -22,7 +22,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage, // Usar localStorage explícitamente
+    storageKey: 'jungla-auth-token', // Clave personalizada para el token
+    flowType: 'pkce' // Usar PKCE para mayor seguridad
   },
   global: {
     headers: {

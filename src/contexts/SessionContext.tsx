@@ -309,10 +309,30 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     });
 
+    // 🔧 FIX CRÍTICO: Mantener sesión activa al cambiar de pestaña
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && mounted) {
+        console.log('👁️ Página visible de nuevo, verificando sesión...');
+        
+        // Verificar que la sesión sigue activa
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user && !user) {
+          console.log('🔄 Restaurando sesión después de cambio de pestaña');
+          setUser(session.user);
+          await loadEmployeeData(session.user.id, session.user.email!);
+        }
+      }
+    };
+
+    // Escuchar cambios de visibilidad de la página
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       mounted = false;
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

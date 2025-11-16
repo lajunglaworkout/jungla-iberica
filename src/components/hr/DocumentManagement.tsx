@@ -57,10 +57,26 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
     file: null
   });
 
-  // Filtrar empleados por centro seleccionado
-  const filteredEmployees = uploadForm.center_id > 0
-    ? employees.filter(emp => emp.center_id === uploadForm.center_id)
-    : employees;
+  // 🔧 FIX CRÍTICO: Filtrar empleados por centro Y por búsqueda
+  const filteredEmployees = React.useMemo(() => {
+    let filtered = employees;
+    
+    // Filtrar por centro si está seleccionado
+    if (uploadForm.center_id > 0) {
+      filtered = filtered.filter(emp => emp.center_id === uploadForm.center_id);
+    }
+    
+    // Filtrar por término de búsqueda en el formulario de subida
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(emp => 
+        emp.name?.toLowerCase().includes(searchLower) ||
+        emp.email?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return filtered;
+  }, [employees, uploadForm.center_id, searchTerm]);
 
   useEffect(() => {
     const initEmployee = async () => {
@@ -321,41 +337,56 @@ const DocumentManagement: React.FC<DocumentManagementProps> = ({ onBack, current
             </div>
           )}
 
-          {/* Empleado - DESPUÉS del centro */}
+          {/* Empleado - CON BUSCADOR MEJORADO */}
           {!isEmployee && (
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
                 Empleado *
               </label>
+              
+              {/* 🔧 FIX: Añadir campo de búsqueda */}
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar empleado por nombre o email..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 10px 10px 40px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              
               <select
                 value={uploadForm.employee_id}
                 onChange={(e) => setUploadForm({ ...uploadForm, employee_id: Number(e.target.value) })}
                 required
-                disabled={uploadForm.center_id === 0}
                 style={{
                   width: '100%',
                   padding: '10px',
                   border: '1px solid #d1d5db',
                   borderRadius: '6px',
                   fontSize: '14px',
-                  backgroundColor: uploadForm.center_id === 0 ? '#f9fafb' : 'white',
-                  cursor: uploadForm.center_id === 0 ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer'
                 }}
               >
-                <option value={0}>
-                  {uploadForm.center_id === 0 ? 'Primero selecciona un centro' : 'Seleccionar empleado'}
-                </option>
+                <option value={0}>Seleccionar empleado</option>
                 {filteredEmployees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.name}
+                    {emp.name} {emp.center_id ? `(${centers.find(c => c.id === emp.center_id)?.name || 'Sin centro'})` : '(Marca)'}
                   </option>
                 ))}
               </select>
-              {uploadForm.center_id > 0 && (
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  📋 Mostrando {filteredEmployees.length} empleado(s) del centro seleccionado
-                </div>
-              )}
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                📋 {filteredEmployees.length} empleado(s) {uploadForm.center_id > 0 ? 'del centro seleccionado' : 'disponibles'}
+              </div>
             </div>
           )}
 
