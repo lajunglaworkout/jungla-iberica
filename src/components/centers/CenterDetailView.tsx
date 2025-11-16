@@ -7,24 +7,25 @@ interface CenterDetailViewProps {
 }
 
 const CenterDetailView: React.FC<CenterDetailViewProps> = ({ centerId, onBack }) => {
+  // 🧹 DATOS RESETEADOS - Listos para datos reales
   const centerData = {
     'sevilla': {
-      name: 'Centro Sevilla', revenue: 22607.50, expenses: 13978.72, clients: 438, target: 450,
-      avgFee: 42.25, leads: 54, altas: 37, bajas: 18, margin: 38.2, growth: 12.5,
-      services: { personal: 2800, fisio: 850, nutricion: 457.50 },
-      prevYear: { revenue: 20150, clients: 415 }
+      name: 'Centro Sevilla', revenue: 0, expenses: 0, clients: 0, target: 0,
+      avgFee: 0, leads: 0, altas: 0, bajas: 0, margin: 0, growth: 0,
+      services: { personal: 0, fisio: 0, nutricion: 0 },
+      prevYear: { revenue: 0, clients: 0 }
     },
     'jerez': {
-      name: 'Centro Jerez', revenue: 18500.00, expenses: 12200.00, clients: 365, target: 380,
-      avgFee: 41.64, leads: 42, altas: 29, bajas: 15, margin: 34.1, growth: 8.3,
-      services: { personal: 2100, fisio: 650, nutricion: 350 },
-      prevYear: { revenue: 17100, clients: 340 }
+      name: 'Centro Jerez', revenue: 0, expenses: 0, clients: 0, target: 0,
+      avgFee: 0, leads: 0, altas: 0, bajas: 0, margin: 0, growth: 0,
+      services: { personal: 0, fisio: 0, nutricion: 0 },
+      prevYear: { revenue: 0, clients: 0 }
     },
     'puerto': {
-      name: 'Centro Puerto', revenue: 15800.00, expenses: 10500.00, clients: 298, target: 320,
-      avgFee: 41.95, leads: 35, altas: 22, bajas: 12, margin: 33.5, growth: 15.2,
-      services: { personal: 1800, fisio: 900, nutricion: 400 },
-      prevYear: { revenue: 13700, clients: 275 }
+      name: 'Centro Puerto', revenue: 0, expenses: 0, clients: 0, target: 0,
+      avgFee: 0, leads: 0, altas: 0, bajas: 0, margin: 0, growth: 0,
+      services: { personal: 0, fisio: 0, nutricion: 0 },
+      prevYear: { revenue: 0, clients: 0 }
     }
   };
 

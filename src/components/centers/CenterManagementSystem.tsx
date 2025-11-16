@@ -17,45 +17,46 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<ModuleType | null>(null);
 
+  // 🧹 DATOS RESETEADOS - Listos para datos reales
   const centersData = {
     'sevilla': { 
       name: 'Centro Sevilla', 
-      revenue: 22607.50, 
-      expenses: 13978.72, 
-      clients: 438, 
-      target: 450, 
-      margin: 38.2, 
-      growth: 12.5,
-      depreciation: 850.00,
-      amortization: 320.00,
-      cashInflow: 21800.00,
-      cashOutflow: 13200.00
+      revenue: 0, 
+      expenses: 0, 
+      clients: 0, 
+      target: 0, 
+      margin: 0, 
+      growth: 0,
+      depreciation: 0,
+      amortization: 0,
+      cashInflow: 0,
+      cashOutflow: 0
     },
     'jerez': { 
       name: 'Centro Jerez', 
-      revenue: 18500.00, 
-      expenses: 12200.00, 
-      clients: 365, 
-      target: 380, 
-      margin: 34.1, 
-      growth: 8.3,
-      depreciation: 720.00,
-      amortization: 280.00,
-      cashInflow: 17950.00,
-      cashOutflow: 11800.00
+      revenue: 0, 
+      expenses: 0, 
+      clients: 0, 
+      target: 0, 
+      margin: 0, 
+      growth: 0,
+      depreciation: 0,
+      amortization: 0,
+      cashInflow: 0,
+      cashOutflow: 0
     },
     'puerto': { 
       name: 'Centro Puerto', 
-      revenue: 15800.00, 
-      expenses: 10500.00, 
-      clients: 298, 
-      target: 320, 
-      margin: 33.5, 
-      growth: 15.2,
-      depreciation: 650.00,
-      amortization: 250.00,
-      cashInflow: 15200.00,
-      cashOutflow: 10100.00
+      revenue: 0, 
+      expenses: 0, 
+      clients: 0, 
+      target: 0, 
+      margin: 0, 
+      growth: 0,
+      depreciation: 0,
+      amortization: 0,
+      cashInflow: 0,
+      cashOutflow: 0
     }
   };
 
