@@ -260,35 +260,28 @@ TAREAS ASIGNADAS:
       };
     }
 
-    // 🔧 MEJORADO: Prompt más claro y estructurado
-    const prompt = `Eres un asistente que genera actas de reunión profesionales en español.
+    // 🔧 PROMPT CONCISO Y ESPECÍFICO
+    const prompt = `Analiza esta transcripción de reunión y genera un acta profesional en español.
 
-ANALIZA esta transcripción y genera un acta estructurada:
-
-=== TRANSCRIPCIÓN ===
+TRANSCRIPCIÓN:
 ${transcript.substring(0, 4000)}
-=== FIN TRANSCRIPCIÓN ===
 
-Título: ${meetingTitle}
-Participantes: ${participants.join(', ')}
-Fecha: ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+REUNIÓN:
+- Título: ${meetingTitle}
+- Participantes: ${participants.join(', ')}
+- Fecha: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
 
-GENERA un acta profesional con:
-1. Resumen ejecutivo (2-3 líneas)
-2. Puntos principales tratados (lista)
-3. Decisiones tomadas (lista)
-4. Acciones pendientes con responsables
+GENERA:
+1. RESUMEN: Breve resumen de lo tratado (2-3 líneas)
+2. PUNTOS IMPORTANTES: Lista de los temas más relevantes
+3. TAREAS ASIGNADAS: Extrae cada tarea con responsable y fecha límite
+4. VALORACIÓN: Evaluación general de la reunión (productividad, cumplimiento de objetivos)
 
-EXTRAE todas las tareas mencionadas con:
-- Título claro de la tarea
-- Persona responsable (nombre exacto de los participantes)
-- Fecha límite estimada (si no se menciona, usa +7 días)
-
-RESPONDE SOLO con este JSON (sin markdown, sin \`\`\`json):
+RESPONDE SOLO con este JSON (sin markdown):
 {
-  "minutes": "# Acta de Reunión\n\n**Título:** ${meetingTitle}\n**Fecha:** fecha\n**Participantes:** lista\n\n## Resumen Ejecutivo\ntexto\n\n## Puntos Principales\n- punto 1\n- punto 2\n\n## Decisiones\n- decisión 1\n\n## Acciones Pendientes\n- acción 1",
+  "minutes": "# Acta de Reunión\\n\\n**${meetingTitle}**\\n**Fecha:** ${new Date().toLocaleDateString('es-ES')}\\n**Participantes:** ${participants.join(', ')}\\n\\n## Resumen\\n[resumen aquí]\\n\\n## Puntos Importantes\\n- [punto 1]\\n- [punto 2]\\n\\n## Valoración\\n[valoración aquí]",
   "tasks": [
-    {"title": "Título de tarea", "assignedTo": "Nombre Participante", "deadline": "2025-11-24", "priority": "media"}
+    {"title": "Título tarea", "assignedTo": "Nombre", "deadline": "2025-11-24", "priority": "media"}
   ]
 }`;
 
