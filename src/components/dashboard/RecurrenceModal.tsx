@@ -43,7 +43,9 @@ export const RecurrenceModal: React.FC<RecurrenceModalProps> = ({
       ...(pattern === 'weekly' && { daysOfWeek: daysOfWeek.length ? daysOfWeek : [new Date().getDay()] }),
       ...(endDate && { endDate })
     };
+    console.log('✅ Guardando regla de recurrencia:', rule);
     onSave(rule);
+    onClose(); // Cerrar modal después de guardar
   };
 
   return (

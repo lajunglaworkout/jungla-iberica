@@ -575,11 +575,16 @@ const DashboardPage: React.FC = () => {
     return Array.from({ length: 5 }, (_, i) => addDays(start, i));
   };
 
-  // Obtener tareas para un día específico
+  // Obtener tareas para un día específico - ORDENADAS POR HORA
   const getTasksForDay = (date: Date) => {
-    return tasks.filter(task => 
-      isSameDay(new Date(task.startDate), date)
-    );
+    return tasks
+      .filter(task => isSameDay(new Date(task.startDate), date))
+      .sort((a, b) => {
+        // Ordenar por hora de inicio
+        const timeA = a.startTime || '00:00';
+        const timeB = b.startTime || '00:00';
+        return timeA.localeCompare(timeB);
+      });
   };
 
   // Funciones para vista mensual
@@ -826,8 +831,14 @@ const DashboardPage: React.FC = () => {
                           borderRadius: '6px',
                           cursor: 'pointer',
                           border: '1px solid #e5e7eb',
-                          backgroundColor: task.category === 'task' ? '#dcfce7' : task.category === 'meeting' ? '#fef3c7' : '#f0f9ff',
-                          transition: 'all 0.2s ease'
+                          // 🎨 COLORES: Amarillo para reuniones, Rojo para tareas con deadline
+                          backgroundColor: task.category === 'meeting' 
+                            ? '#fef3c7' // Amarillo para reuniones
+                            : task.endTime 
+                              ? '#fee2e2' // Rojo claro para tareas con hora de fin (deadline)
+                              : '#dbeafe', // Azul claro para tareas sin deadline
+                          transition: 'all 0.2s ease',
+                          position: 'relative'
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'translateY(-1px)';
