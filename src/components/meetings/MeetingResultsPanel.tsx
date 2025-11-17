@@ -131,10 +131,36 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         // Crear una tarea para cada persona asignada
         assignedPeople.forEach(person => {
           if (person && person.trim()) {
+            // 🔧 NUEVO: Buscar email del empleado por nombre
+            // Esto permite que las tareas se asignen correctamente por email
+            const personTrimmed = person.trim();
+            
+            // Buscar empleado por nombre o email
+            const employee = employees.find(emp => {
+              const empName = emp.name?.toLowerCase() || '';
+              const empEmail = emp.email?.toLowerCase() || '';
+              const searchTerm = personTrimmed.toLowerCase();
+              
+              // Buscar por coincidencia de nombre o email
+              return empName.includes(searchTerm) || 
+                     searchTerm.includes(empName) ||
+                     empEmail === searchTerm;
+            });
+
+            // Usar email si se encuentra, nombre si no
+            const assignedEmail = employee?.email || personTrimmed;
+            
+            // Log para debug
+            console.log(`📧 Asignando tarea "${task.title}" a: ${personTrimmed} → ${assignedEmail}`, {
+              encontrado: !!employee,
+              empleado: employee ? { name: employee.name, email: employee.email } : null
+            });
+            
             tasksToSave.push({
               titulo: task.title,
               descripcion: `Acta: ${minutes.substring(0, 200)}...`,
-              asignado_a: person.trim(),
+              asignado_a: assignedEmail, // ✅ Usar EMAIL del empleado
+              asignado_nombre: personTrimmed, // Guardar nombre para referencia
               creado_por: 'Sistema',
               prioridad: task.priority || 'media',
               estado: 'pendiente',
