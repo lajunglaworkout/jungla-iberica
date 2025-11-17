@@ -954,6 +954,7 @@ const NavigationDashboard: React.FC = () => {
         <MeetingHistorySystem
           isOpen={showMeetingHistoryModal}
           onClose={() => setShowMeetingHistoryModal(false)}
+          userEmail={employee?.email} // 🔧 NUEVO: Filtrar por email del usuario
         />
       )}
 

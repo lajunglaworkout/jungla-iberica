@@ -235,8 +235,10 @@ const DashboardPage: React.FC = () => {
     const loadMeetingsAndTasks = async () => {
       setLoading(true);
       try {
-        // Cargar reuniones
-        const meetingsResult = await loadMeetingsFromSupabase();
+        // 🔧 NUEVO: Cargar reuniones filtrando por email del usuario
+        // Esto permite que cada usuario vea solo las reuniones donde participa
+        const userEmail = employee?.email || 'carlossuarezparra@gmail.com';
+        const meetingsResult = await loadMeetingsFromSupabase(userEmail);
         
         // Cargar tareas pendientes del usuario
         const { data: tasksData, error: tasksError } = await supabase

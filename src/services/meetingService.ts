@@ -28,18 +28,43 @@ export interface MeetingRecord {
 
 // Convertir Task a MeetingRecord para Supabase
 export const taskToMeetingRecord = (task: Task): MeetingRecord => {
-  const responsible = getDepartmentResponsible(task.department || '');
+  // 🔧 NUEVO: Obtener participantes basándose en assignmentType y assignmentId
+  let participants: string[] = [];
+  
+  // Si tiene assignmentType y assignmentId (nuevo sistema)
+  if (task.assignmentType && task.assignmentId) {
+    if (task.assignmentType === 'corporativo') {
+      // Es un departamento corporativo
+      const responsible = getDepartmentResponsible(task.assignmentId);
+      if (responsible) {
+        participants = [responsible.email];
+      }
+    } else if (task.assignmentType === 'centro') {
+      // Es un empleado específico de un centro
+      // El assignmentId es el ID del empleado, necesitamos su email
+      // Por ahora, usamos el assignmentId como email temporal
+      // TODO: Mejorar para obtener el email real del empleado
+      participants = [task.assignmentId];
+    }
+  } 
+  // Fallback: usar el sistema antiguo de department
+  else if (task.department) {
+    const responsible = getDepartmentResponsible(task.department);
+    if (responsible) {
+      participants = [responsible.email];
+    }
+  }
   
   return {
     title: task.title,
-    department: task.department || 'Sin asignar',
+    department: task.assignmentId || task.department || 'Sin asignar',
     type: task.meetingType || 'weekly',
     date: task.startDate,
     start_time: task.startTime,
     end_time: task.endTime,
     duration_minutes: task.endTime ? calculateDuration(task.startTime, task.endTime) : undefined,
-    participants: responsible ? [responsible.email] : [],
-    leader_email: 'carlossuarezparra@gmail.com', // CEO siempre es el líder
+    participants: participants,
+    leader_email: task.createdBy || 'carlossuarezparra@gmail.com',
     agenda: task.description,
     objectives: [],
     kpis: {},
@@ -137,12 +162,27 @@ export const saveMeetingToSupabase = async (task: Task): Promise<{ success: bool
 };
 
 // Cargar reuniones desde Supabase
-export const loadMeetingsFromSupabase = async (): Promise<{ success: boolean; meetings?: Task[]; error?: string }> => {
+// 🔧 NUEVO: Filtrar por participantes para que cada usuario vea sus reuniones
+export const loadMeetingsFromSupabase = async (userEmail?: string): Promise<{ success: boolean; meetings?: Task[]; error?: string }> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('meetings')
       .select('*')
       .order('date', { ascending: false });
+
+    // 🔧 FILTRO POR PARTICIPANTES: Si se proporciona email, filtrar reuniones
+    if (userEmail) {
+      // Cargar reuniones donde el usuario es:
+      // 1. Creador (created_by)
+      // 2. Líder (leader_email)
+      // 3. Participante (en el array participants)
+      query = query.or(`created_by.eq.${userEmail},leader_email.eq.${userEmail},participants.cs.{${userEmail}}`);
+      console.log(`🔍 Filtrando reuniones para: ${userEmail}`);
+    } else {
+      console.log('📋 Cargando todas las reuniones (sin filtro)');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error cargando reuniones:', error);
@@ -150,7 +190,7 @@ export const loadMeetingsFromSupabase = async (): Promise<{ success: boolean; me
     }
 
     const tasks = data.map(meetingRecordToTask);
-    console.log('✅ Reuniones cargadas desde Supabase:', tasks.length);
+    console.log(`✅ Reuniones cargadas: ${tasks.length} reuniones`);
 
     return { success: true, meetings: tasks };
   } catch (error) {

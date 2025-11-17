@@ -17,6 +17,7 @@ interface Meeting {
 interface MeetingHistorySystemProps {
   isOpen: boolean;
   onClose: () => void;
+  userEmail?: string; // 🔧 NUEVO: Email del usuario para filtrar reuniones
 }
 
 const DEPARTMENTS = [
@@ -30,7 +31,7 @@ const DEPARTMENTS = [
   { id: 'investigacion', name: 'I+D' }
 ];
 
-const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onClose }) => {
+const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onClose, userEmail }) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedMeeting, setExpandedMeeting] = useState<string | null>(null);
@@ -41,15 +42,23 @@ const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onC
     if (isOpen) {
       loadMeetings();
     }
-  }, [isOpen]);
+  }, [isOpen, userEmail]);
 
   const loadMeetings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('meetings')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // 🔧 NUEVO: Filtrar por participantes si se proporciona email
+      if (userEmail) {
+        query = query.or(`created_by.eq.${userEmail},leader_email.eq.${userEmail},participants.cs.{${userEmail}}`);
+        console.log(`🔍 Filtrando historial para: ${userEmail}`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error cargando reuniones:', error);
@@ -57,7 +66,7 @@ const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onC
       }
 
       setMeetings(data || []);
-      console.log('✅ Reuniones cargadas:', data?.length || 0);
+      console.log(`✅ Reuniones cargadas en historial: ${data?.length || 0}`);
     } catch (error) {
       console.error('Error:', error);
     } finally {
