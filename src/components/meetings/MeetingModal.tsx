@@ -112,6 +112,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [loadingLeads, setLoadingLeads] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // 🔧 NUEVO: Prevenir guardado múltiple
 
   useEffect(() => {
     loadPreviousTasks();
@@ -730,7 +731,14 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   // Nueva función para guardar después de revisar
   const handleSaveAfterReview = async () => {
+    // ⚠️ PREVENIR GUARDADO MÚLTIPLE
+    if (isSaving) {
+      console.log('⚠️ Ya se está guardando, ignorando click');
+      return;
+    }
+
     try {
+      setIsSaving(true); // Bloquear botón
       const transcription = manualTranscript || recordedTranscript;
       
       // Calcular métricas
@@ -882,6 +890,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     } catch (error) {
       console.error('Error guardando reunión:', error);
       alert('Error al guardar la reunión: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setIsSaving(false); // Desbloquear botón
     }
   };
 
@@ -2769,10 +2779,117 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             }
                           </select>
                         </div>
+
+                        {/* 🔧 NUEVO: Campo de fecha límite */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <label style={{
+                            fontSize: '13px',
+                            color: '#6b7280',
+                            fontWeight: '500',
+                            minWidth: '80px'
+                          }}>
+                            📅 Fecha límite:
+                          </label>
+                          <input
+                            type="date"
+                            value={task.deadline || task.fecha_limite || ''}
+                            onChange={(e) => {
+                              const newTasks = [...generatedTasks];
+                              newTasks[index] = {
+                                ...newTasks[index],
+                                deadline: e.target.value,
+                                fecha_limite: e.target.value
+                              };
+                              setGeneratedTasks(newTasks);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              backgroundColor: 'white'
+                            }}
+                            min={new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+
+                        {/* 🔧 NUEVO: Selector de prioridad */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <label style={{
+                            fontSize: '13px',
+                            color: '#6b7280',
+                            fontWeight: '500',
+                            minWidth: '80px'
+                          }}>
+                            🎯 Prioridad:
+                          </label>
+                          <select
+                            value={task.priority || task.prioridad || 'media'}
+                            onChange={(e) => {
+                              const newTasks = [...generatedTasks];
+                              newTasks[index] = {
+                                ...newTasks[index],
+                                priority: e.target.value,
+                                prioridad: e.target.value
+                              };
+                              setGeneratedTasks(newTasks);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              backgroundColor: 'white'
+                            }}
+                          >
+                            <option value="baja">🟢 Baja</option>
+                            <option value="media">🟡 Media</option>
+                            <option value="alta">🟠 Alta</option>
+                            <option value="critica">🔴 Crítica</option>
+                          </select>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* 🔧 NUEVO: Botón para añadir tarea manual */}
+                <button
+                  onClick={() => {
+                    const newTask = {
+                      title: 'Nueva tarea',
+                      titulo: 'Nueva tarea',
+                      assignedTo: '',
+                      asignado_a: '',
+                      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      fecha_limite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      priority: 'media',
+                      prioridad: 'media'
+                    };
+                    setGeneratedTasks([...generatedTasks, newTask]);
+                  }}
+                  style={{
+                    marginTop: '12px',
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Plus size={16} />
+                  Añadir Tarea Manual
+                </button>
               </div>
             </div>
 
@@ -2802,18 +2919,30 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
               </button>
               <button
                 onClick={handleSaveAfterReview}
+                disabled={isSaving}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: '#059669',
+                  backgroundColor: isSaving ? '#9ca3af' : '#059669',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer'
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}
               >
-                💾 Guardar Reunión
+                {isSaving ? (
+                  <>
+                    <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    Guardando...
+                  </>
+                ) : (
+                  '💾 Guardar Reunión'
+                )}
               </button>
             </div>
           </div>
