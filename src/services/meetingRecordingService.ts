@@ -260,6 +260,39 @@ TAREAS ASIGNADAS:
       };
     }
 
+    // 🔧 MEJORADO: Prompt más claro y estructurado
+    const prompt = `Eres un asistente que genera actas de reunión profesionales en español.
+
+ANALIZA esta transcripción y genera un acta estructurada:
+
+=== TRANSCRIPCIÓN ===
+${transcript.substring(0, 4000)}
+=== FIN TRANSCRIPCIÓN ===
+
+Título: ${meetingTitle}
+Participantes: ${participants.join(', ')}
+Fecha: ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+GENERA un acta profesional con:
+1. Resumen ejecutivo (2-3 líneas)
+2. Puntos principales tratados (lista)
+3. Decisiones tomadas (lista)
+4. Acciones pendientes con responsables
+
+EXTRAE todas las tareas mencionadas con:
+- Título claro de la tarea
+- Persona responsable (nombre exacto de los participantes)
+- Fecha límite estimada (si no se menciona, usa +7 días)
+
+RESPONDE SOLO con este JSON (sin markdown, sin \`\`\`json):
+{
+  "minutes": "# Acta de Reunión\n\n**Título:** ${meetingTitle}\n**Fecha:** fecha\n**Participantes:** lista\n\n## Resumen Ejecutivo\ntexto\n\n## Puntos Principales\n- punto 1\n- punto 2\n\n## Decisiones\n- decisión 1\n\n## Acciones Pendientes\n- acción 1",
+  "tasks": [
+    {"title": "Título de tarea", "assignedTo": "Nombre Participante", "deadline": "2025-11-24", "priority": "media"}
+  ]
+}`;
+
+    console.log('🤖 Llamando a Claude API...');
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -269,47 +302,60 @@ TAREAS ASIGNADAS:
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 2000,
+        max_tokens: 4000,
+        temperature: 0.3,
         messages: [
           {
             role: 'user',
-            content: `Por favor, analiza la siguiente transcripción de reunión y genera:
-1. Un acta profesional con resumen, puntos clave y decisiones
-2. Una lista de tareas asignadas a cada participante
-
-Transcripción:
-${transcript}
-
-Título de la reunión: ${meetingTitle}
-Participantes: ${participants.join(', ')}
-
-Por favor, formatea la respuesta como JSON con las siguientes claves:
-{
-  "minutes": "acta completa aquí",
-  "tasks": [
-    {"title": "tarea", "assignedTo": "persona", "deadline": "fecha"}
-  ]
-}`
+            content: prompt
           }
         ]
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Error en API: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Error de Claude API:', errorData);
+      throw new Error(`Error en API (${response.status}): ${errorData.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
-    const content = data.content[0].text;
+    console.log('📥 Respuesta de Claude recibida');
     
-    // Parsear JSON de la respuesta
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No se pudo parsear la respuesta');
+    const content = data.content[0].text;
+    console.log('📄 Contenido:', content.substring(0, 200) + '...');
+    
+    // 🔧 MEJORADO: Parseo más robusto
+    let result;
+    try {
+      // Intentar parsear directamente
+      result = JSON.parse(content);
+    } catch (e1) {
+      console.log('⚠️ Parseo directo falló, intentando extraer JSON...');
+      try {
+        // Remover markdown si existe
+        const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        result = JSON.parse(cleanContent);
+      } catch (e2) {
+        console.log('⚠️ Parseo con limpieza falló, intentando regex...');
+        // Buscar JSON en el texto
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          console.error('❌ No se encontró JSON en la respuesta:', content);
+          throw new Error('No se pudo extraer JSON de la respuesta de Claude');
+        }
+        result = JSON.parse(jsonMatch[0]);
+      }
     }
 
-    const result = JSON.parse(jsonMatch[0]);
-    console.log('✅ Acta generada');
+    // Validar que tenga los campos necesarios
+    if (!result.minutes || !result.tasks) {
+      console.error('❌ Respuesta inválida:', result);
+      throw new Error('La respuesta no tiene el formato esperado');
+    }
+
+    console.log('✅ Acta generada correctamente');
+    console.log('📋 Tareas extraídas:', result.tasks.length);
     
     return {
       success: true,

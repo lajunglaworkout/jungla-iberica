@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
-import { generateMeetingMinutesViaBackend } from '../../services/transcriptionBackendService';
+import { generateMeetingMinutes } from '../../services/meetingRecordingService'; // 🔧 Usar Claude API directamente
 import { 
   saveMeetingMetrics, 
   saveMeetingObjectives, 
@@ -702,8 +702,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
       console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
       
-      // Generar acta usando DeepSeek via backend
-      const result = await generateMeetingMinutesViaBackend(
+      // 🔧 NUEVO: Generar acta usando Claude API directamente (funciona en producción)
+      const result = await generateMeetingMinutes(
         transcription,
         meeting?.title || 'Nueva Reunión',
         participants || []
