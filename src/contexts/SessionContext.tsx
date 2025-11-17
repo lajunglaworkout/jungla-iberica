@@ -314,13 +314,35 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (document.visibilityState === 'visible' && mounted) {
         console.log('👁️ Página visible de nuevo, verificando sesión...');
         
+        // Si está cargando, forzar a false después de un tiempo
+        if (loading) {
+          console.log('⚠️ Detectado loading=true al volver, forzando a false');
+          setTimeout(() => {
+            if (mounted) {
+              setLoading(false);
+            }
+          }, 1000);
+        }
+        
         // Verificar que la sesión sigue activa
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.user && !user) {
-          console.log('🔄 Restaurando sesión después de cambio de pestaña');
-          setUser(session.user);
-          await loadEmployeeData(session.user.id, session.user.email!);
+        if (session?.user) {
+          console.log('✅ Sesión activa confirmada:', session.user.email);
+          
+          // Si no hay usuario cargado, restaurar
+          if (!user) {
+            console.log('🔄 Restaurando sesión después de cambio de pestaña');
+            setUser(session.user);
+            setLoading(true);
+            await loadEmployeeData(session.user.id, session.user.email!);
+            setLoading(false);
+          } else {
+            console.log('✅ Usuario ya cargado, no es necesario restaurar');
+          }
+        } else {
+          console.log('❌ No hay sesión activa al volver');
+          setLoading(false);
         }
       }
     };

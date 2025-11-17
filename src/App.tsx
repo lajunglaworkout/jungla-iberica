@@ -1119,8 +1119,24 @@ const ErrorScreen: React.FC<{ error: string; onRetry?: () => void }> = ({ error,
 // ============ COMPONENTE DE CONTENIDO ============
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading, error, employee, userRole } = useSession();
+  const [forceShowContent, setForceShowContent] = useState(false);
 
-  if (loading) {
+  // 🔧 TIMEOUT DE SEGURIDAD: Si loading está activo más de 5 segundos, forzar mostrar contenido
+  useEffect(() => {
+    if (loading) {
+      console.log('⏱️ Loading activo, iniciando timeout de seguridad...');
+      const timeout = setTimeout(() => {
+        console.log('⚠️ Timeout de seguridad alcanzado, forzando mostrar contenido');
+        setForceShowContent(true);
+      }, 5000); // 5 segundos máximo
+
+      return () => clearTimeout(timeout);
+    } else {
+      setForceShowContent(false);
+    }
+  }, [loading]);
+
+  if (loading && !forceShowContent) {
     return <LoadingScreen />;
   }
 
