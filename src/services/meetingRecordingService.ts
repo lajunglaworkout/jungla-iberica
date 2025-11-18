@@ -285,24 +285,17 @@ RESPONDE SOLO con este JSON (sin markdown):
   ]
 }`;
 
-    console.log('🤖 Llamando a Claude API...');
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // 🔧 USAR NETLIFY FUNCTION en lugar de llamar directamente a Claude
+    console.log('🤖 Llamando a Netlify Function...');
+    const response = await fetch('/.netlify/functions/generate-minutes', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000,
-        temperature: 0.3,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
+        transcript: transcript,
+        meetingTitle: meetingTitle,
+        participants: participants
       })
     });
 
@@ -313,42 +306,20 @@ RESPONDE SOLO con este JSON (sin markdown):
     }
 
     const data = await response.json();
-    console.log('📥 Respuesta de Claude recibida');
+    console.log('📥 Respuesta de Netlify Function recibida');
     
-    const content = data.content[0].text;
-    console.log('📄 Contenido:', content.substring(0, 200) + '...');
-    
-    // 🔧 MEJORADO: Parseo más robusto
-    let result;
-    try {
-      // Intentar parsear directamente
-      result = JSON.parse(content);
-    } catch (e1) {
-      console.log('⚠️ Parseo directo falló, intentando extraer JSON...');
-      try {
-        // Remover markdown si existe
-        const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        result = JSON.parse(cleanContent);
-      } catch (e2) {
-        console.log('⚠️ Parseo con limpieza falló, intentando regex...');
-        // Buscar JSON en el texto
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          console.error('❌ No se encontró JSON en la respuesta:', content);
-          throw new Error('No se pudo extraer JSON de la respuesta de Claude');
-        }
-        result = JSON.parse(jsonMatch[0]);
-      }
-    }
-
-    // Validar que tenga los campos necesarios
-    if (!result.minutes || !result.tasks) {
-      console.error('❌ Respuesta inválida:', result);
-      throw new Error('La respuesta no tiene el formato esperado');
+    // La función de Netlify ya devuelve el formato correcto
+    if (!data.success) {
+      throw new Error(data.error || 'Error generando acta');
     }
 
     console.log('✅ Acta generada correctamente');
-    console.log('📋 Tareas extraídas:', result.tasks.length);
+    console.log('📋 Tareas extraídas:', data.tasks?.length || 0);
+    
+    const result = {
+      minutes: data.minutes,
+      tasks: data.tasks
+    };
     
     return {
       success: true,
