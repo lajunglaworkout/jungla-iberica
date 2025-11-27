@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronDown, Plus, Trash2, Loader, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
@@ -113,6 +113,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // 🔧 NUEVO: Prevenir guardado múltiple
+  const savingRef = useRef(false); // 🔧 EXTRA: Ref para prevenir race conditions
 
   useEffect(() => {
     loadPreviousTasks();
@@ -731,14 +732,18 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   // Nueva función para guardar después de revisar
   const handleSaveAfterReview = async () => {
-    // ⚠️ PREVENIR GUARDADO MÚLTIPLE
-    if (isSaving) {
+    // ⚠️ PREVENIR GUARDADO MÚLTIPLE (doble check con state y ref)
+    console.log('🔵 handleSaveAfterReview llamado, isSaving:', isSaving, 'savingRef:', savingRef.current);
+    
+    if (isSaving || savingRef.current) {
       console.log('⚠️ Ya se está guardando, ignorando click');
       return;
     }
 
     try {
+      console.log('🟢 Iniciando guardado, setIsSaving(true) y savingRef.current = true');
       setIsSaving(true); // Bloquear botón
+      savingRef.current = true; // Bloquear con ref también
       const transcription = manualTranscript || recordedTranscript;
       
       // Calcular métricas
@@ -888,10 +893,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         onClose();
       }
     } catch (error) {
-      console.error('Error guardando reunión:', error);
+      console.error('🔴 Error guardando reunión:', error);
       alert('Error al guardar la reunión: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     } finally {
+      console.log('🟡 Finally ejecutado, setIsSaving(false) y savingRef.current = false');
       setIsSaving(false); // Desbloquear botón
+      savingRef.current = false; // Desbloquear ref también
     }
   };
 
