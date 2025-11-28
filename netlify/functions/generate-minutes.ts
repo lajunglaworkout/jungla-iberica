@@ -20,19 +20,16 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Obtener API key de las variables de entorno
-    // Intenta primero ANTHROPIC_API_KEY (Netlify Dev) y luego VITE_ANTHROPIC_API_KEY (producción)
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    // Obtener API key de Google Gemini
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
     
-    console.log('🔑 Verificando API key:', apiKey ? '✅ Encontrada' : '❌ No encontrada');
-    console.log('🔑 ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅' : '❌');
-    console.log('🔑 VITE_ANTHROPIC_API_KEY:', process.env.VITE_ANTHROPIC_API_KEY ? '✅' : '❌');
+    console.log('🔑 Verificando Google Gemini API key:', apiKey ? '✅ Encontrada' : '❌ No encontrada');
     
     if (!apiKey) {
-      console.error('❌ API key no configurada');
+      console.error('❌ Google Gemini API key no configurada');
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: 'API key not configured' })
+        body: JSON.stringify({ error: 'Google Gemini API key not configured' })
       };
     }
 
@@ -61,44 +58,47 @@ RESPONDE SOLO con este JSON (sin markdown):
   ]
 }`;
 
-    console.log('🤖 Llamando a Claude API desde Netlify Function...');
+    console.log('🤖 Llamando a Google Gemini API desde Netlify Function...');
 
-    // Llamar a Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Llamar a Google Gemini API (v1 con gemini-1.5-pro)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 4000,
-        temperature: 0.3,
-        messages: [
+        contents: [
           {
-            role: 'user',
-            content: prompt
+            parts: [
+              {
+                text: `Eres un asistente experto en generar actas de reuniones profesionales en español. Debes extraer información clave y estructurarla de forma clara.\n\n${prompt}`
+              }
+            ]
           }
-        ]
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4000
+        }
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Error de Claude API:', errorData);
+      console.error('❌ Error de Google Gemini API:', errorData);
       return {
         statusCode: response.status,
         body: JSON.stringify({ 
-          error: `Error en API (${response.status}): ${errorData.error?.message || response.statusText}` 
+          error: `Error en Google Gemini API (${response.status}): ${errorData.error?.message || response.statusText}` 
         })
       };
     }
 
     const data = await response.json();
-    console.log('📥 Respuesta de Claude recibida');
+    console.log('📥 Respuesta de Google Gemini recibida');
     
-    const content = data.content[0].text;
+    // Google Gemini usa: data.candidates[0].content.parts[0].text
+    const content = data.candidates[0].content.parts[0].text;
     console.log('📄 Contenido:', content.substring(0, 200) + '...');
     
     // Parseo robusto
