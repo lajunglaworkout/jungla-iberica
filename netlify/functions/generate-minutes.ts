@@ -21,10 +21,15 @@ export const handler: Handler = async (event) => {
     }
 
     // Obtener API key de las variables de entorno
-    const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+    // Intenta primero ANTHROPIC_API_KEY (Netlify Dev) y luego VITE_ANTHROPIC_API_KEY (producción)
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+    
+    console.log('🔑 Verificando API key:', apiKey ? '✅ Encontrada' : '❌ No encontrada');
+    console.log('🔑 ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅' : '❌');
+    console.log('🔑 VITE_ANTHROPIC_API_KEY:', process.env.VITE_ANTHROPIC_API_KEY ? '✅' : '❌');
     
     if (!apiKey) {
-      console.error('❌ VITE_ANTHROPIC_API_KEY no configurada');
+      console.error('❌ API key no configurada');
       return {
         statusCode: 500,
         body: JSON.stringify({ error: 'API key not configured' })
@@ -67,7 +72,7 @@ RESPONDE SOLO con este JSON (sin markdown):
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-5-sonnet-20240620',
         max_tokens: 4000,
         temperature: 0.3,
         messages: [
