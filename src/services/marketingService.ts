@@ -50,7 +50,7 @@ export interface Competitor {
 }
 
 // Mock Data
-const MOCK_PROFILE: InstagramProfile = {
+export const MOCK_PROFILE: InstagramProfile = {
     username: 'lajungla_iberica',
     followers: 12543,
     following: 450,
@@ -62,7 +62,7 @@ const MOCK_PROFILE: InstagramProfile = {
     impressions_last_30d: 120500
 };
 
-const MOCK_POSTS: PostMetric[] = [
+export const MOCK_POSTS: PostMetric[] = [
     {
         id: '1',
         type: 'reel',

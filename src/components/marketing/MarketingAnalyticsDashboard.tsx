@@ -7,7 +7,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useFacebookSdk } from '../../hooks/useFacebookSdk';
-import { marketingService, InstagramProfile, PostMetric } from '../../services/marketingService';
+import { marketingService, InstagramProfile, PostMetric, MOCK_PROFILE, MOCK_POSTS } from '../../services/marketingService';
 
 const MarketingAnalyticsDashboard: React.FC = () => {
     const { login, isSdkLoaded, sdkError } = useFacebookSdk();
@@ -17,6 +17,7 @@ const MarketingAnalyticsDashboard: React.FC = () => {
     const [engagementHistory, setEngagementHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
+    const [isDemoMode, setIsDemoMode] = useState(false);
 
     const loadData = async (token: string) => {
         setLoading(true);
@@ -29,6 +30,7 @@ const MarketingAnalyticsDashboard: React.FC = () => {
             setProfile(realProfile);
             setTopPosts(realPosts);
             setIsConnected(true);
+            setIsDemoMode(false);
 
             const historyData = await marketingService.getEngagementHistory();
             setEngagementHistory(historyData);
@@ -40,6 +42,20 @@ const MarketingAnalyticsDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDemoMode = async () => {
+        setLoading(true);
+        // Simulate loading
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setProfile(MOCK_PROFILE);
+        setTopPosts(MOCK_POSTS);
+        setIsConnected(true);
+        setIsDemoMode(true);
+
+        const historyData = await marketingService.getEngagementHistory();
+        setEngagementHistory(historyData);
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -99,29 +115,41 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                     <p className="text-gray-500 mb-6 max-w-md text-center">
                         Desbloquea el poder de la IA. Analizamos tu perfil para darte ideas de contenido que realmente funcionan.
                     </p>
-                    <button
-                        onClick={handleConnect}
-                        disabled={!isSdkLoaded || !!sdkError}
-                        className={`bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-3 ${(!isSdkLoaded || !!sdkError) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        {sdkError ? (
-                            <>
-                                <Zap className="w-6 h-6 text-red-200" />
-                                {sdkError}
-                            </>
-                        ) : isSdkLoaded ? (
-                            <>
-                                <Instagram className="w-6 h-6" />
-                                Conectar Cuenta Business
-                            </>
-                        ) : (
-                            <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                Cargando SDK...
-                            </>
-                        )}
-                    </button>
-                    <p className="mt-4 text-sm text-gray-500">
+
+                    <div className="flex flex-col gap-3 w-full max-w-xs">
+                        <button
+                            onClick={handleConnect}
+                            disabled={!isSdkLoaded || !!sdkError}
+                            className={`bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center justify-center gap-3 ${(!isSdkLoaded || !!sdkError) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            {sdkError ? (
+                                <>
+                                    <Zap className="w-6 h-6 text-red-200" />
+                                    {sdkError}
+                                </>
+                            ) : isSdkLoaded ? (
+                                <>
+                                    <Instagram className="w-6 h-6" />
+                                    Conectar Cuenta Business
+                                </>
+                            ) : (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                    Cargando SDK...
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={handleDemoMode}
+                            className="bg-white text-gray-600 px-8 py-3 rounded-xl font-medium border border-gray-200 hover:bg-gray-50 hover:text-green-600 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Eye className="w-5 h-5" />
+                            Ver Demo (Sin Conexión)
+                        </button>
+                    </div>
+
+                    <p className="mt-6 text-sm text-gray-400">
                         *Requiere cuenta de Instagram Business vinculada a una página de Facebook.
                     </p>
                 </div>
@@ -139,6 +167,31 @@ const MarketingAnalyticsDashboard: React.FC = () => {
 
     return (
         <div className="space-y-8">
+            {/* Demo Mode Banner */}
+            {isDemoMode && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg flex items-center justify-between animate-fade-in">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-yellow-100 rounded-full">
+                            <Eye className="w-5 h-5 text-yellow-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-yellow-800">Modo Demo Activo</h3>
+                            <p className="text-xs text-yellow-700">Estás viendo datos de ejemplo. Conecta tu cuenta para ver tus métricas reales.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setIsConnected(false);
+                            setIsDemoMode(false);
+                            setProfile(null);
+                        }}
+                        className="text-xs font-medium text-yellow-700 hover:text-yellow-900 underline"
+                    >
+                        Salir de Demo
+                    </button>
+                </div>
+            )}
+
             {/* Header Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Followers */}
