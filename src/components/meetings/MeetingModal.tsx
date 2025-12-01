@@ -734,6 +734,13 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
       console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
 
+      // 🔧 VERIFICACIÓN EXPLÍCITA DE API KEY
+      const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+      if (!apiKey) {
+        console.warn('⚠️ VITE_GOOGLE_API_KEY no encontrada en variables de entorno');
+        alert('⚠️ AVISO: No se detectó la clave de Google (API Key).\n\nEl sistema generará un acta básica en "Modo Offline" sin usar Inteligencia Artificial.\n\nPara arreglar esto, verifica el archivo .env');
+      }
+
       // 🔧 NUEVO: Generar acta usando Claude API directamente (funciona en producción)
       const result = await generateMeetingMinutes(
         transcription,
@@ -2616,7 +2623,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 2000
+          zIndex: 9999 // 🔧 AUMENTADO para asegurar visibilidad
         }}>
           <div style={{
             backgroundColor: 'white',
@@ -2626,7 +2633,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             maxHeight: '90vh',
             overflow: 'hidden',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
           }}>
             {/* Header */}
             <div style={{
@@ -2635,16 +2643,38 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              backgroundColor: '#f9fafb'
+              backgroundColor: generatedMinutes.includes('Modo Offline') ? '#fff7ed' : '#f9fafb'
             }}>
-              <h2 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                📋 Revisar Acta Generada
-              </h2>
+              <div>
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  📋 Revisar Acta Generada
+                  {generatedMinutes.includes('Modo Offline') && (
+                    <span style={{
+                      fontSize: '12px',
+                      padding: '2px 8px',
+                      backgroundColor: '#ffedd5',
+                      color: '#c2410c',
+                      borderRadius: '9999px',
+                      border: '1px solid #fdba74'
+                    }}>
+                      Modo Offline
+                    </span>
+                  )}
+                </h2>
+                {generatedMinutes.includes('Modo Offline') && (
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#c2410c' }}>
+                    ⚠️ Sin conexión a IA (API Key no configurada). Se ha generado una plantilla básica.
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowActaPreview(false)}
                 style={{
