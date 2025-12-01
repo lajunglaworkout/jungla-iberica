@@ -12,34 +12,54 @@ export const useFacebookSdk = () => {
     const [sdkError, setSdkError] = useState<string | null>(null);
 
     useEffect(() => {
+        const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
+        if (!appId) {
+            console.error("VITE_FACEBOOK_APP_ID is missing!");
+            setSdkError("Configuration Error: App ID missing");
+            return;
+        }
+
         const initSdk = () => {
-            window.FB.init({
-                appId: import.meta.env.VITE_FACEBOOK_APP_ID,
-                cookie: true,
-                xfbml: true,
-                version: 'v18.0'
-            });
-            setIsSdkLoaded(true);
+            console.log("Initializing Facebook SDK with App ID:", appId);
+            try {
+                window.FB.init({
+                    appId: appId,
+                    cookie: true,
+                    xfbml: true,
+                    version: 'v18.0'
+                });
+
+                // Verify initialization by calling a method that requires it
+                window.FB.getLoginStatus((response: any) => {
+                    console.log("Facebook SDK initialized successfully. Status:", response.status);
+                    setIsSdkLoaded(true);
+                });
+            } catch (error) {
+                console.error("Error initializing Facebook SDK:", error);
+                setSdkError("Failed to initialize Facebook SDK");
+            }
         };
 
         if (window.FB) {
             initSdk();
-            return;
+        } else {
+            // If script is already loading but FB not ready, hook into fbAsyncInit
+            // If fbAsyncInit is already defined (e.g. from previous load), we might need to chain it or just overwrite if we are the primary consumer.
+            // For safety, we overwrite it to ensure our init runs.
+            window.fbAsyncInit = initSdk;
+
+            (function (d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) { return; }
+                js = d.createElement(s); js.id = id;
+                (js as any).src = "https://connect.facebook.net/en_US/sdk.js";
+                (js as any).onerror = () => {
+                    setSdkError('Facebook SDK blocked. Please disable AdBlocker.');
+                    console.error('Facebook SDK failed to load. Likely blocked by client.');
+                };
+                (fjs as any).parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk'));
         }
-
-        window.fbAsyncInit = initSdk;
-
-        (function (d, s, id) {
-            var js, fjs = d.getElementsByTagName(s)[0];
-            if (d.getElementById(id)) { return; }
-            js = d.createElement(s); js.id = id;
-            (js as any).src = "https://connect.facebook.net/en_US/sdk.js";
-            (js as any).onerror = () => {
-                setSdkError('Facebook SDK blocked. Please disable AdBlocker.');
-                console.error('Facebook SDK failed to load. Likely blocked by client.');
-            };
-            (fjs as any).parentNode.insertBefore(js, fjs);
-        }(document, 'script', 'facebook-jssdk'));
     }, []);
 
     const login = (options: any = {}) => {
