@@ -186,19 +186,56 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Health Score */}
-                <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-6 rounded-2xl shadow-lg text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <BarChart3 className="w-24 h-24" />
-                    </div>
-                    <div className="relative z-10">
-                        <h3 className="text-green-100 text-sm font-medium mb-2">Health Score</h3>
-                        <div className="flex items-end gap-2">
-                            <p className="text-4xl font-bold">92</p>
-                            <span className="text-lg text-green-200 mb-1">/100</span>
+                {/* Total Posts */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-purple-50 rounded-xl">
+                            <Instagram className="w-6 h-6 text-purple-600" />
                         </div>
-                        <p className="text-green-100 text-sm mt-4 bg-white/10 inline-block px-3 py-1 rounded-lg backdrop-blur-sm">
-                            Excelente estado 🚀
+                        <span className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-lg">
+                            <ArrowUpRight className="w-4 h-4 mr-1" />
+                            Active
+                        </span>
+                    </div>
+                    <h3 className="text-gray-500 text-sm font-medium">Publicaciones Totales</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-1">
+                        {profile.posts.toLocaleString()}
+                    </p>
+                </div>
+            </div>
+
+            {/* Content Mix Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-5 rounded-xl border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-pink-50 rounded-lg">
+                        <VideoIcon className="w-6 h-6 text-pink-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500 font-medium">Reels</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {topPosts.filter(p => p.type === 'reel').length}
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                        <ImageIcon className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500 font-medium">Carruseles</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {topPosts.filter(p => p.type === 'carousel').length}
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-xl border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-orange-50 rounded-lg">
+                        <ImageIcon className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500 font-medium">Imágenes</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {topPosts.filter(p => p.type === 'image').length}
                         </p>
                     </div>
                 </div>
@@ -253,10 +290,10 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </div >
 
                 {/* Top Performing Posts */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                < div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100" >
                     <h3 className="text-lg font-bold text-gray-900 mb-6">Top Contenido 🔥</h3>
                     <div className="space-y-6">
                         {topPosts.map((post) => (
@@ -301,9 +338,9 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 };
 

@@ -381,7 +381,8 @@ export const marketingService = {
 
         const igAccountId = igData.instagram_business_account.id;
 
-        const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&access_token=${accessToken}`);
+        // Fetch expanded fields: media_product_type (for Reels) and children (for Carousels)
+        const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,children{media_type}&access_token=${accessToken}`);
         const mediaData = await mediaRes.json();
 
         if (!mediaData.data) {
@@ -389,20 +390,33 @@ export const marketingService = {
             return [];
         }
 
-        return mediaData.data.map((post: any) => ({
-            id: post.id,
-            type: post.media_type.toLowerCase() === 'video' ? 'video' : 'image', // Simplified mapping
-            thumbnail_url: post.thumbnail_url || post.media_url,
-            caption: post.caption || '',
-            likes: post.like_count || 0,
-            comments: post.comments_count || 0,
-            shares: 0, // Not available in basic public fields
-            saves: 0, // Not available in basic public fields
-            reach: 0, // Requires Insights
-            date: post.timestamp.split('T')[0],
-            performance_score: 80, // Placeholder
-            tags: []
-        }));
+        return mediaData.data.map((post: any) => {
+            // Determine precise type
+            let type: 'video' | 'image' | 'carousel' | 'reel' = 'image';
+
+            if (post.media_product_type === 'REELS') {
+                type = 'reel';
+            } else if (post.media_type === 'CAROUSEL_ALBUM') {
+                type = 'carousel';
+            } else if (post.media_type === 'VIDEO') {
+                type = 'video';
+            }
+
+            return {
+                id: post.id,
+                type: type,
+                thumbnail_url: post.thumbnail_url || post.media_url,
+                caption: post.caption || '',
+                likes: post.like_count || 0,
+                comments: post.comments_count || 0,
+                shares: 0, // Not available in basic public fields
+                saves: 0, // Not available in basic public fields
+                reach: 0, // Requires Insights
+                date: post.timestamp.split('T')[0],
+                performance_score: 80, // Placeholder
+                tags: []
+            };
+        });
     },
 
     getAIContentIdeas: async (goal: string, profile?: InstagramProfile, posts?: PostMetric[]): Promise<ContentIdea[]> => {
