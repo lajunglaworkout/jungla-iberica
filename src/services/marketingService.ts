@@ -215,18 +215,24 @@ export const marketingService = {
         // Note: 'reach' and 'impressions' might fail depending on account type/age. We wrap in try/catch or handle gracefully.
         let insights = { reach: 0, impressions: 0 };
         try {
+            // Using days_28 for a monthly view which is more standard and less prone to "data not available for today" errors
             const insightsResponse = await fetch(
-                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=day&access_token=${accessToken}`
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=days_28&access_token=${accessToken}`
             );
-            const insightsData = await insightsResponse.json();
-            if (insightsData.data) {
-                insightsData.data.forEach((item: any) => {
-                    // Sum up the values for the period (usually just 1 day returned if period=day, or 28 days)
-                    // Let's try period=day first as it's more standard for these metrics
-                    const value = item.values[0]?.value || 0;
-                    if (item.name === 'reach') insights.reach = value;
-                    if (item.name === 'impressions') insights.impressions = value;
-                });
+
+            if (!insightsResponse.ok) {
+                const err = await insightsResponse.json();
+                console.warn("Insights API Error:", err);
+            } else {
+                const insightsData = await insightsResponse.json();
+                if (insightsData.data) {
+                    insightsData.data.forEach((item: any) => {
+                        // For days_28, values[0] is the value for the 28-day period ending yesterday/today
+                        const value = item.values[item.values.length - 1]?.value || 0;
+                        if (item.name === 'reach') insights.reach = value;
+                        if (item.name === 'impressions') insights.impressions = value;
+                    });
+                }
             }
         } catch (e) {
             console.warn("Could not fetch insights:", e);
@@ -237,6 +243,27 @@ export const marketingService = {
         );
         const profileData = await profileResponse.json();
 
+        // Calculate Engagement Rate
+        // Formula: Average (Likes + Comments) per post / Followers * 100
+        let engagementRate = 0;
+        try {
+            const mediaForCalcRes = await fetch(
+                `https://graph.facebook.com/v18.0/${igAccountId}/media?fields=like_count,comments_count&limit=10&access_token=${accessToken}`
+            );
+            const mediaForCalc = await mediaForCalcRes.json();
+
+            if (mediaForCalc.data && mediaForCalc.data.length > 0 && profileData.followers_count > 0) {
+                const totalInteractions = mediaForCalc.data.reduce((acc: number, post: any) => {
+                    return acc + (post.like_count || 0) + (post.comments_count || 0);
+                }, 0);
+
+                const avgInteractions = totalInteractions / mediaForCalc.data.length;
+                engagementRate = (avgInteractions / profileData.followers_count) * 100;
+            }
+        } catch (e) {
+            console.warn("Could not calculate engagement rate:", e);
+        }
+
         return {
             username: profileData.username,
             followers: profileData.followers_count,
@@ -244,7 +271,7 @@ export const marketingService = {
             posts: profileData.media_count,
             profile_pic_url: profileData.profile_picture_url,
             biography: profileData.biography,
-            engagement_rate: 0, // Calculated later
+            engagement_rate: parseFloat(engagementRate.toFixed(2)),
             reach_last_30d: insights.reach,
             impressions_last_30d: insights.impressions
         };
