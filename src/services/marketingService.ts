@@ -213,36 +213,50 @@ export const marketingService = {
 
         // 3. Get Profile Info & Insights
         let insights = { reach: 0, impressions: 0 };
+
+        // Fetch Reach (Try days_28 first, then day)
         try {
-            // Try days_28 first (monthly)
-            let insightsResponse = await fetch(
-                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=days_28&access_token=${accessToken}`
+            const reachRes = await fetch(
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach&period=days_28&access_token=${accessToken}`
             );
+            const reachData = await reachRes.json();
 
-            // If days_28 fails (e.g. 400), try period=day
-            if (!insightsResponse.ok) {
-                console.warn("Insights days_28 failed, retrying with period=day...");
-                insightsResponse = await fetch(
-                    `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=day&access_token=${accessToken}`
+            if (!reachRes.ok) {
+                console.warn("Reach API Error (days_28):", JSON.stringify(reachData));
+                // Fallback to day (note: summing daily reach is mathematically incorrect for total reach, but better than 0)
+                const reachDailyRes = await fetch(
+                    `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach&period=day&access_token=${accessToken}`
                 );
-            }
-
-            if (!insightsResponse.ok) {
-                const err = await insightsResponse.json();
-                console.warn("Insights API Error (Final):", err);
-            } else {
-                const insightsData = await insightsResponse.json();
-                if (insightsData.data) {
-                    insightsData.data.forEach((item: any) => {
-                        // Use the last available value
-                        const value = item.values[item.values.length - 1]?.value || 0;
-                        if (item.name === 'reach') insights.reach = value;
-                        if (item.name === 'impressions') insights.impressions = value;
-                    });
+                const reachDailyData = await reachDailyRes.json();
+                if (reachDailyData.data && reachDailyData.data[0]) {
+                    // Just take the last day's reach as a proxy if monthly fails
+                    const values = reachDailyData.data[0].values;
+                    insights.reach = values[values.length - 1]?.value || 0;
                 }
+            } else if (reachData.data && reachData.data[0]) {
+                const values = reachData.data[0].values;
+                insights.reach = values[values.length - 1]?.value || 0;
             }
         } catch (e) {
-            console.warn("Could not fetch insights:", e);
+            console.warn("Reach Fetch Exception:", e);
+        }
+
+        // Fetch Impressions (period=day is usually safer, then sum them up for 28 days)
+        try {
+            const impRes = await fetch(
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=impressions&period=day&since=${Math.floor(Date.now() / 1000) - 2592000}&until=${Math.floor(Date.now() / 1000)}&access_token=${accessToken}`
+            );
+            const impData = await impRes.json();
+
+            if (!impRes.ok) {
+                console.warn("Impressions API Error:", JSON.stringify(impData));
+            } else if (impData.data && impData.data[0]) {
+                // Sum up all daily impressions
+                const values = impData.data[0].values;
+                insights.impressions = values.reduce((acc: number, curr: any) => acc + (curr.value || 0), 0);
+            }
+        } catch (e) {
+            console.warn("Impressions Fetch Exception:", e);
         }
 
         const profileResponse = await fetch(
