@@ -12,12 +12,7 @@ export const useFacebookSdk = () => {
     const [sdkError, setSdkError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (window.FB) {
-            setIsSdkLoaded(true);
-            return;
-        }
-
-        window.fbAsyncInit = function () {
+        const initSdk = () => {
             window.FB.init({
                 appId: import.meta.env.VITE_FACEBOOK_APP_ID,
                 cookie: true,
@@ -26,6 +21,13 @@ export const useFacebookSdk = () => {
             });
             setIsSdkLoaded(true);
         };
+
+        if (window.FB) {
+            initSdk();
+            return;
+        }
+
+        window.fbAsyncInit = initSdk;
 
         (function (d, s, id) {
             var js, fjs = d.getElementsByTagName(s)[0];
