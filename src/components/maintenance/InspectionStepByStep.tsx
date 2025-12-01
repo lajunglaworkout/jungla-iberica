@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  User, 
-  MapPin, 
-  Camera, 
+import {
+  Calendar,
+  User,
+  MapPin,
+  Camera,
   ArrowLeft,
   ArrowRight,
   CheckCircle,
@@ -18,6 +18,7 @@ interface InspectionStepByStepProps {
   userName: string;
   centerName: string;
   centerId: string;
+  availableCenters?: Array<{ id: string; name: string }>;
   onBack: () => void;
 }
 
@@ -26,57 +27,103 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   userName,
   centerName,
   centerId,
+  availableCenters: providedCenters,
   onBack
 }) => {
-  const [currentStep, setCurrentStep] = useState(0); // 0 = inicio, 1-9 = zonas, 10 = resumen
-  const [selectedCenter, setSelectedCenter] = useState({ id: centerId, name: centerName });
-  const [inspectionData, setInspectionData] = useState<any>({});
+  // Centros disponibles (usar prop o solo el actual)
+  const availableCenters = providedCenters || [{ id: centerId, name: centerName }];
 
-  // Centros disponibles
-  const availableCenters = [
-    { id: 'sevilla', name: 'Centro Sevilla' },
-    { id: 'jerez', name: 'Centro Jerez' },
-    { id: 'puerto', name: 'Centro Puerto' }
-  ];
+  const [currentStep, setCurrentStep] = useState(0); // 0 = inicio, 1-9 = zonas, 10 = resumen
+  const [selectedCenter, setSelectedCenter] = useState(
+    (centerId && centerName)
+      ? { id: centerId, name: centerName }
+      : (availableCenters.length > 0 ? availableCenters[0] : { id: '', name: '' })
+  );
+  const [inspectionData, setInspectionData] = useState<any>({});
+  const [inspectionId, setInspectionId] = useState<string | null>(null);
 
   // Inicializar datos de inspección
   useEffect(() => {
-    const items: any = {};
-    
-    MAINTENANCE_ZONES.forEach(zone => {
-      const zoneConcepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
-      
-      zoneConcepts.forEach(concept => {
-        const itemId = `${zone.id}_${concept.id}`;
-        items[itemId] = {
-          id: itemId,
-          zone_id: zone.id,
-          zone_name: zone.name,
-          concept_id: concept.id,
-          concept_name: concept.name,
-          status: 'bien',
-          observations: '',
-          task_to_perform: '',
-          task_priority: 'baja',
-          photos_deterioro: [],
-          photos_reparacion: [],
-          photos_required: false
-        };
+    const initializeInspection = async () => {
+      // 1. Inicializar estructura vacía
+      const items: any = {};
+      MAINTENANCE_ZONES.forEach(zone => {
+        const zoneConcepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
+        zoneConcepts.forEach(concept => {
+          const itemId = `${zone.id}_${concept.id}`;
+          items[itemId] = {
+            id: itemId,
+            zone_id: zone.id,
+            zone_name: zone.name,
+            concept_id: concept.id,
+            concept_name: concept.name,
+            status: 'bien',
+            observations: '',
+            task_to_perform: '',
+            task_priority: 'baja',
+            photos_deterioro: [],
+            photos_reparacion: [],
+            photos_required: false
+          };
+        });
       });
-    });
-    
-    setInspectionData((prev: any) => ({ ...prev, ...items }));
-  }, []);
+
+      // 2. Iniciar/Cargar inspección desde BD
+      if (selectedCenter && selectedCenter.id) {
+        try {
+          const result = await maintenanceService.startInspection(selectedCenter.id, userName);
+          if (result.success && result.inspectionId) {
+            setInspectionId(result.inspectionId);
+
+            // Cargar items existentes
+            const itemsResult = await maintenanceService.getInspectionItems(result.inspectionId);
+            if (itemsResult.success && itemsResult.data) {
+              itemsResult.data.forEach(dbItem => {
+                const key = `${dbItem.zone_id}_${dbItem.concept_id}`;
+                if (items[key]) {
+                  items[key] = {
+                    ...items[key],
+                    uuid: dbItem.id, // Guardar ID de BD
+                    status: dbItem.status,
+                    observations: dbItem.observations,
+                    task_to_perform: dbItem.task_to_perform,
+                    task_priority: dbItem.task_priority,
+                    photos_required: dbItem.photos_required,
+                    photos_deterioro: dbItem.photos_deterioro || [],
+                    photos_reparacion: dbItem.photos_reparacion || []
+                  };
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error initializing inspection:', error);
+        }
+      }
+
+      setInspectionData(items);
+    };
+
+    initializeInspection();
+  }, [selectedCenter, userName]);
 
   // Actualizar item de inspección
   const updateInspectionItem = (itemId: string, updates: any) => {
-    setInspectionData((prev: any) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        ...updates
+    setInspectionData((prev: any) => {
+      const currentItem = prev[itemId];
+      const newItem = { ...currentItem, ...updates };
+
+      // Guardar en BD si tenemos UUID (debounce simple: guardar siempre por ahora)
+      if (currentItem.uuid) {
+        maintenanceService.updateInspectionItemProgress(currentItem.uuid, updates)
+          .catch(err => console.error('Error saving item progress:', err));
       }
-    }));
+
+      return {
+        ...prev,
+        [itemId]: newItem
+      };
+    });
   };
 
   // Calcular progreso
@@ -86,14 +133,15 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   };
 
   const handleSubmitInspection = async () => {
+    if (!inspectionId) {
+      alert('Error: No hay ID de inspección activo');
+      return;
+    }
+
     try {
       console.log(' Enviando inspección...');
-      
+
       // Preparar datos de la inspección
-      const inspectionDate = new Date();
-      const inspectionMonth = inspectionDate.toISOString().substring(0, 7); // "2025-09"
-      
-      // Calcular estadísticas
       const allItems = Object.values(inspectionData) as any[];
       const itemsOk = allItems.filter((item: any) => item.status === 'bien').length;
       const itemsRegular = allItems.filter((item: any) => item.status === 'regular').length;
@@ -101,66 +149,21 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
       const totalItems = allItems.length;
       const overallScore = Math.round(((itemsOk * 100) + (itemsRegular * 60) + (itemsBad * 20)) / totalItems);
 
-      // Crear objeto de inspección
-      const inspection = {
-        center_id: selectedCenter.id,
-        center_name: selectedCenter.name,
-        inspector_name: userName,
-        inspector_email: userEmail,
-        inspection_date: inspectionDate.toISOString(),
-        inspection_month: inspectionMonth,
-        inspection_year: inspectionDate.getFullYear(),
-        status: 'completed' as const,
+      const summaryData = {
         total_items: totalItems,
         items_ok: itemsOk,
         items_regular: itemsRegular,
         items_bad: itemsBad,
         overall_score: overallScore,
-        notes: '',
-        created_at: inspectionDate.toISOString(),
-        updated_at: inspectionDate.toISOString()
+        notes: ''
       };
 
-      // Preparar items de inspección
-      const items = Object.entries(inspectionData).map(([itemId, item]) => {
-        const [zoneId, conceptId] = itemId.split('_');
-        const zone = MAINTENANCE_ZONES.find(z => z.id === zoneId);
-        const concept = MAINTENANCE_CONCEPTS.find(c => c.id === conceptId);
-        const itemData = item as any;
-        
-        return {
-          id: `${Date.now()}_${itemId}`,
-          inspection_id: '', // Se asignará después de crear la inspección
-          zone_id: zoneId,
-          zone_name: zone?.name || 'Zona desconocida',
-          concept_id: conceptId,
-          concept_name: concept?.name || 'Concepto desconocido',
-          status: itemData.status || 'bien',
-          observations: itemData.observations || '',
-          task_to_perform: itemData.task_to_perform || '',
-          task_priority: itemData.task_priority || 'baja',
-          task_status: 'pendiente' as const,
-          photos_required: itemData.photos_required || false,
-          photo_urls: itemData.photo_urls || [],
-          photos_deterioro: itemData.photo_urls || [],
-          is_critical_for_checklist: itemData.status === 'mal',
-          can_close_task: false,
-          beni_notified: false,
-          created_at: inspectionDate.toISOString(),
-          updated_at: inspectionDate.toISOString()
-        };
-      });
-
-      // Enviar a Supabase usando el servicio
-      const { default: maintenanceService } = await import('../../services/maintenanceService');
-      const result = await maintenanceService.createInspection({
-        inspection,
-        items
-      });
+      // Completar inspección usando el servicio
+      const result = await maintenanceService.completeInspection(inspectionId, summaryData);
 
       if (result.success) {
         console.log(' Inspección enviada correctamente');
-        alert(' Inspección enviada correctamente');
+        alert('✅ Inspección finalizada y guardada correctamente');
         onBack(); // Volver al dashboard
       } else {
         console.error('Error enviando inspección:', result.error);
@@ -176,7 +179,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   // Manejar cambio de estado
   const handleStatusChange = (itemId: string, status: string) => {
     const photosRequired = status !== 'bien';
-    
+
     updateInspectionItem(itemId, {
       status,
       photos_required: photosRequired
@@ -185,190 +188,226 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   // Renderizar paso de inicio
   const renderStartStep = () => (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      padding: '32px'
-    }}>
-      <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-        <Calendar style={{
-          width: '64px',
-          height: '64px',
-          color: '#059669',
-          margin: '0 auto 16px',
-          display: 'block'
-        }} />
+    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      {/* Header Card */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+        padding: '40px',
+        marginBottom: '32px',
+        textAlign: 'center',
+        border: '1px solid #f3f4f6'
+      }}>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          backgroundColor: '#ecfdf5',
+          borderRadius: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          boxShadow: '0 4px 10px rgba(16, 185, 129, 0.1)'
+        }}>
+          <Calendar style={{ width: '40px', height: '40px', color: '#059669' }} />
+        </div>
+
         <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
+          fontSize: '28px',
+          fontWeight: '800',
           color: '#111827',
-          marginBottom: '8px',
-          margin: '0 0 8px 0'
+          marginBottom: '12px',
+          letterSpacing: '-0.02em'
         }}>Inspección Mensual de Mantenimiento</h2>
+
         <p style={{
+          fontSize: '16px',
           color: '#6b7280',
-          margin: 0
-        }}>{selectedCenter.name} - {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</p>
-      </div>
+          marginBottom: '32px'
+        }}>
+          {selectedCenter.name} • {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+        </p>
 
-      {/* Información del inspector */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '16px',
-        marginBottom: '32px'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px',
-          backgroundColor: '#f9fafb',
-          borderRadius: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <User style={{ width: '20px', height: '20px', color: '#9ca3af', marginRight: '12px' }} />
-            <span style={{ color: '#374151' }}>Inspector</span>
-          </div>
-          <span style={{ fontWeight: '500' }}>{userName}</span>
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px',
-          backgroundColor: '#f9fafb',
-          borderRadius: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <MapPin style={{ width: '20px', height: '20px', color: '#9ca3af', marginRight: '12px' }} />
-            <span style={{ color: '#374151' }}>Centro</span>
-          </div>
-          <select
-            value={selectedCenter.id}
-            onChange={(e) => {
-              const center = availableCenters.find(c => c.id === e.target.value);
-              if (center) {
-                setSelectedCenter(center);
-              }
-            }}
-            style={{
-              fontWeight: '500',
-              backgroundColor: 'transparent',
-              border: 'none',
-              outline: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              color: '#111827'
-            }}
-          >
-            {availableCenters.map(center => (
-              <option key={center.id} value={center.id}>
-                {center.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px',
-          backgroundColor: '#f9fafb',
-          borderRadius: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Calendar style={{ width: '20px', height: '20px', color: '#9ca3af', marginRight: '12px' }} />
-            <span style={{ color: '#374151' }}>Fecha</span>
-          </div>
-          <input
-            type="date"
-            value={inspectionData.inspection_date}
-            onChange={(e) => setInspectionData((prev: any) => ({ 
-              ...prev, 
-              inspection_date: e.target.value 
-            }))}
-            style={{
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              fontSize: '14px'
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Zonas a inspeccionar */}
-      <div style={{
-        backgroundColor: '#eff6ff',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '24px',
-        border: '1px solid #dbeafe'
-      }}>
-        <h3 style={{
-          fontWeight: '600',
-          color: '#1e40af',
-          marginBottom: '16px',
-          margin: '0 0 16px 0'
-        }}>📋 Zonas de Inspección ({MAINTENANCE_ZONES.length} zonas)</h3>
+        {/* Info Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '12px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '20px',
+          textAlign: 'left'
         }}>
-          {MAINTENANCE_ZONES.map((zone: any) => (
-            <div key={zone.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: '#1e40af',
-              padding: '12px',
-              backgroundColor: 'white',
-              borderRadius: '6px',
-              border: '1px solid #bfdbfe'
-            }}>
-              <span style={{ marginRight: '8px', fontSize: '18px' }}>{zone.icon}</span>
-              <div>
-                <div style={{ fontWeight: '500' }}>{zone.name}</div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                  {MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id).length} conceptos
-                </div>
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            transition: 'all 0.2s'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <User style={{ width: '18px', height: '18px', color: '#6b7280', marginRight: '8px' }} />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Inspector</span>
+            </div>
+            <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{userName}</div>
+          </div>
+
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <MapPin style={{ width: '18px', height: '18px', color: '#6b7280', marginRight: '8px' }} />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Centro</span>
+            </div>
+            <select
+              value={selectedCenter.id.toString()}
+              onChange={(e) => {
+                const center = availableCenters.find(c => c.id.toString() === e.target.value);
+                if (center) setSelectedCenter(center);
+              }}
+              style={{
+                width: '100%',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
+                backgroundColor: 'transparent',
+                border: 'none',
+                outline: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                margin: 0
+              }}
+            >
+              {availableCenters.map(center => (
+                <option key={center.id} value={center.id}>{center.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <Calendar style={{ width: '18px', height: '18px', color: '#6b7280', marginRight: '8px' }} />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
+            </div>
+            <input
+              type="date"
+              value={inspectionData.inspection_date || ''}
+              onChange={(e) => setInspectionData((prev: any) => ({ ...prev, inspection_date: e.target.value }))}
+              style={{
+                width: '100%',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
+                backgroundColor: 'transparent',
+                border: 'none',
+                outline: 'none',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Zones Grid */}
+      <h3 style={{
+        fontSize: '18px',
+        fontWeight: '700',
+        color: '#374151',
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '24px',
+          height: '24px',
+          backgroundColor: '#e5e7eb',
+          borderRadius: '50%',
+          fontSize: '12px',
+          marginRight: '10px'
+        }}>{MAINTENANCE_ZONES.length}</span>
+        Zonas a Inspeccionar
+      </h3>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: '16px',
+        marginBottom: '40px'
+      }}>
+        {MAINTENANCE_ZONES.map((zone: any) => (
+          <div key={zone.id} style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '1px solid #f3f4f6',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+            display: 'flex',
+            alignItems: 'center',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            cursor: 'default'
+          }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.05)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
+            }}
+          >
+            <div style={{
+              fontSize: '24px',
+              marginRight: '16px',
+              filter: 'grayscale(0.2)'
+            }}>{zone.icon}</div>
+            <div>
+              <div style={{ fontWeight: '600', color: '#111827', marginBottom: '2px' }}>{zone.name}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                {MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id).length} puntos de control
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       <button
         onClick={() => setCurrentStep(1)}
         style={{
           width: '100%',
-          backgroundColor: '#059669',
+          backgroundColor: '#10b981',
           color: 'white',
-          padding: '12px 24px',
-          borderRadius: '8px',
+          padding: '18px',
+          borderRadius: '12px',
           border: 'none',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '16px',
-          fontWeight: '500',
-          transition: 'background-color 0.2s'
+          fontSize: '18px',
+          fontWeight: '600',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+          transition: 'all 0.2s'
         }}
         onMouseOver={(e) => {
-          e.currentTarget.style.backgroundColor = '#047857';
+          e.currentTarget.style.backgroundColor = '#059669';
+          e.currentTarget.style.transform = 'translateY(-1px)';
         }}
         onMouseOut={(e) => {
-          e.currentTarget.style.backgroundColor = '#059669';
+          e.currentTarget.style.backgroundColor = '#10b981';
+          e.currentTarget.style.transform = 'none';
         }}
       >
         Comenzar Inspección
-        <ArrowRight style={{ width: '20px', height: '20px', marginLeft: '8px' }} />
+        <ArrowRight style={{ width: '24px', height: '24px', marginLeft: '12px' }} />
       </button>
     </div>
   );
@@ -377,56 +416,61 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   const renderZoneStep = (zoneIndex: number) => {
     const zone = MAINTENANCE_ZONES[zoneIndex];
     const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
-    
+
     return (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        padding: '32px'
-      }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        {/* Zone Header */}
         <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+          padding: '32px',
+          marginBottom: '32px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '24px'
+          border: '1px solid #f3f4f6'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '8px',
-              backgroundColor: zone.color + '20',
+              width: '64px',
+              height: '64px',
+              borderRadius: '16px',
+              backgroundColor: zone.color + '15',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: '16px',
-              fontSize: '20px'
+              marginRight: '24px',
+              fontSize: '28px',
+              boxShadow: `0 4px 12px ${zone.color}20`
             }}>
               {zone.icon}
             </div>
             <div>
               <h2 style={{
                 fontSize: '24px',
-                fontWeight: 'bold',
+                fontWeight: '800',
                 color: '#111827',
-                margin: '0 0 4px 0'
+                margin: '0 0 4px 0',
+                letterSpacing: '-0.02em'
               }}>{zone.name}</h2>
               <p style={{
                 color: '#6b7280',
-                margin: 0
+                margin: 0,
+                fontSize: '15px'
               }}>{zone.description}</p>
             </div>
           </div>
           <div style={{
-            backgroundColor: '#eff6ff',
+            backgroundColor: '#f3f4f6',
             padding: '8px 16px',
-            borderRadius: '20px',
+            borderRadius: '100px',
             fontSize: '14px',
-            color: '#1e40af',
-            fontWeight: '500'
+            color: '#4b5563',
+            fontWeight: '600',
+            border: '1px solid #e5e7eb'
           }}>
-            Zona {zoneIndex + 1} de {MAINTENANCE_ZONES.length}
+            Zona {zoneIndex + 1} / {MAINTENANCE_ZONES.length}
           </div>
         </div>
 
@@ -434,23 +478,29 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
           display: 'flex',
           flexDirection: 'column',
           gap: '24px',
-          marginBottom: '32px'
+          marginBottom: '40px'
         }}>
           {zoneConcepts.map((concept: any) => {
             const itemId = `${zone.id}_${concept.id}`;
             const item = inspectionData[itemId];
-            
+            const isProblem = item?.status !== 'bien';
+
             return (
               <div key={itemId} style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '20px'
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                border: isProblem ? '1px solid #fecaca' : '1px solid #f3f4f6',
+                boxShadow: isProblem ? '0 4px 12px rgba(220, 38, 38, 0.05)' : '0 2px 4px rgba(0, 0, 0, 0.02)',
+                padding: '24px',
+                transition: 'all 0.3s'
               }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '16px'
+                  marginBottom: isProblem ? '24px' : '0',
+                  flexWrap: 'wrap',
+                  gap: '16px'
                 }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -458,93 +508,113 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                     color: '#111827',
                     margin: 0
                   }}>{concept.name}</h3>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {Object.entries(MAINTENANCE_STATUS).map(([statusKey, statusValue]) => (
-                      <button
-                        key={statusKey}
-                        onClick={() => handleStatusChange(itemId, statusKey)}
-                        style={{
-                          padding: '6px 16px',
-                          borderRadius: '20px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          backgroundColor: item?.status === statusKey ? statusValue.color : '#f3f4f6',
-                          color: item?.status === statusKey ? 'white' : '#6b7280',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {statusValue.label}
-                      </button>
-                    ))}
+
+                  <div style={{
+                    display: 'flex',
+                    backgroundColor: '#f3f4f6',
+                    padding: '4px',
+                    borderRadius: '12px',
+                    gap: '4px'
+                  }}>
+                    {Object.entries(MAINTENANCE_STATUS).map(([statusKey, statusValue]) => {
+                      const isActive = item?.status === statusKey;
+                      return (
+                        <button
+                          key={statusKey}
+                          onClick={() => handleStatusChange(itemId, statusKey)}
+                          style={{
+                            padding: '8px 20px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            backgroundColor: isActive ? statusValue.color : 'transparent',
+                            color: isActive ? 'white' : '#6b7280',
+                            transition: 'all 0.2s',
+                            boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                          }}
+                        >
+                          {statusValue.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {item?.status !== 'bien' && (
-                  <div style={{ marginTop: '16px' }}>
-                    <textarea
-                      placeholder="Describe el problema detectado..."
-                      value={item?.observations || ''}
-                      onChange={(e) => updateInspectionItem(itemId, { observations: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        minHeight: '80px',
-                        resize: 'vertical',
-                        fontFamily: 'inherit'
-                      }}
-                    />
-                    
+                {isProblem && (
+                  <div style={{
+                    marginTop: '24px',
+                    paddingTop: '24px',
+                    borderTop: '1px solid #f3f4f6',
+                    animation: 'fadeIn 0.3s ease-in-out'
+                  }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        Observaciones del problema
+                      </label>
+                      <textarea
+                        placeholder="Describe detalladamente el problema detectado..."
+                        value={item?.observations || ''}
+                        onChange={(e) => updateInspectionItem(itemId, { observations: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '16px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '12px',
+                          fontSize: '15px',
+                          minHeight: '100px',
+                          resize: 'vertical',
+                          fontFamily: 'inherit',
+                          backgroundColor: '#f9fafb',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      />
+                    </div>
+
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '16px',
-                      marginTop: '16px'
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: '20px',
+                      marginBottom: '24px'
                     }}>
                       <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: '#374151',
-                          marginBottom: '8px'
-                        }}>Tarea a realizar:</label>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                          Acción Correctiva Sugerida
+                        </label>
                         <input
                           type="text"
-                          placeholder="Ej: Reparar soldadura rota"
+                          placeholder="Ej: Reparar soldadura, sustituir pieza..."
                           value={item?.task_to_perform || ''}
                           onChange={(e) => updateInspectionItem(itemId, { task_to_perform: e.target.value })}
                           style={{
                             width: '100%',
-                            padding: '8px 12px',
+                            padding: '12px 16px',
                             border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px'
+                            borderRadius: '10px',
+                            fontSize: '15px',
+                            backgroundColor: '#f9fafb'
                           }}
                         />
                       </div>
-                      
+
                       <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: '#374151',
-                          marginBottom: '8px'
-                        }}>Prioridad:</label>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                          Prioridad de Reparación
+                        </label>
                         <select
                           value={item?.task_priority || 'baja'}
                           onChange={(e) => updateInspectionItem(itemId, { task_priority: e.target.value })}
                           style={{
                             width: '100%',
-                            padding: '8px 12px',
+                            padding: '12px 16px',
                             border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px'
+                            borderRadius: '10px',
+                            fontSize: '15px',
+                            backgroundColor: '#f9fafb',
+                            cursor: 'pointer'
                           }}
                         >
                           {Object.entries(TASK_PRIORITY).map(([priorityKey, priorityValue]) => (
@@ -558,68 +628,54 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
                     {item?.photos_required && (
                       <div style={{
-                        marginTop: '16px',
-                        padding: '16px',
-                        backgroundColor: '#fef3c7',
-                        borderRadius: '8px',
-                        border: '1px solid #fbbf24'
+                        backgroundColor: '#fffbeb',
+                        borderRadius: '12px',
+                        padding: '20px',
+                        border: '1px dashed #f59e0b'
                       }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          marginBottom: '12px'
-                        }}>
-                          <Camera style={{ width: '20px', height: '20px', color: '#d97706', marginRight: '8px' }} />
-                          <span style={{
-                            fontWeight: '500',
-                            color: '#92400e'
-                          }}>📸 Fotos obligatorias para este estado</span>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', color: '#b45309' }}>
+                          <Camera style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+                          <span style={{ fontWeight: '600' }}>Evidencia Fotográfica Requerida</span>
                         </div>
-                        
+
                         <div style={{
                           display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '12px'
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                          gap: '16px'
                         }}>
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#92400e',
-                              marginBottom: '8px'
-                            }}>Foto del deterioro:</label>
+                          {/* Foto Deterioro */}
+                          <div style={{
+                            border: '2px dashed #cbd5e1',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            textAlign: 'center',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}>
+                            <div style={{ marginBottom: '8px', color: '#64748b' }}>Foto del Problema</div>
                             <input
                               type="file"
                               accept="image/*"
-                              style={{
-                                width: '100%',
-                                padding: '8px',
-                                border: '1px solid #d97706',
-                                borderRadius: '6px',
-                                fontSize: '14px'
-                              }}
+                              style={{ width: '100%' }}
                             />
                           </div>
-                          
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              color: '#92400e',
-                              marginBottom: '8px'
-                            }}>Foto de reparación:</label>
+
+                          {/* Foto Reparación (Opcional en este punto) */}
+                          <div style={{
+                            border: '2px dashed #cbd5e1',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            textAlign: 'center',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}>
+                            <div style={{ marginBottom: '8px', color: '#64748b' }}>Foto Solución (Si aplica)</div>
                             <input
                               type="file"
                               accept="image/*"
-                              style={{
-                                width: '100%',
-                                padding: '8px',
-                                border: '1px solid #d97706',
-                                borderRadius: '6px',
-                                fontSize: '14px'
-                              }}
+                              style={{ width: '100%' }}
                             />
                           </div>
                         </div>
@@ -635,54 +691,57 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          paddingTop: '20px',
+          borderTop: '1px solid #e5e7eb'
         }}>
           <button
             onClick={() => setCurrentStep(currentStep - 1)}
             style={{
-              backgroundColor: '#f3f4f6',
+              backgroundColor: 'white',
               color: '#374151',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '10px',
+              border: '1px solid #d1d5db',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              transition: 'background-color 0.2s'
+              fontWeight: '600',
+              transition: 'all 0.2s'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
           >
-            <ArrowLeft style={{ width: '16px', height: '16px', marginRight: '8px' }} />
+            <ArrowLeft style={{ width: '20px', height: '20px', marginRight: '8px' }} />
             Anterior
           </button>
 
           <button
             onClick={() => setCurrentStep(currentStep + 1)}
             style={{
-              backgroundColor: '#059669',
+              backgroundColor: '#10b981',
               color: 'white',
-              padding: '8px 16px',
-              borderRadius: '8px',
+              padding: '12px 32px',
+              borderRadius: '10px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              transition: 'background-color 0.2s'
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+              transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#047857';
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.backgroundColor = '#10b981';
+              e.currentTarget.style.transform = 'none';
             }}
           >
-            {zoneIndex === MAINTENANCE_ZONES.length - 1 ? 'Ver Resumen' : 'Siguiente'}
-            <ArrowRight style={{ width: '16px', height: '16px', marginLeft: '8px' }} />
+            {zoneIndex === MAINTENANCE_ZONES.length - 1 ? 'Ver Resumen' : 'Siguiente Zona'}
+            <ArrowRight style={{ width: '20px', height: '20px', marginLeft: '8px' }} />
           </button>
         </div>
       </div>
@@ -697,184 +756,187 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
     const mal = items.filter((item: any) => item.status === 'mal').length;
     const total = items.length;
     const score = total > 0 ? Math.round(((bien * 100 + regular * 50) / total)) : 0;
-    
+
+    const getScoreColor = (s: number) => {
+      if (s >= 80) return '#10b981'; // Green
+      if (s >= 60) return '#f59e0b'; // Yellow
+      return '#ef4444'; // Red
+    };
+
     return (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        padding: '32px'
-      }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#111827',
-          marginBottom: '24px',
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+          padding: '40px',
           textAlign: 'center',
-          margin: '0 0 24px 0'
-        }}>📊 Resumen de Inspección</h2>
-
-        {/* Estadísticas generales */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '16px',
-          marginBottom: '32px'
+          border: '1px solid #f3f4f6'
         }}>
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            backgroundColor: '#f0fdf4',
-            borderRadius: '8px',
-            border: '1px solid #bbf7d0'
-          }}>
-            <div style={{
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#15803d'
-            }}>{bien}</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#166534'
-            }}>BIEN</div>
-          </div>
-          
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            backgroundColor: '#fffbeb',
-            borderRadius: '8px',
-            border: '1px solid #fed7aa'
-          }}>
-            <div style={{
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#ea580c'
-            }}>{regular}</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#c2410c'
-            }}>REGULAR</div>
-          </div>
-          
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            backgroundColor: '#fef2f2',
-            borderRadius: '8px',
-            border: '1px solid #fecaca'
-          }}>
-            <div style={{
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#dc2626'
-            }}>{mal}</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#b91c1c'
-            }}>CRÍTICO</div>
-          </div>
-          
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            backgroundColor: '#eff6ff',
-            borderRadius: '8px',
-            border: '1px solid #bfdbfe'
-          }}>
-            <div style={{
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: '#2563eb'
-            }}>{score}</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#1d4ed8'
-            }}>PUNTUACIÓN</div>
-          </div>
-        </div>
-
-        {/* Notas adicionales */}
-        <div style={{ marginBottom: '32px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '16px',
-            fontWeight: '600',
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: '800',
             color: '#111827',
-            marginBottom: '8px'
-          }}>Notas adicionales:</label>
-          <textarea
-            placeholder="Añade cualquier observación general sobre la inspección..."
-            value={inspectionData.notes}
-            onChange={(e) => setInspectionData((prev: any) => ({ ...prev, notes: e.target.value }))}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              minHeight: '100px',
-              resize: 'vertical',
-              fontFamily: 'inherit'
-            }}
-          />
-        </div>
+            marginBottom: '40px',
+            letterSpacing: '-0.02em'
+          }}>📊 Resumen de Inspección</h2>
 
-        {/* Botones de acción */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <button
-            onClick={() => setCurrentStep(currentStep - 1)}
-            style={{
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-            }}
-          >
-            <ArrowLeft style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-            Anterior
-          </button>
+          {/* Score Circle */}
+          <div style={{
+            width: '160px',
+            height: '160px',
+            borderRadius: '50%',
+            border: `12px solid ${getScoreColor(score)}20`,
+            borderTopColor: getScoreColor(score),
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 40px',
+            transform: 'rotate(-45deg)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ transform: 'rotate(45deg)', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', fontWeight: '800', color: getScoreColor(score), lineHeight: 1 }}>{score}</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280', marginTop: '4px' }}>PUNTUACIÓN</div>
+            </div>
+          </div>
 
-          <button
-            onClick={handleSubmitInspection}
-            style={{
-              backgroundColor: '#059669',
-              color: 'white',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
+          {/* Estadísticas generales */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '20px',
+            marginBottom: '40px'
+          }}>
+            <div style={{
+              padding: '24px',
+              backgroundColor: '#ecfdf5',
+              borderRadius: '16px',
+              border: '1px solid #a7f3d0',
+              transition: 'transform 0.2s'
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
+            >
+              <div style={{ fontSize: '36px', fontWeight: '800', color: '#059669', marginBottom: '4px' }}>{bien}</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#047857', letterSpacing: '0.05em' }}>BIEN</div>
+            </div>
+
+            <div style={{
+              padding: '24px',
+              backgroundColor: '#fffbeb',
+              borderRadius: '16px',
+              border: '1px solid #fde68a',
+              transition: 'transform 0.2s'
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
+            >
+              <div style={{ fontSize: '36px', fontWeight: '800', color: '#d97706', marginBottom: '4px' }}>{regular}</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#b45309', letterSpacing: '0.05em' }}>REGULAR</div>
+            </div>
+
+            <div style={{
+              padding: '24px',
+              backgroundColor: '#fef2f2',
+              borderRadius: '16px',
+              border: '1px solid #fecaca',
+              transition: 'transform 0.2s'
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
+            >
+              <div style={{ fontSize: '36px', fontWeight: '800', color: '#dc2626', marginBottom: '4px' }}>{mal}</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#b91c1c', letterSpacing: '0.05em' }}>CRÍTICO</div>
+            </div>
+          </div>
+
+          {/* Notas adicionales */}
+          <div style={{ marginBottom: '40px', textAlign: 'left' }}>
+            <label style={{
+              display: 'block',
               fontSize: '16px',
-              fontWeight: '600',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#047857';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#059669';
-            }}
-          >
-            <CheckCircle style={{ width: '20px', height: '20px', marginRight: '8px' }} />
-            Enviar Inspección
-          </button>
+              fontWeight: '700',
+              color: '#374151',
+              marginBottom: '12px'
+            }}>Notas adicionales</label>
+            <textarea
+              placeholder="Añade cualquier observación general sobre la inspección..."
+              value={inspectionData.notes || ''}
+              onChange={(e) => setInspectionData((prev: any) => ({ ...prev, notes: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '12px',
+                fontSize: '15px',
+                minHeight: '120px',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                backgroundColor: '#f9fafb'
+              }}
+            />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={() => setCurrentStep(currentStep - 1)}
+              style={{
+                backgroundColor: 'white',
+                color: '#374151',
+                padding: '16px 32px',
+                borderRadius: '12px',
+                border: '1px solid #d1d5db',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            >
+              <ArrowLeft style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+              Volver
+            </button>
+
+            <button
+              onClick={handleSubmitInspection}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '16px 48px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#059669';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#10b981';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+              }}
+            >
+              <CheckCircle style={{ width: '24px', height: '24px', marginRight: '12px' }} />
+              Finalizar Inspección
+            </button>
+          </div>
         </div>
       </div>
     );

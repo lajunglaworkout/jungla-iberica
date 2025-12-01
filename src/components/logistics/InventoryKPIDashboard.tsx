@@ -1,23 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, AlertTriangle, Package, Activity } from 'lucide-react';
 import { inventoryReportsService, InventoryKPIs } from '../../services/inventoryReportsService';
+import { evolutionStatsService, CenterEvolutionStats } from '../../services/evolutionStatsService';
 import CriticalAlertsPanel from './CriticalAlertsPanel';
 import TrendsChart from './TrendsChart';
+import CenterEvolutionCharts from './CenterEvolutionCharts';
 
 const InventoryKPIDashboard: React.FC = () => {
   const [kpis, setKpis] = useState<InventoryKPIs | null>(null);
+  const [evolutionStats, setEvolutionStats] = useState<CenterEvolutionStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadKPIs();
-    const interval = setInterval(loadKPIs, 30000);
+    loadData();
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadKPIs = async () => {
+  const loadData = async () => {
     try {
-      const data = await inventoryReportsService.getInventoryKPIs();
-      setKpis(data);
+      const [kpiData, evolutionData] = await Promise.all([
+        inventoryReportsService.getInventoryKPIs(),
+        evolutionStatsService.getEvolutionStats()
+      ]);
+
+      setKpis(kpiData);
+      setEvolutionStats(evolutionData);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -25,13 +33,13 @@ const InventoryKPIDashboard: React.FC = () => {
     }
   };
 
-  if (loading) return <div style={{padding: '20px', textAlign: 'center'}}>Cargando KPIs...</div>;
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando KPIs...</div>;
   if (!kpis) return null;
 
   return (
     <div style={{ padding: '20px' }}>
       <h2 style={{ color: '#059669', marginBottom: '20px' }}>📊 KPIs Inventario Real</h2>
-      
+
       {/* KPIs Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div style={{ background: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
@@ -65,13 +73,18 @@ const InventoryKPIDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Gráficos de Evolución */}
+      {evolutionStats && (
+        <CenterEvolutionCharts stats={evolutionStats} />
+      )}
+
       {/* Comparativa Centros */}
       <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ margin: '0 0 16px 0', color: '#059669' }}>🏪 Comparativa por Centro</h3>
         {kpis.centerComparison.map(center => (
-          <div key={center.centerName} style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div key={center.centerName} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             padding: '12px',
             borderBottom: '1px solid #e5e7eb'
@@ -83,9 +96,9 @@ const InventoryKPIDashboard: React.FC = () => {
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ 
-                padding: '4px 8px', 
-                borderRadius: '4px', 
+              <div style={{
+                padding: '4px 8px',
+                borderRadius: '4px',
                 backgroundColor: center.healthScore >= 80 ? '#dcfce7' : center.healthScore >= 60 ? '#fef3c7' : '#fee2e2',
                 color: center.healthScore >= 80 ? '#166534' : center.healthScore >= 60 ? '#92400e' : '#991b1b',
                 fontSize: '12px',
@@ -105,8 +118,8 @@ const InventoryKPIDashboard: React.FC = () => {
       <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ margin: '0 0 16px 0', color: '#ef4444' }}>⚠️ Items Más Problemáticos</h3>
         {kpis.topProblematicItems.slice(0, 5).map((item, index) => (
-          <div key={index} style={{ 
-            display: 'flex', 
+          <div key={index} style={{
+            display: 'flex',
             justifyContent: 'space-between',
             padding: '8px 0',
             borderBottom: index < 4 ? '1px solid #e5e7eb' : 'none'
@@ -127,7 +140,7 @@ const InventoryKPIDashboard: React.FC = () => {
 
       {/* Gráfico de Tendencias */}
       <div style={{ marginBottom: '20px' }}>
-        <TrendsChart 
+        <TrendsChart
           title="📈 Tendencias Clave"
           data={[
             { label: 'Items Totales', current: kpis.totalItems, previous: Math.round(kpis.totalItems * 0.95) },

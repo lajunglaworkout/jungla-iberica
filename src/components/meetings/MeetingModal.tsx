@@ -5,10 +5,10 @@ import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
 import { generateMeetingMinutes } from '../../services/meetingRecordingService'; // 🔧 Usar Claude API directamente
-import { 
-  saveMeetingMetrics, 
-  saveMeetingObjectives, 
-  saveMeetingBottlenecks 
+import {
+  saveMeetingMetrics,
+  saveMeetingObjectives,
+  saveMeetingBottlenecks
 } from '../../services/meetingAnalyticsService';
 
 interface MeetingModalProps {
@@ -97,17 +97,17 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [generatingActa, setGeneratingActa] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
-  
+
   // Estados para preview del acta
   const [generatedMinutes, setGeneratedMinutes] = useState<string>('');
   const [generatedTasks, setGeneratedTasks] = useState<any[]>([]);
   const [showActaPreview, setShowActaPreview] = useState(false);
-  
+
   // Estados para programar siguiente reunión
   const [showNextMeetingScheduler, setShowNextMeetingScheduler] = useState(false);
   const [nextMeetingDate, setNextMeetingDate] = useState('');
   const [nextMeetingTime, setNextMeetingTime] = useState('');
-  
+
   // Estados para leads (cuando departamento = ventas)
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
@@ -120,12 +120,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     loadRecurringTasks();
     loadDepartmentObjectives();
     loadEmployees();
-    
+
     // Si el departamento es ventas, cargar leads
     if (departmentId === 'ventas' || departmentId === 'sales') {
       loadLeads();
     }
-    
+
     // Si hay un lead preseleccionado, establecerlo
     if (preselectedLeadId) {
       setSelectedLeadId(preselectedLeadId);
@@ -134,7 +134,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   const loadDepartmentObjectives = () => {
     console.log('🎯 Cargando objetivos para departamento:', departmentId);
-    
+
     // Objetivos predefinidos por departamento
     const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
       contabilidad: [
@@ -191,7 +191,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   const loadRecurringTasks = () => {
     console.log('🔄 Cargando tareas recurrentes para departamento:', departmentId);
-    
+
     // Tareas recurrentes por departamento
     const RECURRING_TASKS_BY_DEPT: Record<string, string[]> = {
       contabilidad: [
@@ -682,10 +682,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const handleGenerateActa = async () => {
     try {
       setGeneratingActa(true);
-      
+
       // Obtener transcripción (manual o grabada)
       const transcription = manualTranscript || recordedTranscript;
-      
+
       if (!transcription) {
         alert('Por favor, añade una transcripción o graba la reunión');
         setGeneratingActa(false);
@@ -693,16 +693,16 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       }
 
       console.log('🎯 Generando acta con transcripción:', transcription.substring(0, 100) + '...');
-      
+
       // Calcular % de cumplimiento de tareas recurrentes
       const totalRecurringTasks = recurringTasks.length;
       const completedRecurringTasks = Object.values(recurringTasksCompleted).filter(Boolean).length;
-      const completionPercentage = totalRecurringTasks > 0 
-        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100) 
+      const completionPercentage = totalRecurringTasks > 0
+        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100)
         : 0;
 
       console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
-      
+
       // 🔧 NUEVO: Generar acta usando Claude API directamente (funciona en producción)
       const result = await generateMeetingMinutes(
         transcription,
@@ -722,7 +722,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       setGeneratedTasks(result.tasks || []);
       setShowActaPreview(true);
       setGeneratingActa(false);
-      
+
     } catch (error) {
       console.error('Error generando acta:', error);
       alert('❌ Error generando acta: ' + (error instanceof Error ? error.message : 'Error desconocido'));
@@ -734,7 +734,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const handleSaveAfterReview = async () => {
     // ⚠️ PREVENIR GUARDADO MÚLTIPLE (doble check con state y ref)
     console.log('🔵 handleSaveAfterReview llamado, isSaving:', isSaving, 'savingRef:', savingRef.current);
-    
+
     if (isSaving || savingRef.current) {
       console.log('⚠️ Ya se está guardando, ignorando click');
       return;
@@ -745,12 +745,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       setIsSaving(true); // Bloquear botón
       savingRef.current = true; // Bloquear con ref también
       const transcription = manualTranscript || recordedTranscript;
-      
+
       // Calcular métricas
       const totalRecurringTasks = recurringTasks.length;
       const completedRecurringTasks = recurringTasks.filter(task => recurringTasksCompleted[task.id]).length;
-      const completionPercentage = totalRecurringTasks > 0 
-        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100) 
+      const completionPercentage = totalRecurringTasks > 0
+        ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100)
         : 0;
 
       // 1. Guardar reunión en tabla meetings
@@ -759,8 +759,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(12, 0, 0, 0); // Mediodía de ayer
       const meetingDate = yesterday.toISOString();
-      
-      const { data: meetingRecord, error: meetingError} = await supabase
+
+      const { data: meetingRecord, error: meetingError } = await supabase
         .from('meetings')
         .insert({
           title: meeting?.title || 'Nueva Reunión',
@@ -845,6 +845,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           fecha_limite: task.deadline || task.fecha_limite || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           departamento: departmentId,
           reunion_titulo: meeting?.title || 'Nueva Reunión',
+          reunion_id: meetingId, // 🔗 VINCULACIÓN POR ID (FIX DUPLICADOS)
           verificacion_requerida: true
         }));
 
@@ -860,12 +861,12 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       }
 
       const objetivosDefinidos = Object.keys(objectiveValues).length;
-      
+
       // Limpiar estados del preview
       setShowActaPreview(false);
       setGeneratedMinutes('');
       setGeneratedTasks([]);
-      
+
       // Mostrar resumen y preguntar si quiere programar siguiente
       alert(
         `✅ Reunión guardada correctamente!\n\n` +
@@ -875,10 +876,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
         `🎯 Objetivos definidos: ${objetivosDefinidos}/${departmentObjectives.length}\n` +
         `⚠️ Cuellos de botella: ${bottlenecksToSave.length}`
       );
-      
+
       // Preguntar si quiere programar siguiente reunión
       const programarSiguiente = window.confirm('¿Deseas programar la siguiente reunión?');
-      
+
       if (programarSiguiente) {
         // Limpiar campos y mostrar scheduler
         setManualTranscript('');
@@ -1144,7 +1145,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                     }}>
                       👤 {task.asignado_a} • 📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}
                     </div>
-                    
+
                     {/* Si NO está completada, mostrar campo de motivo */}
                     {!previousTasksCompleted[task.id] && (
                       <div style={{ marginBottom: '12px' }}>
@@ -1176,7 +1177,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         />
                       </div>
                     )}
-                    
+
                     <textarea
                       placeholder="Notas sobre esta tarea..."
                       value={taskNotes[task.id] || ''}
@@ -1458,7 +1459,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1467,7 +1468,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>🚨 Bajas activas</div>
                             <div style={{ color: '#6b7280' }}>Cargando bajas de personal...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1499,7 +1500,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1508,7 +1509,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📋 Incidencias en checklist</div>
                             <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1543,7 +1544,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1552,7 +1553,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Propuestas pendientes</div>
                             <div style={{ color: '#6b7280' }}>Cargando propuestas...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1561,7 +1562,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>⚖️ Sanciones activas</div>
                             <div style={{ color: '#6b7280' }}>Cargando sanciones...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1593,7 +1594,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1602,7 +1603,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>📦 Pedidos recibidos</div>
                             <div style={{ color: '#6b7280' }}>Cargando pedidos recibidos...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1634,7 +1635,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1643,7 +1644,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>💔 Roturas reportadas</div>
                             <div style={{ color: '#6b7280' }}>Cargando roturas...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1675,7 +1676,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1684,7 +1685,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>⚠️ Materiales cerca de stock mínimo</div>
                             <div style={{ color: '#6b7280' }}>Cargando materiales con stock bajo...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1716,7 +1717,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1725,7 +1726,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🚚 Envíos pendientes</div>
                             <div style={{ color: '#6b7280' }}>Cargando envíos pendientes...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1760,7 +1761,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1769,7 +1770,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>🔴 Incidencias abiertas</div>
                             <div style={{ color: '#6b7280' }}>Cargando incidencias abiertas...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1778,7 +1779,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>✅ Incidencias cerradas</div>
                             <div style={{ color: '#6b7280' }}>Cargando incidencias cerradas...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1813,7 +1814,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1822,7 +1823,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>🔧 Reparaciones pendientes</div>
                             <div style={{ color: '#6b7280' }}>Cargando reparaciones pendientes...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1858,7 +1859,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1867,7 +1868,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#059669' }}>💰 Coste total reparaciones</div>
                             <div style={{ color: '#6b7280' }}>Cargando costes...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1948,7 +1949,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1957,7 +1958,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>📝 Pagos pendientes de apuntar</div>
                             <div style={{ color: '#6b7280' }}>Cargando pagos sin apuntar...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -1992,7 +1993,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2001,7 +2002,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🔐 Transferencias no recurrentes por autorizar</div>
                             <div style={{ color: '#6b7280' }}>Cargando transferencias pendientes...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2036,7 +2037,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2045,7 +2046,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Gastos extra detectados</div>
                             <div style={{ color: '#6b7280' }}>Cargando gastos fuera de lo normal...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2077,7 +2078,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2086,7 +2087,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Incidencias importantes del checklist</div>
                             <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2167,7 +2168,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2176,7 +2177,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>📅 Próximos eventos</div>
                             <div style={{ color: '#6b7280' }}>Cargando eventos programados...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2208,7 +2209,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2217,7 +2218,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Sugerencias del sistema</div>
                             <div style={{ color: '#6b7280' }}>Cargando sugerencias...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2249,7 +2250,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2258,7 +2259,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📢 Comunicados pendientes</div>
                             <div style={{ color: '#6b7280' }}>Cargando comunicados con franquiciados...</div>
                           </div>
-                          <div style={{ 
+                          <div style={{
                             padding: '8px',
                             backgroundColor: '#fff',
                             borderRadius: '4px',
@@ -2374,7 +2375,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                       value={objectiveValues[objective.nombre] || ''}
                       onChange={(e) => setObjectiveValues(prev => ({
                         ...prev,
-                        [objective.nombre]: objective.tipo === 'numero' || objective.tipo === 'porcentaje' 
+                        [objective.nombre]: objective.tipo === 'numero' || objective.tipo === 'porcentaje'
                           ? parseFloat(e.target.value) || 0
                           : e.target.value
                       }))}
@@ -2503,7 +2504,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
             {meetingType === 'FISICA' ? '🏢 Reunión Física' : '📹 Videollamada'}
           </div>
-          
+
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={onClose}

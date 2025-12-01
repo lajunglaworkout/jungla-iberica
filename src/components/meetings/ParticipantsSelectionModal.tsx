@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, User, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useData } from '../../contexts/DataContext';
 
 interface ParticipantsSelectionModalProps {
   isOpen: boolean;
@@ -39,6 +40,9 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Usar DataContext para obtener empleados ya cargados
+  const { employees: contextEmployees, loading: contextLoading } = useData();
+
   const isVentasDepartment = departmentId === 'ventas' || departmentId === 'sales';
 
   useEffect(() => {
@@ -46,10 +50,18 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
       if (isVentasDepartment) {
         loadLeads();
       } else {
-        loadEmployees();
+        // Usar empleados del contexto
+        const mappedEmployees = contextEmployees.map((emp: any) => ({
+          id: String(emp.id),
+          name: emp.name || (emp.first_name ? `${emp.first_name} ${emp.last_name || ''}` : 'Sin nombre'),
+          email: emp.email,
+          department: emp.departamento || emp.department || 'General'
+        }));
+        setEmployees(mappedEmployees);
+        setFilteredEmployees(mappedEmployees);
       }
     }
-  }, [isOpen, departmentId]);
+  }, [isOpen, departmentId, contextEmployees]);
 
   const loadLeads = async () => {
     setLoading(true);
@@ -78,40 +90,11 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
     }
   };
 
-  const loadEmployees = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('id, name, email, departamento')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Error cargando empleados:', error);
-        setEmployees([]);
-        return;
-      }
-
-      const mappedEmployees = (data || []).map((emp: any) => ({
-        id: emp.id,
-        name: emp.name,
-        email: emp.email,
-        department: emp.departamento
-      }));
-      setEmployees(mappedEmployees);
-      setFilteredEmployees(mappedEmployees);
-    } catch (error) {
-      console.error('Error:', error);
-      setEmployees([]);
-      setFilteredEmployees([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // loadEmployees eliminado porque usamos DataContext
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    
+
     if (isVentasDepartment) {
       // Filtrar leads
       if (value.trim() === '') {
@@ -372,42 +355,42 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
                   overflow: 'auto'
                 }}>
                   {filteredEmployees.map(emp => (
-                  <label
-                    key={emp.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px',
-                      backgroundColor: selectedParticipants.includes(emp.email) ? '#dbeafe' : '#f9fafb',
-                      border: `1px solid ${selectedParticipants.includes(emp.email) ? '#3b82f6' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedParticipants.includes(emp.email)}
-                      onChange={() => handleToggleParticipant(emp.email)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontWeight: '500',
-                        color: '#1f2937'
-                      }}>
-                        {emp.name}
+                    <label
+                      key={emp.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px',
+                        backgroundColor: selectedParticipants.includes(emp.email) ? '#dbeafe' : '#f9fafb',
+                        border: `1px solid ${selectedParticipants.includes(emp.email) ? '#3b82f6' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedParticipants.includes(emp.email)}
+                        onChange={() => handleToggleParticipant(emp.email)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: '500',
+                          color: '#1f2937'
+                        }}>
+                          {emp.name}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#6b7280'
+                        }}>
+                          {emp.email} • {emp.department}
+                        </div>
                       </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#6b7280'
-                      }}>
-                        {emp.email} • {emp.department}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
+                    </label>
+                  ))}
+                </div>
               )
             )}
           </div>

@@ -2,9 +2,7 @@
 @import './styles/meetings.css';
 @import './styles/dashboard.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --primary-color: #1976d2;

@@ -1,11 +1,12 @@
-// src/components/MarketingContentSystem.tsx - CORREGIDO SIN ERRORES
 import React, { useState, useEffect } from 'react';
-import { 
-  Video, Image, Play, Camera, FileText, Link, Calendar, Clock, 
-  Users, Target, CheckCircle, AlertCircle, Plus, Save, Edit, Trash2, 
-  Eye, Upload, Download, Filter, Search, RefreshCw, Flag, User,
-  Building2, Globe, Heart, Zap, TrendingUp, BarChart3, X, ChevronDown
+import {
+  Video, Image, Play, Calendar,
+  Users, Plus, Save, X, Link,
+  BarChart3, Target, Shield, LayoutDashboard
 } from 'lucide-react';
+import MarketingAnalyticsDashboard from './marketing/MarketingAnalyticsDashboard';
+import StrategyHub from './marketing/StrategyHub';
+import CompetitorWatch from './marketing/CompetitorWatch';
 
 // ============ INTERFACES ============
 interface ContentItem {
@@ -22,20 +23,12 @@ interface ContentItem {
   creado_por: string;
   asignado_grabacion: string;
   asignado_publicacion: string;
-  notas_produccion?: string;
-  fecha_publicacion_programada?: string;
-  metricas_objetivo?: {
-    alcance_esperado: number;
-    engagement_esperado: number;
-  };
-  creado_en?: string;
-  actualizado_en?: string;
 }
 
 interface MarketingSystemProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete: (data: any) => void;
+  userEmail?: string;
+  userName?: string;
+  onBack?: () => void;
 }
 
 interface ContentTypeConfig {
@@ -68,10 +61,10 @@ const CONTENT_TYPES: ContentTypeConfig[] = [
 
 const CATEGORIES: CategoryConfig[] = [
   { value: 'clientes', label: 'Clientes', icon: Users, color: '#2563eb', description: 'Testimonios y casos de éxito' },
-  { value: 'educativo', label: 'Educativo', icon: FileText, color: '#059669', description: 'Tips y consejos de fitness' },
-  { value: 'humor', label: 'Humor', icon: Heart, color: '#dc2626', description: 'Contenido divertido y entretenido' },
-  { value: 'viral', label: 'Viral', icon: Zap, color: '#7c3aed', description: 'Tendencias y challenges' },
-  { value: 'postureo', label: 'Postureo', icon: TrendingUp, color: '#ea580c', description: 'Instalaciones y equipo' }
+  { value: 'educativo', label: 'Educativo', icon: LayoutDashboard, color: '#059669', description: 'Tips y consejos de fitness' }, // Changed icon to avoid duplicate Users
+  { value: 'humor', label: 'Humor', icon: Target, color: '#dc2626', description: 'Contenido divertido y entretenido' }, // Changed icon
+  { value: 'viral', label: 'Viral', icon: BarChart3, color: '#7c3aed', description: 'Tendencias y challenges' }, // Changed icon
+  { value: 'postureo', label: 'Postureo', icon: Image, color: '#ea580c', description: 'Instalaciones y equipo' } // Changed icon
 ];
 
 const CENTROS_DISPONIBLES = [
@@ -86,41 +79,24 @@ const MARKETING_TEAM: TeamMember[] = [
   { id: 'marketing3@jungla.com', name: 'Ana Martín', role: 'Community Manager' }
 ];
 
-const DIEGO_USER: TeamMember = { id: 'diego@jungla.com', name: 'Diego Fernández', role: 'Social Media Manager' };
-
 // ============ COMPONENTE PRINCIPAL ============
-const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClose, onComplete }) => {
-  const [currentView, setCurrentView] = useState<'planning' | 'content' | 'calendar'>('planning');
+const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ userEmail, userName, onBack }) => {
+  const [currentView, setCurrentView] = useState<'dashboard' | 'strategy' | 'competitors' | 'content' | 'calendar'>('dashboard');
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
 
-  // Estados para la planificación mensual
-  const [monthlyPlan, setMonthlyPlan] = useState({
-    contenidos_totales: 20,
-    por_categoria: {
-      clientes: 4,
-      educativo: 6,
-      humor: 4,
-      viral: 3,
-      postureo: 3
-    },
-    alcance_objetivo: 50000
-  });
-
   useEffect(() => {
-    if (isOpen) {
-      loadContentItems();
-    }
-  }, [isOpen, selectedMonth]);
+    loadContentItems();
+  }, [selectedMonth]);
 
   const loadContentItems = async () => {
     setLoading(true);
     try {
-      // Simular datos para demo (reemplazar con Supabase cuando esté listo)
+      // Simular datos para demo
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       setContentItems([
         {
           id: '1',
@@ -158,209 +134,6 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
       setLoading(false);
     }
   };
-
-  // ============ VISTA DE PLANIFICACIÓN MENSUAL ============
-  const PlanningView: React.FC = () => (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
-          Planificación de Contenido - {new Date(selectedMonth).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-        </h2>
-        <p style={{ color: '#6b7280' }}>
-          Configura los objetivos y tipos de contenido para el mes
-        </p>
-      </div>
-
-      {/* Selector de mes */}
-      <div style={{ marginBottom: '24px' }}>
-        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-          Seleccionar Mes
-        </label>
-        <input
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          style={{
-            padding: '10px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '14px'
-          }}
-        />
-      </div>
-
-      {/* Objetivos del mes */}
-      <div style={{
-        backgroundColor: 'white',
-        border: '1px solid #e5e7eb',
-        borderRadius: '12px',
-        padding: '24px',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
-          Objetivos del Mes
-        </h3>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-              Total de Contenidos
-            </label>
-            <input
-              type="number"
-              value={monthlyPlan.contenidos_totales}
-              onChange={(e) => setMonthlyPlan(prev => ({ ...prev, contenidos_totales: parseInt(e.target.value) || 0 }))}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-              Alcance Objetivo
-            </label>
-            <input
-              type="number"
-              value={monthlyPlan.alcance_objetivo}
-              onChange={(e) => setMonthlyPlan(prev => ({ ...prev, alcance_objetivo: parseInt(e.target.value) || 0 }))}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Distribución por categorías */}
-        <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
-          Distribución por Categorías
-        </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          {CATEGORIES.map(category => (
-            <div key={category.value} style={{
-              padding: '16px',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              backgroundColor: '#f9fafb'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <category.icon style={{ height: '16px', width: '16px', color: category.color }} />
-                <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                  {category.label}
-                </span>
-              </div>
-              <input
-                type="number"
-                value={monthlyPlan.por_categoria[category.value] || 0}
-                onChange={(e) => setMonthlyPlan(prev => ({
-                  ...prev,
-                  por_categoria: {
-                    ...prev.por_categoria,
-                    [category.value]: parseInt(e.target.value) || 0
-                  }
-                }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-                min="0"
-              />
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', margin: '4px 0 0 0' }}>
-                {category.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Resumen estadísticas */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          padding: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <BarChart3 style={{ height: '20px', width: '20px', color: '#3b82f6' }} />
-            <span style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280' }}>Total Planificado</span>
-          </div>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            {Object.values(monthlyPlan.por_categoria).reduce((a, b) => a + b, 0)}
-          </p>
-        </div>
-        
-        <div style={{
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          padding: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Target style={{ height: '20px', width: '20px', color: '#10b981' }} />
-            <span style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280' }}>Contenidos Creados</span>
-          </div>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            {contentItems.length}
-          </p>
-        </div>
-        
-        <div style={{
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          padding: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <CheckCircle style={{ height: '20px', width: '20px', color: '#059669' }} />
-            <span style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280' }}>Publicados</span>
-          </div>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-            {contentItems.filter(item => item.estado_publicacion === 'publicado').length}
-          </p>
-        </div>
-      </div>
-
-      {/* Botón para crear contenido */}
-      <button
-        onClick={() => setShowCreateModal(true)}
-        style={{
-          padding: '12px 24px',
-          backgroundColor: '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '16px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
-      >
-        <Plus style={{ height: '20px', width: '20px' }} />
-        Crear Nuevo Contenido
-      </button>
-    </div>
-  );
 
   // ============ VISTA DE CONTENIDOS ============
   const ContentView: React.FC = () => (
@@ -421,7 +194,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                     }
                     return null;
                   })()}
-                  
+
                   <div>
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
                       {item.titulo}
@@ -458,15 +231,15 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                       borderRadius: '6px',
                       fontSize: '12px',
                       fontWeight: '500',
-                      backgroundColor: item.estado_grabacion === 'editado' ? '#10b98120' : 
-                                     item.estado_grabacion === 'grabado' ? '#f59e0b20' : '#ef444420',
-                      color: item.estado_grabacion === 'editado' ? '#10b981' : 
-                             item.estado_grabacion === 'grabado' ? '#f59e0b' : '#ef4444'
+                      backgroundColor: item.estado_grabacion === 'editado' ? '#10b98120' :
+                        item.estado_grabacion === 'grabado' ? '#f59e0b20' : '#ef444420',
+                      color: item.estado_grabacion === 'editado' ? '#10b981' :
+                        item.estado_grabacion === 'grabado' ? '#f59e0b' : '#ef4444'
                     }}>
                       {item.estado_grabacion}
                     </span>
                   </div>
-                  
+
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Publicación</div>
                     <span style={{
@@ -474,10 +247,10 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                       borderRadius: '6px',
                       fontSize: '12px',
                       fontWeight: '500',
-                      backgroundColor: item.estado_publicacion === 'publicado' ? '#10b98120' : 
-                                     item.estado_publicacion === 'programado' ? '#3b82f620' : '#6b728020',
-                      color: item.estado_publicacion === 'publicado' ? '#10b981' : 
-                             item.estado_publicacion === 'programado' ? '#3b82f6' : '#6b7280'
+                      backgroundColor: item.estado_publicacion === 'publicado' ? '#10b98120' :
+                        item.estado_publicacion === 'programado' ? '#3b82f620' : '#6b728020',
+                      color: item.estado_publicacion === 'publicado' ? '#10b981' :
+                        item.estado_publicacion === 'programado' ? '#3b82f6' : '#6b7280'
                     }}>
                       {item.estado_publicacion}
                     </span>
@@ -494,21 +267,9 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontWeight: '500', color: '#6b7280' }}>Grabación:</span>
-                  <span style={{ marginLeft: '8px', color: '#111827' }}>
-                    {MARKETING_TEAM.find(member => member.id === item.asignado_grabacion)?.name || 'No asignado'}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ fontWeight: '500', color: '#6b7280' }}>Publicación:</span>
-                  <span style={{ marginLeft: '8px', color: '#111827' }}>
-                    {item.asignado_publicacion === 'diego@jungla.com' ? 'Diego Fernández' : 'No asignado'}
-                  </span>
-                </div>
-                <div>
-                  <a 
-                    href={item.enlace_drive} 
-                    target="_blank" 
+                  <a
+                    href={item.enlace_drive}
+                    target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       display: 'flex',
@@ -525,28 +286,6 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
               </div>
             </div>
           ))}
-          
-          {contentItems.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-              <Video style={{ height: '48px', width: '48px', margin: '0 auto 16px', opacity: 0.5 }} />
-              <p style={{ margin: 0 }}>No hay contenidos para este mes</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                style={{
-                  marginTop: '16px',
-                  padding: '10px 20px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                Crear primer contenido
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -569,33 +308,16 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       try {
         const newContent: ContentItem = {
           ...formData,
           id: Date.now().toString(),
           creado_por: 'marketing@jungla.com',
-          creado_en: new Date().toISOString(),
-          actualizado_en: new Date().toISOString()
         } as ContentItem;
 
         setContentItems(prev => [...prev, newContent]);
         setShowCreateModal(false);
-        
-        // Reset form
-        setFormData({
-          titulo: '',
-          tipo_contenido: 'video',
-          categoria: 'educativo',
-          alcance: 'comun',
-          enlace_drive: '',
-          estado_grabacion: 'pendiente',
-          estado_publicacion: 'pendiente',
-          fecha_limite: '',
-          asignado_grabacion: '',
-          asignado_publicacion: 'diego@jungla.com'
-        });
-        
         alert('¡Contenido creado exitosamente!');
       } catch (error) {
         console.error('Error creating content:', error);
@@ -658,7 +380,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                   placeholder="Ej: Tutorial ejercicio press banca"
                 />
               </div>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
                   Tipo de Contenido *
@@ -704,7 +426,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
                   Alcance *
@@ -773,7 +495,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
                   min={new Date().toISOString().split('T')[0]}
                 />
               </div>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
                   Asignado a Grabación
@@ -861,131 +583,97 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ isOpen, onClos
   };
 
   // ============ RENDERIZADO PRINCIPAL ============
-  if (!isOpen) return null;
-
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 9999,
-      overflow: 'auto',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px'
-    }}>
-      <div style={{ 
-        maxWidth: '1200px', 
+    <div className="w-full">
+      <div style={{
         width: '100%',
         backgroundColor: '#f9fafb',
         borderRadius: '16px',
-        maxHeight: '90vh',
-        overflow: 'auto',
-        padding: '24px'
       }}>
-          {/* Header */}
-          <div style={{
-            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)',
-            borderRadius: '12px',
-            padding: '24px',
-            color: 'white',
-            marginBottom: '32px',
-            position: 'relative'
-          }}>
+        {/* Header */}
+        <div style={{
+          background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+          borderRadius: '12px',
+          padding: '24px',
+          color: 'white',
+          marginBottom: '32px',
+          position: 'relative'
+        }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', margin: 0 }}>
+              📱 Smart Marketing
+            </h1>
+            <p style={{ opacity: 0.9, margin: 0 }}>
+              Inteligencia Artificial y Análisis de Datos para tu crecimiento
+            </p>
+          </div>
+        </div>
+
+        {/* Navigation tabs */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '24px',
+          backgroundColor: 'white',
+          padding: '8px',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          overflowX: 'auto'
+        }}>
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+            { id: 'strategy', label: 'Estrategia IA', icon: Target },
+            { id: 'competitors', label: 'Competencia', icon: Shield },
+            { id: 'content', label: 'Gestión Contenidos', icon: Video },
+            { id: 'calendar', label: 'Calendario', icon: Calendar }
+          ].map(tab => (
             <button
-              onClick={onClose}
+              key={tab.id}
+              onClick={() => setCurrentView(tab.id as any)}
               style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                flex: 1,
+                minWidth: '120px',
+                padding: '12px 16px',
+                borderRadius: '8px',
                 border: 'none',
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
                 cursor: 'pointer',
-                color: 'white',
-                fontSize: '18px'
+                backgroundColor: currentView === tab.id ? '#3b82f6' : 'transparent',
+                color: currentView === tab.id ? 'white' : '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s'
               }}
             >
-              ×
+              <tab.icon style={{ height: '16px', width: '16px' }} />
+              {tab.label}
             </button>
-            
-            <div>
-              <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', margin: 0 }}>
-                📱 Sistema de Marketing Digital
-              </h1>
-              <p style={{ opacity: 0.9, margin: 0 }}>
-                Gestión de contenido para redes sociales - La Jungla Ibérica
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation tabs */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '24px',
-            backgroundColor: 'white',
-            padding: '8px',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-          }}>
-            {[
-              { id: 'planning', label: 'Planificación', icon: BarChart3 },
-              { id: 'content', label: 'Contenidos', icon: Video },
-              { id: 'calendar', label: 'Calendario', icon: Calendar }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setCurrentView(tab.id as 'planning' | 'content' | 'calendar')}
-                style={{
-                  flex: 1,
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: currentView === tab.id ? '#3b82f6' : 'transparent',
-                  color: currentView === tab.id ? 'white' : '#6b7280',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                <tab.icon style={{ height: '16px', width: '16px' }} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            minHeight: '500px'
-          }}>
-            {currentView === 'planning' && <PlanningView />}
-            {currentView === 'content' && <ContentView />}
-            {currentView === 'calendar' && (
-              <div style={{ padding: '24px', textAlign: 'center' }}>
-                <Calendar style={{ height: '48px', width: '48px', margin: '0 auto 16px', color: '#6b7280' }} />
-                <h3 style={{ color: '#111827', marginBottom: '8px' }}>Vista de Calendario</h3>
-                <p style={{ color: '#6b7280' }}>Próximamente - Calendario de publicaciones</p>
-              </div>
-            )}
-          </div>
-
-          {/* Modal crear contenido */}
-          <CreateContentModal />
+          ))}
         </div>
+
+        {/* Content */}
+        <div style={{
+          minHeight: '500px'
+        }}>
+          {currentView === 'dashboard' && <MarketingAnalyticsDashboard />}
+          {currentView === 'strategy' && <StrategyHub />}
+          {currentView === 'competitors' && <CompetitorWatch />}
+          {currentView === 'content' && <ContentView />}
+          {currentView === 'calendar' && (
+            <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px' }}>
+              <Calendar style={{ height: '48px', width: '48px', margin: '0 auto 16px', color: '#6b7280' }} />
+              <h3 style={{ color: '#111827', marginBottom: '8px' }}>Vista de Calendario</h3>
+              <p style={{ color: '#6b7280' }}>Próximamente - Calendario de publicaciones</p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal crear contenido */}
+        <CreateContentModal />
+      </div>
     </div>
   );
 };

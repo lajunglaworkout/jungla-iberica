@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useSession } from '../contexts/SessionContext';
 import { Plus, Search, Package, ShoppingCart, Settings, Building, Activity, FileText, AlertTriangle, Edit, Save, X, RefreshCw, User, Calendar, Clock, MapPin, Phone, Mail, Star, TrendingUp, TrendingDown, Minus, Trash2, Bell } from 'lucide-react';
 import InventoryKPIDashboard from './logistics/InventoryKPIDashboard';
 import RealInventoryTable from './logistics/RealInventoryTable';
 import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystemWithSupabase';
 import UniformRequestsPanel from './logistics/UniformRequestsPanel';
+import MovementsHistoryPanel from './logistics/MovementsHistoryPanel';
+import SmartOrderGenerator from './logistics/SmartOrderGenerator';
 
 interface InventoryItem {
   id: number;
@@ -96,7 +99,7 @@ interface User {
     canAccessHR: boolean;
     canAccessOnline: boolean;
     canAccessEvents: boolean;
-    
+
     // Permisos específicos de logística
     canViewReports: boolean;
     canManageInventory: boolean;
@@ -106,13 +109,13 @@ interface User {
     canManageTools: boolean;
     canViewAllCenters: boolean;
     canModifyPrices: boolean;
-    
+
     // Permisos de empleados
     canViewOwnCenter: boolean;
     canUseTimeTracking: boolean;
     canUseChecklist: boolean;
     canMessageHR: boolean;
-    
+
     // Permisos administrativos
     canManageUsers: boolean;
   };
@@ -121,7 +124,7 @@ interface User {
 
 interface Notification {
   id: number;
-  type: 'new_order' | 'low_stock' | 'order_update' | 'order_request' | 'stock_alert' | 'checklist_incident' | 'maintenance_due';
+  type: 'new_order' | 'low_stock' | 'order_update' | 'order_request' | 'stock_alert' | 'checklist_incident' | 'maintenance_due' | 'uniform_request';
   title: string;
   message: string;
   timestamp: string;
@@ -187,7 +190,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: true,
         canAccessOnline: true,
         canAccessEvents: true,
-        
+
         // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
@@ -197,13 +200,13 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: true,
         canViewAllCenters: true,
         canModifyPrices: true,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: true
       };
@@ -217,7 +220,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: false,
         canAccessOnline: false,
         canAccessEvents: false,
-        
+
         // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
@@ -227,13 +230,13 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: true,
         canViewAllCenters: true,
         canModifyPrices: true,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: false
       };
@@ -250,7 +253,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: false,
         canAccessOnline: false,
         canAccessEvents: false,
-        
+
         // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: false,
@@ -260,13 +263,13 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: false,
         canViewAllCenters: false,
         canModifyPrices: false,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: false
       };
@@ -280,7 +283,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: false,
         canAccessOnline: false,
         canAccessEvents: false,
-        
+
         // Permisos específicos de logística
         canViewReports: true,
         canManageInventory: true,
@@ -290,13 +293,13 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: true,
         canViewAllCenters: false,
         canModifyPrices: false,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: false
       };
@@ -311,7 +314,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: false,
         canAccessOnline: false,
         canAccessEvents: false,
-        
+
         // Permisos específicos de logística
         canViewReports: false,
         canManageInventory: false,
@@ -321,13 +324,13 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: false,
         canViewAllCenters: false,
         canModifyPrices: false,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: false
       };
@@ -341,7 +344,7 @@ const getRolePermissions = (role: User['role']) => {
         canAccessHR: false,
         canAccessOnline: false,
         canAccessEvents: false,
-        
+
         // Permisos específicos de logística
         canViewReports: false,
         canManageInventory: false,
@@ -351,200 +354,27 @@ const getRolePermissions = (role: User['role']) => {
         canManageTools: false,
         canViewAllCenters: false,
         canModifyPrices: false,
-        
+
         // Permisos de empleados
         canViewOwnCenter: true,
         canUseTimeTracking: true,
         canUseChecklist: true,
         canMessageHR: true,
-        
+
         // Permisos administrativos
         canManageUsers: false
       };
   }
 };
 
-// Datos reales del equipo La Jungla
-const laJunglaTeam: User[] = [
-  // Dirección
-  { 
-    id: '1', 
-    name: 'Carlos Suárez', 
-    role: 'ceo', 
-    center: 'central',
-    permissions: getRolePermissions('ceo')
-  },
-  { 
-    id: '2', 
-    name: 'Benito Morales', 
-    role: 'logistics_director', 
-    center: 'central',
-    permissions: getRolePermissions('logistics_director')
-  },
-  { 
-    id: '3', 
-    name: 'Vicente Corbaón', 
-    role: 'hr_director', 
-    center: 'central',
-    permissions: getRolePermissions('hr_director')
-  },
-  { 
-    id: '4', 
-    name: 'Jonathan Padilla', 
-    role: 'online_director', 
-    center: 'central',
-    permissions: getRolePermissions('online_director')
-  },
-  { 
-    id: '5', 
-    name: 'Antonio Durán', 
-    role: 'events_director', 
-    center: 'central',
-    permissions: getRolePermissions('events_director')
-  },
-  { 
-    id: '6', 
-    name: 'Diego Montilla', 
-    role: 'marketing_director', 
-    center: 'central',
-    permissions: getRolePermissions('marketing_director')
-  },
-  
-  // Centro Sevilla
-  { 
-    id: '7', 
-    name: 'Fran Giraldez', 
-    role: 'center_manager', 
-    center: 'sevilla',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '8', 
-    name: 'Salva Cabrera', 
-    role: 'center_manager', 
-    center: 'sevilla',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '9', 
-    name: 'Javier Surian', 
-    role: 'trainer', 
-    center: 'sevilla',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '10', 
-    name: 'Jesús Rosado', 
-    role: 'trainer', 
-    center: 'sevilla',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '11', 
-    name: 'Jesús Arias', 
-    role: 'trainer', 
-    center: 'sevilla',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '12', 
-    name: 'Santi Frías', 
-    role: 'trainer', 
-    center: 'sevilla',
-    permissions: getRolePermissions('trainer')
-  },
-  
-  // Centro Jerez
-  { 
-    id: '13', 
-    name: 'Iván Fernández', 
-    role: 'center_manager', 
-    center: 'jerez',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '14', 
-    name: 'Pablo Benítez', 
-    role: 'center_manager', 
-    center: 'jerez',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '15', 
-    name: 'Rodri', 
-    role: 'trainer', 
-    center: 'jerez',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '16', 
-    name: 'Mario', 
-    role: 'trainer', 
-    center: 'jerez',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '17', 
-    name: 'Antonio', 
-    role: 'trainer', 
-    center: 'jerez',
-    permissions: getRolePermissions('trainer')
-  },
-  { 
-    id: '18', 
-    name: 'Fran', 
-    role: 'trainer', 
-    center: 'jerez',
-    permissions: getRolePermissions('trainer')
-  },
-  
-  // Centro Puerto
-  { 
-    id: '19', 
-    name: 'Guillermo', 
-    role: 'center_manager', 
-    center: 'puerto',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '20', 
-    name: 'Adrián', 
-    role: 'center_manager', 
-    center: 'puerto',
-    permissions: getRolePermissions('center_manager')
-  },
-  { 
-    id: '21', 
-    name: 'José', 
-    role: 'employee', 
-    center: 'puerto',
-    permissions: getRolePermissions('employee')
-  },
-  { 
-    id: '22', 
-    name: 'Keko', 
-    role: 'employee', 
-    center: 'puerto',
-    permissions: getRolePermissions('employee')
-  },
-  { 
-    id: '23', 
-    name: 'Jonathan', 
-    role: 'employee', 
-    center: 'puerto',
-    permissions: getRolePermissions('employee')
-  },
-  { 
-    id: '24', 
-    name: 'Fran', 
-    role: 'employee', 
-    center: 'puerto',
-    permissions: getRolePermissions('employee')
-  }
-];
+
 
 const LogisticsManagementSystem: React.FC = () => {
+  const { employee, userRole } = useSession();
   const [activeTab, setActiveTab] = useState('kpis');
+  // Estado para usuarios cargados desde BD
+  const [laJunglaTeam, setLaJunglaTeam] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -558,7 +388,82 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [currentUser, setCurrentUser] = useState<User>(laJunglaTeam.find(user => user.name === 'Benito Morales') || laJunglaTeam[0]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Efecto para establecer el usuario actual desde la sesión
+  useEffect(() => {
+    if (employee && userRole) {
+      let mappedRole: User['role'] = 'employee';
+
+      // Mapeo de roles de la app a roles del módulo de logística
+      if (userRole === 'superadmin') {
+        mappedRole = 'ceo';
+      } else if (userRole === 'center_manager') {
+        mappedRole = 'center_manager';
+      } else if (userRole === 'admin') {
+        // Directores específicos
+        if (employee.email === 'beni.jungla@gmail.com') mappedRole = 'logistics_director';
+        else if (employee.email === 'lajunglacentral@gmail.com') mappedRole = 'hr_director';
+        else if (employee.email === 'jonathan@lajungla.es') mappedRole = 'online_director';
+        else if (employee.email === 'antonio@lajungla.es') mappedRole = 'events_director';
+        else if (employee.email === 'diego@lajungla.es') mappedRole = 'marketing_director';
+        else mappedRole = 'logistics_director'; // Fallback para admins en este módulo
+      } else if (userRole === 'manager') {
+        mappedRole = 'center_manager';
+      } else if (userRole === 'trainer') {
+        mappedRole = 'trainer';
+      }
+
+      const user: User = {
+        id: employee.id || '0',
+        name: employee.name || employee.nombre || 'Usuario',
+        role: mappedRole,
+        center: ((employee.center_id === '9' || employee.center_id === 9) ? 'sevilla' :
+          (employee.center_id === '10' || employee.center_id === 10) ? 'jerez' :
+            (employee.center_id === '11' || employee.center_id === 11) ? 'puerto' : 'central') as User['center'],
+        permissions: getRolePermissions(mappedRole)
+      };
+
+      setCurrentUser(user);
+    }
+  }, [employee, userRole]);
+
+  // Cargar usuarios desde Supabase (para selectores, etc.)
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const { supabase } = await import('../lib/supabase');
+
+        const { data, error } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        const mappedUsers: User[] = (data || []).map(emp => ({
+          id: emp.id.toString(),
+          name: emp.name,
+          role: (emp.role || 'employee') as any,
+          center: (emp.center_id === 1 ? 'central' :
+            emp.center_id === 9 ? 'sevilla' :
+              emp.center_id === 10 ? 'jerez' :
+                emp.center_id === 11 ? 'puerto' : 'central'),
+          permissions: getRolePermissions(emp.role as any)
+        }));
+
+        setLaJunglaTeam(mappedUsers);
+
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
@@ -611,7 +516,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const [showProductSelectorModal, setShowProductSelectorModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [productSearchTerm, setProductSearchTerm] = useState('');
-  
+
   // Estados para herramientas
   const [tools, setTools] = useState<Tool[]>([]);
   const [toolLocations, setToolLocations] = useState<ToolLocation[]>([]);
@@ -671,49 +576,13 @@ const LogisticsManagementSystem: React.FC = () => {
   const [productMode, setProductMode] = useState<'predefined' | 'custom'>('predefined');
 
   // Función para eliminar item del inventario
-  const handleDeleteItem = async (itemId: number) => {
-    try {
-      // Si es un item de prueba (ID > 99000), solo eliminar del estado local
-      if (itemId >= 99000) {
-        setInventoryItems(prevItems => {
-          const updatedItems = prevItems.filter(item => item.id !== itemId);
-          console.log(`🗑️ Item de prueba ${itemId} eliminado localmente. Items restantes: ${updatedItems.length}`);
-          return updatedItems;
-        });
-        return;
-      }
 
-      // Para items reales, eliminar de Supabase
-      const { supabase } = await import('../lib/supabase');
-      const { error } = await supabase
-        .from('inventory_items')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) {
-        console.error('❌ Error eliminando item de Supabase:', error);
-        alert('Error al eliminar el item. Por favor, inténtalo de nuevo.');
-        return;
-      }
-
-      // Si se eliminó correctamente de Supabase, actualizar estado local
-      setInventoryItems(prevItems => {
-        const updatedItems = prevItems.filter(item => item.id !== itemId);
-        console.log(`🗑️ Item ${itemId} eliminado de Supabase y estado local. Items restantes: ${updatedItems.length}`);
-        return updatedItems;
-      });
-
-    } catch (error) {
-      console.error('❌ Error en handleDeleteItem:', error);
-      alert('Error al eliminar el item. Por favor, inténtalo de nuevo.');
-    }
-  };
 
   // Función para eliminar pedido
   const handleDeleteOrder = async (orderId: string) => {
     try {
       const { supabase } = await import('../lib/supabase');
-      
+
       // Eliminar de la tabla orders en Supabase
       const { error } = await supabase
         .from('orders')
@@ -743,7 +612,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const handleDeleteSupplier = async (supplierId: number) => {
     try {
       const { supabase } = await import('../lib/supabase');
-      
+
       // Eliminar de la tabla suppliers en Supabase
       const { error } = await supabase
         .from('suppliers')
@@ -773,7 +642,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const handleDeleteTool = async (toolId: number) => {
     try {
       const { supabase } = await import('../lib/supabase');
-      
+
       // Intentar eliminar de la tabla tools en Supabase (si existe)
       const { error } = await supabase
         .from('tools')
@@ -887,10 +756,10 @@ const LogisticsManagementSystem: React.FC = () => {
     const loadInventoryFromSupabase = async () => {
       try {
         console.log('🔍 INICIANDO CARGA DE INVENTARIO DESDE SUPABASE...');
-        
+
         // Importar supabase
         const { supabase } = await import('../lib/supabase');
-        
+
         const { data, error } = await supabase
           .from('inventory_items')
           .select('*')
@@ -903,18 +772,18 @@ const LogisticsManagementSystem: React.FC = () => {
 
         if (data && data.length > 0) {
           console.log(`✅ ${data.length} items cargados desde Supabase`);
-          
+
           // Debug: mostrar center_ids únicos encontrados
           const uniqueCenterIds = [...new Set(data.map(item => item.center_id))];
           console.log('🏢 Center IDs encontrados:', uniqueCenterIds.sort());
-          
+
           // Debug: contar items por centro
           const itemsByCenter = data.reduce((acc, item) => {
             acc[item.center_id] = (acc[item.center_id] || 0) + 1;
             return acc;
           }, {});
           console.log('📊 Items por centro:', itemsByCenter);
-          
+
           // Convertir datos de Supabase al formato del componente
           const convertedItems: InventoryItem[] = data.map(item => ({
             id: item.id,
@@ -928,13 +797,13 @@ const LogisticsManagementSystem: React.FC = () => {
             sale_price: item.precio_venta || item.selling_price || 0,
             supplier: item.proveedor || item.supplier || 'Sin proveedor',
             center: (item.center_id === 1 ? 'central' :
-                   item.center_id === 9 ? 'sevilla' : 
-                   item.center_id === 10 ? 'jerez' : 
-                   item.center_id === 11 ? 'puerto' : 'central') as 'central' | 'sevilla' | 'jerez' | 'puerto',
+              item.center_id === 9 ? 'sevilla' :
+                item.center_id === 10 ? 'jerez' :
+                  item.center_id === 11 ? 'puerto' : 'central') as 'central' | 'sevilla' | 'jerez' | 'puerto',
             location: item.ubicacion || item.location || 'Sin ubicación',
             last_updated: item.updated_at || new Date().toISOString(),
-            status: (item.cantidad_actual || 0) === 0 ? 'out_of_stock' : 
-                   (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
+            status: (item.cantidad_actual || 0) === 0 ? 'out_of_stock' :
+              (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
           }));
 
           // Solo usar items reales de Supabase
@@ -948,7 +817,7 @@ const LogisticsManagementSystem: React.FC = () => {
         console.error('❌ Error conectando a Supabase:', error);
       }
     };
-    
+
     loadInventoryFromSupabase();
   }, []);
 
@@ -957,7 +826,7 @@ const LogisticsManagementSystem: React.FC = () => {
     try {
       console.log('🔍 CARGANDO PEDIDOS DESDE SUPABASE...');
       const { supabase } = await import('../lib/supabase');
-      
+
       const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*')
@@ -1006,7 +875,7 @@ const LogisticsManagementSystem: React.FC = () => {
     try {
       console.log('🔍 CARGANDO PROVEEDORES DESDE SUPABASE...');
       const { supabase } = await import('../lib/supabase');
-      
+
       const { data: suppliersData, error } = await supabase
         .from('suppliers')
         .select('*')
@@ -1055,7 +924,7 @@ const LogisticsManagementSystem: React.FC = () => {
     try {
       console.log('🔍 CARGANDO HERRAMIENTAS DESDE SUPABASE...');
       const { supabase } = await import('../lib/supabase');
-      
+
       const { data: toolsData, error } = await supabase
         .from('tools')
         .select('*')
@@ -1271,10 +1140,10 @@ const LogisticsManagementSystem: React.FC = () => {
 
     // Cargar pedidos desde Supabase
     loadOrdersFromSupabase();
-    
+
     // Cargar proveedores desde Supabase
     loadSuppliersFromSupabase();
-    
+
     // Cargar herramientas desde Supabase
     loadToolsFromSupabase();
 
@@ -1285,7 +1154,7 @@ const LogisticsManagementSystem: React.FC = () => {
     const handleLogisticsNavigation = (event: Event) => {
       const customEvent = event as CustomEvent<{ view?: string }>;
       const { view } = customEvent.detail || {};
-      
+
       if (view === 'orders') {
         setActiveTab('orders');
       }
@@ -1332,8 +1201,8 @@ const LogisticsManagementSystem: React.FC = () => {
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.to.toLowerCase().includes(searchTerm.toLowerCase());
+      order.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.to.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesType = categoryFilter === 'all' || order.type === categoryFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -1341,15 +1210,15 @@ const LogisticsManagementSystem: React.FC = () => {
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase());
+      supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = categoryFilter === 'all' || supplier.type === categoryFilter;
     return matchesSearch && matchesType;
   });
 
   const filteredTools = tools.filter(tool => {
     const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tool.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tool.current_location.toLowerCase().includes(searchTerm.toLowerCase());
+      tool.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.current_location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || tool.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -1362,10 +1231,10 @@ const LogisticsManagementSystem: React.FC = () => {
 
     try {
       console.log('💾 Guardando nuevo producto en Supabase...', newProduct);
-      
+
       // Importar supabase
       const { supabase } = await import('../lib/supabase');
-      
+
       // Mapear center a center_id
       const centerIdMap: Record<string, number> = {
         'central': 1,  // Almacén Central - donde se guarda el vestuario
@@ -1373,7 +1242,7 @@ const LogisticsManagementSystem: React.FC = () => {
         'jerez': 10,   // Centro Jerez  
         'puerto': 11   // Centro Puerto
       };
-      
+
       // Generar código único para el producto
       // Formato: [PREFIJO_CENTRO][NÚMERO]
       const centerPrefixes: Record<string, string> = {
@@ -1382,13 +1251,13 @@ const LogisticsManagementSystem: React.FC = () => {
         'jerez': 'JZ',
         'puerto': 'PT'
       };
-      
+
       const centerPrefix = centerPrefixes[newProduct.center] || 'CT';
       const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos del timestamp
       const codigo = `${centerPrefix}${timestamp}`;
-      
+
       console.log('🔖 Código generado:', codigo);
-      
+
       // Preparar datos para Supabase según la estructura real de la tabla
       const dataToInsert = {
         center_id: centerIdMap[newProduct.center] || 1,
@@ -1409,28 +1278,28 @@ const LogisticsManagementSystem: React.FC = () => {
         min_stock: newProduct.min_stock
         // created_at, updated_at, last_updated se gestionan automáticamente
       };
-      
+
       console.log('📤 Datos a insertar:', dataToInsert);
-      
+
       // Insertar en Supabase
       const { data, error } = await supabase
         .from('inventory_items')
         .insert(dataToInsert)
         .select()
         .single();
-      
+
       if (error) {
         console.error('❌ Error guardando en Supabase:', error);
         alert(`Error al guardar el producto: ${error.message}`);
         return;
       }
-      
+
       console.log('✅ Producto guardado en Supabase:', data);
-      
+
       // Convertir el item guardado al formato local
-      const status = newProduct.quantity <= newProduct.min_stock ? 
-                    (newProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
-      
+      const status = newProduct.quantity <= newProduct.min_stock ?
+        (newProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
+
       const productToAdd: InventoryItem = {
         id: data.id,
         name: newProduct.name,
@@ -1450,7 +1319,7 @@ const LogisticsManagementSystem: React.FC = () => {
 
       // Actualizar estado local
       setInventoryItems([...inventoryItems, productToAdd]);
-      
+
       // Resetear formulario
       setNewProduct({
         name: '',
@@ -1465,10 +1334,10 @@ const LogisticsManagementSystem: React.FC = () => {
         center: 'central',
         location: ''
       });
-      
+
       setShowNewProductModal(false);
       alert('✅ Producto creado y guardado exitosamente en Supabase');
-      
+
     } catch (error) {
       console.error('❌ Error inesperado:', error);
       alert('Error inesperado al guardar el producto');
@@ -1479,7 +1348,7 @@ const LogisticsManagementSystem: React.FC = () => {
   const getFilteredTools = () => {
     return tools.filter(tool => {
       const locationName = toolLocations.find(loc => loc.id === tool.current_location)?.name || '';
-      const matchesSearch = toolSearchTerm === '' || 
+      const matchesSearch = toolSearchTerm === '' ||
         tool.name.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
         tool.brand.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
         tool.model.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
@@ -1487,10 +1356,10 @@ const LogisticsManagementSystem: React.FC = () => {
         locationName.toLowerCase().includes(toolSearchTerm.toLowerCase()) ||
         (tool.serial_number && tool.serial_number.toLowerCase().includes(toolSearchTerm.toLowerCase())) ||
         (tool.assigned_to && tool.assigned_to.toLowerCase().includes(toolSearchTerm.toLowerCase()));
-      
+
       const matchesStatus = toolStatusFilter === 'all' || tool.status === toolStatusFilter;
       const matchesLocation = toolLocationFilter === 'all' || tool.current_location === toolLocationFilter;
-      
+
       return matchesSearch && matchesStatus && matchesLocation;
     });
   };
@@ -1521,7 +1390,7 @@ const LogisticsManagementSystem: React.FC = () => {
     const totalValue = inventoryItems.reduce((sum, item) => sum + (item.purchase_price * item.quantity), 0);
     const lowStockItems = inventoryItems.filter(item => item.status === 'low_stock').length;
     const outOfStockItems = inventoryItems.filter(item => item.status === 'out_of_stock').length;
-    
+
     const byCenter = inventoryItems.reduce((acc, item) => {
       if (!acc[item.center]) {
         acc[item.center] = { count: 0, value: 0 };
@@ -1549,7 +1418,7 @@ const LogisticsManagementSystem: React.FC = () => {
     }, 0);
     const pendingOrders = orders.filter(order => order.status === 'pending').length;
     const completedOrders = orders.filter(order => order.status === 'delivered').length;
-    
+
     const byStatus = orders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
       return acc;
@@ -1576,7 +1445,7 @@ const LogisticsManagementSystem: React.FC = () => {
     const availableTools = tools.filter(tool => tool.status === 'available').length;
     const inUseTools = tools.filter(tool => tool.status === 'in_use').length;
     const lostTools = tools.filter(tool => tool.status === 'lost').length;
-    
+
     const byLocation = tools.reduce((acc, tool) => {
       const locationName = toolLocations.find(loc => loc.id === tool.current_location)?.name || 'Desconocida';
       acc[locationName] = (acc[locationName] || 0) + 1;
@@ -1633,8 +1502,8 @@ const LogisticsManagementSystem: React.FC = () => {
   const handleUpdateProduct = () => {
     if (!editingProduct) return;
 
-    const status = editingProduct.quantity <= editingProduct.min_stock ? 
-                  (editingProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
+    const status = editingProduct.quantity <= editingProduct.min_stock ?
+      (editingProduct.quantity === 0 ? 'out_of_stock' : 'low_stock') : 'in_stock';
 
     const updatedProduct = {
       ...editingProduct,
@@ -1642,10 +1511,10 @@ const LogisticsManagementSystem: React.FC = () => {
       status: status as 'in_stock' | 'low_stock' | 'out_of_stock'
     };
 
-    setInventoryItems(prev => prev.map(item => 
+    setInventoryItems(prev => prev.map(item =>
       item.id === editingProduct.id ? updatedProduct : item
     ));
-    
+
     setShowEditProductModal(false);
     setEditingProduct(null);
   };
@@ -1661,12 +1530,12 @@ const LogisticsManagementSystem: React.FC = () => {
     const pendingAmount = orders
       .filter(order => order.status === 'pending' && order.type === 'center_to_brand')
       .reduce((sum, order) => sum + order.amount, 0);
-    
+
     return { pendingOrders, sentOrders, pendingAmount };
   };
 
   const markNotificationAsRead = (id: number) => {
-    setNotifications(prev => prev.map(notif => 
+    setNotifications(prev => prev.map(notif =>
       notif.id === id ? { ...notif, read: true } : notif
     ));
   };
@@ -1675,12 +1544,12 @@ const LogisticsManagementSystem: React.FC = () => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
         ? { ...order, status: 'processing' as const, processed_date: new Date().toISOString() }
         : order
     ));
-    
+
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
       id: Date.now(),
@@ -1694,7 +1563,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: false
     };
-    
+
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
       id: Date.now() + 1,
@@ -1708,7 +1577,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: false
     };
-    
+
     setNotifications(prev => [logisticsNotification, creatorNotification, ...prev]);
   };
 
@@ -1716,12 +1585,12 @@ const LogisticsManagementSystem: React.FC = () => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
         ? { ...order, status: 'sent' as const, sent_date: new Date().toISOString() }
         : order
     ));
-    
+
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
       id: Date.now(),
@@ -1735,7 +1604,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: false
     };
-    
+
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
       id: Date.now() + 1,
@@ -1749,7 +1618,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: false
     };
-    
+
     setNotifications(prev => [logisticsNotification, creatorNotification, ...prev]);
   };
 
@@ -1757,17 +1626,17 @@ const LogisticsManagementSystem: React.FC = () => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { 
-            ...order, 
-            status: 'cancelled' as const, 
-            cancelled_date: new Date().toISOString(),
-            cancellation_reason: reason
-          }
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
+        ? {
+          ...order,
+          status: 'cancelled' as const,
+          cancelled_date: new Date().toISOString(),
+          cancellation_reason: reason
+        }
         : order
     ));
-    
+
     // Crear notificación para el director de logística
     const logisticsNotification: Notification = {
       id: Date.now(),
@@ -1781,7 +1650,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: false
     };
-    
+
     // Crear notificación para el creador del pedido
     const creatorNotification: Notification = {
       id: Date.now() + 1,
@@ -1795,7 +1664,7 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: true
     };
-    
+
     setNotifications(prev => [logisticsNotification, creatorNotification, ...prev]);
     setShowCancelModal(false);
     setCancelReason('');
@@ -1834,7 +1703,7 @@ const LogisticsManagementSystem: React.FC = () => {
     const totalAmount = newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
     const orderPrefix = newOrder.type === 'center_to_brand' ? 'REQ' : 'PED';
     const newOrderId = `${orderPrefix}-2025-${String(orders.length + 1).padStart(3, '0')}`;
-    
+
     const orderToAdd: Order = {
       id: newOrderId,
       type: newOrder.type,
@@ -1845,7 +1714,7 @@ const LogisticsManagementSystem: React.FC = () => {
       estimated_delivery: newOrder.expected_delivery,
       amount: totalAmount,
       status: 'pending',
-      created_by: currentUser.name,
+      created_by: currentUser?.name || 'Sistema',
       items: newOrder.items.map(item => ({
         ...item,
         total_price: item.quantity * item.unit_price,
@@ -1856,7 +1725,7 @@ const LogisticsManagementSystem: React.FC = () => {
     };
 
     setOrders(prev => [...prev, orderToAdd]);
-    
+
     // Añadir notificación
     const notification: Notification = {
       id: Date.now(),
@@ -1870,9 +1739,9 @@ const LogisticsManagementSystem: React.FC = () => {
       read: false,
       urgent: totalAmount > 500 // Marcar como urgente si es > €500
     };
-    
+
     setNotifications(prev => [notification, ...prev]);
-    
+
     // Resetear formulario
     setNewOrder({
       supplier_id: '',
@@ -1884,7 +1753,7 @@ const LogisticsManagementSystem: React.FC = () => {
       notes: '',
       items: []
     });
-    
+
     setShowNewOrderModal(false);
     alert(`${newOrder.type === 'center_to_brand' ? 'Solicitud' : 'Pedido'} ${newOrderId} creado exitosamente`);
   };
@@ -1893,11 +1762,11 @@ const LogisticsManagementSystem: React.FC = () => {
     const productSelect = document.getElementById('product-select') as HTMLSelectElement;
     const quantityInput = document.getElementById('item-quantity') as HTMLInputElement;
     const priceInput = document.getElementById('item-price') as HTMLInputElement;
-    
+
     const selectedProduct = inventoryItems.find(item => item.id === parseInt(productSelect?.value || '0'));
     const quantity = parseInt(quantityInput?.value || '1');
     const unitPrice = parseFloat(priceInput?.value || '0');
-    
+
     if (!selectedProduct || quantity <= 0 || unitPrice <= 0) {
       alert('Por favor, completa todos los campos del producto');
       return;
@@ -1953,16 +1822,16 @@ const LogisticsManagementSystem: React.FC = () => {
   // Filtrar productos por categoría y búsqueda
   const getFilteredProducts = () => {
     let filtered = inventoryItems;
-    
+
     // Filtrar por categoría
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
-    
+
     // Filtrar por término de búsqueda
     if (productSearchTerm.trim()) {
       const searchLower = productSearchTerm.toLowerCase().trim();
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(searchLower) ||
         item.category.toLowerCase().includes(searchLower) ||
         item.supplier.toLowerCase().includes(searchLower) ||
@@ -1970,9 +1839,39 @@ const LogisticsManagementSystem: React.FC = () => {
         (item.location && item.location.toLowerCase().includes(searchLower))
       );
     }
-    
+
     return filtered;
   };
+
+  if (loadingUsers || !currentUser) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#f8fafc',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid #e2e8f0',
+          borderTopColor: '#059669',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Cargando módulo de logística...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
@@ -1982,7 +1881,7 @@ const LogisticsManagementSystem: React.FC = () => {
             <Package size={32} style={{ color: 'white' }} />
             <h1 style={{ fontSize: '2rem', fontWeight: '800', color: 'white', margin: 0 }}>Centro Logístico</h1>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {/* Selector de Usuario (para demo) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1990,24 +1889,24 @@ const LogisticsManagementSystem: React.FC = () => {
                 value={currentUser.role}
                 onChange={(e) => {
                   const roles: Record<string, User> = {
-                    'ceo': { 
-                      id: '1', 
-                      name: 'Carlos Suárez (CEO)', 
-                      role: 'ceo' as const, 
+                    'ceo': {
+                      id: '1',
+                      name: 'Carlos Suárez (CEO)',
+                      role: 'ceo' as const,
                       center: 'central',
                       permissions: getRolePermissions('ceo')
                     },
-                    'logistics_director': { 
-                      id: '2', 
-                      name: 'Benito Morales (Dir. Logística)', 
-                      role: 'logistics_director' as const, 
+                    'logistics_director': {
+                      id: '2',
+                      name: 'Benito Morales (Dir. Logística)',
+                      role: 'logistics_director' as const,
                       center: 'central',
                       permissions: getRolePermissions('logistics_director')
                     },
-                    'center_manager': { 
-                      id: '7', 
-                      name: 'Fran Giraldez (Encargado Sevilla)', 
-                      role: 'center_manager' as const, 
+                    'center_manager': {
+                      id: '7',
+                      name: 'Fran Giraldez (Encargado Sevilla)',
+                      role: 'center_manager' as const,
                       center: 'sevilla',
                       permissions: getRolePermissions('center_manager')
                     }
@@ -2035,8 +1934,8 @@ const LogisticsManagementSystem: React.FC = () => {
               <div style={{ fontWeight: '600' }}>{currentUser.name}</div>
               <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>
                 {currentUser.role === 'ceo' ? '👑 CEO' :
-                 currentUser.role === 'logistics_director' ? '📊 Director de Logística' : 
-                 '🏪 Encargado de Centro'}
+                  currentUser.role === 'logistics_director' ? '📊 Director de Logística' :
+                    '🏪 Encargado de Centro'}
               </div>
             </div>
 
@@ -2078,7 +1977,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   </span>
                 )}
               </button>
-              
+
               {/* Panel de Notificaciones */}
               {showNotifications && (
                 <div style={{
@@ -2097,7 +1996,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
                     <h3 style={{ margin: 0, color: '#374151' }}>🔔 Notificaciones</h3>
                   </div>
-                  
+
                   {notifications.length === 0 ? (
                     <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       No hay notificaciones
@@ -2136,38 +2035,163 @@ const LogisticsManagementSystem: React.FC = () => {
 
       <div style={{ padding: '0 2rem' }}>
         {/* Navegación por pestañas */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
-          {[
-            { id: 'kpis', label: '📊 KPIs Real Time', icon: Activity, permission: 'canViewReports' },
-            { id: 'inventory', label: '📦 Inventario', icon: Package, permission: 'canManageInventory' },
-            { id: 'quarterly', label: '📋 Revisión Trimestral', icon: FileText, permission: 'canViewReports' },
-            { id: 'orders', label: '🛒 Pedidos y Solicitudes', icon: ShoppingCart, permission: 'canCreateOrders' },
-            { id: 'tools', label: '🔧 Herramientas', icon: Settings, permission: 'canManageTools' },
-            { id: 'suppliers', label: '🏪 Proveedores', icon: Building, permission: 'canManageSuppliers' }
-          ].filter(tab => currentUser.permissions[tab.permission as keyof typeof currentUser.permissions]).map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.25rem',
-                border: 'none',
-                backgroundColor: activeTab === tab.id ? '#059669' : 'transparent',
-                color: activeTab === tab.id ? 'white' : '#6b7280',
-                fontWeight: activeTab === tab.id ? '600' : '500',
-                cursor: 'pointer',
-                borderRadius: '12px',
-                fontSize: '0.875rem'
-              }}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '8px' }}>
+          <button
+            onClick={() => setActiveTab('kpis')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'kpis' ? '#059669' : 'white',
+              color: activeTab === 'kpis' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'kpis' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Activity size={18} /> KPIs Real Time
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'inventory' ? '#059669' : 'white',
+              color: activeTab === 'inventory' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'inventory' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Package size={18} /> Inventario
+          </button>
+          <button
+            onClick={() => setActiveTab('quarterly')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'quarterly' ? '#059669' : 'white',
+              color: activeTab === 'quarterly' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'quarterly' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <FileText size={18} /> Revisión Trimestral
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'history' ? '#059669' : 'white',
+              color: activeTab === 'history' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'history' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Clock size={18} /> Historial
+          </button>
+          <button
+            onClick={() => setActiveTab('smart-order')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'smart-order' ? '#059669' : 'white',
+              color: activeTab === 'smart-order' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'smart-order' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <ShoppingCart size={18} /> Pedidos Inteligentes
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'orders' ? '#059669' : 'white',
+              color: activeTab === 'orders' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'orders' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <ShoppingCart size={18} /> Pedidos y Solicitudes
+          </button>
+          <button
+            onClick={() => setActiveTab('tools')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'tools' ? '#059669' : 'white',
+              color: activeTab === 'tools' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'tools' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Settings size={18} /> Herramientas
+          </button>
+          <button
+            onClick={() => setActiveTab('suppliers')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: activeTab === 'suppliers' ? '#059669' : 'white',
+              color: activeTab === 'suppliers' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeTab === 'suppliers' ? '0 4px 6px -1px rgba(5, 150, 105, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Building size={18} /> Proveedores
+          </button>
         </div>
+      </div>
 
+      <div style={{ padding: '0 2rem' }}>
         {/* Filtros específicos por pestaña */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -2176,16 +2200,16 @@ const LogisticsManagementSystem: React.FC = () => {
               type="text"
               placeholder={
                 activeTab === 'inventory' ? 'Buscar productos...' :
-                activeTab === 'orders' ? 'Buscar pedidos...' :
-                activeTab === 'tools' ? 'Buscar herramientas, ubicaciones, marcas...' :
-                activeTab === 'suppliers' ? 'Buscar proveedores...' : 'Buscar...'
+                  activeTab === 'orders' ? 'Buscar pedidos...' :
+                    activeTab === 'tools' ? 'Buscar herramientas, ubicaciones, marcas...' :
+                      activeTab === 'suppliers' ? 'Buscar proveedores...' : 'Buscar...'
               }
               value={activeTab === 'tools' ? toolSearchTerm : searchTerm}
               onChange={(e) => activeTab === 'tools' ? setToolSearchTerm(e.target.value) : setSearchTerm(e.target.value)}
               style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}
             />
           </div>
-          
+
           {/* Filtros para Inventario */}
           {activeTab === 'inventory' && (
             <>
@@ -2217,9 +2241,9 @@ const LogisticsManagementSystem: React.FC = () => {
                   <option value="Limpieza">🧼 Limpieza</option>
                 </optgroup>
               </select>
-              <select 
-                value={selectedCenterForInventory} 
-                onChange={(e) => setSelectedCenterForInventory(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
+              <select
+                value={selectedCenterForInventory}
+                onChange={(e) => setSelectedCenterForInventory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                 style={{ padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: '12px', backgroundColor: 'white' }}
               >
                 <option value="all">Todos los centros</option>
@@ -2247,33 +2271,33 @@ const LogisticsManagementSystem: React.FC = () => {
             (activeTab === 'orders' && currentUser.permissions.canCreateOrders) ||
             (activeTab === 'tools' && currentUser.permissions.canManageTools) ||
             (activeTab === 'suppliers' && currentUser.permissions.canManageSuppliers)) && (
-            <button
-              onClick={() => {
-                if (activeTab === 'inventory') setShowNewProductModal(true);
-                else if (activeTab === 'orders') setShowNewOrderModal(true);
-                else if (activeTab === 'tools') setShowNewToolModal(true);
-                else if (activeTab === 'suppliers') setShowSupplierDetailModal(true);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                backgroundColor: '#059669',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              <Plus size={16} />
-              {activeTab === 'inventory' ? 'Nuevo Producto' :
-               activeTab === 'orders' ? 'Nuevo Pedido' :
-               activeTab === 'tools' ? 'Nueva Herramienta' :
-               'Nuevo Proveedor'}
-            </button>
-          )}
+              <button
+                onClick={() => {
+                  if (activeTab === 'inventory') setShowNewProductModal(true);
+                  else if (activeTab === 'orders') setShowNewOrderModal(true);
+                  else if (activeTab === 'tools') setShowNewToolModal(true);
+                  else if (activeTab === 'suppliers') setShowSupplierDetailModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                <Plus size={16} />
+                {activeTab === 'inventory' ? 'Nuevo Producto' :
+                  activeTab === 'orders' ? 'Nuevo Pedido' :
+                    activeTab === 'tools' ? 'Nueva Herramienta' :
+                      'Nuevo Proveedor'}
+              </button>
+            )}
         </div>
 
         {/* Mensaje de permisos insuficientes */}
@@ -2288,28 +2312,32 @@ const LogisticsManagementSystem: React.FC = () => {
         )}
 
         {/* Pestaña KPIs Real Time */}
-        {activeTab === 'kpis' && currentUser.permissions.canViewReports && (
+        {activeTab === 'kpis' && (
           <InventoryKPIDashboard />
         )}
 
-        {/* Pestaña Inventario */}
-        {activeTab === 'inventory' && currentUser.permissions.canManageInventory && (
-          <RealInventoryTable 
+        {activeTab === 'inventory' && (
+          <RealInventoryTable
             selectedCenter={selectedCenterForInventory}
             searchTerm={searchTerm}
             statusFilter={statusFilter}
             categoryFilter={categoryFilter}
             inventoryItems={inventoryItems}
-            onDeleteItem={handleDeleteItem}
           />
         )}
 
-        {/* Pestaña Revisión Trimestral */}
-        {activeTab === 'quarterly' && currentUser.permissions.canViewReports && (
+        {activeTab === 'quarterly' && (
           <QuarterlyReviewSystem />
         )}
 
-        {/* Pestaña Pedidos */}
+        {activeTab === 'history' && (
+          <MovementsHistoryPanel initialCenterId={selectedCenterForInventory} />
+        )}
+
+        {activeTab === 'smart-order' && (
+          <SmartOrderGenerator initialCenterId={selectedCenterForInventory} />
+        )}
+
         {activeTab === 'orders' && (
           <div>
             {/* Panel de Solicitudes de Uniformes */}
@@ -2319,184 +2347,184 @@ const LogisticsManagementSystem: React.FC = () => {
 
             {/* Panel de Pedidos Tradicionales */}
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem' }}>
-            {/* Resumen de Pedidos */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-              <div style={{ backgroundColor: '#fef3c7', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#92400e' }}>{getOrderStats().pendingOrders}</div>
-                <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: '600' }}>⏳ Pedidos Pendientes</div>
+              {/* Resumen de Pedidos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ backgroundColor: '#fef3c7', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: '700', color: '#92400e' }}>{getOrderStats().pendingOrders}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: '600' }}>⏳ Pedidos Pendientes</div>
+                </div>
+                <div style={{ backgroundColor: '#dbeafe', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: '700', color: '#1e40af' }}>{getOrderStats().sentOrders}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#1e40af', fontWeight: '600' }}>🚚 Pedidos Enviados</div>
+                </div>
+                <div style={{ backgroundColor: '#dcfce7', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: '700', color: '#166534' }}>€{getOrderStats().pendingAmount.toFixed(2)}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#166534', fontWeight: '600' }}>💰 Pendiente de Cobro</div>
+                </div>
               </div>
-              <div style={{ backgroundColor: '#dbeafe', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#1e40af' }}>{getOrderStats().sentOrders}</div>
-                <div style={{ fontSize: '0.875rem', color: '#1e40af', fontWeight: '600' }}>🚚 Pedidos Enviados</div>
-              </div>
-              <div style={{ backgroundColor: '#dcfce7', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: '700', color: '#166534' }}>€{getOrderStats().pendingAmount.toFixed(2)}</div>
-                <div style={{ fontSize: '0.875rem', color: '#166534', fontWeight: '600' }}>💰 Pendiente de Cobro</div>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>Gestión de Pedidos</h2>
-              <button
-                onClick={() => setShowNewOrderModal(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.75rem 1rem',
-                  backgroundColor: '#059669',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <Plus size={16} />
-                Nuevo Pedido
-              </button>
-            </div>
-
-            {/* Filtros de Pedidos */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-              <input
-                type="text"
-                placeholder="Buscar pedidos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-              />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-              >
-                <option value="all">Todos los estados</option>
-                <option value="pending">⏳ Pendiente</option>
-                <option value="processing">🔄 En Proceso</option>
-                <option value="sent">🚚 Enviado</option>
-                <option value="delivered">✅ Entregado</option>
-                <option value="cancelled">❌ Cancelado</option>
-              </select>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
-              >
-                <option value="all">Todos los tipos</option>
-                <option value="center_to_brand">📥 Centro → Marca</option>
-                <option value="brand_to_supplier">📤 Marca → Proveedor</option>
-              </select>
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px', 
-              padding: '1rem', 
-              backgroundColor: '#f9fafb', 
-              fontWeight: '600', 
-              fontSize: '0.875rem',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              <div>Nº Pedido</div>
-              <div>Tipo</div>
-              <div>De → Para</div>
-              <div>Fecha</div>
-              <div>Entrega</div>
-              <div>Importe</div>
-              <div>Estado</div>
-              <div>Acciones</div>
-            </div>
-            
-            {filteredOrders.map((order: Order) => (
-            <div 
-              key={order.id} 
-              style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px', 
-                padding: '1rem', 
-                borderBottom: '1px solid #f3f4f6', 
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <div>
-                <div style={{ fontWeight: '600' }}>{order.id}</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{order.items.length} artículo(s)</div>
-              </div>
-              <div>
-                <span style={{
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '8px',
-                  fontSize: '0.75rem',
-                  backgroundColor: order.type === 'center_to_brand' ? '#e0f2fe' : '#f3e8ff',
-                  color: order.type === 'center_to_brand' ? '#0277bd' : '#7c3aed'
-                }}>
-                  {order.type === 'center_to_brand' ? '📥 C→M' : '📤 M→P'}
-                </span>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem' }}>{order.from}</div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {order.to}</div>
-              </div>
-              <div>{new Date(order.date).toLocaleDateString('es-ES')}</div>
-              <div>{new Date(order.delivery_date).toLocaleDateString('es-ES')}</div>
-              <div style={{ fontWeight: '600', color: '#059669' }}>€{order.amount.toFixed(2)}</div>
-              <div>
-                <span style={{ 
-                  padding: '0.25rem 0.5rem', 
-                  borderRadius: '8px', 
-                  fontSize: '0.75rem',
-                  backgroundColor: order.status === 'delivered' ? '#dcfce7' : 
-                                 order.status === 'sent' ? '#dbeafe' :
-                                 order.status === 'processing' ? '#e0f2fe' :
-                                 order.status === 'pending' ? '#fef3c7' : 
-                                 order.status === 'cancelled' ? '#fee2e2' : '#f3f4f6',
-                  color: order.status === 'delivered' ? '#166534' : 
-                         order.status === 'sent' ? '#1e40af' :
-                         order.status === 'processing' ? '#0277bd' :
-                         order.status === 'pending' ? '#92400e' : 
-                         order.status === 'cancelled' ? '#dc2626' : '#6b7280'
-                }}>
-                  {order.status === 'delivered' ? '✅ Entregado' : 
-                   order.status === 'sent' ? '🚚 Enviado' :
-                   order.status === 'processing' ? '🔄 En Proceso' :
-                   order.status === 'pending' ? '⏳ Pendiente' : 
-                   order.status === 'cancelled' ? '❌ Cancelado' : '❓ Desconocido'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>Gestión de Pedidos</h2>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Evitar que se abra el modal de detalle
-                    const confirmDelete = window.confirm(
-                      `¿Estás seguro de que quieres eliminar el pedido "${order.id}"?\n\nEsta acción no se puede deshacer.`
-                    );
-                    if (confirmDelete) {
-                      handleDeleteOrder(order.id);
-                      console.log(`✅ Pedido "${order.id}" eliminado correctamente`);
-                    }
-                  }}
+                  onClick={() => setShowNewOrderModal(true)}
                   style={{
-                    padding: '4px',
-                    backgroundColor: '#fef2f2',
-                    color: '#dc2626',
-                    border: '1px solid #fecaca',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap'
                   }}
-                  title="Eliminar pedido"
                 >
-                  <Trash2 size={14} />
+                  <Plus size={16} />
+                  Nuevo Pedido
                 </button>
               </div>
-            </div>
-            ))}
+
+              {/* Filtros de Pedidos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                <input
+                  type="text"
+                  placeholder="Buscar pedidos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                >
+                  <option value="all">Todos los estados</option>
+                  <option value="pending">⏳ Pendiente</option>
+                  <option value="processing">🔄 En Proceso</option>
+                  <option value="sent">🚚 Enviado</option>
+                  <option value="delivered">✅ Entregado</option>
+                  <option value="cancelled">❌ Cancelado</option>
+                </select>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                >
+                  <option value="all">Todos los tipos</option>
+                  <option value="center_to_brand">📥 Centro → Marca</option>
+                  <option value="brand_to_supplier">📤 Marca → Proveedor</option>
+                </select>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px',
+                padding: '1rem',
+                backgroundColor: '#f9fafb',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                borderBottom: '2px solid #e5e7eb'
+              }}>
+                <div>Nº Pedido</div>
+                <div>Tipo</div>
+                <div>De → Para</div>
+                <div>Fecha</div>
+                <div>Entrega</div>
+                <div>Importe</div>
+                <div>Estado</div>
+                <div>Acciones</div>
+              </div>
+
+              {filteredOrders.map((order: Order) => (
+                <div
+                  key={order.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.5fr 1fr 1.5fr 1fr 1fr 1fr 1fr 80px',
+                    padding: '1rem',
+                    borderBottom: '1px solid #f3f4f6',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div>
+                    <div style={{ fontWeight: '600' }}>{order.id}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{order.items.length} artículo(s)</div>
+                  </div>
+                  <div>
+                    <span style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      backgroundColor: order.type === 'center_to_brand' ? '#e0f2fe' : '#f3e8ff',
+                      color: order.type === 'center_to_brand' ? '#0277bd' : '#7c3aed'
+                    }}>
+                      {order.type === 'center_to_brand' ? '📥 C→M' : '📤 M→P'}
+                    </span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.875rem' }}>{order.from}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {order.to}</div>
+                  </div>
+                  <div>{new Date(order.date).toLocaleDateString('es-ES')}</div>
+                  <div>{new Date(order.delivery_date).toLocaleDateString('es-ES')}</div>
+                  <div style={{ fontWeight: '600', color: '#059669' }}>€{order.amount.toFixed(2)}</div>
+                  <div>
+                    <span style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      backgroundColor: order.status === 'delivered' ? '#dcfce7' :
+                        order.status === 'sent' ? '#dbeafe' :
+                          order.status === 'processing' ? '#e0f2fe' :
+                            order.status === 'pending' ? '#fef3c7' :
+                              order.status === 'cancelled' ? '#fee2e2' : '#f3f4f6',
+                      color: order.status === 'delivered' ? '#166534' :
+                        order.status === 'sent' ? '#1e40af' :
+                          order.status === 'processing' ? '#0277bd' :
+                            order.status === 'pending' ? '#92400e' :
+                              order.status === 'cancelled' ? '#dc2626' : '#6b7280'
+                    }}>
+                      {order.status === 'delivered' ? '✅ Entregado' :
+                        order.status === 'sent' ? '🚚 Enviado' :
+                          order.status === 'processing' ? '🔄 En Proceso' :
+                            order.status === 'pending' ? '⏳ Pendiente' :
+                              order.status === 'cancelled' ? '❌ Cancelado' : '❓ Desconocido'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Evitar que se abra el modal de detalle
+                        const confirmDelete = window.confirm(
+                          `¿Estás seguro de que quieres eliminar el pedido "${order.id}"?\n\nEsta acción no se puede deshacer.`
+                        );
+                        if (confirmDelete) {
+                          handleDeleteOrder(order.id);
+                          console.log(`✅ Pedido "${order.id}" eliminado correctamente`);
+                        }
+                      }}
+                      style={{
+                        padding: '4px',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title="Eliminar pedido"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -2508,10 +2536,10 @@ const LogisticsManagementSystem: React.FC = () => {
             {(getOverdueMaintenanceTools().length > 0 || getToolsNeedingMaintenance().length > 0) && (
               <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
                 {getOverdueMaintenanceTools().length > 0 && (
-                  <div style={{ 
-                    backgroundColor: '#fef2f2', 
-                    border: '1px solid #fecaca', 
-                    borderRadius: '8px', 
+                  <div style={{
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
                     padding: '1rem',
                     flex: 1
                   }}>
@@ -2526,12 +2554,12 @@ const LogisticsManagementSystem: React.FC = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {getToolsNeedingMaintenance().length > 0 && (
-                  <div style={{ 
-                    backgroundColor: '#fffbeb', 
-                    border: '1px solid #fed7aa', 
-                    borderRadius: '8px', 
+                  <div style={{
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fed7aa',
+                    borderRadius: '8px',
                     padding: '1rem',
                     flex: 1
                   }}>
@@ -2551,143 +2579,143 @@ const LogisticsManagementSystem: React.FC = () => {
 
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
               {/* Contador de herramientas */}
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Mostrando {getFilteredTools().length} de {tools.length} herramientas
-                </span>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {(toolSearchTerm || toolStatusFilter !== 'all' || toolLocationFilter !== 'all') && (
+              <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Mostrando {getFilteredTools().length} de {tools.length} herramientas
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {(toolSearchTerm || toolStatusFilter !== 'all' || toolLocationFilter !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setToolSearchTerm('');
+                          setToolStatusFilter('all');
+                          setToolLocationFilter('all');
+                        }}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: '#f3f4f6',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          color: '#6b7280'
+                        }}
+                      >
+                        🔄 Limpiar filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
+                <div>Herramienta</div>
+                <div>Categoría</div>
+                <div>Ubicación</div>
+                <div>Estado</div>
+                <div>Asignado a</div>
+                <div>Precio</div>
+                <div>Acciones</div>
+              </div>
+
+              {getFilteredTools().map((tool: Tool) => (
+                <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '600' }}>{tool.name}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{tool.brand} {tool.model}</div>
+                  </div>
+                  <div>{tool.category}</div>
+                  <div>{toolLocations.find(loc => loc.id === tool.current_location)?.name}</div>
+                  <div style={{ color: tool.status === 'available' ? '#059669' : tool.status === 'lost' ? '#dc2626' : '#6b7280' }}>
+                    {tool.status === 'available' ? '✅ Disponible' :
+                      tool.status === 'in_use' ? '🔧 En Uso' :
+                        tool.status === 'maintenance' ? '⚙️ Mantenimiento' :
+                          tool.status === 'lost' ? '❌ Perdida' : '🔴 Dañada'}
+                  </div>
+                  <div>{tool.assigned_to || '-'}</div>
+                  <div>€{tool.purchase_price.toFixed(2)}</div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       onClick={() => {
-                        setToolSearchTerm('');
-                        setToolStatusFilter('all');
-                        setToolLocationFilter('all');
+                        setSelectedTool(tool);
+                        setShowMoveToolModal(true);
                       }}
                       style={{
                         padding: '0.25rem 0.5rem',
-                        backgroundColor: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        backgroundColor: '#059669',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem'
+                      }}
+                      title="Mover herramienta"
+                    >
+                      📍 Mover
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedTool(tool);
+                        // Aquí se podría abrir un modal de historial
+                        alert(`Historial de ${tool.name} - Funcionalidad próximamente`);
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#6b7280',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem'
+                      }}
+                      title="Ver historial"
+                    >
+                      📋 Historial
+                    </button>
+                    <button
+                      onClick={() => {
+                        const confirmDelete = window.confirm(
+                          `¿Estás seguro de que quieres eliminar la herramienta "${tool.name}"?\n\nEsta acción no se puede deshacer.`
+                        );
+                        if (confirmDelete) {
+                          handleDeleteTool(tool.id);
+                          console.log(`✅ Herramienta "${tool.name}" eliminada correctamente`);
+                        }
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         fontSize: '0.75rem',
-                        color: '#6b7280'
+                        display: 'flex',
+                        alignItems: 'center'
                       }}
+                      title="Eliminar herramienta"
                     >
-                      🔄 Limpiar filtros
+                      <Trash2 size={12} />
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              ))}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', backgroundColor: '#f9fafb', padding: '1rem', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>
-              <div>Herramienta</div>
-              <div>Categoría</div>
-              <div>Ubicación</div>
-              <div>Estado</div>
-              <div>Asignado a</div>
-              <div>Precio</div>
-              <div>Acciones</div>
-            </div>
-            
-            {getFilteredTools().map((tool: Tool) => (
-              <div key={tool.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr', padding: '1rem', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '600' }}>{tool.name}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{tool.brand} {tool.model}</div>
+              {getFilteredTools().length === 0 && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                  <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                  <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
+                    {toolSearchTerm ?
+                      `No se encontraron herramientas para "${toolSearchTerm}"` :
+                      `No hay herramientas con los filtros seleccionados`
+                    }
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>
+                    Prueba a cambiar los filtros o crear una nueva herramienta
+                  </p>
                 </div>
-                <div>{tool.category}</div>
-                <div>{toolLocations.find(loc => loc.id === tool.current_location)?.name}</div>
-                <div style={{ color: tool.status === 'available' ? '#059669' : tool.status === 'lost' ? '#dc2626' : '#6b7280' }}>
-                  {tool.status === 'available' ? '✅ Disponible' :
-                   tool.status === 'in_use' ? '🔧 En Uso' :
-                   tool.status === 'maintenance' ? '⚙️ Mantenimiento' :
-                   tool.status === 'lost' ? '❌ Perdida' : '🔴 Dañada'}
-                </div>
-                <div>{tool.assigned_to || '-'}</div>
-                <div>€{tool.purchase_price.toFixed(2)}</div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={() => {
-                      setSelectedTool(tool);
-                      setShowMoveToolModal(true);
-                    }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#059669',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                    title="Mover herramienta"
-                  >
-                    📍 Mover
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedTool(tool);
-                      // Aquí se podría abrir un modal de historial
-                      alert(`Historial de ${tool.name} - Funcionalidad próximamente`);
-                    }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#6b7280',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                    title="Ver historial"
-                  >
-                    📋 Historial
-                  </button>
-                  <button
-                    onClick={() => {
-                      const confirmDelete = window.confirm(
-                        `¿Estás seguro de que quieres eliminar la herramienta "${tool.name}"?\n\nEsta acción no se puede deshacer.`
-                      );
-                      if (confirmDelete) {
-                        handleDeleteTool(tool.id);
-                        console.log(`✅ Herramienta "${tool.name}" eliminada correctamente`);
-                      }
-                    }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#fef2f2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    title="Eliminar herramienta"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            {getFilteredTools().length === 0 && (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-                <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
-                  {toolSearchTerm ? 
-                    `No se encontraron herramientas para "${toolSearchTerm}"` :
-                    `No hay herramientas con los filtros seleccionados`
-                  }
-                </p>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>
-                  Prueba a cambiar los filtros o crear una nueva herramienta
-                </p>
-              </div>
-            )}
+              )}
             </div>
           </div>
         )}
@@ -2728,15 +2756,15 @@ const LogisticsManagementSystem: React.FC = () => {
                 <div>Total Pedidos</div>
                 <div>Acciones</div>
               </div>
-              
+
               {filteredSuppliers.map((supplier: Supplier) => (
-                <div 
-                  key={supplier.id} 
-                  style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr 80px', 
-                    padding: '1rem', 
-                    borderBottom: '1px solid #f3f4f6', 
+                <div
+                  key={supplier.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr 80px',
+                    padding: '1rem',
+                    borderBottom: '1px solid #f3f4f6',
                     transition: 'background-color 0.2s'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -2812,7 +2840,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h1 style={{ fontSize: '2rem', fontWeight: '700', margin: 0 }}>📊 Reportes y Análisis</h1>
-              
+
               {/* Panel de Notificaciones Críticas */}
               {getUnreadNotifications().length > 0 && (
                 <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1rem', maxWidth: '400px' }}>
@@ -2823,7 +2851,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     </h3>
                   </div>
                   <div style={{ fontSize: '0.875rem', color: '#7f1d1d', marginBottom: '0.75rem' }}>
-                    {getUnreadNotifications().filter(n => n.priority === 'high').length > 0 && 
+                    {getUnreadNotifications().filter(n => n.priority === 'high').length > 0 &&
                       `${getUnreadNotifications().filter(n => n.priority === 'high').length} crítica${getUnreadNotifications().filter(n => n.priority === 'high').length > 1 ? 's' : ''}`
                     }
                   </div>
@@ -2924,10 +2952,10 @@ const LogisticsManagementSystem: React.FC = () => {
                     <div key={status} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
                       <span>
                         {status === 'pending' ? '⏳ Pendiente' :
-                         status === 'processing' ? '🔄 En Proceso' :
-                         status === 'sent' ? '🚚 Enviado' :
-                         status === 'delivered' ? '✅ Entregado' :
-                         status === 'cancelled' ? '❌ Cancelado' : status}
+                          status === 'processing' ? '🔄 En Proceso' :
+                            status === 'sent' ? '🚚 Enviado' :
+                              status === 'delivered' ? '✅ Entregado' :
+                                status === 'cancelled' ? '❌ Cancelado' : status}
                       </span>
                       <span style={{ fontWeight: '600' }}>{count}</span>
                     </div>
@@ -2941,11 +2969,11 @@ const LogisticsManagementSystem: React.FC = () => {
         {/* Modal Nuevo Producto */}
         {showNewProductModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflow: 'auto' }}>
-            <div style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '16px', 
-              padding: '2rem', 
-              width: '90%', 
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '2rem',
+              width: '90%',
               maxWidth: '600px',
               maxHeight: '90vh',
               overflow: 'auto',
@@ -2953,7 +2981,7 @@ const LogisticsManagementSystem: React.FC = () => {
               position: 'relative'
             }}>
               <h2 style={{ margin: '0 0 1.5rem 0' }}>Nuevo Producto</h2>
-              
+
               <div style={{ display: 'grid', gap: '1rem' }}>
                 {/* Selector de Modo */}
                 <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -2991,7 +3019,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     </label>
                   </div>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                    {productMode === 'predefined' 
+                    {productMode === 'predefined'
                       ? 'Selecciona de productos conocidos con precios y tallas predefinidas'
                       : 'Crea un producto completamente nuevo con nombre y especificaciones personalizadas'
                     }
@@ -3008,7 +3036,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   />
                 )}
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: productMode === 'predefined' ? '1fr 1fr' : '1fr', gap: '1rem' }}>
                   <select
                     value={newProduct.category}
@@ -3017,9 +3045,9 @@ const LogisticsManagementSystem: React.FC = () => {
                       setNewProduct(prev => ({ ...prev, category }));
                       setSelectedProductType(''); // Reset product type when category changes
                     }}
-                    style={{ 
-                      padding: '0.75rem', 
-                      border: '1px solid #d1d5db', 
+                    style={{
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
                       borderRadius: '8px',
                       width: '100%',
                       boxSizing: 'border-box'
@@ -3077,7 +3105,7 @@ const LogisticsManagementSystem: React.FC = () => {
                       </>
                     )}
                   </select>
-                  
+
                   {newProduct.category && productMode === 'predefined' && (
                     <select
                       value={selectedProductType}
@@ -3086,17 +3114,17 @@ const LogisticsManagementSystem: React.FC = () => {
                         setSelectedProductType(productType);
                         const product = productsByCategory[newProduct.category as keyof typeof productsByCategory]?.find(p => p.name === productType);
                         if (product) {
-                          setNewProduct(prev => ({ 
-                            ...prev, 
+                          setNewProduct(prev => ({
+                            ...prev,
                             name: product.name,
                             purchase_price: product.price,
                             size: '' // Reset size when product changes
                           }));
                         }
                       }}
-                      style={{ 
-                        padding: '0.75rem', 
-                        border: '1px solid #d1d5db', 
+                      style={{
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
                         borderRadius: '8px',
                         width: '100%',
                         boxSizing: 'border-box'
@@ -3122,10 +3150,10 @@ const LogisticsManagementSystem: React.FC = () => {
                       <select
                         value={newProduct.size}
                         onChange={(e) => setNewProduct(prev => ({ ...prev, size: e.target.value }))}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem', 
-                          border: '1px solid #d1d5db', 
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #d1d5db',
                           borderRadius: '8px',
                           boxSizing: 'border-box'
                         }}
@@ -3143,10 +3171,10 @@ const LogisticsManagementSystem: React.FC = () => {
                         placeholder="Ej: M, L, 5kg, 750ml, Pack 10..."
                         value={newProduct.size}
                         onChange={(e) => setNewProduct(prev => ({ ...prev, size: e.target.value }))}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.75rem', 
-                          border: '1px solid #d1d5db', 
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #d1d5db',
                           borderRadius: '8px',
                           boxSizing: 'border-box'
                         }}
@@ -3158,9 +3186,9 @@ const LogisticsManagementSystem: React.FC = () => {
                 <select
                   value={newProduct.center}
                   onChange={(e) => setNewProduct(prev => ({ ...prev, center: e.target.value as any }))}
-                  style={{ 
-                    padding: '0.75rem', 
-                    border: '1px solid #d1d5db', 
+                  style={{
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
                     borderRadius: '8px',
                     width: '100%',
                     boxSizing: 'border-box'
@@ -3171,7 +3199,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <option value="puerto">🏪 Puerto</option>
                   <option value="central">🏢 Central</option>
                 </select>
-                
+
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
                     🏭 Proveedor
@@ -3184,7 +3212,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   />
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
@@ -3241,7 +3269,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#dc2626' }}>
@@ -3289,13 +3317,13 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
               <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', fontWeight: '700' }}>🔧 Nueva Herramienta</h2>
-              
+
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Nombre *</label>
                 <input
                   type="text"
                   value={newTool.name}
-                  onChange={(e) => setNewTool({...newTool, name: e.target.value})}
+                  onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
                   style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   placeholder="Ej: Aspiradora Industrial"
                 />
@@ -3307,7 +3335,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <input
                     type="text"
                     value={newTool.brand}
-                    onChange={(e) => setNewTool({...newTool, brand: e.target.value})}
+                    onChange={(e) => setNewTool({ ...newTool, brand: e.target.value })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                     placeholder="Ej: Kärcher"
                   />
@@ -3317,7 +3345,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <input
                     type="text"
                     value={newTool.model}
-                    onChange={(e) => setNewTool({...newTool, model: e.target.value})}
+                    onChange={(e) => setNewTool({ ...newTool, model: e.target.value })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                     placeholder="Ej: NT 70/2"
                   />
@@ -3329,7 +3357,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Categoría</label>
                   <select
                     value={newTool.category}
-                    onChange={(e) => setNewTool({...newTool, category: e.target.value as Tool['category']})}
+                    onChange={(e) => setNewTool({ ...newTool, category: e.target.value as Tool['category'] })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   >
                     <option value="Limpieza">🧽 Limpieza</option>
@@ -3344,14 +3372,14 @@ const LogisticsManagementSystem: React.FC = () => {
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Ubicación Inicial *</label>
                   <select
                     value={newTool.current_location}
-                    onChange={(e) => setNewTool({...newTool, current_location: e.target.value})}
+                    onChange={(e) => setNewTool({ ...newTool, current_location: e.target.value })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   >
                     {toolLocations.map(location => (
                       <option key={location.id} value={location.id}>
                         {location.type === 'permanent' ? '🏢' :
-                         location.type === 'center' ? '🏪' :
-                         location.type === 'temporary' ? '🔧' : '📦'} {location.name}
+                          location.type === 'center' ? '🏪' :
+                            location.type === 'temporary' ? '🔧' : '📦'} {location.name}
                       </option>
                     ))}
                   </select>
@@ -3366,7 +3394,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     step="0.01"
                     min="0"
                     value={newTool.purchase_price}
-                    onChange={(e) => setNewTool({...newTool, purchase_price: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setNewTool({ ...newTool, purchase_price: parseFloat(e.target.value) || 0 })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                     placeholder="0.00"
                   />
@@ -3376,7 +3404,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <input
                     type="text"
                     value={newTool.serial_number}
-                    onChange={(e) => setNewTool({...newTool, serial_number: e.target.value})}
+                    onChange={(e) => setNewTool({ ...newTool, serial_number: e.target.value })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                     placeholder="Opcional"
                   />
@@ -3400,7 +3428,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
               <h2 style={{ margin: '0 0 1.5rem 0' }}>✏️ Editar: {editingProduct.name}</h2>
-              
+
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
@@ -3415,7 +3443,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     min="0"
                   />
                 </div>
-                
+
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
                     📍 Ubicación Física
@@ -3428,7 +3456,7 @@ const LogisticsManagementSystem: React.FC = () => {
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}
                   />
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#dc2626' }}>
@@ -3476,7 +3504,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
               <h2 style={{ margin: '0 0 1.5rem 0' }}>📋 {selectedOrder.id}</h2>
-              
+
               <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
                 <div><strong>Tipo:</strong> {selectedOrder.type === 'center_to_brand' ? '📥 Centro → Marca' : '📤 Marca → Proveedor'}</div>
                 <div><strong>De:</strong> {selectedOrder.from} → <strong>Para:</strong> {selectedOrder.to}</div>
@@ -3484,11 +3512,11 @@ const LogisticsManagementSystem: React.FC = () => {
                 <div><strong>Fecha:</strong> {new Date(selectedOrder.date).toLocaleDateString('es-ES')}</div>
                 <div><strong>Entrega:</strong> {new Date(selectedOrder.estimated_delivery).toLocaleDateString('es-ES')}</div>
                 <div><strong>Estado:</strong> {
-                  selectedOrder.status === 'delivered' ? '✅ Entregado' : 
-                  selectedOrder.status === 'sent' ? '🚚 Enviado' :
-                  selectedOrder.status === 'processing' ? '🔄 En Proceso' :
-                  selectedOrder.status === 'pending' ? '⏳ Pendiente' : 
-                  selectedOrder.status === 'cancelled' ? '❌ Cancelado' : '❓ Desconocido'
+                  selectedOrder.status === 'delivered' ? '✅ Entregado' :
+                    selectedOrder.status === 'sent' ? '🚚 Enviado' :
+                      selectedOrder.status === 'processing' ? '🔄 En Proceso' :
+                        selectedOrder.status === 'pending' ? '⏳ Pendiente' :
+                          selectedOrder.status === 'cancelled' ? '❌ Cancelado' : '❓ Desconocido'
                 }</div>
                 <div><strong>Importe:</strong> €{selectedOrder.amount.toFixed(2)}</div>
               </div>
@@ -3507,17 +3535,17 @@ const LogisticsManagementSystem: React.FC = () => {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 {/* Botones de acción según el estado del pedido */}
                 {selectedOrder.status === 'pending' && currentUser.role === 'logistics_director' && (
-                  <button 
+                  <button
                     onClick={() => {
                       processOrder(selectedOrder.id);
                       setShowOrderDetailModal(false);
                     }}
-                    style={{ 
-                      padding: '0.75rem 1.5rem', 
-                      backgroundColor: '#f59e0b', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '8px', 
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: '600'
                     }}
@@ -3525,19 +3553,19 @@ const LogisticsManagementSystem: React.FC = () => {
                     🔄 Poner en Proceso
                   </button>
                 )}
-                
+
                 {selectedOrder.status === 'processing' && currentUser.role === 'logistics_director' && (
-                  <button 
+                  <button
                     onClick={() => {
                       shipOrder(selectedOrder.id);
                       setShowOrderDetailModal(false);
                     }}
-                    style={{ 
-                      padding: '0.75rem 1.5rem', 
-                      backgroundColor: '#3b82f6', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '8px', 
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: '600'
                     }}
@@ -3545,17 +3573,17 @@ const LogisticsManagementSystem: React.FC = () => {
                     🚚 Pedido Enviado
                   </button>
                 )}
-                
+
                 {/* Botón Cancelar Pedido - disponible para pedidos pendientes y en proceso */}
                 {(selectedOrder.status === 'pending' || selectedOrder.status === 'processing') && currentUser.role === 'logistics_director' && (
-                  <button 
+                  <button
                     onClick={() => setShowCancelModal(true)}
-                    style={{ 
-                      padding: '0.75rem 1.5rem', 
-                      backgroundColor: '#dc2626', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '8px', 
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       fontWeight: '600'
                     }}
@@ -3563,16 +3591,16 @@ const LogisticsManagementSystem: React.FC = () => {
                     ❌ Cancelar Pedido
                   </button>
                 )}
-                
-                <button 
-                  onClick={() => setShowOrderDetailModal(false)} 
-                  style={{ 
-                    padding: '0.75rem 1.5rem', 
-                    backgroundColor: '#6b7280', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    cursor: 'pointer' 
+
+                <button
+                  onClick={() => setShowOrderDetailModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
                   }}
                 >
                   Cerrar
@@ -3587,7 +3615,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
               <h2 style={{ margin: '0 0 1.5rem 0', color: '#dc2626' }}>❌ Cancelar Pedido: {selectedOrder.id}</h2>
-              
+
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
                   Motivo de la cancelación:
@@ -3605,7 +3633,7 @@ const LogisticsManagementSystem: React.FC = () => {
                   <option value="Error en el pedido">Error en el pedido</option>
                   <option value="Otro">Otro motivo</option>
                 </select>
-                
+
                 {cancelReason === 'Otro' && (
                   <textarea
                     placeholder="Especifica el motivo..."
@@ -3616,22 +3644,22 @@ const LogisticsManagementSystem: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button 
+                <button
                   onClick={() => {
                     setShowCancelModal(false);
                     setCancelReason('');
                   }}
-                  style={{ 
-                    padding: '0.75rem 1.5rem', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: '8px', 
-                    backgroundColor: 'white', 
-                    cursor: 'pointer' 
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
                   }}
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (cancelReason) {
                       cancelOrder(selectedOrder.id, cancelReason);
@@ -3641,12 +3669,12 @@ const LogisticsManagementSystem: React.FC = () => {
                     }
                   }}
                   disabled={!cancelReason}
-                  style={{ 
-                    padding: '0.75rem 1.5rem', 
-                    backgroundColor: cancelReason ? '#dc2626' : '#9ca3af', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '8px', 
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: cancelReason ? '#dc2626' : '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
                     cursor: cancelReason ? 'pointer' : 'not-allowed',
                     fontWeight: '600'
                   }}
@@ -3663,7 +3691,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '600px' }}>
               <h2 style={{ margin: '0 0 1.5rem 0' }}>🏪 {selectedSupplier.name}</h2>
-              
+
               <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
                 <div><strong>Contacto:</strong> {selectedSupplier.contact_person}</div>
                 <div><strong>Email:</strong> {selectedSupplier.email}</div>
@@ -3718,8 +3746,8 @@ const LogisticsManagementSystem: React.FC = () => {
                       name="orderType"
                       value="center_to_brand"
                       checked={newOrder.type === 'center_to_brand'}
-                      onChange={(e) => setNewOrder(prev => ({ 
-                        ...prev, 
+                      onChange={(e) => setNewOrder(prev => ({
+                        ...prev,
                         type: e.target.value as 'center_to_brand' | 'brand_to_supplier',
                         supplier_id: '',
                         center_id: '',
@@ -3736,8 +3764,8 @@ const LogisticsManagementSystem: React.FC = () => {
                       name="orderType"
                       value="brand_to_supplier"
                       checked={newOrder.type === 'brand_to_supplier'}
-                      onChange={(e) => setNewOrder(prev => ({ 
-                        ...prev, 
+                      onChange={(e) => setNewOrder(prev => ({
+                        ...prev,
                         type: e.target.value as 'center_to_brand' | 'brand_to_supplier',
                         supplier_id: '',
                         center_id: '',
@@ -3843,11 +3871,11 @@ const LogisticsManagementSystem: React.FC = () => {
                     Añadir Productos
                   </button>
                 </div>
-                
+
                 {newOrder.items.length === 0 ? (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '2rem', 
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem',
                     color: '#6b7280',
                     backgroundColor: 'white',
                     borderRadius: '8px',
@@ -3934,17 +3962,17 @@ const LogisticsManagementSystem: React.FC = () => {
                   }
                   style={{
                     padding: '0.75rem 1.5rem',
-                    backgroundColor: 
+                    backgroundColor:
                       ((newOrder.type === 'center_to_brand' && newOrder.center_id && newOrder.items.length > 0) ||
-                       (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
-                      ? '#059669' : '#9ca3af',
+                        (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
+                        ? '#059669' : '#9ca3af',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: 
+                    cursor:
                       ((newOrder.type === 'center_to_brand' && newOrder.center_id && newOrder.items.length > 0) ||
-                       (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
-                      ? 'pointer' : 'not-allowed',
+                        (newOrder.type === 'brand_to_supplier' && newOrder.supplier_id && newOrder.items.length > 0))
+                        ? 'pointer' : 'not-allowed',
                     fontWeight: '600'
                   }}
                 >
@@ -3973,15 +4001,15 @@ const LogisticsManagementSystem: React.FC = () => {
               <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Buscar Productos</label>
                 <div style={{ position: 'relative' }}>
-                  <Search 
-                    size={20} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '0.75rem', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)', 
-                      color: '#6b7280' 
-                    }} 
+                  <Search
+                    size={20}
+                    style={{
+                      position: 'absolute',
+                      left: '0.75rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: '#6b7280'
+                    }}
                   />
                   <input
                     type="text"
@@ -4017,10 +4045,10 @@ const LogisticsManagementSystem: React.FC = () => {
                   )}
                 </div>
                 {productSearchTerm && (
-                  <div style={{ 
-                    marginTop: '0.5rem', 
-                    fontSize: '0.875rem', 
-                    color: '#6b7280' 
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
                   }}>
                     {getFilteredProducts().length} producto(s) encontrado(s)
                   </div>
@@ -4067,18 +4095,18 @@ const LogisticsManagementSystem: React.FC = () => {
                         fontWeight: '500'
                       }}
                     >
-                      {category === 'Vestuario' ? '👕' : 
-                       category === 'Material Deportivo' ? '🏋️' :
-                       category === 'Merchandising' ? '🎁' :
-                       category === 'Consumibles' ? '🧽' : '📦'} {category}
+                      {category === 'Vestuario' ? '👕' :
+                        category === 'Material Deportivo' ? '🏋️' :
+                          category === 'Merchandising' ? '🎁' :
+                            category === 'Consumibles' ? '🧽' : '📦'} {category}
                     </button>
                   ))}
                 </div>
                 {productSearchTerm && (
-                  <div style={{ 
-                    marginTop: '0.75rem', 
-                    padding: '0.5rem', 
-                    backgroundColor: '#fef3c7', 
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.5rem',
+                    backgroundColor: '#fef3c7',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
                     color: '#92400e'
@@ -4091,9 +4119,9 @@ const LogisticsManagementSystem: React.FC = () => {
               {/* Lista de productos */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {getFilteredProducts().map(product => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
+                  <ProductCard
+                    key={product.id}
+                    product={product}
                     onAddToOrder={addProductToOrder}
                     isAlreadyAdded={newOrder.items.some(item => item.product_id === product.id)}
                     userRole={currentUser.role}
@@ -4105,7 +4133,7 @@ const LogisticsManagementSystem: React.FC = () => {
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
                   <Package size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                   <p style={{ margin: 0, fontSize: '1rem', marginBottom: '0.5rem' }}>
-                    {productSearchTerm ? 
+                    {productSearchTerm ?
                       `No se encontraron productos para "${productSearchTerm}"` :
                       `No hay productos en esta categoría`
                     }
@@ -4143,7 +4171,7 @@ const LogisticsManagementSystem: React.FC = () => {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1002 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '500px' }}>
               <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', fontWeight: '700' }}>📍 Mover {selectedTool.name}</h2>
-              
+
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Nueva Ubicación</label>
                 <select id="new-location" style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px' }}>
@@ -4168,7 +4196,7 @@ const LogisticsManagementSystem: React.FC = () => {
                 <button onClick={() => setShowMoveToolModal(false)} style={{ flex: 1, padding: '0.75rem', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     alert('Herramienta movida exitosamente');
                     setShowMoveToolModal(false);
@@ -4183,7 +4211,7 @@ const LogisticsManagementSystem: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 
@@ -4196,7 +4224,7 @@ const ProductCard: React.FC<{
 }> = ({ product, onAddToOrder, isAlreadyAdded, userRole }) => {
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(product.sale_price || product.purchase_price || 0);
-  
+
   // Verificar si el usuario puede modificar precios
   const canEditPrice = userRole === 'ceo' || userRole === 'logistics_director' || userRole === 'admin';
 
@@ -4243,8 +4271,8 @@ const ProductCard: React.FC<{
         <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
           {product.category} • {product.size} • {product.supplier}
         </div>
-        <div style={{ 
-          fontSize: '0.875rem', 
+        <div style={{
+          fontSize: '0.875rem',
           color: getStockStatusColor(),
           fontWeight: '600',
           marginBottom: '0.5rem'
@@ -4299,9 +4327,9 @@ const ProductCard: React.FC<{
             }}
           />
           {!canEditPrice && (
-            <div style={{ 
-              fontSize: '0.75rem', 
-              color: '#6b7280', 
+            <div style={{
+              fontSize: '0.75rem',
+              color: '#6b7280',
               marginTop: '0.25rem',
               fontStyle: 'italic'
             }}>
@@ -4326,10 +4354,10 @@ const ProductCard: React.FC<{
           fontSize: '0.875rem'
         }}
       >
-        {isAlreadyAdded ? 'Ya Añadido' : 
-         product.quantity === 0 ? 'Sin Stock' :
-         quantity > product.quantity ? 'Cantidad Excesiva' :
-         `Añadir (€${(quantity * unitPrice).toFixed(2)})`}
+        {isAlreadyAdded ? 'Ya Añadido' :
+          product.quantity === 0 ? 'Sin Stock' :
+            quantity > product.quantity ? 'Cantidad Excesiva' :
+              `Añadir (€${(quantity * unitPrice).toFixed(2)})`}
       </button>
     </div>
   );

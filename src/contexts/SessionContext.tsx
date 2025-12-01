@@ -134,7 +134,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
   const loadEmployeeData = async (userId: string, email: string): Promise<boolean> => {
     try {
       console.log('🔍 Cargando datos del empleado para:', email);
-      
+
       // Verificar si es un usuario válido
       if (!VALID_USERS.includes(email)) {
         throw new Error(`Usuario ${email} no está autorizado`);
@@ -142,7 +142,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Intentar cargar empleado desde la base de datos
       console.log('✅ Consultando empleado en base de datos para:', email);
-      
+
       const { data: employeeData, error: dbError } = await supabase
         .from('employees')
         .select('*')
@@ -157,7 +157,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Empleado encontrado en la BD
         console.log('✅ Empleado encontrado en BD:', employeeData);
         roleToUse = employeeData.role || 'employee';
-        
+
         basicEmployee = {
           id: employeeData.id?.toString() || userId,
           user_id: userId,
@@ -182,7 +182,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Fallback: crear empleado básico si no está en BD
         console.log('⚠️ Empleado no encontrado en BD, creando básico');
         roleToUse = 'employee';
-        
+
         // Solo para casos especiales conocidos
         if (email === 'carlossuarezparra@gmail.com') {
           roleToUse = 'SUPERADMIN';
@@ -233,7 +233,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         // Obtener sesión actual
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (sessionError) {
           throw sessionError;
         }
@@ -241,7 +241,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (session?.user && mounted) {
           console.log('👤 Usuario autenticado:', session.user.email);
           setUser(session.user);
-          
+
           // Cargar datos del empleado
           await loadEmployeeData(session.user.id, session.user.email!);
         } else {
@@ -283,19 +283,25 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event);
-      
+
       if (!mounted) return;
-      
-      // IGNORAR INITIAL_SESSION y TOKEN_REFRESHED para evitar bucles
-      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-        return; // NO HACER NADA, ya se manejó en initializeSession
+
+      // IGNORAR TOKEN_REFRESHED para evitar bucles, pero PERMITIR INITIAL_SESSION si no hay usuario
+      if (event === 'TOKEN_REFRESHED') {
+        return;
+      }
+
+      // Si es INITIAL_SESSION y ya tenemos usuario, ignorar. Si no tenemos usuario, dejar pasar.
+      if (event === 'INITIAL_SESSION' && user) {
+        console.log('🔄 INITIAL_SESSION ignorado porque ya hay usuario');
+        return;
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('✅ Usuario ha iniciado sesión');
         setUser(session.user);
         setLoading(true);
-        
+
         await loadEmployeeData(session.user.id, session.user.email!);
         setLoading(false);
       } else if (event === 'SIGNED_OUT') {
@@ -313,23 +319,18 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && mounted) {
         console.log('👁️ Página visible de nuevo, verificando sesión...');
-        
-        // Si está cargando, forzar a false después de un tiempo
+
+        // Si está cargando, NO forzar a false, dejar que termine el proceso natural
         if (loading) {
-          console.log('⚠️ Detectado loading=true al volver, forzando a false');
-          setTimeout(() => {
-            if (mounted) {
-              setLoading(false);
-            }
-          }, 1000);
+          console.log('⚠️ Detectado loading=true al volver, esperando proceso natural...');
         }
-        
+
         // Verificar que la sesión sigue activa
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session?.user) {
           console.log('✅ Sesión activa confirmada:', session.user.email);
-          
+
           // Si no hay usuario cargado, restaurar
           if (!user) {
             console.log('🔄 Restaurando sesión después de cambio de pestaña');
@@ -364,7 +365,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       setUser(null);
       setEmployee(null);
       setUserRole(null);

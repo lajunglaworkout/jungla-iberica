@@ -45,11 +45,11 @@ export interface InventoryItem {
 export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
   try {
     console.log('🔍 Cargando inventario desde Supabase...');
-    
+
     const { data, error } = await supabase
       .from('inventory_items')
       .select('*');
-      // Eliminamos el filtro .in('center_id', [9, 10, 11]) para cargar TODOS los centros
+    // Eliminamos el filtro .in('center_id', [9, 10, 11]) para cargar TODOS los centros
 
     if (error) {
       console.error('❌ Error cargando inventario:', error);
@@ -64,9 +64,16 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
     console.log(`✅ ${data.length} items cargados desde Supabase`);
     console.log('🏢 Center IDs únicos:', [...new Set(data.map((item: any) => item.center_id))]);
     console.log('📋 Categorías únicas:', [...new Set(data.map((item: any) => item.categoria || item.category))].filter(Boolean));
-    
+
+    // Debug: Inspeccionar item 147 (agarre ladmine)
+    const item147 = data.find((i: any) => i.id === 147);
+    if (item147) {
+      console.log('🔍 DATA RAW ITEM 147:', item147);
+      console.log('🔍 MAX STOCK ITEM 147:', item147.max_stock);
+    }
+
     // Debug: Buscar items con "polo" en el nombre
-    const polos = data.filter((item: any) => 
+    const polos = data.filter((item: any) =>
       (item.nombre_item?.toLowerCase() || item.name?.toLowerCase() || '').includes('polo')
     );
     console.log('🔍 Items con "polo" encontrados:', polos.length, polos.map((p: any) => ({
@@ -77,9 +84,9 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
       cantidad: p.cantidad_actual || p.quantity,
       talla: p.talla || p.size
     })));
-    
+
     // Debug: Buscar items con cantidad 25 (los polos recién añadidos)
-    const items25 = data.filter((item: any) => 
+    const items25 = data.filter((item: any) =>
       (item.cantidad_actual === 25 || item.quantity === 25)
     );
     console.log('🔍 Items con cantidad 25:', items25.length, items25.map((i: any) => ({
@@ -90,9 +97,9 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
       cantidad: i.cantidad_actual || i.quantity,
       talla: i.talla || i.size
     })));
-    
+
     // Debug: Buscar items con cantidad 15 (las sudaderas recién añadidas)
-    const items15 = data.filter((item: any) => 
+    const items15 = data.filter((item: any) =>
       (item.cantidad_actual === 15 || item.quantity === 15)
     );
     console.log('🔍 Items con cantidad 15:', items15.length, items15.map((i: any) => ({
@@ -103,9 +110,9 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
       cantidad: i.cantidad_actual || i.quantity,
       talla: i.talla || i.size
     })));
-    
+
     // Debug: Buscar items con "sudadera" en el nombre
-    const sudaderas = data.filter((item: any) => 
+    const sudaderas = data.filter((item: any) =>
       (item.nombre_item?.toLowerCase() || item.name?.toLowerCase() || '').includes('sudadera')
     );
     console.log('🔍 Items con "sudadera" encontrados:', sudaderas.length, sudaderas.map((s: any) => ({
@@ -116,7 +123,7 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
       cantidad: s.cantidad_actual || s.quantity,
       talla: s.talla || s.size
     })));
-    
+
     // Convertir datos de Supabase al formato del componente
     const convertedItems: InventoryItem[] = data.map((item: InventoryItemFromDB) => ({
       id: item.id,
@@ -125,23 +132,23 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
       size: item.size || '',
       quantity: item.cantidad_actual || 0,
       min_stock: item.min_stock || 5,
-      max_stock: 100, // max_stock no existe en la tabla, usar valor por defecto
+      max_stock: item.max_stock || 20, // Usar valor de DB o defecto 20
       purchase_price: item.precio_compra || 0,
       sale_price: item.precio_venta || 0,
       supplier: item.proveedor || 'Sin proveedor',
       center: item.center_id === 1 ? 'central' :
-             item.center_id === 9 ? 'sevilla' : 
-             item.center_id === 10 ? 'jerez' : 
-             item.center_id === 11 ? 'puerto' : 'central',
+        item.center_id === 9 ? 'sevilla' :
+          item.center_id === 10 ? 'jerez' :
+            item.center_id === 11 ? 'puerto' : 'central',
       location: item.ubicacion || 'Sin ubicación',
       last_updated: item.updated_at || new Date().toISOString(),
-      status: (item.cantidad_actual || 0) === 0 ? 'out_of_stock' : 
-             (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
+      status: (item.cantidad_actual || 0) === 0 ? 'out_of_stock' :
+        (item.cantidad_actual || 0) <= (item.min_stock || 5) ? 'low_stock' : 'in_stock'
     }));
 
     // Añadir productos de categorías empresariales importantes
     const additionalItems: InventoryItem[] = [];
-    
+
     // VESTUARIO REAL DE LA JUNGLA - Beni los añadirá manualmente
     // Los productos de vestuario se gestionarán desde el sistema de inventario
 
@@ -235,8 +242,8 @@ export const loadInventoryFromSupabase = async (): Promise<InventoryItem[]> => {
     console.log('📦 Inventario de Supabase:', convertedItems.length, 'items');
     console.log('🏢 Productos empresariales añadidos:', additionalItems.length, 'items');
     console.log('📦 Total inventario:', allItems.length, 'items');
-    console.log('👕 Items de vestuario en total:', allItems.filter(i => 
-      i.category?.toLowerCase().includes('vestuario') || 
+    console.log('👕 Items de vestuario en total:', allItems.filter(i =>
+      i.category?.toLowerCase().includes('vestuario') ||
       i.category?.toLowerCase().includes('merchandising')
     ).length);
     return allItems;

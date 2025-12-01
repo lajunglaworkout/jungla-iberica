@@ -60,13 +60,24 @@ import CEODashboard from './components/CEODashboard';
 import PendingTasksSystem from './components/PendingTasksSystem';
 import DashboardPage from './pages/DashboardPage';
 import MyTasksPage from './pages/MyTasksPage';
+import MaintenanceDirectorDashboard from './components/maintenance/MaintenanceDirectorDashboard';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
   const { employee, signOut, userRole, isAuthenticated } = useSession();
-  const [selectedModule, setSelectedModule] = useState<string | null>('main-dashboard');
+  // Inicializar desde localStorage o usar default
+  const [selectedModule, setSelectedModule] = useState<string | null>(() => {
+    return localStorage.getItem('lastSelectedModule') || 'main-dashboard';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
-  
+
+  // Persistir módulo seleccionado
+  useEffect(() => {
+    if (selectedModule) {
+      localStorage.setItem('lastSelectedModule', selectedModule);
+    }
+  }, [selectedModule]);
+
   // Detectar ruta de firma en hash URL
   useEffect(() => {
     const hash = window.location.hash;
@@ -75,31 +86,30 @@ const NavigationDashboard: React.FC = () => {
       setSelectedModule(`firma-${signatureId}`);
     }
   }, []);
-  
+
   // Debug: Mostrar información de autenticación
   useEffect(() => {
-    console.log('Estado de autenticación:', { 
-      isAuthenticated, 
-      userRole, 
-      employee: employee ? { 
-        id: employee.id, 
-        name: employee.name, 
+    console.log('Estado de autenticación:', {
+      isAuthenticated,
+      userRole,
+      employee: employee ? {
+        id: employee.id,
+        name: employee.name,
         email: employee.email,
         role: employee.role
       } : 'No autenticado'
     });
   }, [isAuthenticated, userRole, employee]);
   const [selectedCenter, setSelectedCenter] = useState<string | null>(null);
-  const [showMarketingModal, setShowMarketingModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showMeetingHistoryModal, setShowMeetingHistoryModal] = useState(false);
-  
+
   // Estados para el sistema de centros mejorado
   const [showCreateCenterModal, setShowCreateCenterModal] = useState(false);
   const [showChecklistHistory, setShowChecklistHistory] = useState(false);
   const [selectedCenterForHistory, setSelectedCenterForHistory] = useState<string | null>(null);
   const [showChecklist, setShowChecklist] = useState(false);
-  
+
   // Estados para notificaciones de vacaciones
   const [vacationNotifications, setVacationNotifications] = useState<any[]>([]);
   const [showVacationNotifications, setShowVacationNotifications] = useState(false);
@@ -107,7 +117,7 @@ const NavigationDashboard: React.FC = () => {
   // Función para cargar notificaciones de vacaciones (solo para encargados)
   const loadVacationNotifications = async () => {
     if (userRole !== 'center_manager') return;
-    
+
     try {
       const centerIdentifier = Number(employee?.center_id ?? 9);
 
@@ -116,7 +126,7 @@ const NavigationDashboard: React.FC = () => {
         .from('employees')
         .select('id, name, email')
         .eq('center_id', centerIdentifier);
-      
+
       if (centerError) {
         console.error('Error cargando empleados del centro:', centerError);
         setVacationNotifications([]);
@@ -125,7 +135,7 @@ const NavigationDashboard: React.FC = () => {
 
       if (centerEmployees && centerEmployees.length > 0) {
         const employeeIds = centerEmployees.map(emp => emp.id);
-        
+
         // Obtener solicitudes pendientes
         const { data: requests, error: requestError } = await supabase
           .from('vacation_requests')
@@ -133,7 +143,7 @@ const NavigationDashboard: React.FC = () => {
           .in('employee_id', employeeIds)
           .eq('status', 'pending')
           .order('requested_at', { ascending: false });
-        
+
         if (requestError) {
           console.error('Error cargando solicitudes de vacaciones:', requestError);
           setVacationNotifications([]);
@@ -165,7 +175,7 @@ const NavigationDashboard: React.FC = () => {
     const isAdmin = userRole === 'admin'; // Directores con acceso limitado
     const isManager = userRole === 'manager';
     const isCenterManager = userRole === 'center_manager'; // Encargados de centro
-    
+
     // Módulos base para todos los usuarios autenticados
     const baseModules = [
       {
@@ -242,9 +252,8 @@ const NavigationDashboard: React.FC = () => {
         description: 'Contenido y publicaciones',
         icon: Globe,
         color: '#dc2626',
-        component: null,
-        available: true,
-        onClick: () => setShowMarketingModal(true)
+        component: MarketingContentSystem,
+        available: true
       },
       {
         id: 'centers',
@@ -285,9 +294,8 @@ const NavigationDashboard: React.FC = () => {
           description: 'Contenido y publicaciones',
           icon: Globe,
           color: '#dc2626',
-          component: null,
-          available: true,
-          onClick: () => setShowMarketingModal(true)
+          component: MarketingContentSystem,
+          available: true
         }
       ],
       'hr': [
@@ -317,7 +325,7 @@ const NavigationDashboard: React.FC = () => {
     // Construir módulos según el rol
     console.log('Construyendo módulos para el rol:', userRole);
     console.log('¿Es CEO?', isCEO, '¿Es admin?', isAdmin);
-    
+
     if (isCEO) {
       // Solo Carlos (CEO) tiene acceso a TODOS los módulos
       console.log('Módulos CEO disponibles:', ceoModules.map(m => m.title));
@@ -328,7 +336,7 @@ const NavigationDashboard: React.FC = () => {
     } else if (isAdmin) {
       // Directores (admin) solo tienen acceso a SU módulo específico
       const adminModules = [];
-      
+
       // Determinar módulo específico por email del empleado
       if (employee?.email === 'beni.jungla@gmail.com') {
         adminModules.push({
@@ -366,9 +374,8 @@ const NavigationDashboard: React.FC = () => {
           description: 'Contenido y publicaciones',
           icon: Globe,
           color: '#dc2626',
-          component: null,
-          available: true,
-          onClick: () => setShowMarketingModal(true)
+          component: MarketingContentSystem,
+          available: true
         });
       } else if (employee?.email === 'jonathan@lajungla.es') {
         adminModules.push({
@@ -391,7 +398,7 @@ const NavigationDashboard: React.FC = () => {
           available: true
         });
       }
-      
+
       return [...baseModules, ...adminModules];
     } else if (isCenterManager) {
       // Encargados de centro: menú reducido (Dashboard + Gestión)
@@ -492,13 +499,13 @@ const NavigationDashboard: React.FC = () => {
     </div>
   );
 
-    // Renderizar el módulo seleccionado
+  // Renderizar el módulo seleccionado
   const renderModule = () => {
     // Detectar ruta de firma
     if (selectedModule?.startsWith('firma-')) {
       return <SignaturePage />;
     }
-    
+
     const module = modules.find(m => m.id === selectedModule);
     if (!module) {
       // Si no hay módulo seleccionado, mostrar el dashboard principal
@@ -535,13 +542,21 @@ const NavigationDashboard: React.FC = () => {
 
     if (module.component) {
       const Component = module.component;
-      
+
       // Props especiales para módulos específicos
+
       if (module.id === 'maintenance') {
+        // Si es admin (Director), mostrar el dashboard de director
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          return <MaintenanceDirectorDashboard />;
+        }
+
+        // Si no, mostrar el módulo normal
         return (
           <Component
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
             userName={employee?.nombre || 'Carlos Suárez'}
+            userRole={userRole || 'employee'}
             onBack={() => setSelectedModule('main-dashboard')}
           />
         );
@@ -551,6 +566,7 @@ const NavigationDashboard: React.FC = () => {
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
             userName={employee?.nombre || 'Carlos Suárez'}
             userRole={userRole || 'employee'}
+            onBack={() => setSelectedModule('main-dashboard')}
           />
         );
       } else {
@@ -560,18 +576,18 @@ const NavigationDashboard: React.FC = () => {
     }
 
     return (
-      <EmptyState 
-        title={`${module.title} - En Desarrollo`} 
+      <EmptyState
+        title={`${module.title} - En Desarrollo`}
         description="Esta funcionalidad estará disponible próximamente"
       />
     );
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#f9fafb', 
-      display: 'flex', 
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+      display: 'flex',
       width: '100%',
       position: 'relative',
       overflow: 'hidden'
@@ -656,9 +672,9 @@ const NavigationDashboard: React.FC = () => {
                     {employee.name || employee.nombre}
                   </p>
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                    {userRole === 'superadmin' ? 'CEO' : 
-                     userRole === 'admin' ? 'Director' :
-                     userRole === 'manager' ? 'Encargado' : 'Empleado'}
+                    {userRole === 'superadmin' ? 'CEO' :
+                      userRole === 'admin' ? 'Director' :
+                        userRole === 'manager' ? 'Encargado' : 'Empleado'}
                   </p>
                 </div>
               )}
@@ -671,7 +687,7 @@ const NavigationDashboard: React.FC = () => {
           {modules.map((module) => {
             const Icon = module.icon;
             const isActive = selectedModule === module.id;
-            
+
             return (
               <button
                 key={module.id}
@@ -708,24 +724,24 @@ const NavigationDashboard: React.FC = () => {
                   }
                 }}
               >
-                <Icon style={{ 
-                  height: '20px', 
-                  width: '20px', 
+                <Icon style={{
+                  height: '20px',
+                  width: '20px',
                   color: isActive ? module.color : '#6b7280',
                   flexShrink: 0
                 }} />
                 {sidebarOpen && (
                   <div style={{ textAlign: 'left' }}>
-                    <p style={{ 
-                      fontSize: '14px', 
+                    <p style={{
+                      fontSize: '14px',
                       fontWeight: isActive ? '600' : '500',
                       color: isActive ? module.color : '#374151',
                       margin: 0
                     }}>
                       {module.title}
                     </p>
-                    <p style={{ 
-                      fontSize: '11px', 
+                    <p style={{
+                      fontSize: '11px',
                       color: '#9ca3af',
                       margin: 0
                     }}>
@@ -796,18 +812,18 @@ const NavigationDashboard: React.FC = () => {
                   {modules.find(m => m.id === selectedModule)?.title || 'Dashboard Ejecutivo'}
                 </h2>
                 <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                  {new Date().toLocaleDateString('es-ES', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                  {new Date().toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                   })}
                 </p>
               </div>
-              
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ position: 'relative' }}>
-                  <button 
+                  <button
                     onClick={() => setShowVacationNotifications(!showVacationNotifications)}
                     style={{
                       padding: '8px',
@@ -839,7 +855,7 @@ const NavigationDashboard: React.FC = () => {
                       </span>
                     )}
                   </button>
-                  
+
                   {/* Panel de notificaciones */}
                   {showVacationNotifications && (
                     <div style={{
@@ -861,7 +877,7 @@ const NavigationDashboard: React.FC = () => {
                           🏖️ Solicitudes de Vacaciones ({vacationNotifications.length})
                         </h3>
                       </div>
-                      
+
                       {vacationNotifications.length === 0 ? (
                         <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
                           No hay solicitudes pendientes
@@ -893,7 +909,7 @@ const NavigationDashboard: React.FC = () => {
                           </div>
                         ))
                       )}
-                      
+
                       {vacationNotifications.length > 0 && (
                         <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
                           <button
@@ -930,15 +946,8 @@ const NavigationDashboard: React.FC = () => {
       </div>
 
       {/* Modales del sistema */}
-      <MarketingContentSystem
-        isOpen={showMarketingModal}
-        onClose={() => setShowMarketingModal(false)}
-        onComplete={(data) => {
-          console.log('Marketing data:', data);
-          setShowMarketingModal(false);
-        }}
-      />
-      
+      {/* Modales del sistema */}
+
       {showMeetingModal && (
         <StrategicMeetingSystem
           isOpen={showMeetingModal}
@@ -1002,7 +1011,7 @@ const NavigationDashboard: React.FC = () => {
             overflow: 'auto',
             position: 'relative'
           }}>
-            <button 
+            <button
               onClick={() => {
                 console.log('🔒 Cerrando modal de historial');
                 setShowChecklistHistory(false);
@@ -1021,11 +1030,11 @@ const NavigationDashboard: React.FC = () => {
             >
               ✕
             </button>
-            
+
             <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '24px' }}>
               📋 Historial de Checklists - {selectedCenterForHistory}
             </h2>
-            
+
             <ChecklistHistory centerName={selectedCenterForHistory} />
           </div>
         </div>
@@ -1150,7 +1159,7 @@ const AppContent: React.FC = () => {
 
   if (!employee || !userRole) {
     return (
-      <ErrorScreen 
+      <ErrorScreen
         error="No se pudieron cargar los datos del usuario. Contacta con el administrador."
       />
     );
@@ -1175,7 +1184,7 @@ const App: React.FC = () => {
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.head.removeChild(style);
     };

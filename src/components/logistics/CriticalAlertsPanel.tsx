@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, TriangleAlert } from 'lucide-react';
+import { X, TriangleAlert, Package, AlertTriangle } from 'lucide-react';
 import { inventoryReportsService } from '../../services/inventoryReportsService';
 
 interface CriticalAlert {
@@ -16,17 +16,23 @@ interface CriticalAlert {
   actionRequired: string;
   timestamp: Date;
   archived: boolean;
+  affectedItems?: any[]; // Lista de items afectados para mostrar detalles
 }
 
 const CriticalAlertsPanel: React.FC = () => {
   const [alerts, setAlerts] = useState<CriticalAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAlert, setSelectedAlert] = useState<CriticalAlert | null>(null);
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dismissed_critical_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     generateAlerts();
     const interval = setInterval(generateAlerts, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [dismissedAlerts]); // Re-run if dismissed list changes
 
   const generateAlerts = async () => {
     try {
@@ -66,7 +72,7 @@ const CriticalAlertsPanel: React.FC = () => {
             const patternAnalysis = (items as any[]).reduce((acc: any, item: any) => {
               const name = (item.nombre_item || '').toLowerCase();
               let pattern = 'general';
-              
+
               // Para pesas/mancuernas: buscar peso en kg
               if (name.includes('mancuerna') || name.includes('pesa') || name.includes('disco')) {
                 const weightMatch = name.match(/(\d+)\s*(kg|k)/);
@@ -98,13 +104,13 @@ const CriticalAlertsPanel: React.FC = () => {
                   pattern = size;
                 }
               }
-              
+
               acc[pattern] = (acc[pattern] || 0) + 1;
               return acc;
             }, {} as Record<string, number>);
 
             const mostCommonPattern = Object.entries(patternAnalysis)
-              .sort(([,a], [,b]) => (b as number) - (a as number))[0];
+              .sort(([, a], [, b]) => (b as number) - (a as number))[0];
 
             const hasSpecificPatternIssue = mostCommonPattern && (mostCommonPattern[1] as number) >= 2 && mostCommonPattern[0] !== 'general';
 
@@ -113,11 +119,11 @@ const CriticalAlertsPanel: React.FC = () => {
               type: 'stock_critical',
               severity: (items as any[]).length > 8 ? 'critical' : 'high',
               title: `🚨 Stock Crítico: ${category}`,
-              message: hasSpecificPatternIssue 
+              message: hasSpecificPatternIssue
                 ? `${(items as any[]).length} items críticos - Problema específico en ${mostCommonPattern[0]}`
                 : `${(items as any[]).length} items de ${category} en stock crítico`,
               description: hasSpecificPatternIssue
-                ? `La categoría "${category}" tiene un problema crítico de stock, especialmente en ${mostCommonPattern[0]} (${mostCommonPattern[1]} items afectados). Estos items están por debajo de su stock mínimo definido. Ejemplo: ${(items as any[])[0].nombre_item} tiene ${(items as any[])[0].cantidad_actual || 0} unidades (mínimo: ${(items as any[])[0].min_stock || 0}).`
+                ? `La categoría "${category}" tiene un problema crítico de stock, especialmente en ${mostCommonPattern[0]} (${mostCommonPattern[1]} items afectados). Estos items están por debajo de su stock mínimo definido.`
                 : `La categoría "${category}" tiene ${(items as any[]).length} productos por debajo de su stock mínimo definido. Esto indica un problema sistemático en la gestión de esta línea de productos.`,
               value: (items as any[]).length,
               threshold: 3,
@@ -126,7 +132,8 @@ const CriticalAlertsPanel: React.FC = () => {
                 ? `Pedido urgente de ${category} ${mostCommonPattern[0]} para todos los centros`
                 : `Revisar planificación de pedidos para toda la línea de ${category}`,
               timestamp: new Date(),
-              archived: false
+              archived: false,
+              affectedItems: items // Guardamos los items para mostrarlos
             });
           }
         });
@@ -145,7 +152,8 @@ const CriticalAlertsPanel: React.FC = () => {
             threshold: 5,
             actionRequired: 'Revisión urgente del sistema de planificación de inventario y pedidos automáticos',
             timestamp: new Date(),
-            archived: false
+            archived: false,
+            affectedItems: criticalItems // Todos los items críticos
           });
         }
       }
@@ -200,7 +208,7 @@ const CriticalAlertsPanel: React.FC = () => {
       // Alertas específicas por categoría problemática
       Object.entries(problematicByCategory).forEach(([category, items]) => {
         const totalRoturas = items.reduce((sum, item) => sum + item.totalRoturas, 0);
-        
+
         if (totalRoturas > 15) { // Solo alertar si la categoría tiene muchas roturas
           // Buscar patrones en los nombres (ej: "Goma 5cm", "Goma 10cm")
           const sizePattern = items.reduce((acc, item) => {
@@ -215,7 +223,7 @@ const CriticalAlertsPanel: React.FC = () => {
           }, {} as Record<string, number>);
 
           const mostProblematicSize = Object.entries(sizePattern)
-            .sort(([,a], [,b]) => (b as number) - (a as number))[0];
+            .sort(([, a], [, b]) => (b as number) - (a as number))[0];
 
           const hasSpecificSizeIssue = mostProblematicSize && (mostProblematicSize[1] as number) > 8;
 
@@ -223,7 +231,7 @@ const CriticalAlertsPanel: React.FC = () => {
             id: `problematic-category-${category.toLowerCase().replace(/\s+/g, '-')}`,
             type: 'supplier_issue',
             severity: totalRoturas > 30 ? 'critical' : 'high',
-            title: hasSpecificSizeIssue 
+            title: hasSpecificSizeIssue
               ? `🔧 ${category} ${mostProblematicSize[0]} - Problema de Calidad`
               : `🔧 ${category} - Problemas Recurrentes`,
             message: hasSpecificSizeIssue
@@ -239,12 +247,15 @@ const CriticalAlertsPanel: React.FC = () => {
               ? `Contactar proveedor específicamente sobre ${category} ${mostProblematicSize[0]} - revisar proceso de fabricación`
               : `Auditoría completa de calidad para toda la línea de ${category}`,
             timestamp: new Date(),
-            archived: false
+            archived: false,
+            affectedItems: items // Items problemáticos
           });
         }
       });
 
-      setAlerts(newAlerts.filter(alert => !alert.archived));
+      // Filtrar alertas descartadas
+      const filteredAlerts = newAlerts.filter(alert => !dismissedAlerts.includes(alert.id));
+      setAlerts(filteredAlerts);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -252,7 +263,7 @@ const CriticalAlertsPanel: React.FC = () => {
     }
   };
 
-  if (loading) return <div style={{padding: '20px', textAlign: 'center'}}>Analizando alertas...</div>;
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Analizando alertas...</div>;
 
   if (alerts.length === 0) {
     return (
@@ -264,6 +275,9 @@ const CriticalAlertsPanel: React.FC = () => {
   }
 
   const archiveAlert = (alertId: string) => {
+    const newDismissed = [...dismissedAlerts, alertId];
+    setDismissedAlerts(newDismissed);
+    localStorage.setItem('dismissed_critical_alerts', JSON.stringify(newDismissed));
     setAlerts(prev => prev.filter(alert => alert.id !== alertId));
   };
 
@@ -284,84 +298,31 @@ const CriticalAlertsPanel: React.FC = () => {
           cursor: 'pointer',
           transition: 'all 0.2s ease'
         }}
-        onClick={() => {
-          // Crear modal personalizado con información detallada
-          const modalContent = document.createElement('div');
-          modalContent.innerHTML = `
-            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
-              <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 600px; max-height: 80vh; overflow-y: auto; margin: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                  <h2 style="color: #dc2626; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    🚨 ${alert.title}
-                  </h2>
-                  <button onclick="this.closest('div').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">×</button>
-                </div>
-                
-                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fef2f2; border-left: 4px solid #dc2626; border-radius: 6px;">
-                  <h3 style="margin: 0 0 8px 0; color: #991b1b;">📋 Descripción del Problema</h3>
-                  <p style="margin: 0; color: #374151; line-height: 1.5;">${alert.description}</p>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                  <div style="padding: 1rem; background: #f3f4f6; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">📊 Valor Actual</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #dc2626;">${alert.value}</div>
-                  </div>
-                  <div style="padding: 1rem; background: #f3f4f6; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">🎯 Umbral Crítico</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #059669;">${alert.threshold}</div>
-                  </div>
-                </div>
-
-                ${alert.item ? `
-                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 6px;">
-                  <h3 style="margin: 0 0 8px 0; color: #0c4a6e;">📦 Producto Específico Afectado</h3>
-                  <p style="margin: 0; color: #374151; font-weight: 600;">${alert.item}</p>
-                </div>
-                ` : ''}
-
-                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 6px;">
-                  <h3 style="margin: 0 0 8px 0; color: #92400e;">⚡ Acción Requerida</h3>
-                  <p style="margin: 0; color: #374151; line-height: 1.5;">${alert.actionRequired}</p>
-                </div>
-
-                <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                  <button onclick="this.closest('div').remove()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Cerrar
-                  </button>
-                  <button onclick="alert('🚀 Funcionalidad de pedido automático próximamente'); this.closest('div').remove();" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    🛒 Crear Pedido Urgente
-                  </button>
-                </div>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modalContent);
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
+          onClick={() => setSelectedAlert(alert)}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, paddingRight: '12px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '16px' }}>
                 {alert.title}
               </div>
-              <div style={{ 
-                fontSize: '14px', 
-                color: '#374151', 
+              <div style={{
+                fontSize: '14px',
+                color: '#374151',
                 marginBottom: '8px',
                 lineHeight: '1.4'
               }}>
                 {alert.message}
               </div>
-              <div style={{ 
-                fontSize: '12px', 
+              <div style={{
+                fontSize: '12px',
                 color: '#6b7280',
                 fontStyle: 'italic'
               }}>
@@ -401,6 +362,140 @@ const CriticalAlertsPanel: React.FC = () => {
           </div>
         </div>
       ))}
+
+      {/* MODAL REACTIVO */}
+      {selectedAlert && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}
+          onClick={() => setSelectedAlert(null)}
+        >
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            margin: '1rem',
+            width: '100%'
+          }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: '#dc2626', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🚨 {selectedAlert.title}
+              </h2>
+              <button
+                onClick={() => setSelectedAlert(null)}
+                style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2', borderLeft: '4px solid #dc2626', borderRadius: '6px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#991b1b' }}>📋 Descripción del Problema</h3>
+              <p style={{ margin: 0, color: '#374151', lineHeight: '1.5' }}>{selectedAlert.description}</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ padding: '1rem', background: '#f3f4f6', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 600, color: '#374151', marginBottom: '4px' }}>📊 Valor Actual</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#dc2626' }}>{selectedAlert.value}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f3f4f6', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 600, color: '#374151', marginBottom: '4px' }}>🎯 Umbral Crítico</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{selectedAlert.threshold}</div>
+              </div>
+            </div>
+
+            {/* LISTA DE ITEMS AFECTADOS */}
+            {selectedAlert.affectedItems && selectedAlert.affectedItems.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '16px', color: '#374151', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Package size={18} />
+                  Items Afectados ({selectedAlert.affectedItems.length})
+                </h3>
+                <div style={{
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '13px'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                      <tr>
+                        <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                        <th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Stock</th>
+                        <th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Mín</th>
+                        <th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Centro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedAlert.affectedItems.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '8px' }}>{item.nombre_item || item.name}</td>
+                          <td style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', color: '#dc2626' }}>
+                            {item.cantidad_actual || item.quantity || 0}
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center', color: '#6b7280' }}>
+                            {item.min_stock || 0}
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <span style={{
+                              fontSize: '11px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: '#f3f4f6',
+                              color: '#4b5563'
+                            }}>
+                              {item.center_id === 9 ? 'Sevilla' : item.center_id === 10 ? 'Jerez' : item.center_id === 11 ? 'Puerto' : 'Central'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderLeft: '4px solid #f59e0b', borderRadius: '6px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#92400e' }}>⚡ Acción Requerida</h3>
+              <p style={{ margin: 0, color: '#374151', lineHeight: '1.5' }}>{selectedAlert.actionRequired}</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSelectedAlert(null)}
+                style={{ padding: '10px 20px', background: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  alert('🚀 Funcionalidad de pedido automático próximamente');
+                  setSelectedAlert(null);
+                }}
+                style={{ padding: '10px 20px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                🛒 Crear Pedido Urgente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -37,6 +37,32 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
   };
 
   const openReviewForm = (review: any) => {
+    // Si la revisión no tiene items cargados, cargarlos del inventario actual
+    if (!review.reviewItems) {
+      const centerMap: Record<number, string> = {
+        9: 'sevilla',
+        10: 'jerez',
+        11: 'puerto',
+        1: 'central'
+      };
+
+      const centerKey = centerMap[review.center_id];
+      const items = inventoryItems.filter(item => item.center === centerKey);
+
+      console.log(`📦 Cargando ${items.length} items para revisión de ${review.center_name}`);
+
+      review.reviewItems = items.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        system: item.quantity,
+        counted: 0,
+        regular: 0,
+        deteriorated: 0,
+        obs: ''
+      }));
+    }
+
     setSelectedReview(review);
     setCurrentView('form');
   };
@@ -66,7 +92,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     const centersWithItems = centers.map(center => {
       const centerMap: Record<string, number> = { sevilla: 9, jerez: 10, puerto: 11 };
       const centerItems = inventoryItems.filter(item => centerMap[item.center] === center.id);
-      
+
       return {
         id: center.id,
         name: center.name,
@@ -86,7 +112,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     }
 
     const { quarter, year } = getCurrentQuarter();
-    
+
     // Crear revisiones en estado DRAFT (sin activar aún)
     const result = await quarterlyInventoryService.createReview({
       quarter,
@@ -98,10 +124,10 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
 
     if (result.success) {
       alert(`✅ Revisión Trimestral ${quarter} convocada\n\n` +
-            `Se han creado ${result.reviews?.length} revisiones:\n` +
-            centersWithItems.map(c => `🏪 ${c.name}: ${c.items.length} productos`).join('\n') +
-            `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
-            `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
+        `Se han creado ${result.reviews?.length} revisiones:\n` +
+        centersWithItems.map(c => `🏪 ${c.name}: ${c.items.length} productos`).join('\n') +
+        `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
+        `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
       setShowCreateModal(false);
       setDeadlineDate('');
       loadReviews();
@@ -167,7 +193,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     );
 
     if (result.success) {
-      const summary = result.removedItems?.map((item: any) => 
+      const summary = result.removedItems?.map((item: any) =>
         `• ${item.name}: -${item.removed} (nuevo total: ${item.newQuantity})`
       ).join('\n');
 
@@ -189,14 +215,14 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <h2>📋 Revisiones Trimestrales de Inventario</h2>
-        <button 
+        <button
           onClick={() => setShowCreateModal(true)}
           disabled={loading}
-          style={{ 
-            padding: '12px 20px', 
-            backgroundColor: loading ? '#9ca3af' : '#059669', 
-            color: 'white', 
-            border: 'none', 
+          style={{
+            padding: '12px 20px',
+            backgroundColor: loading ? '#9ca3af' : '#059669',
+            color: 'white',
+            border: 'none',
             borderRadius: '8px',
             cursor: loading ? 'not-allowed' : 'pointer',
             display: 'flex',
@@ -323,7 +349,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                     🏪 {review.center_name} - {review.quarter}
                   </h3>
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                    📦 {review.total_items} productos • 
+                    📦 {review.total_items} productos •
                     {review.total_discrepancies > 0 ? ` ⚠️ ${review.total_discrepancies} discrepancias` : ' ✅ Sin discrepancias'}
                   </p>
                   {review.deadline_date && (
@@ -337,20 +363,20 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                   borderRadius: '20px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  backgroundColor: 
-                    review.status === 'completed' ? '#059669' : 
-                    review.status === 'active' ? '#3b82f6' : 
-                    '#6b7280',
+                  backgroundColor:
+                    review.status === 'completed' ? '#059669' :
+                      review.status === 'active' ? '#3b82f6' :
+                        '#6b7280',
                   color: 'white'
                 }}>
-                  {review.status === 'completed' ? '✅ Completada' : 
-                   review.status === 'active' ? '🔄 Activa' : 
-                   '📝 Borrador'}
+                  {review.status === 'completed' ? '✅ Completada' :
+                    review.status === 'active' ? '🔄 Activa' :
+                      '📝 Borrador'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button 
+                <button
                   onClick={() => openReviewForm(review)}
                   style={{
                     padding: '8px 16px',
@@ -369,7 +395,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                 </button>
 
                 {review.status === 'draft' && (
-                  <button 
+                  <button
                     onClick={() => handleActivateReview(review.id, review.center_name)}
                     disabled={loading}
                     style={{
@@ -390,7 +416,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                 )}
 
                 {review.status === 'active' && review.total_discrepancies > 0 && (
-                  <button 
+                  <button
                     onClick={() => handleAuthorizeRemoval(review.id)}
                     disabled={loading}
                     style={{

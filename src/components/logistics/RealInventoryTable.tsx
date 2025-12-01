@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Package, AlertTriangle, Edit, Save, X, RefreshCw, Trash2 } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
+import { useSession } from '../../contexts/SessionContext';
+import inventoryMovementService from '../../services/inventoryMovementService';
 
 interface RealInventoryTableProps {
   selectedCenter?: number | 'all';
@@ -11,7 +13,7 @@ interface RealInventoryTableProps {
   onDeleteItem?: (itemId: number) => void;
 }
 
-const RealInventoryTable: React.FC<RealInventoryTableProps> = ({ 
+const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
   selectedCenter = 'all',
   searchTerm = '',
   statusFilter = 'all',
@@ -20,7 +22,8 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
   onDeleteItem
 }) => {
   const { inventoryItems: hookInventoryItems, loading, error, refetch } = useInventory();
-  
+  const { employee } = useSession();
+
   // Usar items de prop si están disponibles, sino usar los del hook
   const inventoryItems = propInventoryItems || hookInventoryItems;
   const [editingItem, setEditingItem] = useState<number | null>(null);
@@ -32,22 +35,63 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
     const confirmDelete = window.confirm(
       `¿Estás seguro de que quieres eliminar "${itemName}"?\n\nEsta acción no se puede deshacer.`
     );
-    
+
     if (confirmDelete) {
       console.log(`🗑️ Eliminando item ID: ${itemId} - "${itemName}"`);
-      
+
       // Si hay función callback, usarla (para items de prueba)
       if (onDeleteItem) {
         onDeleteItem(itemId);
         console.log(`✅ Item "${itemName}" eliminado del inventario`);
       } else {
         // Para items reales de Supabase, implementar eliminación real
-        console.log('🔄 Eliminación de items reales de Supabase - Por implementar');
-        alert('Eliminación de items reales pendiente de implementar con Supabase.');
+        const deleteFromSupabase = async () => {
+          try {
+            // 1. Registrar movimiento de eliminación
+            const itemToDelete = inventoryItems.find(i => i.id === itemId);
+            if (itemToDelete) {
+              const centerMap: Record<string, number> = { central: 1, sevilla: 9, jerez: 10, puerto: 11 };
+              const centerId = centerMap[itemToDelete.center] || 1;
+
+              await inventoryMovementService.recordMovement({
+                inventory_item_id: itemId,
+                user_id: employee?.email || 'unknown',
+                user_name: employee?.name || 'Usuario',
+                center_id: centerId,
+                type: 'adjustment',
+                quantity_change: -itemToDelete.quantity,
+                previous_quantity: itemToDelete.quantity,
+                new_quantity: 0,
+                reason: 'Eliminación manual de item'
+              });
+            }
+
+            // 2. Eliminar de Supabase
+            const { supabase } = await import('../../lib/supabase');
+            const { error } = await supabase
+              .from('inventory_items')
+              .delete()
+              .eq('id', itemId);
+
+            if (error) {
+              console.error('❌ Error eliminando item de Supabase:', error);
+              alert('Error al eliminar el item. Por favor, inténtalo de nuevo.');
+            } else {
+              console.log(`✅ Item "${itemName}" eliminado de Supabase`);
+              // Recargar datos
+              refetch();
+            }
+          } catch (err) {
+            console.error('❌ Error en deleteFromSupabase:', err);
+            alert('Error al eliminar el item.');
+          }
+        };
+
+        deleteFromSupabase();
       }
     }
   };
-  
+
   // Filtrar items por todos los criterios y ordenar según criterio seleccionado
   const filteredItems = inventoryItems
     .filter(item => {
@@ -58,22 +102,22 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
         console.log(`🔍 Item "${item.name}": center="${item.center}", selectedCenter=${selectedCenter}, centerMap[${item.center}]=${centerMap[item.center]}, include=${shouldInclude}`);
         if (!shouldInclude) return false;
       }
-      
+
       // Filtro por búsqueda
       if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
       }
-      
+
       // Filtro por estado
       if (statusFilter !== 'all' && item.status !== statusFilter) {
         return false;
       }
-      
+
       // Filtro por categoría
       if (categoryFilter !== 'all' && item.category !== categoryFilter) {
         return false;
       }
-      
+
       return true;
     })
     .sort((a, b) => {
@@ -99,7 +143,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
   console.log('📍 All centers in inventory:', allCenters);
   console.log('📍 Centers detailed:', allCenters.map(center => `"${center}"`));
   console.log('📦 Filtered items:', filteredItems.length);
-  
+
   // Debug específico para centro Central
   if (selectedCenter === 12) {
     const centralItems = inventoryItems.filter(item => item.center === 'central');
@@ -119,7 +163,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
   const inventoryTotals = filteredItems.reduce((totals, item) => {
     const itemValuePurchase = item.quantity * item.purchase_price;
     const itemValueSale = item.quantity * item.sale_price;
-    
+
     return {
       totalItems: totals.totalItems + item.quantity,
       totalPurchaseValue: totals.totalPurchaseValue + itemValuePurchase,
@@ -137,16 +181,18 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
     console.log('🖊️ Iniciando edición del item:', item.id);
     console.log('Datos del item:', item);
     console.log('Min stock del item:', item.min_stock);
-    
+    console.log('Max stock del item:', item.max_stock);
+
     const editData = {
       cantidad_actual: Number(item.quantity) || 0,
       precio_compra: Number(item.purchase_price) || 0,
       precio_venta: Number(item.sale_price) || 0,
-      min_stock: Number(item.min_stock) || 0
+      min_stock: Number(item.min_stock) || 0,
+      max_stock: Number(item.max_stock) || 0
     };
-    
+
     console.log('Valores iniciales para edición:', editData);
-    
+
     setEditingItem(item.id);
     setEditValues(editData);
   };
@@ -160,9 +206,9 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
     try {
       console.log('Guardando cambios para item:', itemId);
       console.log('Valores a guardar:', editValues);
-      
+
       const { supabase } = await import('../../lib/supabase');
-      
+
       // Primero verificar qué campos existen en la tabla
       const { data: existingItem, error: fetchError } = await supabase
         .from('inventory_items')
@@ -181,7 +227,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
 
       // Preparar los datos de actualización usando los nombres correctos de campos
       const updateData: any = {};
-      
+
       // Mapear campos según lo que existe en la base de datos, asegurando que sean números
       if ('cantidad_actual' in existingItem) {
         updateData.cantidad_actual = Number(editValues.cantidad_actual) || 0;
@@ -224,6 +270,10 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
         console.log('Agregando min_stock:', editValues.min_stock, '→', updateData.min_stock);
       }
 
+      // Agregar max_stock
+      updateData.max_stock = Number(editValues.max_stock) || 0;
+      console.log('Agregando max_stock:', editValues.max_stock, '→', updateData.max_stock);
+
       updateData.updated_at = new Date().toISOString();
 
       console.log('Datos a actualizar:', updateData);
@@ -244,7 +294,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
       alert('Cambios guardados exitosamente');
       setEditingItem(null);
       setEditValues({});
-      
+
       // Recargar datos inmediatamente
       try {
         await refetch();
@@ -291,18 +341,18 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
   return (
     <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       {/* Header con controles */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#f9fafb', 
-        padding: '1rem', 
+        backgroundColor: '#f9fafb',
+        padding: '1rem',
         borderBottom: '1px solid #e5e7eb'
       }}>
         <h3 style={{ margin: 0, color: '#374151' }}>
           Inventario ({filteredItems.length} items)
         </h3>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Selector de ordenamiento */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -351,12 +401,12 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
       </div>
 
       {/* Header de tabla */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px', 
-        backgroundColor: '#f9fafb', 
-        padding: '1rem', 
-        fontWeight: '600', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px',
+        backgroundColor: '#f9fafb',
+        padding: '1rem',
+        fontWeight: '600',
         borderBottom: '1px solid #e5e7eb',
         fontSize: '14px'
       }}>
@@ -365,6 +415,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
         <div>Categoría</div>
         <div>Stock</div>
         <div>Mín.</div>
+        <div>Máx.</div>
         <div>P. Compra</div>
         <div>P. Venta</div>
         <div>Estado</div>
@@ -372,13 +423,13 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
       </div>
 
       {/* Fila de totales */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px', 
-        backgroundColor: '#059669', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px',
+        backgroundColor: '#059669',
         color: 'white',
-        padding: '0.75rem 1rem', 
-        fontWeight: '600', 
+        padding: '0.75rem 1rem',
+        fontWeight: '600',
         borderBottom: '2px solid #047857',
         fontSize: '14px'
       }}>
@@ -395,6 +446,11 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
         </div>
         <div>-</div>
         <div style={{ fontWeight: '700', fontSize: '15px' }}>
+          {inventoryTotals.totalItems.toLocaleString()}
+        </div>
+        <div>-</div>
+        <div>-</div>
+        <div style={{ fontWeight: '700', fontSize: '15px' }}>
           €{inventoryTotals.totalPurchaseValue.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div style={{ fontWeight: '700', fontSize: '15px' }}>
@@ -402,232 +458,252 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ fontSize: '12px' }}>
-            💰 {inventoryTotals.totalSaleValue > 0 ? 
-              Math.round(((inventoryTotals.totalSaleValue - inventoryTotals.totalPurchaseValue) / inventoryTotals.totalSaleValue) * 100) 
+            💰 {inventoryTotals.totalSaleValue > 0 ?
+              Math.round(((inventoryTotals.totalSaleValue - inventoryTotals.totalPurchaseValue) / inventoryTotals.totalSaleValue) * 100)
               : 0}%
           </span>
         </div>
         <div>-</div>
       </div>
-      
+
       {/* Rows */}
       {filteredItems.map((item) => {
         const isEditing = editingItem === item.id;
         return (
-        <div 
-          key={item.id} 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px', 
-            padding: '1rem', 
-            borderBottom: '1px solid #f3f4f6',
-            fontSize: '14px',
-            backgroundColor: isEditing ? '#f0f9ff' : 'transparent'
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>{item.name}</div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              {item.supplier} • {item.location}
+          <div
+            key={item.id}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 80px',
+              padding: '1rem',
+              borderBottom: '1px solid #f3f4f6',
+              fontSize: '14px',
+              backgroundColor: isEditing ? '#f0f9ff' : 'transparent'
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: '600', marginBottom: '4px' }}>{item.name}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                {item.supplier} • {item.location}
+              </div>
             </div>
-          </div>
-          <div>
-            <span style={{
-              padding: '4px 8px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: '500',
-              backgroundColor: item.center === 'central' ? '#f3e8ff' : 
-                             item.center === 'sevilla' ? '#fef3c7' :
-                             item.center === 'jerez' ? '#dbeafe' : '#dcfce7',
-              color: item.center === 'central' ? '#7c3aed' : 
-                     item.center === 'sevilla' ? '#f59e0b' :
-                     item.center === 'jerez' ? '#3b82f6' : '#059669'
-            }}>
-              {item.center === 'sevilla' ? '🏪 Sevilla' :
-               item.center === 'jerez' ? '🏪 Jerez' :
-               item.center === 'puerto' ? '🏪 Puerto' : '🏢 Central'}
-            </span>
-          </div>
-          <div style={{ color: '#374151' }}>{item.category}</div>
-          <div>
-            {isEditing ? (
-              <input
-                type="number"
-                value={editValues.cantidad_actual || ''}
-                onChange={(e) => setEditValues((prev: any) => ({ ...prev, cantidad_actual: Number(e.target.value) || 0 }))}
-                style={{
-                  width: '60px',
-                  padding: '4px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            ) : (
-              <span style={{ fontWeight: '600', color: item.quantity === 0 ? '#dc2626' : '#374151' }}>
-                {item.quantity}
+            <div>
+              <span style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                backgroundColor: item.center === 'central' ? '#f3e8ff' :
+                  item.center === 'sevilla' ? '#fef3c7' :
+                    item.center === 'jerez' ? '#dbeafe' : '#dcfce7',
+                color: item.center === 'central' ? '#7c3aed' :
+                  item.center === 'sevilla' ? '#f59e0b' :
+                    item.center === 'jerez' ? '#3b82f6' : '#059669'
+              }}>
+                {item.center === 'sevilla' ? '🏪 Sevilla' :
+                  item.center === 'jerez' ? '🏪 Jerez' :
+                    item.center === 'puerto' ? '🏪 Puerto' : '🏢 Central'}
               </span>
-            )}
-          </div>
-          <div>
-            {isEditing ? (
-              <input
-                type="number"
-                value={editValues.min_stock || ''}
-                onChange={(e) => {
-                  const newValue = Number(e.target.value) || 0;
-                  console.log('📝 Cambiando min_stock:', e.target.value, '→', newValue);
-                  setEditValues((prev: any) => ({ ...prev, min_stock: newValue }));
-                }}
-                style={{
-                  width: '50px',
-                  padding: '4px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            ) : (
-              <span style={{ color: '#6b7280' }}>{item.min_stock}</span>
-            )}
-          </div>
-          <div>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                value={editValues.precio_compra || ''}
-                onChange={(e) => setEditValues((prev: any) => ({ ...prev, precio_compra: Number(e.target.value) || 0 }))}
-                style={{
-                  width: '70px',
-                  padding: '4px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            ) : (
-              <span style={{ color: '#dc2626', fontWeight: '600' }}>€{item.purchase_price.toFixed(2)}</span>
-            )}
-          </div>
-          <div>
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.01"
-                value={editValues.precio_venta || ''}
-                onChange={(e) => setEditValues((prev: any) => ({ ...prev, precio_venta: Number(e.target.value) || 0 }))}
-                style={{
-                  width: '70px',
-                  padding: '4px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            ) : (
-              <span style={{ color: '#059669', fontWeight: '600' }}>€{item.sale_price.toFixed(2)}</span>
-            )}
-          </div>
-          <div>
-            <span style={{ 
-              padding: '4px 8px', 
-              borderRadius: '6px', 
-              fontSize: '12px',
-              fontWeight: '500',
-              backgroundColor: item.status === 'in_stock' ? '#dcfce7' : 
-                             item.status === 'low_stock' ? '#fef3c7' : '#fee2e2',
-              color: item.status === 'in_stock' ? '#166534' : 
-                     item.status === 'low_stock' ? '#92400e' : '#dc2626'
-            }}>
-              {item.status === 'in_stock' ? '✅ Stock' : 
-               item.status === 'low_stock' ? '⚠️ Bajo' : '❌ Agotado'}
-            </span>
-          </div>
-          
-          {/* Botones de Acción */}
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => saveChanges(item.id)}
+            </div>
+            <div style={{ color: '#374151' }}>{item.category}</div>
+            <div>
+              {isEditing ? (
+                <input
+                  type="number"
+                  value={editValues.cantidad_actual || ''}
+                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, cantidad_actual: Number(e.target.value) || 0 }))}
                   style={{
+                    width: '60px',
                     padding: '4px',
-                    backgroundColor: '#059669',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Guardar"
-                >
-                  <Save size={14} />
-                </button>
-                <button
-                  onClick={cancelEditing}
-                  style={{
-                    padding: '4px',
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Cancelar"
-                >
-                  <X size={14} />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => startEditing(item)}
-                  style={{
-                    padding: '4px',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
                     border: '1px solid #d1d5db',
                     borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
+                    fontSize: '14px'
                   }}
-                  title="Editar"
-                >
-                  <Edit size={14} />
-                </button>
-                <button
-                  onClick={() => deleteItem(item.id, item.name)}
+                />
+              ) : (
+                <span style={{ fontWeight: '600', color: item.quantity === 0 ? '#dc2626' : '#374151' }}>
+                  {item.quantity}
+                </span>
+              )}
+            </div>
+            <div>
+              {isEditing ? (
+                <input
+                  type="number"
+                  value={editValues.min_stock || ''}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value) || 0;
+                    setEditValues((prev: any) => ({ ...prev, min_stock: newValue }));
+                  }}
                   style={{
+                    width: '50px',
                     padding: '4px',
-                    backgroundColor: '#fef2f2',
-                    color: '#dc2626',
-                    border: '1px solid #fecaca',
+                    border: '1px solid #d1d5db',
                     borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
+                    fontSize: '14px'
                   }}
-                  title="Eliminar"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </>
-            )}
+                />
+              ) : (
+                <span style={{ color: '#6b7280' }}>{item.min_stock}</span>
+              )}
+            </div>
+            <div>
+              {isEditing ? (
+                <input
+                  type="number"
+                  value={editValues.max_stock || ''}
+                  onChange={(e) => {
+                    const newValue = Number(e.target.value) || 0;
+                    setEditValues((prev: any) => ({ ...prev, max_stock: newValue }));
+                  }}
+                  style={{
+                    width: '50px',
+                    padding: '4px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#6b7280' }}>{item.max_stock || '-'}</span>
+              )}
+            </div>
+            <div>
+              {isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editValues.precio_compra || ''}
+                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, precio_compra: Number(e.target.value) || 0 }))}
+                  style={{
+                    width: '70px',
+                    padding: '4px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#dc2626', fontWeight: '600' }}>€{item.purchase_price.toFixed(2)}</span>
+              )}
+            </div>
+            <div>
+              {isEditing ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editValues.precio_venta || ''}
+                  onChange={(e) => setEditValues((prev: any) => ({ ...prev, precio_venta: Number(e.target.value) || 0 }))}
+                  style={{
+                    width: '70px',
+                    padding: '4px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#059669', fontWeight: '600' }}>€{item.sale_price.toFixed(2)}</span>
+              )}
+            </div>
+            <div>
+              <span style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                backgroundColor: item.status === 'in_stock' ? '#dcfce7' :
+                  item.status === 'low_stock' ? '#fef3c7' : '#fee2e2',
+                color: item.status === 'in_stock' ? '#166534' :
+                  item.status === 'low_stock' ? '#92400e' : '#dc2626'
+              }}>
+                {item.status === 'in_stock' ? '✅ Stock' :
+                  item.status === 'low_stock' ? '⚠️ Bajo' : '❌ Agotado'}
+              </span>
+            </div>
+
+            {/* Botones de Acción */}
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={() => saveChanges(item.id)}
+                    style={{
+                      padding: '4px',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Guardar"
+                  >
+                    <Save size={14} />
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    style={{
+                      padding: '4px',
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Cancelar"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => startEditing(item)}
+                    style={{
+                      padding: '4px',
+                      backgroundColor: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Editar"
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    onClick={() => deleteItem(item.id, item.name)}
+                    style={{
+                      padding: '4px',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Eliminar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
         );
       })}
-      
+
       {/* Footer con resumen */}
-      <div style={{ 
-        backgroundColor: '#f9fafb', 
-        padding: '1rem', 
+      <div style={{
+        backgroundColor: '#f9fafb',
+        padding: '1rem',
         borderTop: '1px solid #e5e7eb',
         display: 'flex',
         justifyContent: 'space-between',

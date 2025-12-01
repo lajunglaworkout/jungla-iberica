@@ -68,7 +68,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       // Obtener solo reuniones futuras (fecha >= hoy)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const { data, error } = await supabase
         .from('meetings')
         .select('*')
@@ -83,27 +83,27 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }
 
       console.log(`📊 Reuniones futuras cargadas para ${departmentId}:`, data?.length || 0);
-      
+
       // Cargar tareas para cada reunión
       const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
         const { data: tasks, error: tasksError } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_titulo', meeting.title);
-        
+          .eq('reunion_id', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
+
         if (tasksError) {
           console.error('Error cargando tareas de reunión:', tasksError);
           return { ...meeting, tasks: [] };
         }
-        
+
         console.log(`📋 Tareas de reunión "${meeting.title}":`, tasks);
         tasks?.forEach(task => {
           console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}", estado="${task.estado}"`);
         });
-        
+
         return { ...meeting, tasks: tasks || [] };
       }));
-      
+
       setMeetings(meetingsWithTasks);
     } catch (error) {
       console.error('Error:', error);
@@ -129,22 +129,22 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }
 
       console.log(`📚 Historial de reuniones cargado para ${departmentId}:`, data?.length || 0);
-      
+
       // Cargar tareas para cada reunión
       const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
         const { data: tasks, error: tasksError } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_titulo', meeting.title);
-        
+          .eq('reunion_id', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
+
         if (tasksError) {
           console.error('Error cargando tareas de reunión:', tasksError);
           return { ...meeting, tasks: [] };
         }
-        
+
         return { ...meeting, tasks: tasks || [] };
       }));
-      
+
       setHistoryMeetings(meetingsWithTasks);
     } catch (error) {
       console.error('Error:', error);
@@ -181,7 +181,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   const loadTasks = async () => {
     try {
       console.log(`🔍 Buscando tareas para usuario: "${userEmail}"`);
-      
+
       // Cargar tareas pendientes asignadas al usuario actual
       const { data, error } = await supabase
         .from('tareas')
@@ -919,9 +919,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                     fontSize: '14px',
                     lineHeight: '1.6'
                   }}
-                  dangerouslySetInnerHTML={{
-                    __html: selectedMeetingDetail.summary.replace(/\n/g, '<br/>')
-                  }}
+                    dangerouslySetInnerHTML={{
+                      __html: selectedMeetingDetail.summary.replace(/\n/g, '<br/>')
+                    }}
                   />
                 </div>
               )}
@@ -949,8 +949,8 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                         }}
                         style={{
                           padding: '12px',
-                          backgroundColor: task.estado === 'completada' 
-                            ? '#f3f4f6' 
+                          backgroundColor: task.estado === 'completada'
+                            ? '#f3f4f6'
                             : (task.asignado_a === userEmail ? '#f0fdf4' : '#f9fafb'),
                           border: task.estado === 'completada'
                             ? '1px solid #d1d5db'
@@ -975,9 +975,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                           {task.estado === 'completada' && '✅ '}
                           {task.titulo}
                           {task.asignado_a === userEmail && task.estado === 'pendiente' && (
-                            <span style={{ 
-                              marginLeft: '8px', 
-                              fontSize: '12px', 
+                            <span style={{
+                              marginLeft: '8px',
+                              fontSize: '12px',
                               color: '#059669',
                               fontWeight: 'normal'
                             }}>
