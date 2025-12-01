@@ -243,8 +243,9 @@ export const marketingService = {
         // 3b. Fetch Accounts Engaged (as proxy for impressions/activity)
         // Using period=day and summing is the most robust way to avoid "metric_type" errors with days_28
         try {
+            // Added metric_type=total_value as explicitly requested by the API error 100
             const engagedRes = await fetch(
-                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=accounts_engaged&period=day&access_token=${accessToken}`
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=accounts_engaged&period=day&metric_type=total_value&access_token=${accessToken}`
             );
             const engagedData = await engagedRes.json();
 
