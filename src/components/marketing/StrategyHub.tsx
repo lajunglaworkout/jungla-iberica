@@ -14,7 +14,27 @@ const StrategyHub: React.FC = () => {
     const generateIdeas = async () => {
         setLoading(true);
         try {
-            const newIdeas = await marketingService.getAIContentIdeas(goal);
+            // 1. Try to get real data context
+            const token = localStorage.getItem('ig_access_token');
+            let profileData = undefined;
+            let postsData = undefined;
+
+            if (token) {
+                try {
+                    // Parallel fetch for speed
+                    const [p, posts] = await Promise.all([
+                        marketingService.getRealProfile(token),
+                        marketingService.getRealPosts(token)
+                    ]);
+                    profileData = p;
+                    postsData = posts;
+                } catch (e) {
+                    console.warn("Could not fetch context for AI:", e);
+                }
+            }
+
+            // 2. Generate ideas with context
+            const newIdeas = await marketingService.getAIContentIdeas(goal, profileData, postsData);
             setIdeas(newIdeas);
             setGenerated(true);
         } catch (error) {

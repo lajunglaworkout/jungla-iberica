@@ -324,9 +324,73 @@ export const marketingService = {
         }));
     },
 
-    getAIContentIdeas: async (goal: string): Promise<ContentIdea[]> => {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return MOCK_IDEAS;
+    getAIContentIdeas: async (goal: string, profile?: InstagramProfile, posts?: PostMetric[]): Promise<ContentIdea[]> => {
+        const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+        if (!apiKey) {
+            console.warn("Google API Key missing, returning mocks");
+            return MOCK_IDEAS;
+        }
+
+        try {
+            const context = profile ? `
+                Profile Context:
+                - Followers: ${profile.followers}
+                - Engagement Rate: ${profile.engagement_rate}%
+                - Recent Reach: ${profile.reach_last_30d}
+            ` : '';
+
+            const postsContext = posts && posts.length > 0 ? `
+                Recent Top Posts:
+                ${posts.slice(0, 5).map(p => `- Type: ${p.type}, Caption: "${p.caption.substring(0, 50)}...", Likes: ${p.likes}, Reach: ${p.reach}`).join('\n')}
+            ` : '';
+
+            const prompt = `
+                Act as an expert social media strategist for a gym/fitness brand.
+                Goal: ${goal} (e.g., growth, community, sales).
+                
+                ${context}
+                ${postsContext}
+
+                Based on this data (if available) and the goal, generate 3 specific, high-impact content ideas.
+                Return ONLY a valid JSON array with this structure:
+                [
+                    {
+                        "id": "1",
+                        "title": "Short catchy title",
+                        "description": "Detailed description of the content",
+                        "type": "reel" | "carousel" | "story",
+                        "difficulty": "easy" | "medium" | "hard",
+                        "estimated_reach": "High" | "Medium" | "Low",
+                        "reason": "Why this works based on the data/goal"
+                    }
+                ]
+            `;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) throw new Error("No response from AI");
+
+            // Clean markdown code blocks if present
+            const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanJson);
+
+        } catch (error) {
+            console.error("Error generating AI ideas:", error);
+            return MOCK_IDEAS;
+        }
     },
 
     getCompetitors: async (): Promise<Competitor[]> => {
