@@ -214,47 +214,50 @@ export const marketingService = {
         // 3. Get Profile Info & Insights
         let insights = { reach: 0, impressions: 0 };
 
-        // Fetch Reach & Accounts Engaged (Supported metrics)
-        // Valid metrics: reach, follower_count, profile_views, accounts_engaged, total_interactions...
+        // 3a. Fetch Reach
         try {
-            // Try days_28 first for Reach
             const reachRes = await fetch(
-                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,accounts_engaged&period=days_28&access_token=${accessToken}`
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach&period=days_28&access_token=${accessToken}`
             );
             const reachData = await reachRes.json();
 
             if (!reachRes.ok) {
-                console.warn("Reach/Engaged API Error (days_28):", JSON.stringify(reachData));
-
+                console.warn("Reach API Error (days_28):", JSON.stringify(reachData));
                 // Fallback to day
                 const reachDailyRes = await fetch(
-                    `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,accounts_engaged&period=day&access_token=${accessToken}`
+                    `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach&period=day&access_token=${accessToken}`
                 );
                 const reachDailyData = await reachDailyRes.json();
-
-                if (reachDailyData.data) {
-                    reachDailyData.data.forEach((item: any) => {
-                        // Take the last available daily value as a proxy
-                        const val = item.values[item.values.length - 1]?.value || 0;
-                        if (item.name === 'reach') insights.reach = val;
-                        // We'll use accounts_engaged as a proxy for "impressions" or just track it separately
-                        // For now, let's map impressions to reach * 1.2 (heuristic) or just 0 if we want to be strict.
-                        // Better: Use reach for both if impressions is missing, or 0.
-                        if (item.name === 'accounts_engaged') insights.impressions = val; // Using engaged as a proxy for secondary metric
-                    });
+                if (reachDailyData.data && reachDailyData.data[0]) {
+                    const values = reachDailyData.data[0].values;
+                    insights.reach = values[values.length - 1]?.value || 0;
                 }
-            } else if (reachData.data) {
-                reachData.data.forEach((item: any) => {
-                    const val = item.values[item.values.length - 1]?.value || 0;
-                    if (item.name === 'reach') insights.reach = val;
-                    if (item.name === 'accounts_engaged') insights.impressions = val;
-                });
+            } else if (reachData.data && reachData.data[0]) {
+                const values = reachData.data[0].values;
+                insights.reach = values[values.length - 1]?.value || 0;
             }
         } catch (e) {
             console.warn("Reach Fetch Exception:", e);
         }
 
-        // Removed explicit 'impressions' fetch as it caused OAuthException code 100 (metric not supported)
+        // 3b. Fetch Accounts Engaged (as proxy for impressions/activity)
+        // Using period=day and summing is the most robust way to avoid "metric_type" errors with days_28
+        try {
+            const engagedRes = await fetch(
+                `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=accounts_engaged&period=day&access_token=${accessToken}`
+            );
+            const engagedData = await engagedRes.json();
+
+            if (!engagedRes.ok) {
+                console.warn("Engaged API Error:", JSON.stringify(engagedData));
+            } else if (engagedData.data && engagedData.data[0]) {
+                const values = engagedData.data[0].values;
+                // Sum up the last 28 days of engagement
+                insights.impressions = values.reduce((acc: number, curr: any) => acc + (curr.value || 0), 0);
+            }
+        } catch (e) {
+            console.warn("Engaged Fetch Exception:", e);
+        }
 
         const profileResponse = await fetch(
             `https://graph.facebook.com/v18.0/${igAccountId}?fields=biography,id,username,website,followers_count,follows_count,media_count,profile_picture_url&access_token=${accessToken}`

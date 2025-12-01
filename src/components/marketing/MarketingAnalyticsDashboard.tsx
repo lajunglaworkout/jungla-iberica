@@ -215,7 +215,7 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                             <option>Últimos 7 días</option>
                         </select>
                     </div>
-                    <div className="h-[300px] w-full">
+                    <div className="h-[300px] w-full min-h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={engagementHistory}>
                                 <defs>
