@@ -212,22 +212,29 @@ export const marketingService = {
         const igAccountId = igData.instagram_business_account.id;
 
         // 3. Get Profile Info & Insights
-        // Note: 'reach' and 'impressions' might fail depending on account type/age. We wrap in try/catch or handle gracefully.
         let insights = { reach: 0, impressions: 0 };
         try {
-            // Using days_28 for a monthly view which is more standard and less prone to "data not available for today" errors
-            const insightsResponse = await fetch(
+            // Try days_28 first (monthly)
+            let insightsResponse = await fetch(
                 `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=days_28&access_token=${accessToken}`
             );
 
+            // If days_28 fails (e.g. 400), try period=day
+            if (!insightsResponse.ok) {
+                console.warn("Insights days_28 failed, retrying with period=day...");
+                insightsResponse = await fetch(
+                    `https://graph.facebook.com/v18.0/${igAccountId}/insights?metric=reach,impressions&period=day&access_token=${accessToken}`
+                );
+            }
+
             if (!insightsResponse.ok) {
                 const err = await insightsResponse.json();
-                console.warn("Insights API Error:", err);
+                console.warn("Insights API Error (Final):", err);
             } else {
                 const insightsData = await insightsResponse.json();
                 if (insightsData.data) {
                     insightsData.data.forEach((item: any) => {
-                        // For days_28, values[0] is the value for the 28-day period ending yesterday/today
+                        // Use the last available value
                         const value = item.values[item.values.length - 1]?.value || 0;
                         if (item.name === 'reach') insights.reach = value;
                         if (item.name === 'impressions') insights.impressions = value;
@@ -244,7 +251,6 @@ export const marketingService = {
         const profileData = await profileResponse.json();
 
         // Calculate Engagement Rate
-        // Formula: Average (Likes + Comments) per post / Followers * 100
         let engagementRate = 0;
         try {
             const mediaForCalcRes = await fetch(
@@ -326,10 +332,16 @@ export const marketingService = {
 
     getAIContentIdeas: async (goal: string, profile?: InstagramProfile, posts?: PostMetric[]): Promise<ContentIdea[]> => {
         const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-        if (!apiKey) {
-            console.warn("Google API Key missing, returning mocks");
+
+        // Check for missing or placeholder key
+        if (!apiKey || apiKey.includes('tu_api_key')) {
+            console.warn("Google API Key missing or placeholder, returning mocks");
+            // Simulate delay for realism
+            await new Promise(resolve => setTimeout(resolve, 1000));
             return MOCK_IDEAS;
         }
+
+        console.log("🤖 Generating AI ideas with goal:", goal);
 
         try {
             const context = profile ? `
@@ -378,6 +390,10 @@ export const marketingService = {
                 })
             });
 
+            if (!response.ok) {
+                throw new Error(`Gemini API Error: ${response.statusText}`);
+            }
+
             const data = await response.json();
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -389,6 +405,7 @@ export const marketingService = {
 
         } catch (error) {
             console.error("Error generating AI ideas:", error);
+            // Fallback to mocks on error so the user always sees something
             return MOCK_IDEAS;
         }
     },
