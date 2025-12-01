@@ -72,7 +72,13 @@ const MarketingAnalyticsDashboard: React.FC = () => {
             }
         } catch (error: any) {
             console.error("Login error:", error);
-            alert("Error en el proceso de login: " + (error.message || 'Error desconocido'));
+            // Show the specific error message if it's our custom one
+            const errorMessage = error.message || 'Error desconocido';
+            alert(`Error de conexión: ${errorMessage}`);
+
+            // Force logout state
+            localStorage.removeItem('ig_access_token');
+            setAccessToken(null);
             setIsConnected(false);
         } finally {
             setLoading(false);

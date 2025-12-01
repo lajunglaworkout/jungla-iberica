@@ -249,6 +249,11 @@ export const marketingService = {
         console.log('📄 Pages API Response:', JSON.stringify(pagesData, null, 2));
 
         if (!pagesData.data || pagesData.data.length === 0) {
+            // Check for specific API Access Blocked error
+            if (pagesData.error && pagesData.error.message === "API access blocked.") {
+                throw new Error("Acceso a la API bloqueado. Es posible que tu usuario no tenga permisos de Tester/Admin en la App de Facebook (Modo Desarrollo) o que la sesión haya caducado. Por favor, intenta reconectar.");
+            }
+
             // Construct a detailed error object
             const errorDetails = {
                 message: 'No se encontraron páginas de Facebook vinculadas.',
