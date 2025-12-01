@@ -107,7 +107,7 @@ const MOCK_POSTS: PostMetric[] = [
     }
 ];
 
-const MOCK_IDEAS: ContentIdea[] = [
+const MOCK_IDEAS_GROWTH: ContentIdea[] = [
     {
         id: '1',
         title: 'ASMR de Gimnasio',
@@ -128,12 +128,72 @@ const MOCK_IDEAS: ContentIdea[] = [
     },
     {
         id: '3',
-        title: 'Rutina de Espalda en 15 min',
-        description: 'Carrusel explicando 3 ejercicios claves para espalda ancha.',
-        type: 'carousel',
+        title: 'Challenge de Plancha',
+        description: 'Reto viral: ¿Cuánto aguantas en plancha? Etiqueta a un amigo.',
+        type: 'reel',
+        difficulty: 'easy',
+        estimated_reach: 'High',
+        reason: 'Viral Potential'
+    }
+];
+
+const MOCK_IDEAS_COMMUNITY: ContentIdea[] = [
+    {
+        id: '1',
+        title: 'Spotlight de Miembro',
+        description: 'Entrevista corta a un miembro veterano sobre su transformación.',
+        type: 'reel',
         difficulty: 'medium',
         estimated_reach: 'Medium',
-        reason: 'Educational Value'
+        reason: 'Community Building'
+    },
+    {
+        id: '2',
+        title: 'Preguntas y Respuestas',
+        description: 'Sticker de preguntas en Stories: "Dudas sobre nutrición".',
+        type: 'story',
+        difficulty: 'easy',
+        estimated_reach: 'Medium',
+        reason: 'Engagement'
+    },
+    {
+        id: '3',
+        title: 'Nuestro Equipo',
+        description: 'Carrusel presentando a los entrenadores y sus especialidades.',
+        type: 'carousel',
+        difficulty: 'easy',
+        estimated_reach: 'Medium',
+        reason: 'Trust Building'
+    }
+];
+
+const MOCK_IDEAS_SALES: ContentIdea[] = [
+    {
+        id: '1',
+        title: 'Oferta Flash 24h',
+        description: 'Story con cuenta atrás para matrícula gratis. Link en bio.',
+        type: 'story',
+        difficulty: 'easy',
+        estimated_reach: 'Medium',
+        reason: 'Urgency'
+    },
+    {
+        id: '2',
+        title: 'Antes y Después',
+        description: 'Carrusel de casos de éxito reales con llamada a la acción clara.',
+        type: 'carousel',
+        difficulty: 'medium',
+        estimated_reach: 'High',
+        reason: 'Social Proof'
+    },
+    {
+        id: '3',
+        title: 'Tour del Gimnasio',
+        description: 'Reel rápido mostrando las instalaciones y máquinas nuevas. "Ven a probar".',
+        type: 'reel',
+        difficulty: 'medium',
+        estimated_reach: 'Medium',
+        reason: 'Showcase'
     }
 ];
 
@@ -251,7 +311,7 @@ export const marketingService = {
 
             if (!engagedRes.ok) {
                 console.warn("Engaged API Error:", JSON.stringify(engagedData));
-            } else if (engagedData.data && engagedData.data[0]) {
+            } else if (engagedData.data && engagedData.data[0] && Array.isArray(engagedData.data[0].values)) {
                 const values = engagedData.data[0].values;
                 // Sum up the last 28 days of engagement
                 insights.impressions = values.reduce((acc: number, curr: any) => acc + (curr.value || 0), 0);
@@ -350,10 +410,13 @@ export const marketingService = {
 
         // Check for missing or placeholder key
         if (!apiKey || apiKey.includes('tu_api_key')) {
-            console.warn("Google API Key missing or placeholder, returning mocks");
+            console.warn("Google API Key missing or placeholder, returning mocks for goal:", goal);
             // Simulate delay for realism
             await new Promise(resolve => setTimeout(resolve, 1000));
-            return MOCK_IDEAS;
+
+            if (goal === 'community') return MOCK_IDEAS_COMMUNITY;
+            if (goal === 'sales') return MOCK_IDEAS_SALES;
+            return MOCK_IDEAS_GROWTH;
         }
 
         console.log("🤖 Generating AI ideas with goal:", goal);
@@ -421,7 +484,9 @@ export const marketingService = {
         } catch (error) {
             console.error("Error generating AI ideas:", error);
             // Fallback to mocks on error so the user always sees something
-            return MOCK_IDEAS;
+            if (goal === 'community') return MOCK_IDEAS_COMMUNITY;
+            if (goal === 'sales') return MOCK_IDEAS_SALES;
+            return MOCK_IDEAS_GROWTH;
         }
     },
 

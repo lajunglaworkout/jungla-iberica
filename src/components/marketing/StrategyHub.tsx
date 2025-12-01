@@ -164,63 +164,71 @@ const StrategyHub: React.FC = () => {
                 </div>
             </div>
 
-            {/* AI Suggestions Section */}
+            {/* Ideas Display Section */}
             <div className="lg:col-span-2">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[500px] p-6">
-                    {!generated ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                            <div className="bg-green-50 p-6 rounded-full mb-6">
-                                <Lightbulb className="w-12 h-12 text-green-500" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                                Tu Asistente Creativo
-                            </h3>
-                            <p className="text-gray-500 max-w-md">
-                                Selecciona un objetivo y deja que nuestra IA analice las tendencias actuales para sugerirte contenido de alto impacto.
-                            </p>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                            <Zap className="w-6 h-6 text-green-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">Ideas Sugeridas para TI</h3>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-4">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+                            <p className="animate-pulse">Analizando tendencias y tu perfil...</p>
+                        </div>
+                    ) : !generated ? (
+                        <div className="flex flex-col items-center justify-center h-64 text-gray-400 text-center p-8 border-2 border-dashed border-gray-200 rounded-xl">
+                            <Sparkles className="w-12 h-12 mb-4 text-gray-300" />
+                            <h4 className="text-lg font-medium text-gray-600 mb-2">Tu Asistente Creativo</h4>
+                            <p className="max-w-md">Selecciona un objetivo y deja que nuestra IA analice las tendencias actuales para sugerirte contenido de alto impacto.</p>
                         </div>
                     ) : (
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Sparkles className="w-5 h-5 text-yellow-500" />
-                                Ideas Sugeridas para Ti
-                            </h3>
+                        <div className="space-y-4">
+                            {ideas.map((idea) => (
+                                <div key={idea.id} className="group bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all duration-300 hover:border-green-200 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
 
-                            <div className="space-y-4">
-                                {ideas.map((idea) => (
-                                    <div key={idea.id} className="group border border-gray-200 rounded-xl p-5 hover:border-green-300 hover:shadow-md transition-all bg-white">
+                                    <div className="relative z-10">
                                         <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider
-                          ${idea.type === 'reel' ? 'bg-pink-50 text-pink-600' :
-                                                        idea.type === 'carousel' ? 'bg-blue-50 text-blue-600' : 'bg-yellow-50 text-yellow-600'}`}>
+                                            <div className="flex gap-2">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${idea.type === 'reel' ? 'bg-purple-100 text-purple-700' :
+                                                    idea.type === 'carousel' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-orange-100 text-orange-700'
+                                                    }`}>
                                                     {idea.type}
                                                 </span>
-                                                <span className={`px-2 py-1 rounded-lg text-xs font-medium
-                          ${idea.difficulty === 'easy' ? 'bg-green-50 text-green-600' :
-                                                        idea.difficulty === 'medium' ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${idea.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                                                    idea.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-red-100 text-red-700'
+                                                    }`}>
                                                     {idea.difficulty}
                                                 </span>
                                             </div>
-                                            <button className="text-gray-400 hover:text-green-600 transition-colors">
-                                                <ArrowRight className="w-5 h-5" />
-                                            </button>
                                         </div>
 
-                                        <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
+                                        <h4 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-green-700 transition-colors">
                                             {idea.title}
                                         </h4>
                                         <p className="text-gray-600 text-sm mb-4">
                                             {idea.description}
                                         </p>
 
-                                        <div className="flex items-center gap-2 text-xs font-medium text-green-600 bg-green-50 px-3 py-2 rounded-lg inline-flex">
-                                            <Zap className="w-3 h-3" />
-                                            Por qué funciona: {idea.reason}
+                                        <div className="flex items-center gap-4 text-sm text-gray-500 pt-4 border-t border-gray-100">
+                                            <div className="flex items-center gap-1.5">
+                                                <TrendingUp className="w-4 h-4 text-green-500" />
+                                                <span className="font-medium">Impacto: {idea.estimated_reach}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Zap className="w-4 h-4 text-yellow-500" />
+                                                <span>{idea.reason}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
