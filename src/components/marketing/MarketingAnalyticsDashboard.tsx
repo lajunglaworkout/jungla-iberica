@@ -95,10 +95,15 @@ const MarketingAnalyticsDashboard: React.FC = () => {
                     </p>
                     <button
                         onClick={handleConnect}
-                        disabled={!isSdkLoaded}
-                        className={`bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-3 ${!isSdkLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={!isSdkLoaded || !!sdkError}
+                        className={`bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-3 ${(!isSdkLoaded || !!sdkError) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isSdkLoaded ? (
+                        {sdkError ? (
+                            <>
+                                <Zap className="w-6 h-6 text-red-200" />
+                                {sdkError}
+                            </>
+                        ) : isSdkLoaded ? (
                             <>
                                 <Instagram className="w-6 h-6" />
                                 Conectar Cuenta Business

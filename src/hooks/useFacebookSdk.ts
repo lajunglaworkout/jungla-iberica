@@ -29,10 +29,12 @@ export const useFacebookSdk = () => {
                     version: 'v18.0'
                 });
 
-                // Verify initialization by calling a method that requires it
+                // Mark as loaded immediately after init to prevent UI blocking
+                setIsSdkLoaded(true);
+
+                // Verify initialization in background for debugging
                 window.FB.getLoginStatus((response: any) => {
                     console.log("Facebook SDK initialized successfully. Status:", response.status);
-                    setIsSdkLoaded(true);
                 });
             } catch (error) {
                 console.error("Error initializing Facebook SDK:", error);
