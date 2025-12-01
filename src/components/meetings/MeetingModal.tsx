@@ -1364,10 +1364,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                               marginTop: '4px'
                             }}>
                               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                                <div><strong>💰 Ingresos mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
-                                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-                                <div><strong>✨ Clientes nuevos:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-                                <div><strong>📉 Bajas del mes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                                <div><strong>💰 Ingresos mes:</strong> <span style={{ color: '#059669' }}>{task.datos?.valores?.[centro]?.ingresos || 'Cargando...'}</span></div>
+                                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>{task.datos?.valores?.[centro]?.clientes_activos || 'Cargando...'}</span></div>
+                                <div><strong>✨ Clientes nuevos:</strong> <span style={{ color: '#10b981' }}>{task.datos?.valores?.[centro]?.nuevos || 'Cargando...'}</span></div>
+                                <div><strong>📉 Bajas del mes:</strong> <span style={{ color: '#ef4444' }}>{task.datos?.valores?.[centro]?.bajas || 'Cargando...'}</span></div>
                                 <textarea
                                   placeholder="Observaciones..."
                                   style={{
@@ -1409,10 +1409,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                               marginTop: '4px'
                             }}>
                               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                                <div><strong>✅ Cumplimiento:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
-                                <div><strong>📝 Tareas completadas:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-                                <div><strong>⏳ Tareas pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-                                <div><strong>⚠️ Cuellos de botella:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
+                                <div><strong>✅ Cumplimiento:</strong> <span style={{ color: '#059669' }}>{task.datos?.valores?.[dept]?.cumplimiento || 'Cargando...'}</span></div>
+                                <div><strong>📝 Tareas completadas:</strong> <span style={{ color: '#3b82f6' }}>{task.datos?.valores?.[dept]?.completadas ?? 'Cargando...'}</span></div>
+                                <div><strong>⏳ Tareas pendientes:</strong> <span style={{ color: '#f59e0b' }}>{task.datos?.valores?.[dept]?.pendientes ?? 'Cargando...'}</span></div>
+                                <div><strong>⚠️ Cuellos de botella:</strong> <span style={{ color: '#ef4444' }}>{task.datos?.valores?.[dept]?.cuellos_botella || 'Cargando...'}</span></div>
                                 <select style={{
                                   padding: '6px',
                                   border: '1px solid #d1d5db',
@@ -1452,8 +1452,8 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                         borderRadius: '6px'
                       }}>
                         <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                          <div><strong>🔴 Incidencias abiertas:</strong> <span style={{ color: '#dc2626' }}>Cargando...</span></div>
-                          <div><strong>📊 Nuevas desde última reunión:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
+                          <div><strong>🔴 Incidencias abiertas:</strong> <span style={{ color: '#dc2626' }}>{task.datos?.incidencias_abiertas ?? 'Cargando...'}</span></div>
+                          <div><strong>📊 Nuevas desde última reunión:</strong> <span style={{ color: '#f59e0b' }}>{task.datos?.nuevas_desde_ultima_reunion ?? 'Cargando...'}</span></div>
                           <textarea
                             placeholder="Motivos de no cierre..."
                             style={{
