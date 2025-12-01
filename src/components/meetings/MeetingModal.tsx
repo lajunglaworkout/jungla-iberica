@@ -10,6 +10,7 @@ import {
   saveMeetingObjectives,
   saveMeetingBottlenecks
 } from '../../services/meetingAnalyticsService';
+import { maintenanceService } from '../../services/maintenanceService';
 
 interface MeetingModalProps {
   departmentId: string;
@@ -189,7 +190,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     setDepartmentObjectives(objectives);
   };
 
-  const loadRecurringTasks = () => {
+  const loadRecurringTasks = async () => {
     console.log('🔄 Cargando tareas recurrentes para departamento:', departmentId);
 
     // Tareas recurrentes por departamento
@@ -257,13 +258,26 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
     // Configuración especial para Dirección con datos expandibles
     if (departmentId === 'direccion') {
+      // 1. Fetch Maintenance Stats for "Incidencias urgentes"
+      let maintenanceStats = { criticalIssues: 0, pendingTasks: 0 };
+      try {
+        const stats = await maintenanceService.getMaintenanceStats();
+        maintenanceStats = {
+          criticalIssues: stats.criticalIssues,
+          pendingTasks: stats.pendingTasks
+        };
+      } catch (error) {
+        console.error("Error fetching maintenance stats:", error);
+      }
+
       const direccionTasks: RecurringTask[] = [
         {
           titulo: 'Incidencias urgentes',
           notas: '',
           tipo: 'incidencias',
           datos: {
-            // Se cargarán automáticamente desde la BD
+            incidencias_abiertas: maintenanceStats.criticalIssues, // Real data
+            nuevas_desde_ultima_reunion: maintenanceStats.pendingTasks // Real data (proxy)
           }
         },
         {
@@ -271,7 +285,13 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           notas: '',
           tipo: 'expandible_centros',
           datos: {
-            centros: ['Sevilla', 'Jerez', 'Puerto']
+            centros: ['Sevilla', 'Jerez', 'Puerto'],
+            // Mock data to unblock UI
+            valores: {
+              'Sevilla': { ingresos: '45.000€', clientes_activos: 1200, nuevos: 45, bajas: 12 },
+              'Jerez': { ingresos: '32.000€', clientes_activos: 850, nuevos: 30, bajas: 8 },
+              'Puerto': { ingresos: '28.000€', clientes_activos: 720, nuevos: 25, bajas: 5 }
+            }
           }
         },
         {
@@ -279,7 +299,16 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           notas: '',
           tipo: 'expandible_departamentos',
           datos: {
-            departamentos: ['rrhh', 'procedimientos', 'logistica', 'mantenimiento', 'marketing', 'ventas']
+            departamentos: ['rrhh', 'procedimientos', 'logistica', 'mantenimiento', 'marketing', 'ventas'],
+            // Mock data to unblock UI
+            valores: {
+              'rrhh': { cumplimiento: '95%', completadas: 12, pendientes: 2, cuellos_botella: 'Ninguno' },
+              'procedimientos': { cumplimiento: '88%', completadas: 8, pendientes: 4, cuellos_botella: 'Revisión pendiente' },
+              'logistica': { cumplimiento: '92%', completadas: 45, pendientes: 5, cuellos_botella: 'Retraso proveedor' },
+              'mantenimiento': { cumplimiento: '75%', completadas: 15, pendientes: 8, cuellos_botella: 'Falta repuestos' },
+              'marketing': { cumplimiento: '98%', completadas: 20, pendientes: 1, cuellos_botella: 'Ninguno' },
+              'ventas': { cumplimiento: '105%', completadas: 35, pendientes: 0, cuellos_botella: 'Ninguno' }
+            }
           }
         }
       ];
@@ -295,7 +324,9 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           notas: '',
           tipo: 'incidencias_personal',
           datos: {
-            // Se cargarán automáticamente: bajas, incidencias pendientes
+            // Mock data
+            bajas_activas: 2,
+            incidencias_pendientes: 3
           }
         },
         {
