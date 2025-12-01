@@ -11,16 +11,23 @@ const StrategyHub: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [generated, setGenerated] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+
     const generateIdeas = async () => {
+        console.log("🚀 Generating ideas started...");
         setLoading(true);
+        setError(null);
         try {
             // 1. Try to get real data context
             const token = localStorage.getItem('ig_access_token');
+            console.log("🔑 Token found:", !!token);
+
             let profileData = undefined;
             let postsData = undefined;
 
             if (token) {
                 try {
+                    console.log("📡 Fetching context data...");
                     // Parallel fetch for speed
                     const [p, posts] = await Promise.all([
                         marketingService.getRealProfile(token),
@@ -28,17 +35,26 @@ const StrategyHub: React.FC = () => {
                     ]);
                     profileData = p;
                     postsData = posts;
+                    console.log("✅ Context data fetched:", { profile: !!profileData, posts: postsData?.length });
                 } catch (e) {
-                    console.warn("Could not fetch context for AI:", e);
+                    console.warn("⚠️ Could not fetch context for AI:", e);
                 }
             }
 
             // 2. Generate ideas with context
+            console.log("🤖 Calling AI service with goal:", goal);
             const newIdeas = await marketingService.getAIContentIdeas(goal, profileData, postsData);
+            console.log("✨ AI Response:", newIdeas);
+
+            if (!newIdeas || newIdeas.length === 0) {
+                throw new Error("La IA no devolvió ninguna idea.");
+            }
+
             setIdeas(newIdeas);
             setGenerated(true);
-        } catch (error) {
-            console.error('Error generating ideas:', error);
+        } catch (error: any) {
+            console.error('❌ Error generating ideas:', error);
+            setError(error.message || "Error al generar ideas");
         } finally {
             setLoading(false);
         }
@@ -102,6 +118,12 @@ const StrategyHub: React.FC = () => {
                             </div>
                         </label>
                     </div>
+
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-sm text-white">
+                            ⚠️ {error}
+                        </div>
+                    )}
 
                     <button
                         onClick={generateIdeas}
