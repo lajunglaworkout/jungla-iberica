@@ -4,7 +4,7 @@ import {
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
     Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2,
-    Layout, Type, Image as ImageIcon
+    Layout, Type, Image as ImageIcon, Sparkles
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
@@ -219,7 +219,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
             <div className="grid grid-cols-1 gap-8">
                 {loading ? (
                     <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
                         <p className="text-gray-500">Cargando estructura del curso...</p>
                     </div>
                 ) : modules.length === 0 ? (
@@ -267,11 +267,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 onClick={() => openLessonEditor(lesson)}
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm">
+                                                    <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 font-bold text-sm">
                                                         {lesson.order}
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                        <h4 className="font-semibold text-gray-900 group-hover:text-emerald-600 transition-colors">
                                                             {lesson.title}
                                                         </h4>
                                                         <div className="flex items-center gap-2 mt-1">
@@ -283,7 +283,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                                     return (
                                                                         <div
                                                                             key={num}
-                                                                            className={`h-1.5 w-6 rounded-full ${hasContent ? 'bg-green-500' : 'bg-gray-200'}`}
+                                                                            className={`h-1.5 w-6 rounded-full ${hasContent ? 'bg-emerald-500' : 'bg-gray-200'}`}
                                                                             title={`Bloque ${num}: ${hasContent ? 'Completado' : 'Vacío'}`}
                                                                         />
                                                                     );
@@ -297,7 +297,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 </div>
 
                                                 <div className="flex items-center gap-4">
-                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${lesson.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'
                                                         }`}>
                                                         {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
                                                     </span>
@@ -313,7 +313,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             <div className="p-4 border-t border-gray-100 bg-gray-50/30">
                                 <button
                                     onClick={() => initiateAddLesson(module.id)}
-                                    className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium text-sm"
+                                    className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 font-medium text-sm"
                                 >
                                     <Plus className="h-4 w-4" />
                                     Añadir Lección al Módulo {module.title}
@@ -338,7 +338,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                 type="text"
                                 value={newLessonTitle}
                                 onChange={(e) => setNewLessonTitle(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                                 placeholder="Ej: Introducción a RRHH"
                                 autoFocus
                                 onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
@@ -354,7 +354,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             <button
                                 onClick={confirmAddLesson}
                                 disabled={!newLessonTitle.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Crear Lección
                             </button>
@@ -391,18 +391,18 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                             key={block.id}
                                             className={`
                         bg-white rounded-2xl border shadow-sm flex flex-col h-full transition-all hover:shadow-lg group
-                        ${hasContent ? 'border-green-200 ring-1 ring-green-100' : 'border-gray-200'}
+                        ${hasContent ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-gray-200'}
                       `}
                                         >
                                             {/* Block Header */}
                                             <div className={`
                         p-6 border-b flex justify-between items-start rounded-t-2xl
-                        ${hasContent ? 'bg-green-50/50 border-green-100' : 'bg-gray-50/50 border-gray-100'}
+                        ${hasContent ? 'bg-emerald-50/50 border-emerald-100' : 'bg-gray-50/50 border-gray-100'}
                       `}>
                                                 <div>
                                                     <span className={`
                             px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                            ${hasContent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}
+                            ${hasContent ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'}
                           `}>
                                                         Bloque {block.block_number}
                                                     </span>
@@ -411,7 +411,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                     </h4>
                                                 </div>
                                                 {hasContent ? (
-                                                    <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                                    <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
                                                         <CheckCircle className="h-5 w-5" />
                                                     </div>
                                                 ) : (
@@ -428,7 +428,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 </p>
 
                                                 {block.file_url && (
-                                                    <div className="mt-4 flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                                                    <div className="mt-4 flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">
                                                         <LinkIcon className="h-3 w-3" />
                                                         <span className="truncate">Recurso adjunto disponible</span>
                                                     </div>
@@ -443,7 +443,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             w-full py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2
                             ${hasContent
                                                             ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                                                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'}
+                                                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'}
                           `}
                                                 >
                                                     <Edit3 className="h-4 w-4" />
@@ -478,23 +478,23 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
                         <div className="p-8 space-y-8">
                             {/* Strategic Guide */}
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-                                <div className="flex items-center gap-2 mb-4 text-blue-800 font-bold">
-                                    <HelpCircle className="h-5 w-5" />
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-100">
+                                <div className="flex items-center gap-2 mb-4 text-emerald-800 font-bold">
+                                    <Sparkles className="h-5 w-5" />
                                     <span>Guía Estratégica</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-6 text-sm">
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
-                                        <strong className="block text-blue-900 mb-1 text-base">1. Concepto</strong>
-                                        <span className="text-blue-700">¿Qué quiero transmitir?</span>
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
+                                        <strong className="block text-emerald-900 mb-1 text-base">1. Concepto</strong>
+                                        <span className="text-emerald-700">¿Qué quiero transmitir?</span>
                                     </div>
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
-                                        <strong className="block text-blue-900 mb-1 text-base">2. Valor</strong>
-                                        <span className="text-blue-700">¿Qué valor práctico aporto?</span>
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
+                                        <strong className="block text-emerald-900 mb-1 text-base">2. Valor</strong>
+                                        <span className="text-emerald-700">¿Qué valor práctico aporto?</span>
                                     </div>
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
-                                        <strong className="block text-blue-900 mb-1 text-base">3. Acción</strong>
-                                        <span className="text-blue-700">¿Cómo se lleva a la práctica?</span>
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
+                                        <strong className="block text-emerald-900 mb-1 text-base">3. Acción</strong>
+                                        <span className="text-emerald-700">¿Cómo se lleva a la práctica?</span>
                                     </div>
                                 </div>
                             </div>
@@ -510,7 +510,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                         type="text"
                                         value={editorTitle}
                                         onChange={(e) => setEditorTitle(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-lg"
                                         placeholder="Ej: Concepto Clave: El CV Visual"
                                     />
                                 </div>
@@ -525,7 +525,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                             value={editorContent}
                                             onChange={(e) => setEditorContent(e.target.value)}
                                             rows={12}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none leading-relaxed"
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all resize-none leading-relaxed"
                                             placeholder="Escribe aquí el contenido del bloque..."
                                         />
                                         <div className="absolute bottom-3 right-3 text-xs text-gray-400">
@@ -544,7 +544,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                             type="text"
                                             value={editorFileUrl}
                                             onChange={(e) => setEditorFileUrl(e.target.value)}
-                                            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                                             placeholder="https://..."
                                         />
                                         <button className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors font-medium">
@@ -565,7 +565,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             </button>
                             <button
                                 onClick={saveBlock}
-                                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-200"
+                                className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-200"
                             >
                                 <Save className="h-5 w-5" />
                                 Guardar Cambios
