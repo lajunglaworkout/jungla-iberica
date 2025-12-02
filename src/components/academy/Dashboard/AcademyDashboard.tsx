@@ -97,7 +97,7 @@ export const AcademyDashboard: React.FC = () => {
     };
 
     const renderDashboard = () => (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-10 animate-in fade-in duration-500">
             {/* Header Section */}
             <div style={{
                 background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%)',
@@ -141,7 +141,7 @@ export const AcademyDashboard: React.FC = () => {
             </div>
 
             {/* KPIs Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <KPICard
                     title="Ingresos Mes Actual"
                     value="0 €"
@@ -177,7 +177,7 @@ export const AcademyDashboard: React.FC = () => {
             </div>
 
             {/* Navigation Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <NavigationCard
                     title="CONTENIDOS"
                     icon={BookOpen}
