@@ -310,10 +310,27 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Solo activar loading si no hay usuario (login inicial)
         // Si ya hay usuario (verificado por ref), es una actualización de sesión y no queremos desmontar la UI
         const isInitialLogin = !userRef.current;
+        const isSameUser = userRef.current?.id === session.user.id;
 
         if (isInitialLogin) {
           console.log('🆕 Login inicial detectado, activando loading...');
           setLoading(true);
+        } else if (isSameUser) {
+          console.log('🔄 Misma sesión de usuario detectada, omitiendo recarga de datos...');
+          // Actualizamos el usuario por si hay cambios en metadatos, pero evitamos recargar empleado si no es necesario
+          // Nota: Si setUser causa re-render innecesarios, podríamos omitirlo también si deepEqual(user, session.user)
+          // Por ahora, solo evitamos loadEmployeeData si es el mismo usuario
+
+          // Si queremos ser estrictos y evitar CUALQUIER re-render:
+          // return; 
+
+          // Pero Supabase refresca tokens, así que es bueno actualizar el usuario.
+          // Sin embargo, para evitar el "parpadeo" o "loading" en componentes hijos,
+          // vamos a verificar si realmente necesitamos actualizar el estado.
+          if (JSON.stringify(userRef.current) === JSON.stringify(session.user)) {
+            console.log('✨ El objeto usuario es idéntico, omitiendo actualización de estado.');
+            return;
+          }
         } else {
           console.log('🔄 Actualización de sesión detectada (usuario ya existe), manteniendo UI...');
         }
@@ -321,7 +338,10 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         setUser(session.user);
         userRef.current = session.user; // Actualizar ref inmediatamente
 
-        await loadEmployeeData(session.user.id, session.user.email!);
+        // Solo recargar datos del empleado si es un login inicial o si el usuario ha cambiado
+        if (isInitialLogin || !isSameUser) {
+          await loadEmployeeData(session.user.id, session.user.email!);
+        }
 
         if (isInitialLogin) {
           setLoading(false);
