@@ -300,11 +300,22 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('✅ Usuario ha iniciado sesión');
+
+        // Solo activar loading si no hay usuario (login inicial)
+        // Si ya hay usuario, es una actualización de sesión (ej. cambio de pestaña) y no queremos desmontar la UI
+        const isInitialLogin = !user;
+
         setUser(session.user);
-        setLoading(true);
+
+        if (isInitialLogin) {
+          setLoading(true);
+        }
 
         await loadEmployeeData(session.user.id, session.user.email!);
-        setLoading(false);
+
+        if (isInitialLogin) {
+          setLoading(false);
+        }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 Usuario ha cerrado sesión');
         setUser(null);
