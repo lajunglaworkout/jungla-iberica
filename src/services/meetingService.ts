@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Task } from '../types/dashboard';
 import { createMeetingAlert, getDepartmentResponsible } from '../config/departments';
+import { deleteTasksByMeetingId } from './taskService';
 
 export interface MeetingRecord {
   id?: number;
@@ -30,7 +31,7 @@ export interface MeetingRecord {
 export const taskToMeetingRecord = (task: Task): MeetingRecord => {
   // 🔧 NUEVO: Obtener participantes basándose en assignmentType y assignmentId
   let participants: string[] = [];
-  
+
   // Si tiene assignmentType y assignmentId (nuevo sistema)
   if (task.assignmentType && task.assignmentId) {
     if (task.assignmentType === 'corporativo') {
@@ -46,7 +47,7 @@ export const taskToMeetingRecord = (task: Task): MeetingRecord => {
       // TODO: Mejorar para obtener el email real del empleado
       participants = [task.assignmentId];
     }
-  } 
+  }
   // Fallback: usar el sistema antiguo de department
   else if (task.department) {
     const responsible = getDepartmentResponsible(task.department);
@@ -54,7 +55,7 @@ export const taskToMeetingRecord = (task: Task): MeetingRecord => {
       participants = [responsible.email];
     }
   }
-  
+
   return {
     title: task.title,
     department: task.assignmentId || task.department || 'Sin asignar',
@@ -110,10 +111,10 @@ export const meetingRecordToTask = (meeting: MeetingRecord): Task => {
 const calculateDuration = (startTime: string, endTime: string): number => {
   const [startHour, startMin] = startTime.split(':').map(Number);
   const [endHour, endMin] = endTime.split(':').map(Number);
-  
+
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
-  
+
   return endMinutes - startMinutes;
 };
 
@@ -121,7 +122,7 @@ const calculateDuration = (startTime: string, endTime: string): number => {
 export const saveMeetingToSupabase = async (task: Task): Promise<{ success: boolean; error?: string; meeting?: MeetingRecord }> => {
   try {
     const meetingRecord = taskToMeetingRecord(task);
-    
+
     const { data, error } = await supabase
       .from('meetings')
       .insert([meetingRecord])
@@ -134,7 +135,7 @@ export const saveMeetingToSupabase = async (task: Task): Promise<{ success: bool
     }
 
     console.log('✅ Reunión guardada en Supabase:', data);
-    
+
     // Crear alerta para el responsable del departamento
     if (task.department) {
       const alert = createMeetingAlert(
@@ -144,11 +145,11 @@ export const saveMeetingToSupabase = async (task: Task): Promise<{ success: bool
         task.department,
         task.description
       );
-      
+
       if (alert) {
         // Aquí se podría guardar la alerta en una tabla de notificaciones
         console.log('🔔 Alerta creada:', alert);
-        
+
         // TODO: Guardar alerta en tabla notifications
         // await saveNotificationToSupabase(alert);
       }
@@ -234,6 +235,14 @@ export const deleteMeetingFromSupabase = async (taskId: string): Promise<{ succe
 
     if (isNaN(meetingId)) {
       return { success: false, error: 'ID de reunión inválido' };
+    }
+
+    // 🗑️ Primero eliminar tareas asociadas (Cascade manual)
+    const tasksResult = await deleteTasksByMeetingId(meetingId);
+    if (!tasksResult.success) {
+      console.warn('Advertencia: No se pudieron eliminar las tareas asociadas', tasksResult.error);
+      // Continuamos con el borrado de la reunión aunque fallen las tareas, 
+      // pero idealmente debería ser una transacción.
     }
 
     const { error } = await supabase

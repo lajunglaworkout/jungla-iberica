@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  CheckCircle, Clock, AlertTriangle, User, Calendar, 
+import {
+  CheckCircle, Clock, AlertTriangle, User, Calendar,
   Filter, Search, Eye, Edit, Trash2, Plus, ArrowRight,
   Building2, Users, Briefcase, DollarSign, Globe, Award, Zap, Activity
 } from 'lucide-react';
@@ -17,7 +17,7 @@ interface PendingTask {
   estado: 'pendiente' | 'en_progreso' | 'completada';
   fecha_limite: string;
   fecha_creacion: string;
-  reunion_id?: number;
+  reunion_origen?: number;
   creado_por: string;
 }
 
@@ -81,7 +81,7 @@ const PendingTasksSystem: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       // Cargar tareas asignadas al usuario actual (por email o nombre)
       const { data, error } = await supabase
         .from('tareas')
@@ -161,7 +161,7 @@ const PendingTasksSystem: React.FC = () => {
       if (error) throw error;
 
       // Actualizar estado local
-      setTasks(prev => prev.map(task => 
+      setTasks(prev => prev.map(task =>
         task.id === taskId ? { ...task, estado: newStatus as any } : task
       ));
     } catch (error) {
@@ -344,7 +344,7 @@ const PendingTasksSystem: React.FC = () => {
               No hay tareas pendientes
             </h3>
             <p className="text-gray-600">
-              {tasks.length === 0 
+              {tasks.length === 0
                 ? "No tienes tareas asignadas actualmente."
                 : "No hay tareas que coincidan con los filtros aplicados."
               }
@@ -356,7 +356,7 @@ const PendingTasksSystem: React.FC = () => {
               const DeptIcon = departmentIcons[task.departamento_responsable] || Building2;
               const daysUntilDeadline = getDaysUntilDeadline(task.fecha_limite);
               const isOverdue = daysUntilDeadline < 0;
-              
+
               return (
                 <div key={task.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
@@ -371,9 +371,9 @@ const PendingTasksSystem: React.FC = () => {
                           {task.estado.replace('_', ' ')}
                         </span>
                       </div>
-                      
+
                       <p className="text-gray-600 mb-3">{task.descripcion}</p>
-                      
+
                       <div className="flex items-center gap-6 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
@@ -399,7 +399,7 @@ const PendingTasksSystem: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 ml-4">
                       {task.estado === 'pendiente' && (
                         <button

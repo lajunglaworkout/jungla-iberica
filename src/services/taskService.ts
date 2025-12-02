@@ -13,7 +13,7 @@ export const completeTask = async (
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     console.log('🔄 Marcando tarea como completada:', { taskId, completedBy, completionNotes });
-    
+
     const { error } = await supabase
       .from('tareas')
       .update({
@@ -37,7 +37,7 @@ export const completeTask = async (
 
     // Eliminar notificaciones de esta tarea
     await deleteTaskNotifications(taskId);
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error:', error);
@@ -184,5 +184,28 @@ export const getTaskStats = async (): Promise<{ success: boolean; stats?: any; e
   } catch (error) {
     console.error('Error:', error);
     return { success: false, error: 'Error al obtener estadísticas' };
+  }
+};
+
+// Eliminar tareas por ID de reunión
+export const deleteTasksByMeetingId = async (meetingId: number): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log(`🗑️ Eliminando tareas de la reunión ${meetingId}...`);
+
+    const { error } = await supabase
+      .from('tareas')
+      .delete()
+      .eq('reunion_origen', meetingId);
+
+    if (error) {
+      console.error('Error eliminando tareas de la reunión:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Tareas de la reunión eliminadas correctamente');
+    return { success: true };
+  } catch (error) {
+    console.error('Error:', error);
+    return { success: false, error: 'Error al eliminar tareas de la reunión' };
   }
 };

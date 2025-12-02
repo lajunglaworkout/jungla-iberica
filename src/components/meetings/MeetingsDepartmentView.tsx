@@ -89,7 +89,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         const { data: tasks, error: tasksError } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_id', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
+          .eq('reunion_origen', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
 
         if (tasksError) {
           console.error('Error cargando tareas de reunión:', tasksError);
@@ -135,7 +135,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         const { data: tasks, error: tasksError } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_id', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
+          .eq('reunion_origen', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
 
         if (tasksError) {
           console.error('Error cargando tareas de reunión:', tasksError);
@@ -784,7 +784,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       {showCompletionModal && selectedTaskForCompletion && (
         <TaskCompletionModal
           isOpen={showCompletionModal}
-          taskId={selectedTaskForCompletion.taskId}
+          taskId={selectedTaskForCompletion.id}
           taskTitle={selectedTaskForCompletion.title}
           userEmail={userEmail}
           userName={userName}

@@ -5,6 +5,7 @@ import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
 import { generateMeetingMinutes } from '../../services/meetingRecordingService'; // 🔧 Usar Claude API directamente
+import { saveMeetingToSupabase, updateMeetingInSupabase, deleteMeetingFromSupabase } from '../../services/meetingService';
 import {
   saveMeetingMetrics,
   saveMeetingObjectives,
@@ -98,6 +99,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
   const [generatingActa, setGeneratingActa] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
+  const [taskFilter, setTaskFilter] = useState<'pending' | 'completed'>('pending'); // 🔍 NUEVO: Filtro de tareas
 
   // Estados para preview del acta
   const [generatedMinutes, setGeneratedMinutes] = useState<string>('');
@@ -884,7 +886,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           fecha_limite: task.deadline || task.fecha_limite || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           departamento: departmentId,
           reunion_titulo: meeting?.title || 'Nueva Reunión',
-          reunion_id: meetingId, // 🔗 VINCULACIÓN POR ID (FIX DUPLICADOS)
+          reunion_origen: typeof meetingId === 'number' ? meetingId : parseInt(meetingId), // 🔗 FIX: Asegurar ID numérico
           verificacion_requerida: true
         }));
 
@@ -1123,10 +1125,45 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
               color: '#1f2937',
               marginBottom: '16px'
             }}>
-              📋 Tareas Pendientes de Reuniones Anteriores
+              📋 Tareas de Reuniones Anteriores
             </h3>
 
-            {previousTasks.length === 0 ? (
+            {/* 🔍 FILTROS DE TAREAS */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <button
+                onClick={() => setTaskFilter('pending')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: taskFilter === 'pending' ? '#dbeafe' : '#f3f4f6',
+                  color: taskFilter === 'pending' ? '#1e40af' : '#4b5563'
+                }}
+              >
+                ⏳ Pendientes
+              </button>
+              <button
+                onClick={() => setTaskFilter('completed')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: taskFilter === 'completed' ? '#dcfce7' : '#f3f4f6',
+                  color: taskFilter === 'completed' ? '#166534' : '#4b5563'
+                }}
+              >
+                ✅ Completadas
+              </button>
+            </div>
+
+
+            {previousTasks.filter(t => taskFilter === 'pending' ? !previousTasksCompleted[t.id] : previousTasksCompleted[t.id]).length === 0 ? (
               <div style={{
                 padding: '16px',
                 backgroundColor: '#f3f4f6',
@@ -1136,105 +1173,143 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                 color: '#6b7280',
                 marginBottom: '24px'
               }}>
-                No hay tareas pendientes anteriores
+                No hay tareas {taskFilter === 'pending' ? 'pendientes' : 'completadas'} anteriores
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
-                {previousTasks.map(task => (
-                  <div
-                    key={task.id}
-                    style={{
-                      padding: '16px',
-                      backgroundColor: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: '8px'
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={previousTasksCompleted[task.id] || false}
-                        onChange={() => handleTogglePreviousTaskCompleted(task.id)}
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          cursor: 'pointer'
-                        }}
-                      />
+                {previousTasks
+                  .filter(t => taskFilter === 'pending' ? !previousTasksCompleted[t.id] : previousTasksCompleted[t.id])
+                  .map(task => (
+                    <div
+                      key={task.id}
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px'
+                      }}
+                    >
                       <div style={{
-                        fontWeight: '600',
-                        color: '#166534',
-                        flex: 1,
-                        textDecoration: previousTasksCompleted[task.id] ? 'line-through' : 'none',
-                        opacity: previousTasksCompleted[task.id] ? 0.6 : 1
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
                       }}>
-                        {task.titulo}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280',
-                      marginBottom: '12px',
-                      marginLeft: '26px'
-                    }}>
-                      👤 {task.asignado_a} • 📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}
-                    </div>
-
-                    {/* Si NO está completada, mostrar campo de motivo */}
-                    {!previousTasksCompleted[task.id] && (
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#dc2626',
-                          display: 'block',
-                          marginBottom: '4px'
-                        }}>
-                          ⚠️ Motivo de no completación:
-                        </label>
-                        <textarea
-                          placeholder="Ej: Falta de recursos, Dependencia externa, Prioridad cambiada..."
-                          value={previousTasksReasons[task.id] || ''}
-                          onChange={(e) => handlePreviousTaskReasonChange(task.id, e.target.value)}
+                        <input
+                          type="checkbox"
+                          checked={previousTasksCompleted[task.id] || false}
+                          onChange={() => {
+                            if (!previousTasksCompleted[task.id]) {
+                              // Si no está completada, ABRIR MODAL
+                              setSelectedTaskForCompletion(task);
+                              setShowCompletionModal(true);
+                            } else {
+                              // Si ya está completada, permitir desmarcar (opcional, o bloquear)
+                              handleTogglePreviousTaskCompleted(task.id);
+                            }
+                          }}
                           style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '2px solid #fecaca',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            minHeight: '60px',
-                            fontFamily: 'inherit',
-                            resize: 'vertical',
-                            boxSizing: 'border-box',
-                            backgroundColor: '#fef2f2'
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer'
                           }}
                         />
+                        <div style={{
+                          fontWeight: '600',
+                          color: '#166534',
+                          flex: 1,
+                          textDecoration: previousTasksCompleted[task.id] ? 'line-through' : 'none',
+                          opacity: previousTasksCompleted[task.id] ? 0.6 : 1
+                        }}>
+                          {task.titulo}
+                        </div>
                       </div>
-                    )}
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginBottom: '12px',
+                        marginLeft: '26px'
+                      }}>
+                        👤 {task.asignado_a} • 📅 {new Date(task.fecha_limite).toLocaleDateString('es-ES')}
+                      </div>
 
-                    <textarea
-                      placeholder="Notas sobre esta tarea..."
-                      value={taskNotes[task.id] || ''}
-                      onChange={(e) => handleTaskNoteChange(task.id.toString(), e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        minHeight: '60px',
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                ))}
+                      {/* 🔧 BOTÓN EXPLÍCITO PARA COMPLETAR */}
+                      {!previousTasksCompleted[task.id] && (
+                        <button
+                          onClick={() => {
+                            setSelectedTaskForCompletion(task);
+                            setShowCompletionModal(true);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            marginBottom: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          ✅ Completar Tarea
+                        </button>
+                      )}
+
+                      {/* Si NO está completada, mostrar campo de motivo */}
+                      {!previousTasksCompleted[task.id] && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#dc2626',
+                            display: 'block',
+                            marginBottom: '4px'
+                          }}>
+                            ⚠️ Motivo de no completación:
+                          </label>
+                          <textarea
+                            placeholder="Ej: Falta de recursos, Dependencia externa, Prioridad cambiada..."
+                            value={previousTasksReasons[task.id] || ''}
+                            onChange={(e) => handlePreviousTaskReasonChange(task.id, e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              border: '2px solid #fecaca',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              minHeight: '60px',
+                              fontFamily: 'inherit',
+                              resize: 'vertical',
+                              boxSizing: 'border-box',
+                              backgroundColor: '#fef2f2'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <textarea
+                        placeholder="Notas sobre esta tarea..."
+                        value={taskNotes[task.id] || ''}
+                        onChange={(e) => handleTaskNoteChange(task.id.toString(), e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          minHeight: '60px',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  ))}
               </div>
             )}
           </div>
@@ -2592,595 +2667,630 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Modal de Completación de Tarea */}
-      {showCompletionModal && selectedTaskForCompletion && userEmail && userName && (
-        <TaskCompletionModal
-          isOpen={showCompletionModal}
-          taskId={selectedTaskForCompletion.id}
-          taskTitle={selectedTaskForCompletion.titulo}
-          userEmail={userEmail}
-          userName={userName}
-          onClose={() => {
-            setShowCompletionModal(false);
-            setSelectedTaskForCompletion(null);
-          }}
-          onSuccess={() => {
-            loadPreviousTasks();
-          }}
-        />
-      )}
+      {
+        showCompletionModal && selectedTaskForCompletion && userEmail && userName && (
+          <TaskCompletionModal
+            isOpen={showCompletionModal}
+            taskId={selectedTaskForCompletion.id}
+            taskTitle={selectedTaskForCompletion.titulo}
+            userEmail={userEmail}
+            userName={userName}
+            onClose={() => {
+              setShowCompletionModal(false);
+              setSelectedTaskForCompletion(null);
+            }}
+            onSuccess={() => {
+              // 🔧 ACTUALIZAR ESTADO LOCAL AL COMPLETAR
+              if (selectedTaskForCompletion) {
+                handleTogglePreviousTaskCompleted(selectedTaskForCompletion.id);
+              }
+              loadPreviousTasks(); // Recargar para asegurar sincronización
+            }}
+          />
+        )
+      }
 
       {/* Modal de Preview del Acta */}
-      {showActaPreview && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999 // 🔧 AUMENTADO para asegurar visibilidad
-        }}>
+      {
+        showActaPreview && (
           <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '900px',
-            maxHeight: '90vh',
-            overflow: 'hidden',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
             display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999 // 🔧 AUMENTADO para asegurar visibilidad
           }}>
-            {/* Header */}
             <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #e5e7eb',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '900px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: generatedMinutes.includes('Modo Offline') ? '#fff7ed' : '#f9fafb'
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
             }}>
-              <div>
-                <h2 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  📋 Revisar Acta Generada
-                  {generatedMinutes.includes('Modo Offline') && (
-                    <span style={{
-                      fontSize: '12px',
-                      padding: '2px 8px',
-                      backgroundColor: '#ffedd5',
-                      color: '#c2410c',
-                      borderRadius: '9999px',
-                      border: '1px solid #fdba74'
-                    }}>
-                      Modo Offline
-                    </span>
-                  )}
-                </h2>
-                {generatedMinutes.includes('Modo Offline') && (
-                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#c2410c' }}>
-                    ⚠️ Sin conexión a IA (API Key no configurada). Se ha generado una plantilla básica.
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setShowActaPreview(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6b7280'
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Content */}
-            <div style={{
-              flex: 1,
-              overflow: 'auto',
-              padding: '24px'
-            }}>
-              {/* Acta */}
+              {/* Header */}
               <div style={{
-                marginBottom: '24px',
-                padding: '16px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
+                padding: '20px 24px',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: generatedMinutes.includes('Modo Offline') ? '#fff7ed' : '#f9fafb'
               }}>
-                <h3 style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '12px'
-                }}>
-                  📄 Acta de la Reunión
-                </h3>
-                <textarea
-                  value={generatedMinutes}
-                  onChange={(e) => setGeneratedMinutes(e.target.value)}
+                <div>
+                  <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    📋 Revisar Acta Generada
+                    {generatedMinutes.includes('Modo Offline') && (
+                      <span style={{
+                        fontSize: '12px',
+                        padding: '2px 8px',
+                        backgroundColor: '#ffedd5',
+                        color: '#c2410c',
+                        borderRadius: '9999px',
+                        border: '1px solid #fdba74'
+                      }}>
+                        Modo Offline
+                      </span>
+                    )}
+                  </h2>
+                  {generatedMinutes.includes('Modo Offline') && (
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#c2410c' }}>
+                      ⚠️ Sin conexión a IA (API Key no configurada). Se ha generado una plantilla básica.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowActaPreview(false)}
                   style={{
-                    width: '100%',
-                    minHeight: '300px',
-                    padding: '12px',
-                    border: '1px solid #d1d5db',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div style={{
+                flex: 1,
+                overflow: 'auto',
+                padding: '24px'
+              }}>
+                {/* Acta */}
+                <div style={{
+                  marginBottom: '24px',
+                  padding: '16px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    marginBottom: '12px'
+                  }}>
+                    📄 Acta de la Reunión
+                  </h3>
+                  <textarea
+                    value={generatedMinutes}
+                    onChange={(e) => setGeneratedMinutes(e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: '300px',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontFamily: 'monospace',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* Tareas */}
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '8px',
+                  border: '1px solid #86efac'
+                }}>
+                  <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    marginBottom: '12px'
+                  }}>
+                    ✅ Tareas Extraídas ({generatedTasks.length})
+                  </h3>
+                  {generatedTasks.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                      No se extrajeron tareas del acta
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {generatedTasks.map((task: any, index: number) => (
+                        <div key={index} style={{
+                          padding: '12px',
+                          backgroundColor: 'white',
+                          borderRadius: '6px',
+                          border: '1px solid #d1fae5',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          {/* Título de la tarea */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <input
+                              type="text"
+                              value={task.title || task.titulo}
+                              onChange={(e) => {
+                                const newTasks = [...generatedTasks];
+                                newTasks[index] = {
+                                  ...newTasks[index],
+                                  title: e.target.value,
+                                  titulo: e.target.value
+                                };
+                                setGeneratedTasks(newTasks);
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                                fontWeight: '500'
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                const newTasks = generatedTasks.filter((_, i) => i !== index);
+                                setGeneratedTasks(newTasks);
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                              title="Eliminar tarea"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+
+                          {/* Selector de asignado */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{
+                              fontSize: '13px',
+                              color: '#6b7280',
+                              fontWeight: '500',
+                              minWidth: '80px'
+                            }}>
+                              Asignar a:
+                            </label>
+                            <input
+                              type="text"
+                              value={task.assignedTo || task.asignado_a || ''}
+                              onChange={(e) => {
+                                const newTasks = [...generatedTasks];
+                                newTasks[index] = {
+                                  ...newTasks[index],
+                                  assignedTo: e.target.value,
+                                  asignado_a: e.target.value
+                                };
+                                setGeneratedTasks(newTasks);
+                              }}
+                              placeholder="email1@ejemplo.com, email2@ejemplo.com"
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                backgroundColor: 'white'
+                              }}
+                            />
+                          </div>
+
+                          {/* 🔧 NUEVO: Campo de fecha límite */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{
+                              fontSize: '13px',
+                              color: '#6b7280',
+                              fontWeight: '500',
+                              minWidth: '80px'
+                            }}>
+                              📅 Fecha límite:
+                            </label>
+                            <input
+                              type="date"
+                              value={task.deadline || task.fecha_limite || ''}
+                              onChange={(e) => {
+                                const newTasks = [...generatedTasks];
+                                newTasks[index] = {
+                                  ...newTasks[index],
+                                  deadline: e.target.value,
+                                  fecha_limite: e.target.value
+                                };
+                                setGeneratedTasks(newTasks);
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                backgroundColor: 'white'
+                              }}
+                              min={new Date().toISOString().split('T')[0]}
+                            />
+                          </div>
+
+                          {/* 🔧 NUEVO: Selector de prioridad */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{
+                              fontSize: '13px',
+                              color: '#6b7280',
+                              fontWeight: '500',
+                              minWidth: '80px'
+                            }}>
+                              🎯 Prioridad:
+                            </label>
+                            <select
+                              value={task.priority || task.prioridad || 'media'}
+                              onChange={(e) => {
+                                const newTasks = [...generatedTasks];
+                                newTasks[index] = {
+                                  ...newTasks[index],
+                                  priority: e.target.value,
+                                  prioridad: e.target.value
+                                };
+                                setGeneratedTasks(newTasks);
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                backgroundColor: 'white'
+                              }}
+                            >
+                              <option value="baja">🟢 Baja</option>
+                              <option value="media">🟡 Media</option>
+                              <option value="alta">🟠 Alta</option>
+                              <option value="critica">🔴 Crítica</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 🔧 NUEVO: Botón para añadir tarea manual */}
+                  <button
+                    onClick={() => {
+                      const newTask = {
+                        title: 'Nueva tarea',
+                        titulo: 'Nueva tarea',
+                        assignedTo: '',
+                        asignado_a: '',
+                        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        fecha_limite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        priority: 'media',
+                        prioridad: 'media'
+                      };
+                      setGeneratedTasks([...generatedTasks, newTask]);
+                    }}
+                    style={{
+                      marginTop: '12px',
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Plus size={16} />
+                    Añadir Tarea Manual
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                backgroundColor: '#f9fafb'
+              }}>
+                {/* 🗑️ BOTÓN ELIMINAR (Solo si ya existe la reunión) */}
+                {meeting && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('⚠️ ¿Estás seguro de que quieres eliminar esta reunión?\n\nESTA ACCIÓN NO SE PUEDE DESHACER.\n\nSe eliminarán permanentemente:\n- La reunión\n- Todas las tareas asignadas en esta reunión')) {
+                        try {
+                          const result = await deleteMeetingFromSupabase(meeting.id);
+                          if (result.success) {
+                            alert('✅ Reunión y tareas eliminadas correctamente');
+                            onClose();
+                            onSuccess?.();
+                          } else {
+                            alert('❌ Error al eliminar la reunión: ' + result.error);
+                          }
+                        } catch (error) {
+                          console.error('Error eliminando reunión:', error);
+                          alert('❌ Error inesperado al eliminar la reunión');
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginRight: 'auto' // Empujar a la izquierda
+                    }}
+                  >
+                    🗑️ Eliminar Reunión
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowActaPreview(false)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
                     borderRadius: '6px',
                     fontSize: '14px',
-                    fontFamily: 'monospace',
-                    resize: 'vertical'
+                    fontWeight: '600',
+                    cursor: 'pointer'
                   }}
-                />
+                >
+                  ❌ Cancelar
+                </button>
+                <button
+                  onClick={handleSaveAfterReview}
+                  disabled={isSaving}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: isSaving ? '#9ca3af' : '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      Guardando...
+                    </>
+                  ) : (
+                    '💾 Guardar Reunión'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div >
+        )
+      }
+
+      {/* Modal de Programación de Siguiente Reunión */}
+      {
+        showNextMeetingScheduler && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '500px',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                📅 Programar Siguiente Reunión
+              </h2>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    Fecha de la reunión
+                  </label>
+                  <input
+                    type="date"
+                    value={nextMeetingDate}
+                    onChange={(e) => setNextMeetingDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    Hora de inicio
+                  </label>
+                  <input
+                    type="time"
+                    value={nextMeetingTime}
+                    onChange={(e) => setNextMeetingTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* Tareas */}
               <div style={{
-                padding: '16px',
-                backgroundColor: '#f0fdf4',
-                borderRadius: '8px',
-                border: '1px solid #86efac'
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end'
               }}>
-                <h3 style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '12px'
-                }}>
-                  ✅ Tareas Extraídas ({generatedTasks.length})
-                </h3>
-                {generatedTasks.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '14px' }}>
-                    No se extrajeron tareas del acta
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {generatedTasks.map((task: any, index: number) => (
-                      <div key={index} style={{
-                        padding: '12px',
-                        backgroundColor: 'white',
-                        borderRadius: '6px',
-                        border: '1px solid #d1fae5',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
-                      }}>
-                        {/* Título de la tarea */}
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <input
-                            type="text"
-                            value={task.title || task.titulo}
-                            onChange={(e) => {
-                              const newTasks = [...generatedTasks];
-                              newTasks[index] = {
-                                ...newTasks[index],
-                                title: e.target.value,
-                                titulo: e.target.value
-                              };
-                              setGeneratedTasks(newTasks);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '8px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              fontSize: '14px',
-                              fontWeight: '500'
-                            }}
-                          />
-                          <button
-                            onClick={() => {
-                              const newTasks = generatedTasks.filter((_, i) => i !== index);
-                              setGeneratedTasks(newTasks);
-                            }}
-                            style={{
-                              padding: '8px 12px',
-                              backgroundColor: '#ef4444',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '600'
-                            }}
-                            title="Eliminar tarea"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-
-                        {/* Selector de asignado */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <label style={{
-                            fontSize: '13px',
-                            color: '#6b7280',
-                            fontWeight: '500',
-                            minWidth: '80px'
-                          }}>
-                            Asignar a:
-                          </label>
-                          <select
-                            value={task.assignedTo || task.asignado_a || ''}
-                            onChange={(e) => {
-                              const newTasks = [...generatedTasks];
-                              newTasks[index] = {
-                                ...newTasks[index],
-                                assignedTo: e.target.value,
-                                asignado_a: e.target.value
-                              };
-                              setGeneratedTasks(newTasks);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '6px 8px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              fontSize: '13px',
-                              backgroundColor: 'white'
-                            }}
-                          >
-                            <option value="">Sin asignar</option>
-                            {participants?.map((email: string) => (
-                              <option key={email} value={email}>
-                                {employees.find(emp => emp.email === email)?.name || email}
-                              </option>
-                            ))}
-                            {employees
-                              .filter(emp => !participants?.includes(emp.email))
-                              .map(emp => (
-                                <option key={emp.email} value={emp.email}>
-                                  {emp.name}
-                                </option>
-                              ))
-                            }
-                          </select>
-                        </div>
-
-                        {/* 🔧 NUEVO: Campo de fecha límite */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <label style={{
-                            fontSize: '13px',
-                            color: '#6b7280',
-                            fontWeight: '500',
-                            minWidth: '80px'
-                          }}>
-                            📅 Fecha límite:
-                          </label>
-                          <input
-                            type="date"
-                            value={task.deadline || task.fecha_limite || ''}
-                            onChange={(e) => {
-                              const newTasks = [...generatedTasks];
-                              newTasks[index] = {
-                                ...newTasks[index],
-                                deadline: e.target.value,
-                                fecha_limite: e.target.value
-                              };
-                              setGeneratedTasks(newTasks);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '6px 8px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              fontSize: '13px',
-                              backgroundColor: 'white'
-                            }}
-                            min={new Date().toISOString().split('T')[0]}
-                          />
-                        </div>
-
-                        {/* 🔧 NUEVO: Selector de prioridad */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <label style={{
-                            fontSize: '13px',
-                            color: '#6b7280',
-                            fontWeight: '500',
-                            minWidth: '80px'
-                          }}>
-                            🎯 Prioridad:
-                          </label>
-                          <select
-                            value={task.priority || task.prioridad || 'media'}
-                            onChange={(e) => {
-                              const newTasks = [...generatedTasks];
-                              newTasks[index] = {
-                                ...newTasks[index],
-                                priority: e.target.value,
-                                prioridad: e.target.value
-                              };
-                              setGeneratedTasks(newTasks);
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '6px 8px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              fontSize: '13px',
-                              backgroundColor: 'white'
-                            }}
-                          >
-                            <option value="baja">🟢 Baja</option>
-                            <option value="media">🟡 Media</option>
-                            <option value="alta">🟠 Alta</option>
-                            <option value="critica">🔴 Crítica</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* 🔧 NUEVO: Botón para añadir tarea manual */}
                 <button
                   onClick={() => {
-                    const newTask = {
-                      title: 'Nueva tarea',
-                      titulo: 'Nueva tarea',
-                      assignedTo: '',
-                      asignado_a: '',
-                      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                      fecha_limite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                      priority: 'media',
-                      prioridad: 'media'
-                    };
-                    setGeneratedTasks([...generatedTasks, newTask]);
+                    setShowNextMeetingScheduler(false);
+                    setNextMeetingDate('');
+                    setNextMeetingTime('');
+                    onSuccess?.(); // Recargar lista de reuniones
+                    onClose();
                   }}
                   style={{
-                    marginTop: '12px',
-                    width: '100%',
-                    padding: '10px',
+                    padding: '10px 20px',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!nextMeetingDate || !nextMeetingTime) {
+                      alert('Por favor completa la fecha y hora de la reunión');
+                      return;
+                    }
+
+                    try {
+                      const { data, error } = await supabase
+                        .from('meetings')
+                        .insert({
+                          title: meeting?.title || 'Nueva Reunión',
+                          department: departmentId,
+                          date: nextMeetingDate,
+                          start_time: nextMeetingTime,
+                          participants: participants || [],
+                          created_by: userEmail,
+                          status: 'scheduled'
+                        })
+                        .select()
+                        .single();
+
+                      if (error) throw error;
+
+                      alert('✅ Siguiente reunión programada correctamente!');
+                      setShowNextMeetingScheduler(false);
+                      setNextMeetingDate('');
+                      setNextMeetingTime('');
+                      onSuccess?.(); // Recargar lista de reuniones
+                      onClose();
+                    } catch (error) {
+                      console.error('Error programando reunión:', error);
+                      alert('Error al programar la reunión');
+                    }
+                  }}
+                  style={{
+                    padding: '10px 20px',
                     backgroundColor: '#059669',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
+                    cursor: 'pointer'
                   }}
                 >
-                  <Plus size={16} />
-                  Añadir Tarea Manual
+                  ✅ Programar
                 </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div style={{
-              padding: '16px 24px',
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-              backgroundColor: '#f9fafb'
-            }}>
-              <button
-                onClick={() => setShowActaPreview(false)}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                ❌ Cancelar
-              </button>
-              <button
-                onClick={handleSaveAfterReview}
-                disabled={isSaving}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: isSaving ? '#9ca3af' : '#059669',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                    Guardando...
-                  </>
-                ) : (
-                  '💾 Guardar Reunión'
-                )}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Modal de Programación de Siguiente Reunión */}
-      {showNextMeetingScheduler && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '500px',
-            padding: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px'
-          }}>
-            <h2 style={{
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1f2937',
-              margin: 0
-            }}>
-              📅 Programar Siguiente Reunión
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Fecha de la reunión
-                </label>
-                <input
-                  type="date"
-                  value={nextMeetingDate}
-                  onChange={(e) => setNextMeetingDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Hora de inicio
-                </label>
-                <input
-                  type="time"
-                  value={nextMeetingTime}
-                  onChange={(e) => setNextMeetingTime(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={() => {
-                  setShowNextMeetingScheduler(false);
-                  setNextMeetingDate('');
-                  setNextMeetingTime('');
-                  onSuccess?.(); // Recargar lista de reuniones
-                  onClose();
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                ❌ Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  if (!nextMeetingDate || !nextMeetingTime) {
-                    alert('Por favor completa la fecha y hora de la reunión');
-                    return;
-                  }
-
-                  try {
-                    const { data, error } = await supabase
-                      .from('meetings')
-                      .insert({
-                        title: meeting?.title || 'Nueva Reunión',
-                        department: departmentId,
-                        date: nextMeetingDate,
-                        start_time: nextMeetingTime,
-                        participants: participants || [],
-                        created_by: userEmail,
-                        status: 'scheduled'
-                      })
-                      .select()
-                      .single();
-
-                    if (error) throw error;
-
-                    alert('✅ Siguiente reunión programada correctamente!');
-                    setShowNextMeetingScheduler(false);
-                    setNextMeetingDate('');
-                    setNextMeetingTime('');
-                    onSuccess?.(); // Recargar lista de reuniones
-                    onClose();
-                  } catch (error) {
-                    console.error('Error programando reunión:', error);
-                    alert('Error al programar la reunión');
-                  }
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#059669',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                ✅ Programar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 
