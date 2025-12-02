@@ -322,61 +322,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     });
 
-    // 🔧 FIX CRÍTICO: Mantener sesión activa al cambiar de pestaña
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && mounted) {
-        console.log('👁️ Página visible de nuevo, verificando sesión...');
-
-        // Si está cargando, NO forzar a false, dejar que termine el proceso natural
-        if (loading) {
-          console.log('⚠️ Detectado loading=true al volver, esperando proceso natural...');
-        }
-
-        // Verificar que la sesión sigue activa
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('❌ Error verificando sesión al volver:', error);
-          // Intentar refrescar sesión si hay error
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (refreshData.session) {
-            console.log('✅ Sesión refrescada con éxito');
-            if (!user) {
-              setUser(refreshData.session.user);
-              await loadEmployeeData(refreshData.session.user.id, refreshData.session.user.email!);
-            }
-            return;
-          }
-        }
-
-        if (session?.user) {
-          console.log('✅ Sesión activa confirmada:', session.user.email);
-
-          // Si no hay usuario cargado, restaurar
-          if (!user) {
-            console.log('🔄 Restaurando sesión después de cambio de pestaña');
-            setUser(session.user);
-            // NO activar loading aquí para evitar parpadeos o desmontajes
-            await loadEmployeeData(session.user.id, session.user.email!);
-          } else {
-            console.log('✅ Usuario ya cargado, no es necesario restaurar');
-          }
-        } else {
-          console.log('❌ No hay sesión activa al volver');
-          // No forzar logout aquí, dejar que el usuario intente navegar y falle si es necesario
-          // setLoading(false);
-        }
-      }
-    };
-
-    // Escuchar cambios de visibilidad de la página
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // 🔧 FIX: Eliminado handleVisibilityChange para evitar conflictos con múltiples pestañas
+    // La gestión de sesión se delega completamente a supabase.auth.onAuthStateChange
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
