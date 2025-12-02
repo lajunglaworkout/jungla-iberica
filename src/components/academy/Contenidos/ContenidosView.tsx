@@ -3,7 +3,7 @@ import {
     BookOpen, Plus, Search, Filter, MoreVertical,
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
-    Edit3, Save, X, Upload, Download, HelpCircle
+    Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
@@ -27,9 +27,9 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [lessons, setLessons] = useState<Record<string, AcademyLesson[]>>({});
     const [blocks, setBlocks] = useState<Record<string, LessonBlock[]>>({});
     const [loading, setLoading] = useState(true);
-    const [expandedModule, setExpandedModule] = useState<string | null>(null);
 
     // Editor State
+    const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
     const [editingBlock, setEditingBlock] = useState<LessonBlock | null>(null);
     const [editorContent, setEditorContent] = useState('');
     const [editorTitle, setEditorTitle] = useState('');
@@ -45,15 +45,14 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
             const { data, error } = await supabase
                 .from('academy_modules')
                 .select('*')
-                .order('order', { ascending: true }); // Note: 'order' column might need quoting in SQL but Supabase JS handles it usually. If fails, check schema.
+                .order('order', { ascending: true });
 
             if (error) throw error;
             setModules(data || []);
 
-            // Load lessons for the first module if exists
-            if (data && data.length > 0) {
-                loadLessons(data[0].id);
-                setExpandedModule(data[0].id);
+            // Load lessons for all modules
+            if (data) {
+                data.forEach(module => loadLessons(module.id));
             }
         } catch (error) {
             console.error('Error loading modules:', error);
@@ -97,15 +96,6 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         }
     };
 
-    const toggleModule = (moduleId: string) => {
-        if (expandedModule === moduleId) {
-            setExpandedModule(null);
-        } else {
-            setExpandedModule(moduleId);
-            loadLessons(moduleId);
-        }
-    };
-
     const handleAddLesson = async (moduleId: string) => {
         const title = prompt('Título de la nueva lección:');
         if (!title) return;
@@ -143,6 +133,14 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         } catch (error) {
             console.error('Error creating lesson:', error);
             alert('Error al crear la lección');
+        }
+    };
+
+    const openLessonEditor = (lesson: AcademyLesson) => {
+        setSelectedLesson(lesson);
+        // Ensure blocks are loaded
+        if (!blocks[lesson.id]) {
+            loadBlocks(lesson.id);
         }
     };
 
@@ -186,7 +184,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -198,138 +196,202 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                     </button>
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">Mapa de Contenidos</h2>
-                        <p className="text-gray-500">Desarrollo del curso: Módulos, Lecciones y Bloques</p>
+                        <p className="text-gray-500">Gestión del plan de estudios y materiales</p>
                     </div>
                 </div>
             </div>
 
-            {/* Modules List */}
-            <div className="space-y-6">
+            {/* Modules Grid */}
+            <div className="grid grid-cols-1 gap-8">
                 {loading ? (
                     <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Cargando mapa del curso...</p>
+                        <p className="text-gray-500">Cargando estructura del curso...</p>
                     </div>
                 ) : modules.length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
                         <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No hay módulos</h3>
-                        <p className="text-gray-500">Ejecuta el script de inicialización para crear los módulos base.</p>
+                        <h3 className="text-lg font-medium text-gray-900">No hay módulos definidos</h3>
+                        <p className="text-gray-500">Ejecuta el script de inicialización para comenzar.</p>
                     </div>
                 ) : (
                     modules.map((module) => (
                         <div
                             key={module.id}
-                            className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                            className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
                         >
-                            <div
-                                className="p-6 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-100"
-                                onClick={() => toggleModule(module.id)}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-2 rounded-lg ${expandedModule === module.id ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                                        {expandedModule === module.id ? <ChevronDown className="h-6 w-6" /> : <ChevronRight className="h-6 w-6" />}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900">{module.title}</h3>
-                                        <p className="text-sm text-gray-500">{module.description}</p>
-                                    </div>
+                            {/* Module Header */}
+                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">{module.title}</h3>
+                                    <p className="text-sm text-gray-500">{module.description}</p>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="text-sm text-gray-500 font-medium">
+                                <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-600 shadow-sm">
                                         {lessons[module.id]?.length || 0} Lecciones
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Lessons & Blocks */}
-                            {expandedModule === module.id && (
-                                <div className="bg-gray-50/50 p-6 space-y-6">
-                                    {lessons[module.id]?.map((lesson) => (
-                                        <div key={lesson.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold">
+                            {/* Lessons List */}
+                            <div className="divide-y divide-gray-100">
+                                {lessons[module.id]?.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-400 italic">
+                                        No hay lecciones en este módulo.
+                                    </div>
+                                ) : (
+                                    lessons[module.id]?.map((lesson) => {
+                                        const lessonBlocks = blocks[lesson.id] || [];
+                                        const completedBlocks = lessonBlocks.filter(b => b.content).length;
+                                        const totalBlocks = 3;
+                                        const progress = (completedBlocks / totalBlocks) * 100;
+
+                                        return (
+                                            <div
+                                                key={lesson.id}
+                                                className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group cursor-pointer"
+                                                onClick={() => openLessonEditor(lesson)}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm">
                                                         {lesson.order}
                                                     </div>
-                                                    <h4 className="text-lg font-semibold text-gray-900">{lesson.title}</h4>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                            {lesson.title}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {/* Block Indicators */}
+                                                            <div className="flex gap-1">
+                                                                {[1, 2, 3].map(num => {
+                                                                    const block = lessonBlocks.find(b => b.block_number === num);
+                                                                    const hasContent = block?.content;
+                                                                    return (
+                                                                        <div
+                                                                            key={num}
+                                                                            className={`h-1.5 w-6 rounded-full ${hasContent ? 'bg-green-500' : 'bg-gray-200'}`}
+                                                                            title={`Bloque ${num}: ${hasContent ? 'Completado' : 'Vacío'}`}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <span className="text-xs text-gray-400 ml-2">
+                                                                {completedBlocks}/{totalBlocks} Bloques
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+
+                                                <div className="flex items-center gap-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${lesson.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                                         }`}>
                                                         {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
                                                     </span>
+                                                    <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-500" />
                                                 </div>
                                             </div>
+                                        );
+                                    })
+                                )}
+                            </div>
 
-                                            {/* Blocks Grid */}
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                {blocks[lesson.id]?.map((block) => {
-                                                    const hasContent = block.content && block.content.length > 0;
-                                                    return (
-                                                        <div
-                                                            key={block.id}
-                                                            onClick={() => openBlockEditor(block)}
-                                                            className={`
-                                relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md
-                                ${hasContent
-                                                                    ? 'bg-green-50 border-green-200 hover:border-green-300'
-                                                                    : 'bg-gray-50 border-gray-200 hover:border-gray-300 border-dashed'}
-                              `}
-                                                        >
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <span className={`
-                                  text-xs font-bold px-2 py-1 rounded uppercase
-                                  ${hasContent ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-600'}
-                                `}>
-                                                                    Bloque {block.block_number}
-                                                                </span>
-                                                                {hasContent ? (
-                                                                    <CheckCircle className="h-5 w-5 text-green-500" />
-                                                                ) : (
-                                                                    <Edit3 className="h-5 w-5 text-gray-400" />
-                                                                )}
-                                                            </div>
-                                                            <h5 className="font-medium text-gray-900 mb-2 line-clamp-2">
-                                                                {block.title || `Bloque ${block.block_number}`}
-                                                            </h5>
-                                                            <p className="text-xs text-gray-500 line-clamp-3">
-                                                                {block.content || 'Haz clic para añadir contenido...'}
-                                                            </p>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {(!blocks[lesson.id] || blocks[lesson.id].length === 0) && (
-                                                    <div className="col-span-3 text-center py-4 text-gray-400 text-sm italic">
-                                                        No hay bloques generados. (Error de sincronización)
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    <button
-                                        onClick={() => handleAddLesson(module.id)}
-                                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                        Añadir Nueva Lección
-                                    </button>
-                                </div>
-                            )}
+                            {/* Add Lesson Button */}
+                            <div className="p-4 border-t border-gray-100 bg-gray-50/30">
+                                <button
+                                    onClick={() => handleAddLesson(module.id)}
+                                    className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium text-sm"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Añadir Lección al Módulo {module.title}
+                                </button>
+                            </div>
                         </div>
                     ))
                 )}
             </div>
 
-            {/* Block Editor Modal */}
+            {/* Lesson Detail Modal (The "Editor") */}
+            {selectedLesson && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">{selectedLesson.title}</h3>
+                                <p className="text-sm text-gray-500">Gestiona los 3 bloques de contenido de esta lección</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedLesson(null)}
+                                className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Content - 3 Blocks Grid */}
+                        <div className="p-8 overflow-y-auto flex-1 bg-gray-50">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {blocks[selectedLesson.id]?.map((block) => {
+                                    const hasContent = block.content && block.content.length > 0;
+                                    return (
+                                        <div
+                                            key={block.id}
+                                            className={`
+                        bg-white rounded-xl border-2 shadow-sm p-6 flex flex-col h-full transition-all hover:shadow-md
+                        ${hasContent ? 'border-green-100' : 'border-gray-100'}
+                      `}
+                                        >
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className={`
+                          px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                          ${hasContent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}
+                        `}>
+                                                    Bloque {block.block_number}
+                                                </span>
+                                                {hasContent ? (
+                                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                                ) : (
+                                                    <div className="h-5 w-5 rounded-full border-2 border-gray-200" />
+                                                )}
+                                            </div>
+
+                                            <h4 className="text-lg font-bold text-gray-900 mb-2">
+                                                {block.title || `Bloque ${block.block_number}`}
+                                            </h4>
+
+                                            <p className="text-sm text-gray-500 mb-6 flex-1 line-clamp-4">
+                                                {block.content || 'Sin contenido definido. Haz clic en editar para comenzar.'}
+                                            </p>
+
+                                            <button
+                                                onClick={() => openBlockEditor(block)}
+                                                className={`
+                          w-full py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2
+                          ${hasContent
+                                                        ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}
+                        `}
+                                            >
+                                                <Edit3 className="h-4 w-4" />
+                                                {hasContent ? 'Editar Contenido' : 'Añadir Contenido'}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Block Editor Modal (Nested) */}
             {editingBlock && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center z-10">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-900">Editar Bloque {editingBlock.block_number}</h3>
-                                <p className="text-sm text-gray-500">Lección: {lessons[editingBlock.lesson_id]?.find(l => l.id === editingBlock.lesson_id)?.title}</p>
+                                <p className="text-sm text-gray-500">Define el contenido estratégico</p>
                             </div>
                             <button
                                 onClick={() => setEditingBlock(null)}
