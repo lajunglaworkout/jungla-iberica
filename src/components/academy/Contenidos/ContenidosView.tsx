@@ -4,10 +4,11 @@ import {
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
     Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2,
-    Layout, Type, Image as ImageIcon, Sparkles, Zap
+    Layout, Type, Image as ImageIcon, Sparkles, Zap, Maximize2, Minimize2
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
+import ReactMarkdown from 'react-markdown'; // Assuming we might want this later, but for now standard text
 
 interface ContenidosViewProps {
     onBack: () => void;
@@ -40,6 +41,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [editorContent, setEditorContent] = useState('');
     const [editorTitle, setEditorTitle] = useState('');
     const [editorFileUrl, setEditorFileUrl] = useState('');
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
 
     useEffect(() => {
         loadModules();
@@ -163,6 +165,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         setEditorTitle(block.title || '');
         setEditorContent(block.content || '');
         setEditorFileUrl(block.file_url || '');
+        setIsPreviewMode(false);
     };
 
     const saveBlock = async () => {
@@ -258,7 +261,6 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                         const lessonBlocks = blocks[lesson.id] || [];
                                         const completedBlocks = lessonBlocks.filter(b => b.content).length;
                                         const totalBlocks = 3;
-                                        const progress = (completedBlocks / totalBlocks) * 100;
 
                                         return (
                                             <div
@@ -465,128 +467,153 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 </div>
             )}
 
-            {/* Block Editor Modal (Nested) */}
+            {/* FULL SCREEN BLOCK EDITOR */}
             {editingBlock && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-6 backdrop-blur-md">
-                    <div className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white z-10">
-                            <div>
-                                <h3 className="text-2xl font-bold text-gray-900">Editar Bloque {editingBlock.block_number}</h3>
-                                <p className="text-gray-500 mt-1">Define el contenido estratégico</p>
-                            </div>
+                <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col animate-in slide-in-from-bottom-10 duration-300">
+
+                    {/* Editor Header */}
+                    <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center shadow-sm z-20">
+                        <div className="flex items-center gap-4">
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="p-3 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
                             >
-                                <X className="h-6 w-6" />
+                                <ArrowLeft className="h-6 w-6" />
                             </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto bg-gray-50/30">
-                            <div className="p-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-                                {/* Left Column: Guide */}
-                                <div className="lg:col-span-1 space-y-6">
-                                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-8 rounded-3xl border border-emerald-100 sticky top-0">
-                                        <div className="flex items-center gap-3 mb-6 text-emerald-800 font-bold text-lg">
-                                            <Sparkles className="h-6 w-6" />
-                                            <span>Guía Estratégica</span>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
-                                                <strong className="block text-emerald-900 mb-2 text-lg">1. Concepto</strong>
-                                                <span className="text-emerald-700 leading-relaxed block">¿Qué quiero transmitir exactamente? Define la idea central.</span>
-                                            </div>
-                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
-                                                <strong className="block text-emerald-900 mb-2 text-lg">2. Valor</strong>
-                                                <span className="text-emerald-700 leading-relaxed block">¿Qué valor práctico aporto? ¿Por qué es importante?</span>
-                                            </div>
-                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
-                                                <strong className="block text-emerald-900 mb-2 text-lg">3. Acción</strong>
-                                                <span className="text-emerald-700 leading-relaxed block">¿Cómo se lleva a la práctica? Pasos concretos.</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Form */}
-                                <div className="lg:col-span-2 space-y-8">
-                                    <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                                        <div className="space-y-8">
-                                            <div>
-                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                                                    <Type className="h-4 w-4" />
-                                                    Título del Bloque
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={editorTitle}
-                                                    onChange={(e) => setEditorTitle(e.target.value)}
-                                                    className="w-full px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-xl font-medium placeholder-gray-400"
-                                                    placeholder="Ej: Concepto Clave: El CV Visual"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                                                    <FileText className="h-4 w-4" />
-                                                    Contenido
-                                                </label>
-                                                <div className="relative">
-                                                    <textarea
-                                                        value={editorContent}
-                                                        onChange={(e) => setEditorContent(e.target.value)}
-                                                        rows={12}
-                                                        className="w-full px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all resize-none leading-relaxed text-lg text-gray-700 placeholder-gray-400"
-                                                        placeholder="Escribe aquí el contenido del bloque..."
-                                                    />
-                                                    <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
-                                                        {editorContent.length} caracteres
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                                                    <LinkIcon className="h-4 w-4" />
-                                                    Recurso Adjunto (URL)
-                                                </label>
-                                                <div className="flex gap-3">
-                                                    <input
-                                                        type="text"
-                                                        value={editorFileUrl}
-                                                        onChange={(e) => setEditorFileUrl(e.target.value)}
-                                                        className="flex-1 px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-base"
-                                                        placeholder="https://..."
-                                                    />
-                                                    <button className="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-200 transition-colors font-semibold">
-                                                        Probar
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-gray-400 mt-3 ml-2">Enlace a PDF, PPT o vídeo en Supabase Storage.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    Bloque {editingBlock.block_number}
+                                    <span className="text-gray-300">|</span>
+                                    <span className="text-emerald-600">{editingBlock.title || 'Sin Título'}</span>
+                                </h2>
+                                <p className="text-sm text-gray-500">Editando contenido</p>
                             </div>
                         </div>
 
-                        <div className="p-8 border-t border-gray-100 flex justify-end gap-4 bg-white z-10">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                                className={`
+                  px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors
+                  ${isPreviewMode ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                `}
+                            >
+                                {isPreviewMode ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {isPreviewMode ? 'Volver a Editar' : 'Vista Previa'}
+                            </button>
+                            <div className="h-8 w-px bg-gray-200 mx-2"></div>
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="px-8 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-2xl transition-colors"
+                                className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={saveBlock}
-                                className="px-10 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transform hover:-translate-y-0.5 flex items-center gap-2"
+                                className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
                             >
-                                <Save className="h-5 w-5" />
-                                Guardar Cambios
+                                <Save className="h-4 w-4" />
+                                Guardar
                             </button>
                         </div>
+                    </div>
+
+                    {/* Editor Body */}
+                    <div className="flex-1 overflow-hidden flex">
+
+                        {/* LEFT SIDEBAR: GUIDE (Hidden in Preview) */}
+                        {!isPreviewMode && (
+                            <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto p-6 hidden lg:block">
+                                <div className="mb-8">
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-emerald-500" />
+                                        Guía Estratégica
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 1 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                                            <strong className="block text-gray-900 mb-1">1. Concepto</strong>
+                                            <p className="text-sm text-gray-600">Define la idea central. ¿Qué deben aprender?</p>
+                                        </div>
+                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 2 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                                            <strong className="block text-gray-900 mb-1">2. Valor</strong>
+                                            <p className="text-sm text-gray-600">¿Por qué es útil? Beneficio práctico.</p>
+                                        </div>
+                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 3 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                                            <strong className="block text-gray-900 mb-1">3. Acción</strong>
+                                            <p className="text-sm text-gray-600">Pasos concretos para aplicar lo aprendido.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                        <LinkIcon className="h-4 w-4 text-blue-500" />
+                                        Recursos
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-gray-700">URL del Recurso</label>
+                                        <input
+                                            type="text"
+                                            value={editorFileUrl}
+                                            onChange={(e) => setEditorFileUrl(e.target.value)}
+                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                                            placeholder="https://..."
+                                        />
+                                        <button className="w-full py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200">
+                                            Probar Enlace
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MAIN CONTENT AREA */}
+                        <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex justify-center">
+                            <div className={`
+                bg-white shadow-xl transition-all duration-500 flex flex-col
+                ${isPreviewMode ? 'w-full max-w-4xl rounded-none min-h-screen p-12' : 'w-full max-w-3xl rounded-xl min-h-[1100px] p-12 my-4'}
+              `}>
+                                {isPreviewMode ? (
+                                    <div className="prose prose-lg max-w-none">
+                                        <h1 className="text-4xl font-bold text-gray-900 mb-8">{editorTitle}</h1>
+                                        <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                                            {editorContent || <span className="text-gray-400 italic">Sin contenido...</span>}
+                                        </div>
+                                        {editorFileUrl && (
+                                            <div className="mt-12 p-6 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-4">
+                                                <div className="h-12 w-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
+                                                    <LinkIcon className="h-6 w-6 text-emerald-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">Recurso Adjunto</h4>
+                                                    <a href={editorFileUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline break-all">
+                                                        {editorFileUrl}
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8 h-full flex flex-col">
+                                        <input
+                                            type="text"
+                                            value={editorTitle}
+                                            onChange={(e) => setEditorTitle(e.target.value)}
+                                            className="w-full text-4xl font-bold text-gray-900 placeholder-gray-300 border-none focus:ring-0 p-0 bg-transparent"
+                                            placeholder="Título del Bloque"
+                                        />
+                                        <div className="h-px bg-gray-100 w-full"></div>
+                                        <textarea
+                                            value={editorContent}
+                                            onChange={(e) => setEditorContent(e.target.value)}
+                                            className="w-full flex-1 resize-none border-none focus:ring-0 p-0 text-lg leading-relaxed text-gray-700 placeholder-gray-300 bg-transparent"
+                                            placeholder="Escribe aquí el contenido..."
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             )}
