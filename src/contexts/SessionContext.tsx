@@ -119,7 +119,8 @@ const VALID_USERS = [
   'lajunglacentral@gmail.com',
   'rrhhlajungla@gmail.com',
   'lajunglawonline@gmail.com',
-  'franciscogiraldezmorales@gmail.com'
+  'franciscogiraldezmorales@gmail.com',
+  'danivf1991@gmail.com'
 ];
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
