@@ -8,6 +8,7 @@ import { KPICard } from './KPICard';
 import { NavigationCard } from './NavigationCard';
 import { ContenidosView } from '../Contenidos/ContenidosView';
 import { TareasView } from '../Tareas/TareasView';
+import { TutoresView } from '../Tutores/TutoresView';
 import { supabase } from '../../../lib/supabase';
 
 // Interfaces for dashboard data
@@ -87,6 +88,8 @@ export const AcademyDashboard: React.FC = () => {
                 return <ContenidosView onBack={() => setActiveView('dashboard')} />;
             case 'tareas':
                 return <TareasView onBack={() => setActiveView('dashboard')} />;
+            case 'tutores':
+                return <TutoresView onBack={() => setActiveView('dashboard')} />;
             case 'dashboard':
             default:
                 return renderDashboard();
