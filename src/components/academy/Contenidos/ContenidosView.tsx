@@ -4,7 +4,7 @@ import {
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
     Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2,
-    Layout, Type, Image as ImageIcon, Sparkles
+    Layout, Type, Image as ImageIcon, Sparkles, Zap
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
@@ -204,53 +204,53 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        className="p-3 hover:bg-white hover:shadow-md rounded-full transition-all text-gray-500 hover:text-emerald-600"
                     >
-                        <ArrowLeft className="h-6 w-6 text-gray-600" />
+                        <ArrowLeft className="h-6 w-6" />
                     </button>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Mapa de Contenidos</h2>
-                        <p className="text-gray-500">Gestión del plan de estudios y materiales</p>
+                        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Mapa de Contenidos</h2>
+                        <p className="text-gray-500 mt-1">Gestión integral del plan de estudios</p>
                     </div>
                 </div>
             </div>
 
             {/* Modules Grid */}
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-1 gap-10">
                 {loading ? (
-                    <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Cargando estructura del curso...</p>
+                    <div className="text-center py-20">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-6"></div>
+                        <p className="text-gray-500 text-lg">Cargando estructura del curso...</p>
                     </div>
                 ) : modules.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
-                        <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No hay módulos definidos</h3>
+                    <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm border-dashed">
+                        <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-6" />
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No hay módulos definidos</h3>
                         <p className="text-gray-500">Ejecuta el script de inicialización para comenzar.</p>
                     </div>
                 ) : (
                     modules.map((module) => (
                         <div
                             key={module.id}
-                            className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+                            className="bg-white rounded-3xl border border-gray-100 shadow-lg shadow-gray-100/50 overflow-hidden transition-all hover:shadow-xl hover:shadow-emerald-100/20"
                         >
                             {/* Module Header */}
-                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <div className="p-8 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white flex justify-between items-center">
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-900">{module.title}</h3>
-                                    <p className="text-sm text-gray-500">{module.description}</p>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{module.title}</h3>
+                                    <p className="text-gray-500">{module.description}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-600 shadow-sm">
+                                    <span className="px-4 py-2 bg-white border border-gray-100 rounded-full text-sm font-semibold text-gray-600 shadow-sm">
                                         {lessons[module.id]?.length || 0} Lecciones
                                     </span>
                                 </div>
                             </div>
 
                             {/* Lessons List */}
-                            <div className="divide-y divide-gray-100">
+                            <div className="divide-y divide-gray-50">
                                 {lessons[module.id]?.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-400 italic">
+                                    <div className="p-12 text-center text-gray-400 italic">
                                         No hay lecciones en este módulo.
                                     </div>
                                 ) : (
@@ -263,45 +263,47 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                         return (
                                             <div
                                                 key={lesson.id}
-                                                className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group cursor-pointer"
+                                                className="p-6 hover:bg-emerald-50/30 transition-all flex items-center justify-between group cursor-pointer"
                                                 onClick={() => openLessonEditor(lesson)}
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 font-bold text-sm">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
                                                         {lesson.order}
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-semibold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                                        <h4 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
                                                             {lesson.title}
                                                         </h4>
-                                                        <div className="flex items-center gap-2 mt-1">
+                                                        <div className="flex items-center gap-3 mt-2">
                                                             {/* Block Indicators */}
-                                                            <div className="flex gap-1">
+                                                            <div className="flex gap-1.5">
                                                                 {[1, 2, 3].map(num => {
                                                                     const block = lessonBlocks.find(b => b.block_number === num);
                                                                     const hasContent = block?.content;
                                                                     return (
                                                                         <div
                                                                             key={num}
-                                                                            className={`h-1.5 w-6 rounded-full ${hasContent ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                                                                            className={`h-2 w-8 rounded-full transition-all ${hasContent ? 'bg-emerald-500 shadow-sm shadow-emerald-200' : 'bg-gray-200'}`}
                                                                             title={`Bloque ${num}: ${hasContent ? 'Completado' : 'Vacío'}`}
                                                                         />
                                                                     );
                                                                 })}
                                                             </div>
-                                                            <span className="text-xs text-gray-400 ml-2">
+                                                            <span className="text-xs font-medium text-gray-400 ml-2">
                                                                 {completedBlocks}/{totalBlocks} Bloques
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4">
-                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'
+                                                <div className="flex items-center gap-6">
+                                                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                                         }`}>
                                                         {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
                                                     </span>
-                                                    <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-500" />
+                                                    <div className="h-10 w-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:border-emerald-200 group-hover:text-emerald-600 transition-all">
+                                                        <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-emerald-500" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -310,12 +312,14 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             </div>
 
                             {/* Add Lesson Button */}
-                            <div className="p-4 border-t border-gray-100 bg-gray-50/30">
+                            <div className="p-6 border-t border-gray-50 bg-gray-50/30">
                                 <button
                                     onClick={() => initiateAddLesson(module.id)}
-                                    className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 font-medium text-sm"
+                                    className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center justify-center gap-3 font-semibold text-base group"
                                 >
-                                    <Plus className="h-4 w-4" />
+                                    <div className="h-8 w-8 rounded-full bg-gray-100 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                                        <Plus className="h-5 w-5" />
+                                    </div>
                                     Añadir Lección al Módulo {module.title}
                                 </button>
                             </div>
@@ -326,35 +330,37 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
             {/* Add Lesson Modal */}
             {showAddLessonModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-900">Nueva Lección</h3>
-                            <p className="text-sm text-gray-500">Añade una nueva lección al módulo</p>
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4 backdrop-blur-md">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 border border-white/20">
+                        <div className="p-8 border-b border-gray-100">
+                            <h3 className="text-2xl font-bold text-gray-900">Nueva Lección</h3>
+                            <p className="text-gray-500 mt-1">Añade una nueva lección al módulo</p>
                         </div>
-                        <div className="p-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Título de la Lección</label>
-                            <input
-                                type="text"
-                                value={newLessonTitle}
-                                onChange={(e) => setNewLessonTitle(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                                placeholder="Ej: Introducción a RRHH"
-                                autoFocus
-                                onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
-                            />
+                        <div className="p-8">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Título de la Lección</label>
+                                <input
+                                    type="text"
+                                    value={newLessonTitle}
+                                    onChange={(e) => setNewLessonTitle(e.target.value)}
+                                    className="w-full px-5 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-lg font-medium placeholder-gray-400"
+                                    placeholder="Ej: Introducción a RRHH"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
+                                />
+                            </div>
                         </div>
-                        <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                        <div className="p-8 border-t border-gray-100 flex justify-end gap-4 bg-gray-50/50 rounded-b-3xl">
                             <button
                                 onClick={() => setShowAddLessonModal(false)}
-                                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-lg transition-colors"
+                                className="px-6 py-3 text-gray-600 font-semibold hover:bg-gray-100 rounded-xl transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={confirmAddLesson}
                                 disabled={!newLessonTitle.trim()}
-                                className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform hover:-translate-y-0.5"
                             >
                                 Crear Lección
                             </button>
@@ -365,85 +371,85 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
             {/* Lesson Detail Modal (The "Editor") */}
             {selectedLesson && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-6 backdrop-blur-md">
+                    <div className="bg-white rounded-[2rem] w-full max-w-7xl max-h-[95vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
                         {/* Modal Header */}
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white">
                             <div>
-                                <h3 className="text-2xl font-bold text-gray-900">{selectedLesson.title}</h3>
-                                <p className="text-sm text-gray-500">Gestiona los 3 bloques de contenido estratégico de esta lección</p>
+                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedLesson.title}</h3>
+                                <p className="text-gray-500 mt-2 text-lg">Gestiona los 3 bloques de contenido estratégico</p>
                             </div>
                             <button
                                 onClick={() => setSelectedLesson(null)}
-                                className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+                                className="p-3 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
                             >
-                                <X className="h-6 w-6" />
+                                <X className="h-8 w-8" />
                             </button>
                         </div>
 
                         {/* Modal Content - 3 Blocks Grid */}
-                        <div className="p-8 overflow-y-auto flex-1 bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="p-10 overflow-y-auto flex-1 bg-gray-50/50">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 h-full">
                                 {blocks[selectedLesson.id]?.map((block) => {
                                     const hasContent = block.content && block.content.length > 0;
                                     return (
                                         <div
                                             key={block.id}
                                             className={`
-                        bg-white rounded-2xl border shadow-sm flex flex-col h-full transition-all hover:shadow-lg group
-                        ${hasContent ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-gray-200'}
+                        bg-white rounded-3xl border shadow-lg flex flex-col h-full transition-all duration-300 group hover:-translate-y-1 hover:shadow-xl
+                        ${hasContent ? 'border-emerald-100 shadow-emerald-100/20' : 'border-gray-100 shadow-gray-100/50'}
                       `}
                                         >
                                             {/* Block Header */}
                                             <div className={`
-                        p-6 border-b flex justify-between items-start rounded-t-2xl
-                        ${hasContent ? 'bg-emerald-50/50 border-emerald-100' : 'bg-gray-50/50 border-gray-100'}
+                        p-8 border-b flex justify-between items-start rounded-t-3xl
+                        ${hasContent ? 'bg-gradient-to-br from-emerald-50/80 to-white border-emerald-50' : 'bg-gradient-to-br from-gray-50/80 to-white border-gray-50'}
                       `}>
                                                 <div>
                                                     <span className={`
-                            px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                            ${hasContent ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'}
+                            px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm
+                            ${hasContent ? 'bg-white text-emerald-700 ring-1 ring-emerald-100' : 'bg-white text-gray-500 ring-1 ring-gray-100'}
                           `}>
                                                         Bloque {block.block_number}
                                                     </span>
-                                                    <h4 className="text-lg font-bold text-gray-900 mt-3">
+                                                    <h4 className="text-xl font-bold text-gray-900 mt-4 leading-tight">
                                                         {block.title || `Bloque ${block.block_number}`}
                                                     </h4>
                                                 </div>
                                                 {hasContent ? (
-                                                    <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
-                                                        <CheckCircle className="h-5 w-5" />
+                                                    <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
+                                                        <CheckCircle className="h-6 w-6" />
                                                     </div>
                                                 ) : (
-                                                    <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                                                        <Layout className="h-4 w-4" />
+                                                    <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 shadow-sm">
+                                                        <Layout className="h-5 w-5" />
                                                     </div>
                                                 )}
                                             </div>
 
                                             {/* Block Content Preview */}
-                                            <div className="p-6 flex-1 flex flex-col">
-                                                <p className={`text-sm flex-1 line-clamp-6 ${hasContent ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+                                            <div className="p-8 flex-1 flex flex-col">
+                                                <p className={`text-base leading-relaxed flex-1 line-clamp-[8] ${hasContent ? 'text-gray-600' : 'text-gray-400 italic'}`}>
                                                     {block.content || 'Este bloque aún no tiene contenido. Haz clic en el botón inferior para comenzar a redactar.'}
                                                 </p>
 
                                                 {block.file_url && (
-                                                    <div className="mt-4 flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">
-                                                        <LinkIcon className="h-3 w-3" />
-                                                        <span className="truncate">Recurso adjunto disponible</span>
+                                                    <div className="mt-6 flex items-center gap-3 text-sm text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100">
+                                                        <LinkIcon className="h-4 w-4" />
+                                                        <span className="truncate font-medium">Recurso adjunto disponible</span>
                                                     </div>
                                                 )}
                                             </div>
 
                                             {/* Action Button */}
-                                            <div className="p-4 border-t border-gray-100">
+                                            <div className="p-6 border-t border-gray-50">
                                                 <button
                                                     onClick={() => openBlockEditor(block)}
                                                     className={`
-                            w-full py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2
+                            w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2
                             ${hasContent
-                                                            ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                                                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'}
+                                                            ? 'bg-white border-2 border-gray-100 text-gray-700 hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50/30'
+                                                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transform hover:-translate-y-0.5'}
                           `}
                                                 >
                                                     <Edit3 className="h-4 w-4" />
@@ -461,111 +467,121 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
             {/* Block Editor Modal (Nested) */}
             {editingBlock && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center z-10">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-6 backdrop-blur-md">
+                    <div className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
+                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white z-10">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900">Editar Bloque {editingBlock.block_number}</h3>
-                                <p className="text-sm text-gray-500">Define el contenido estratégico</p>
+                                <h3 className="text-2xl font-bold text-gray-900">Editar Bloque {editingBlock.block_number}</h3>
+                                <p className="text-gray-500 mt-1">Define el contenido estratégico</p>
                             </div>
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600"
+                                className="p-3 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
                             >
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
 
-                        <div className="p-8 space-y-8">
-                            {/* Strategic Guide */}
-                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl border border-emerald-100">
-                                <div className="flex items-center gap-2 mb-4 text-emerald-800 font-bold">
-                                    <Sparkles className="h-5 w-5" />
-                                    <span>Guía Estratégica</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-6 text-sm">
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
-                                        <strong className="block text-emerald-900 mb-1 text-base">1. Concepto</strong>
-                                        <span className="text-emerald-700">¿Qué quiero transmitir?</span>
-                                    </div>
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
-                                        <strong className="block text-emerald-900 mb-1 text-base">2. Valor</strong>
-                                        <span className="text-emerald-700">¿Qué valor práctico aporto?</span>
-                                    </div>
-                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-emerald-100">
-                                        <strong className="block text-emerald-900 mb-1 text-base">3. Acción</strong>
-                                        <span className="text-emerald-700">¿Cómo se lleva a la práctica?</span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="flex-1 overflow-y-auto bg-gray-50/30">
+                            <div className="p-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-                            {/* Form */}
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                                        <Type className="h-4 w-4 text-gray-400" />
-                                        Título del Bloque
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editorTitle}
-                                        onChange={(e) => setEditorTitle(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-lg"
-                                        placeholder="Ej: Concepto Clave: El CV Visual"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                                        <FileText className="h-4 w-4 text-gray-400" />
-                                        Contenido
-                                    </label>
-                                    <div className="relative">
-                                        <textarea
-                                            value={editorContent}
-                                            onChange={(e) => setEditorContent(e.target.value)}
-                                            rows={12}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all resize-none leading-relaxed"
-                                            placeholder="Escribe aquí el contenido del bloque..."
-                                        />
-                                        <div className="absolute bottom-3 right-3 text-xs text-gray-400">
-                                            {editorContent.length} caracteres
+                                {/* Left Column: Guide */}
+                                <div className="lg:col-span-1 space-y-6">
+                                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-8 rounded-3xl border border-emerald-100 sticky top-0">
+                                        <div className="flex items-center gap-3 mb-6 text-emerald-800 font-bold text-lg">
+                                            <Sparkles className="h-6 w-6" />
+                                            <span>Guía Estratégica</span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
+                                                <strong className="block text-emerald-900 mb-2 text-lg">1. Concepto</strong>
+                                                <span className="text-emerald-700 leading-relaxed block">¿Qué quiero transmitir exactamente? Define la idea central.</span>
+                                            </div>
+                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
+                                                <strong className="block text-emerald-900 mb-2 text-lg">2. Valor</strong>
+                                                <span className="text-emerald-700 leading-relaxed block">¿Qué valor práctico aporto? ¿Por qué es importante?</span>
+                                            </div>
+                                            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-emerald-100/50 backdrop-blur-sm">
+                                                <strong className="block text-emerald-900 mb-2 text-lg">3. Acción</strong>
+                                                <span className="text-emerald-700 leading-relaxed block">¿Cómo se lleva a la práctica? Pasos concretos.</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                                        <LinkIcon className="h-4 w-4 text-gray-400" />
-                                        Recurso Adjunto (URL)
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={editorFileUrl}
-                                            onChange={(e) => setEditorFileUrl(e.target.value)}
-                                            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                                            placeholder="https://..."
-                                        />
-                                        <button className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors font-medium">
-                                            Probar Link
-                                        </button>
+                                {/* Right Column: Form */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                                        <div className="space-y-8">
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                                    <Type className="h-4 w-4" />
+                                                    Título del Bloque
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={editorTitle}
+                                                    onChange={(e) => setEditorTitle(e.target.value)}
+                                                    className="w-full px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-xl font-medium placeholder-gray-400"
+                                                    placeholder="Ej: Concepto Clave: El CV Visual"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                                    <FileText className="h-4 w-4" />
+                                                    Contenido
+                                                </label>
+                                                <div className="relative">
+                                                    <textarea
+                                                        value={editorContent}
+                                                        onChange={(e) => setEditorContent(e.target.value)}
+                                                        rows={12}
+                                                        className="w-full px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all resize-none leading-relaxed text-lg text-gray-700 placeholder-gray-400"
+                                                        placeholder="Escribe aquí el contenido del bloque..."
+                                                    />
+                                                    <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
+                                                        {editorContent.length} caracteres
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                                    <LinkIcon className="h-4 w-4" />
+                                                    Recurso Adjunto (URL)
+                                                </label>
+                                                <div className="flex gap-3">
+                                                    <input
+                                                        type="text"
+                                                        value={editorFileUrl}
+                                                        onChange={(e) => setEditorFileUrl(e.target.value)}
+                                                        className="flex-1 px-6 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-base"
+                                                        placeholder="https://..."
+                                                    />
+                                                    <button className="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-200 transition-colors font-semibold">
+                                                        Probar
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-3 ml-2">Enlace a PDF, PPT o vídeo en Supabase Storage.</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2 ml-1">Enlace a PDF, PPT o vídeo en Supabase Storage.</p>
                                 </div>
+
                             </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-white border-t border-gray-100 p-6 flex justify-end gap-3 rounded-b-2xl">
+                        <div className="p-8 border-t border-gray-100 flex justify-end gap-4 bg-white z-10">
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+                                className="px-8 py-4 text-gray-600 font-bold hover:bg-gray-50 rounded-2xl transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={saveBlock}
-                                className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-200"
+                                className="px-10 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transform hover:-translate-y-0.5 flex items-center gap-2"
                             >
                                 <Save className="h-5 w-5" />
                                 Guardar Cambios
