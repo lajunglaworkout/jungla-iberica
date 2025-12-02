@@ -1,211 +1,187 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    CheckSquare,
-    Plus,
-    Filter,
-    ChevronDown,
-    Calendar,
-    User,
-    AlertCircle,
-    MoreVertical,
-    ArrowRight
+    CheckSquare, Plus, Search, Filter, MoreVertical,
+    Clock, AlertCircle, CheckCircle, ArrowLeft, Calendar
 } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
 import { AcademyTask } from '../../../types/academy';
+import { useSession } from '../../../contexts/SessionContext';
 
-// Mock Data
-const MOCK_TASKS: AcademyTask[] = [
-    {
-        id: '1',
-        title: 'Grabar Lección 2.1 - Buyer Persona',
-        status: 'pending',
-        priority: 'urgent',
-        assigned_to: 'Daniel Valverde',
-        due_date: '2024-11-30',
-        progress: 0,
-        created_at: new Date().toISOString()
-    },
-    {
-        id: '2',
-        title: 'Validar guion Lección 2.2',
-        status: 'pending',
-        priority: 'normal',
-        assigned_to: 'Carlos Suárez',
-        due_date: '2024-12-02',
-        progress: 0,
-        created_at: new Date().toISOString()
-    },
-    {
-        id: '3',
-        title: 'Editar video Lección 1.3',
-        status: 'in_progress',
-        priority: 'normal',
-        assigned_to: 'Diego Montilla',
-        due_date: '2024-11-28',
-        progress: 80,
-        created_at: new Date().toISOString()
-    }
-];
+interface TareasViewProps {
+    onBack: () => void;
+}
 
-export const TareasView: React.FC = () => {
+export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
+    const { user } = useSession();
+    const [tasks, setTasks] = useState<AcademyTask[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
+
+    useEffect(() => {
+        loadTasks();
+    }, [filterStatus]);
+
+    const loadTasks = async () => {
+        setLoading(true);
+        try {
+            let query = supabase
+                .from('academy_tasks')
+                .select('*')
+                .order('due_date', { ascending: true });
+
+            if (filterStatus !== 'all') {
+                query = query.eq('status', filterStatus);
+            }
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+            setTasks(data || []);
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddTask = async () => {
+        const title = prompt('Título de la nueva tarea:');
+        if (!title) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('academy_tasks')
+                .insert([{
+                    title,
+                    description: 'Nueva tarea',
+                    status: 'pending',
+                    priority: 'medium',
+                    assigned_to: user?.id,
+                    due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 1 week from now
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            setTasks([...tasks, data]);
+        } catch (error) {
+            console.error('Error creating task:', error);
+            alert('Error al crear la tarea');
+        }
+    };
+
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case 'urgent': return 'bg-red-100 text-red-700';
-            case 'high': return 'bg-orange-100 text-orange-700';
-            case 'normal': return 'bg-blue-100 text-blue-700';
-            case 'low': return 'bg-gray-100 text-gray-700';
-            default: return 'bg-gray-100 text-gray-700';
+            case 'high': return 'text-red-600 bg-red-50 border-red-100';
+            case 'medium': return 'text-orange-600 bg-orange-50 border-orange-100';
+            case 'low': return 'text-green-600 bg-green-50 border-green-100';
+            default: return 'text-gray-600 bg-gray-50 border-gray-100';
         }
     };
 
-    const getPriorityLabel = (priority: string) => {
-        switch (priority) {
-            case 'urgent': return 'Urgente';
-            case 'high': return 'Alta';
-            case 'normal': return 'Normal';
-            case 'low': return 'Baja';
-            default: return priority;
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'completed': return <CheckCircle className="h-5 w-5 text-green-500" />;
+            case 'in_progress': return <Clock className="h-5 w-5 text-blue-500" />;
+            case 'pending': return <AlertCircle className="h-5 w-5 text-gray-400" />;
+            default: return <AlertCircle className="h-5 w-5 text-gray-400" />;
         }
     };
-
-    const pendingTasks = MOCK_TASKS.filter(t => t.status === 'pending');
-    const inProgressTasks = MOCK_TASKS.filter(t => t.status === 'in_progress');
-    const completedTasks = MOCK_TASKS.filter(t => t.status === 'completed');
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestión de Tareas</h1>
-                    <p className="text-gray-500 mt-1">Control de tareas y asignaciones del equipo</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={onBack}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                        <ArrowLeft className="h-6 w-6 text-gray-600" />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Gestión de Tareas</h2>
+                        <p className="text-gray-500">Control de actividades y pendientes</p>
+                    </div>
                 </div>
-                <button className="px-4 py-2 bg-[#CDDC39] text-black rounded-lg font-medium hover:bg-[#c0ce35] flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
+                <button
+                    onClick={handleAddTask}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                    <Plus className="h-5 w-5" />
                     Nueva Tarea
                 </button>
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex gap-4">
-                <button className="px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 hover:bg-gray-100">
-                    <Filter className="w-4 h-4" />
-                    Asignado a
-                    <ChevronDown className="w-4 h-4" />
-                </button>
-                <button className="px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 hover:bg-gray-100">
-                    <Filter className="w-4 h-4" />
-                    Estado
-                    <ChevronDown className="w-4 h-4" />
-                </button>
-                <button className="px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 flex items-center gap-2 hover:bg-gray-100">
-                    <Filter className="w-4 h-4" />
-                    Prioridad
-                    <ChevronDown className="w-4 h-4" />
-                </button>
+            <div className="flex gap-4">
+                {['all', 'pending', 'in_progress', 'completed'].map((status) => (
+                    <button
+                        key={status}
+                        onClick={() => setFilterStatus(status as any)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === status
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                            }`}
+                    >
+                        {status === 'all' && 'Todas'}
+                        {status === 'pending' && 'Pendientes'}
+                        {status === 'in_progress' && 'En Progreso'}
+                        {status === 'completed' && 'Completadas'}
+                    </button>
+                ))}
             </div>
 
-            {/* Task Lists */}
-            <div className="space-y-8">
-
-                {/* Pending */}
-                <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500" />
-                        PENDIENTES ({pendingTasks.length})
-                    </h3>
-                    <div className="grid gap-4">
-                        {pendingTasks.map(task => (
-                            <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 text-lg">{task.title}</h4>
-                                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                                            <span className="flex items-center gap-1">
-                                                <User className="w-4 h-4" />
-                                                {task.assigned_to}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-4 h-4" />
-                                                Vence: {task.due_date}
-                                            </span>
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                {getPriorityLabel(task.priority)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400">
-                                        <MoreVertical className="w-5 h-5" />
-                                    </button>
-                                </div>
-                                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
-                                    <button className="text-sm text-gray-600 hover:text-gray-900 font-medium">
-                                        Ver detalles
-                                    </button>
-                                    <button className="text-sm text-[#2E7D32] hover:text-[#1b4d1e] font-medium ml-auto flex items-center gap-1">
-                                        Completar
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+            {/* Tasks Grid */}
+            {loading ? (
+                <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Cargando tareas...</p>
                 </div>
-
-                {/* In Progress */}
-                <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-500" />
-                        EN PROGRESO ({inProgressTasks.length})
-                    </h3>
-                    <div className="grid gap-4">
-                        {inProgressTasks.map(task => (
-                            <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                                <div className="flex justify-between items-start">
-                                    <div className="w-full">
-                                        <h4 className="font-bold text-gray-900 text-lg">{task.title}</h4>
-                                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                                            <span className="flex items-center gap-1">
-                                                <User className="w-4 h-4" />
-                                                {task.assigned_to}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-4 h-4" />
-                                                Vence: {task.due_date}
-                                            </span>
-                                        </div>
-
-                                        {/* Progress Bar */}
-                                        <div className="mt-3">
-                                            <div className="flex justify-between text-xs mb-1">
-                                                <span className="font-medium text-gray-700">Progreso</span>
-                                                <span className="text-gray-500">{task.progress}%</span>
-                                            </div>
-                                            <div className="w-full bg-gray-100 rounded-full h-2">
-                                                <div
-                                                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                                    style={{ width: `${task.progress}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 ml-4">
-                                        <MoreVertical className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Completed Section Placeholder */}
-                <div className="pt-4 border-t border-gray-200">
-                    <button className="text-gray-500 hover:text-gray-900 font-medium text-sm flex items-center gap-2">
-                        <CheckSquare className="w-4 h-4" />
-                        Ver tareas completadas recientemente
+            ) : tasks.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
+                    <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">No hay tareas</h3>
+                    <p className="text-gray-500 mb-4">No hay tareas con el filtro seleccionado</p>
+                    <button
+                        onClick={handleAddTask}
+                        className="text-blue-600 font-medium hover:text-blue-700"
+                    >
+                        Crear Tarea
                     </button>
                 </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tasks.map((task) => (
+                        <div
+                            key={task.id}
+                            className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow group"
+                        >
+                            <div className="flex justify-between items-start mb-3">
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                                    {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
+                                </span>
+                                <button className="text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-5 w-5" />
+                                </button>
+                            </div>
 
-            </div>
+                            <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{task.title}</h3>
+                            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{task.description}</p>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {getStatusIcon(task.status)}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

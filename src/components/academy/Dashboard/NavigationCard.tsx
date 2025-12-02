@@ -1,14 +1,14 @@
 import React from 'react';
-import { LucideIcon, ArrowRight } from 'lucide-react';
+import { ChevronRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 
 interface NavigationCardProps {
     title: string;
-    icon: LucideIcon;
-    metric: string;
+    icon: React.ElementType;
+    metric: string | number;
     subtext: string;
     onClick: () => void;
-    color?: string;
-    status?: 'active' | 'warning' | 'neutral';
+    color: string;
+    status?: 'active' | 'warning' | 'neutral' | 'locked';
 }
 
 export const NavigationCard: React.FC<NavigationCardProps> = ({
@@ -17,44 +17,76 @@ export const NavigationCard: React.FC<NavigationCardProps> = ({
     metric,
     subtext,
     onClick,
-    color = '#CDDC39',
-    status = 'neutral'
+    color,
+    status = 'active'
 }) => {
     return (
         <button
             onClick={onClick}
-            className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md border border-gray-100 transition-all duration-200 transform hover:scale-[1.02] text-left w-full group relative overflow-hidden"
+            className="group relative w-full text-left transition-all duration-300 hover:-translate-y-1"
+            style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '16px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflow: 'hidden'
+            }}
         >
+            {/* Status Indicator Strip */}
             <div
-                className="absolute top-0 left-0 w-1 h-full"
-                style={{ backgroundColor: color }}
+                style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '4px',
+                    backgroundColor: color,
+                    opacity: status === 'locked' ? 0.3 : 1
+                }}
             />
 
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-4 w-full">
                 <div
-                    className="p-3 rounded-lg transition-colors group-hover:bg-opacity-20"
-                    style={{ backgroundColor: `${color}15` }}
+                    style={{
+                        padding: '12px',
+                        borderRadius: '12px',
+                        backgroundColor: `${color}15`, // 15% opacity
+                        color: color
+                    }}
                 >
-                    <Icon className="w-8 h-8" style={{ color }} />
+                    <Icon style={{ height: '24px', width: '24px' }} />
                 </div>
-                {status !== 'neutral' && (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                        {status === 'active' ? 'Activo' : 'Pendiente'}
-                    </span>
-                )}
+
+                <div className="flex items-center gap-2">
+                    {status === 'active' && <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">Activo</span>}
+                    {status === 'warning' && <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full">Atención</span>}
+                    {status === 'neutral' && <span className="text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded-full">Info</span>}
+                    {status === 'locked' && <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Bloqueado</span>}
+                </div>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-gray-700 transition-colors">
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
                 {title}
             </h3>
 
-            <div className="flex items-end justify-between mt-4">
-                <div>
-                    <p className="text-2xl font-bold text-gray-900">{metric}</p>
-                    <p className="text-sm text-gray-500">{subtext}</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors transform group-hover:translate-x-1" />
+            <div className="mt-auto">
+                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+                    {metric}
+                </p>
+                <p style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {subtext}
+                </p>
+            </div>
+
+            {/* Hover Arrow */}
+            <div
+                className="absolute bottom-4 right-4 opacity-0 transform translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0"
+            >
+                <ChevronRight style={{ height: '20px', width: '20px', color: '#9ca3af' }} />
             </div>
         </button>
     );
