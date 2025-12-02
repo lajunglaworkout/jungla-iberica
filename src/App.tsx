@@ -410,6 +410,16 @@ const NavigationDashboard: React.FC = () => {
           component: null,
           available: true
         });
+      } else if (employee?.email === 'danivf1991@gmail.com') {
+        adminModules.push({
+          id: 'academy',
+          title: 'Academy',
+          description: 'Gestión de formación',
+          icon: GraduationCap,
+          color: '#CDDC39',
+          component: AcademyDashboard,
+          available: true
+        });
       }
 
       return [...baseModules, ...adminModules];
