@@ -242,6 +242,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (session?.user && mounted) {
           console.log('👤 Usuario autenticado:', session.user.email);
           setUser(session.user);
+          userRef.current = session.user; // Actualizar referencia para evitar recargas posteriores
 
           // Cargar datos del empleado
           await loadEmployeeData(session.user.id, session.user.email!);
@@ -249,6 +250,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           console.log('❌ No hay sesión activa');
           if (mounted) {
             setUser(null);
+            userRef.current = null;
             setEmployee(null);
             setUserRole(null);
             setDashboardConfig(null);
@@ -276,11 +278,20 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     initializeSession();
 
+    // Referencia para acceder al usuario actual dentro del callback de onAuthStateChange
+    // Esto evita el problema del closure obsoleto donde 'user' siempre es null
+    const userRef = { current: user };
+
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event);
 
       if (!mounted) return;
+
+      // Actualizar referencia
+      if (session?.user) {
+        userRef.current = session.user;
+      }
 
       // IGNORAR TOKEN_REFRESHED para evitar bucles, pero PERMITIR INITIAL_SESSION si no hay usuario
       if (event === 'TOKEN_REFRESHED') {
@@ -288,7 +299,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Si es INITIAL_SESSION y ya tenemos usuario, ignorar. Si no tenemos usuario, dejar pasar.
-      if (event === 'INITIAL_SESSION' && user) {
+      if (event === 'INITIAL_SESSION' && userRef.current) {
         console.log('🔄 INITIAL_SESSION ignorado porque ya hay usuario');
         return;
       }
@@ -297,14 +308,18 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.log('✅ Usuario ha iniciado sesión');
 
         // Solo activar loading si no hay usuario (login inicial)
-        // Si ya hay usuario, es una actualización de sesión (ej. cambio de pestaña) y no queremos desmontar la UI
-        const isInitialLogin = !user;
-
-        setUser(session.user);
+        // Si ya hay usuario (verificado por ref), es una actualización de sesión y no queremos desmontar la UI
+        const isInitialLogin = !userRef.current;
 
         if (isInitialLogin) {
+          console.log('🆕 Login inicial detectado, activando loading...');
           setLoading(true);
+        } else {
+          console.log('🔄 Actualización de sesión detectada (usuario ya existe), manteniendo UI...');
         }
+
+        setUser(session.user);
+        userRef.current = session.user; // Actualizar ref inmediatamente
 
         await loadEmployeeData(session.user.id, session.user.email!);
 
@@ -314,6 +329,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 Usuario ha cerrado sesión');
         setUser(null);
+        userRef.current = null;
         setEmployee(null);
         setUserRole(null);
         setDashboardConfig(null);
@@ -322,14 +338,11 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     });
 
-    // 🔧 FIX: Eliminado handleVisibilityChange para evitar conflictos con múltiples pestañas
-    // La gestión de sesión se delega completamente a supabase.auth.onAuthStateChange
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Dependencias vacías para que solo se ejecute al montar
 
   // Función para cerrar sesión
   const signOut = async () => {

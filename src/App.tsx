@@ -34,6 +34,7 @@ import {
   LayoutDashboard,
   DollarSign,
   ListTodo,
+  GraduationCap,
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
@@ -61,6 +62,9 @@ import PendingTasksSystem from './components/PendingTasksSystem';
 import DashboardPage from './pages/DashboardPage';
 import MyTasksPage from './pages/MyTasksPage';
 import MaintenanceDirectorDashboard from './components/maintenance/MaintenanceDirectorDashboard';
+import { AcademyDashboard } from './components/academy/Dashboard/AcademyDashboard';
+import { ContenidosView } from './components/academy/Contenidos/ContenidosView';
+import { TareasView } from './components/academy/Tareas/TareasView';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -281,6 +285,15 @@ const NavigationDashboard: React.FC = () => {
         icon: ClipboardList,
         color: '#7c2d12',
         component: null,
+        available: true
+      },
+      {
+        id: 'academy',
+        title: 'Academy',
+        description: 'Gestión de formación',
+        icon: GraduationCap,
+        color: '#CDDC39',
+        component: AcademyDashboard,
         available: true
       }
     ];
@@ -527,6 +540,20 @@ const NavigationDashboard: React.FC = () => {
 
     if (module.id === 'pending-tasks') {
       return <PendingTasksSystem />;
+    }
+
+    // Academy Module Routing
+    if (module.id === 'academy') {
+      if (selectedModule === 'academy') return <AcademyDashboard />;
+      // Sub-routes handling via selectedModule state or internal state
+      // For now, we rely on the AcademyDashboard to handle its own internal state or we can lift it up
+      // But since the requirement was a single module entry point, we return the Dashboard
+      // However, the dashboard has navigation. 
+      // Let's check if we need to handle sub-views here or if AcademyDashboard handles them.
+      // The AcademyDashboard has local state `currentView`. 
+      // To make it persistent or deep-linkable, we might need to lift state up, 
+      // but for now let's stick to the requested architecture.
+      return <AcademyDashboard />;
     }
 
     // Usar el nuevo CenterManagementSystem rediseñado
