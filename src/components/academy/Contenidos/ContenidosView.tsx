@@ -329,132 +329,313 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 )}
             </div>
 
-            {/* Add Lesson Modal */}
+            {/* Add Lesson Modal - ESTILO CRM */}
             {showAddLessonModal && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4 backdrop-blur-md">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 border border-white/20">
-                        <div className="p-10 border-b border-gray-100">
-                            <h3 className="text-3xl font-bold text-gray-900">Nueva Lección</h3>
-                            <p className="text-gray-500 mt-2 text-base">Añade una nueva lección al módulo</p>
-                        </div>
-                        <div className="p-10">
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-gray-900 uppercase tracking-wider">Título de la Lección</label>
-                                <input
-                                    type="text"
-                                    value={newLessonTitle}
-                                    onChange={(e) => setNewLessonTitle(e.target.value)}
-                                    className="w-full px-6 py-5 bg-white border-2 border-gray-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-xl font-medium placeholder-gray-400"
-                                    placeholder="Ej: Introducción a RRHH"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
-                                />
-                            </div>
-                        </div>
-                        <div className="p-10 border-t border-gray-100 flex justify-end gap-4 bg-gray-50/50 rounded-b-3xl">
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        width: '90%',
+                        maxWidth: '600px',
+                        maxHeight: '90vh',
+                        overflow: 'auto',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }}>
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '24px',
+                            borderBottom: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Nueva Lección</h2>
                             <button
                                 onClick={() => setShowAddLessonModal(false)}
-                                className="px-8 py-4 text-gray-700 font-bold hover:bg-gray-100 rounded-xl transition-colors text-lg"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: '#6b7280'
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* Content with colored background like CRM */}
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f9fafb',
+                            borderBottom: '1px solid #e5e7eb'
+                        }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#374151',
+                                marginBottom: '8px'
+                            }}>
+                                Título de la Lección
+                            </label>
+                            <input
+                                type="text"
+                                value={newLessonTitle}
+                                onChange={(e) => setNewLessonTitle(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    backgroundColor: 'white'
+                                }}
+                                placeholder="Ej: Introducción a RRHH"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
+                            />
+                        </div>
+
+                        {/* Footer with buttons */}
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f9fafb',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px'
+                        }}>
+                            <button
+                                onClick={() => setShowAddLessonModal(false)}
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: 'white',
+                                    color: '#374151',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={confirmAddLesson}
                                 disabled={!newLessonTitle.trim()}
-                                className="px-10 py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform hover:-translate-y-0.5 text-lg"
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: newLessonTitle.trim() ? 'pointer' : 'not-allowed',
+                                    opacity: newLessonTitle.trim() ? 1 : 0.5
+                                }}
                             >
-                                Crear Lección
+                                ✓ Crear Lección
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Lesson Detail Modal (The "Editor") */}
+            {/* Lesson Detail Modal - ESTILO CRM MEJORADO */}
             {selectedLesson && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-6 backdrop-blur-md">
-                    <div className="bg-white rounded-[2rem] w-full max-w-7xl max-h-[95vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col border border-white/20">
-                        {/* Modal Header */}
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white">
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 50,
+                    padding: '24px'
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        width: '100%',
+                        maxWidth: '1200px',
+                        maxHeight: '95vh',
+                        overflow: 'hidden',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '24px',
+                            borderBottom: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedLesson.title}</h3>
-                                <p className="text-gray-500 mt-2 text-lg">Gestiona los 3 bloques de contenido estratégico</p>
+                                <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                                    {selectedLesson.title}
+                                </h2>
+                                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                                    Gestiona los 3 bloques de contenido estratégico de esta lección
+                                </p>
                             </div>
                             <button
                                 onClick={() => setSelectedLesson(null)}
-                                className="p-3 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: '#6b7280'
+                                }}
                             >
-                                <X className="h-8 w-8" />
+                                ×
                             </button>
                         </div>
 
-                        {/* Modal Content - 3 Blocks Grid */}
-                        <div className="p-10 overflow-y-auto flex-1 bg-gray-50/50">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 h-full">
+                        {/* Blocks Grid with proper spacing */}
+                        <div style={{
+                            padding: '24px',
+                            overflowY: 'auto',
+                            flex: 1,
+                            backgroundColor: '#f9fafb'
+                        }}>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                                gap: '24px'
+                            }}>
                                 {blocks[selectedLesson.id]?.map((block) => {
                                     const hasContent = block.content && block.content.length > 0;
                                     return (
                                         <div
                                             key={block.id}
-                                            className={`
-                        bg-white rounded-3xl border shadow-lg flex flex-col h-full transition-all duration-300 group hover:-translate-y-1 hover:shadow-xl
-                        ${hasContent ? 'border-emerald-100 shadow-emerald-100/20' : 'border-gray-100 shadow-gray-100/50'}
-                      `}
+                                            style={{
+                                                backgroundColor: 'white',
+                                                borderRadius: '8px',
+                                                border: `1px solid ${hasContent ? '#d1fae5' : '#e5e7eb'}`,
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                flexDirection: 'column'
+                                            }}
                                         >
-                                            {/* Block Header */}
-                                            <div className={`
-                        p-8 border-b flex justify-between items-start rounded-t-3xl
-                        ${hasContent ? 'bg-gradient-to-br from-emerald-50/80 to-white border-emerald-50' : 'bg-gradient-to-br from-gray-50/80 to-white border-gray-50'}
-                      `}>
-                                                <div>
-                                                    <span className={`
-                            px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm
-                            ${hasContent ? 'bg-white text-emerald-700 ring-1 ring-emerald-100' : 'bg-white text-gray-500 ring-1 ring-gray-100'}
-                          `}>
+                                            {/* Block Header with colored background */}
+                                            <div style={{
+                                                padding: '16px',
+                                                backgroundColor: hasContent ? '#d1fae5' : '#f9fafb',
+                                                borderBottom: `1px solid ${hasContent ? '#a7f3d0' : '#e5e7eb'}`
+                                            }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                    <span style={{
+                                                        fontSize: '12px',
+                                                        fontWeight: '600',
+                                                        color: hasContent ? '#047857' : '#6b7280',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.05em'
+                                                    }}>
                                                         Bloque {block.block_number}
                                                     </span>
-                                                    <h4 className="text-xl font-bold text-gray-900 mt-4 leading-tight">
-                                                        {block.title || `Bloque ${block.block_number}`}
-                                                    </h4>
+                                                    {hasContent && (
+                                                        <div style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            backgroundColor: '#10b981',
+                                                            borderRadius: '50%',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: 'white',
+                                                            fontSize: '12px'
+                                                        }}>
+                                                            ✓
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {hasContent ? (
-                                                    <div className="h-10 w-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
-                                                        <CheckCircle className="h-6 w-6" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 shadow-sm">
-                                                        <Layout className="h-5 w-5" />
-                                                    </div>
-                                                )}
+                                                <h3 style={{
+                                                    fontSize: '16px',
+                                                    fontWeight: '600',
+                                                    color: '#111827',
+                                                    margin: 0
+                                                }}>
+                                                    {block.title || `Bloque ${block.block_number}`}
+                                                </h3>
                                             </div>
 
-                                            {/* Block Content Preview */}
-                                            <div className="p-8 flex-1 flex flex-col">
-                                                <p className={`text-base leading-relaxed flex-1 line-clamp-[8] ${hasContent ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+                                            {/* Block Content */}
+                                            <div style={{ padding: '16px', flex: 1 }}>
+                                                <p style={{
+                                                    fontSize: '14px',
+                                                    color: hasContent ? '#374151' : '#9ca3af',
+                                                    fontStyle: hasContent ? 'normal' : 'italic',
+                                                    margin: 0,
+                                                    lineHeight: '1.5',
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 4,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden'
+                                                }}>
                                                     {block.content || 'Este bloque aún no tiene contenido. Haz clic en el botón inferior para comenzar a redactar.'}
                                                 </p>
 
                                                 {block.file_url && (
-                                                    <div className="mt-6 flex items-center gap-3 text-sm text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100">
-                                                        <LinkIcon className="h-4 w-4" />
-                                                        <span className="truncate font-medium">Recurso adjunto disponible</span>
+                                                    <div style={{
+                                                        marginTop: '12px',
+                                                        padding: '8px 12px',
+                                                        backgroundColor: '#d1fae5',
+                                                        borderRadius: '6px',
+                                                        fontSize: '12px',
+                                                        color: '#047857',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px'
+                                                    }}>
+                                                        🔗 Recurso adjunto disponible
                                                     </div>
                                                 )}
                                             </div>
 
                                             {/* Action Button */}
-                                            <div className="p-6 border-t border-gray-50">
+                                            <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
                                                 <button
                                                     onClick={() => openBlockEditor(block)}
-                                                    className={`
-                            w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2
-                            ${hasContent
-                                                            ? 'bg-white border-2 border-gray-100 text-gray-700 hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50/30'
-                                                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transform hover:-translate-y-0.5'}
-                          `}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px',
+                                                        backgroundColor: hasContent ? 'white' : '#10b981',
+                                                        color: hasContent ? '#374151' : 'white',
+                                                        border: hasContent ? '1px solid #d1d5db' : 'none',
+                                                        borderRadius: '6px',
+                                                        fontSize: '14px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px'
+                                                    }}
                                                 >
-                                                    <Edit3 className="h-4 w-4" />
-                                                    {hasContent ? 'Editar Contenido' : 'Añadir Contenido'}
+                                                    ✏️ {hasContent ? 'Editar Contenido' : 'Añadir Contenido'}
                                                 </button>
                                             </div>
                                         </div>
