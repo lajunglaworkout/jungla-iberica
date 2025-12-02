@@ -221,13 +221,20 @@ export const USER_DEPARTMENT_ACCESS: Record<string, UserDepartmentAccess> = {
     role: 'Director Eventos',
     departments: ['eventos'],
     isAdmin: false
+  },
+  'danivf1991@gmail.com': {
+    email: 'danivf1991@gmail.com',
+    name: 'Dani Valverde',
+    role: 'Director Academy',
+    departments: ['academy'],
+    isAdmin: false
   }
 };
 
 // Función para obtener departamentos accesibles por un usuario
 export const getUserAccessibleDepartments = (userEmail: string): Department[] => {
   const userAccess = USER_DEPARTMENT_ACCESS[userEmail];
-  
+
   if (!userAccess) {
     return []; // Sin acceso
   }
@@ -240,7 +247,7 @@ export const getUserAccessibleDepartments = (userEmail: string): Department[] =>
 // Función para verificar si un usuario puede acceder a un departamento
 export const canUserAccessDepartment = (userEmail: string, departmentId: string): boolean => {
   const userAccess = USER_DEPARTMENT_ACCESS[userEmail];
-  
+
   if (!userAccess) {
     return false;
   }

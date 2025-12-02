@@ -110,6 +110,16 @@ export const DEPARTMENTS: DepartmentConfig[] = [
     description: 'Investigación, desarrollo e innovación',
     canCreateMeetings: true,
     meetingScope: 'department' // Solo con su departamento y centros
+  },
+  {
+    id: 'academy',
+    name: 'Academy',
+    icon: '🎓',
+    responsibleEmail: 'danivf1991@gmail.com',
+    responsibleName: 'Dani Valverde',
+    description: 'Formación y academia',
+    canCreateMeetings: true,
+    meetingScope: 'department'
   }
 ];
 
@@ -222,7 +232,7 @@ export const getDepartmentByName = (name: string): DepartmentConfig | undefined 
 export const getDepartmentResponsible = (departmentName: string): { email: string; name: string } | null => {
   const dept = getDepartmentByName(departmentName);
   if (!dept) return null;
-  
+
   return {
     email: dept.responsibleEmail,
     name: dept.responsibleName
@@ -253,7 +263,7 @@ export const getAssignmentResponsible = (
   if (assignmentType === 'corporativo') {
     const dept = getDepartmentResponsible(assignmentId);
     if (!dept) return null;
-    
+
     return {
       email: dept.email,
       name: dept.name,
@@ -262,7 +272,7 @@ export const getAssignmentResponsible = (
   } else {
     const employeeData = getEmployeeById(assignmentId);
     if (!employeeData) return null;
-    
+
     return {
       email: employeeData.employee.email,
       name: employeeData.employee.name,
@@ -323,7 +333,7 @@ export const getAvailableAssignmentOptions = (userEmail: string) => {
       // Puede asignar a cualquier departamento o empleado
       availableDepartments = DEPARTMENTS;
       availableCenters = CENTERS;
-      availableEmployees = CENTERS.flatMap(center => 
+      availableEmployees = CENTERS.flatMap(center =>
         center.employees.map(emp => ({ ...emp, centerName: center.name }))
       );
       break;
@@ -335,14 +345,14 @@ export const getAvailableAssignmentOptions = (userEmail: string) => {
         availableDepartments = [userDept];
       }
       availableCenters = CENTERS;
-      availableEmployees = CENTERS.flatMap(center => 
+      availableEmployees = CENTERS.flatMap(center =>
         center.employees.filter(emp => emp.role === 'manager').map(emp => ({ ...emp, centerName: center.name }))
       );
       break;
 
     case 'center':
       // Solo puede asignar dentro de su centro
-      const userCenter = CENTERS.find(center => 
+      const userCenter = CENTERS.find(center =>
         center.employees.some(emp => emp.email === userEmail)
       );
       if (userCenter) {
