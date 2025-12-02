@@ -735,6 +735,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
       console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
 
       // 🔧 VERIFICACIÓN EXPLÍCITA DE API KEY
+      // Trigger deploy to pick up new env vars
       const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
       if (!apiKey) {
         console.warn('⚠️ VITE_GOOGLE_API_KEY no encontrada en variables de entorno');
