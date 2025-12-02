@@ -271,13 +271,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     };
 
-    // Timeout de seguridad global
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.log('⚠️ Timeout de seguridad global activado');
-        setLoading(false);
-      }
-    }, 8000); // 8 segundos máximo total
+    // Timeout de seguridad eliminado para evitar cierres de sesión en conexiones lentas
+    // const safetyTimeout = setTimeout(...) 
 
     initializeSession();
 
@@ -338,7 +333,21 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
 
         // Verificar que la sesión sigue activa
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('❌ Error verificando sesión al volver:', error);
+          // Intentar refrescar sesión si hay error
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData.session) {
+            console.log('✅ Sesión refrescada con éxito');
+            if (!user) {
+              setUser(refreshData.session.user);
+              await loadEmployeeData(refreshData.session.user.id, refreshData.session.user.email!);
+            }
+            return;
+          }
+        }
 
         if (session?.user) {
           console.log('✅ Sesión activa confirmada:', session.user.email);
@@ -347,15 +356,15 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           if (!user) {
             console.log('🔄 Restaurando sesión después de cambio de pestaña');
             setUser(session.user);
-            setLoading(true);
+            // NO activar loading aquí para evitar parpadeos o desmontajes
             await loadEmployeeData(session.user.id, session.user.email!);
-            setLoading(false);
           } else {
             console.log('✅ Usuario ya cargado, no es necesario restaurar');
           }
         } else {
           console.log('❌ No hay sesión activa al volver');
-          setLoading(false);
+          // No forzar logout aquí, dejar que el usuario intente navegar y falle si es necesario
+          // setLoading(false);
         }
       }
     };
