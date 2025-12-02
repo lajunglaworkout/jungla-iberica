@@ -647,154 +647,565 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 </div>
             )}
 
-            {/* FULL SCREEN BLOCK EDITOR */}
+            {/* FULL SCREEN BLOCK EDITOR - ESTILO CRM CON 3 COLUMNAS */}
             {editingBlock && (
-                <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col animate-in slide-in-from-bottom-10 duration-300">
-
-                    {/* Editor Header */}
-                    <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center shadow-sm z-20">
-                        <div className="flex items-center gap-4">
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#f9fafb',
+                    zIndex: 100,
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    {/* Header */}
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderBottom: '1px solid #e5e7eb',
+                        padding: '16px 24px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '8px',
+                                    cursor: 'pointer',
+                                    color: '#6b7280',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '6px'
+                                }}
                             >
-                                <ArrowLeft className="h-6 w-6" />
+                                <ArrowLeft style={{ height: '20px', width: '20px' }} />
                             </button>
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <h1 style={{
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    color: '#111827',
+                                    margin: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
                                     Bloque {editingBlock.block_number}
-                                    <span className="text-gray-300">|</span>
-                                    <span className="text-emerald-600">{editingBlock.title || 'Sin Título'}</span>
-                                </h2>
-                                <p className="text-sm text-gray-500">Editando contenido</p>
+                                    <span style={{ color: '#d1d5db' }}>|</span>
+                                    <span style={{ color: '#10b981' }}>{editingBlock.title || 'Sin Título'}</span>
+                                </h1>
+                                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                                    Editando contenido del bloque
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <button
                                 onClick={() => setIsPreviewMode(!isPreviewMode)}
-                                className={`
-                  px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors
-                  ${isPreviewMode ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
-                `}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: isPreviewMode ? '#d1fae5' : '#f3f4f6',
+                                    color: isPreviewMode ? '#047857' : '#374151',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
                             >
-                                {isPreviewMode ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                {isPreviewMode ? 'Volver a Editar' : 'Vista Previa'}
+                                {isPreviewMode ? '✏️ Editar' : '👁 Vista Previa'}
                             </button>
-                            <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                            <div style={{ width: '1px', height: '24px', backgroundColor: '#d1d5db' }}></div>
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: 'white',
+                                    color: '#374151',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={saveBlock}
-                                className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                                style={{
+                                    padding: '8px 20px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
                             >
-                                <Save className="h-4 w-4" />
+                                <Save style={{ height: '16px', width: '16px' }} />
                                 Guardar
                             </button>
                         </div>
                     </div>
 
-                    {/* Editor Body */}
-                    <div className="flex-1 overflow-hidden flex">
-
-                        {/* LEFT SIDEBAR: GUIDE (Hidden in Preview) */}
-                        {!isPreviewMode && (
-                            <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto p-6 hidden lg:block">
-                                <div className="mb-8">
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <Sparkles className="h-4 w-4 text-emerald-500" />
-                                        Guía Estratégica
-                                    </h3>
-                                    <div className="space-y-4">
-                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 1 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-                                            <strong className="block text-gray-900 mb-1">1. Concepto</strong>
-                                            <p className="text-sm text-gray-600">Define la idea central. ¿Qué deben aprender?</p>
-                                        </div>
-                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 2 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-                                            <strong className="block text-gray-900 mb-1">2. Valor</strong>
-                                            <p className="text-sm text-gray-600">¿Por qué es útil? Beneficio práctico.</p>
-                                        </div>
-                                        <div className={`p-4 rounded-xl border transition-all ${editingBlock.block_number === 3 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-                                            <strong className="block text-gray-900 mb-1">3. Acción</strong>
-                                            <p className="text-sm text-gray-600">Pasos concretos para aplicar lo aprendido.</p>
-                                        </div>
-                                    </div>
+                    {/* Body con 3 columnas - ESTILO CRM */}
+                    {isPreviewMode ? (
+                        // PREVIEW MODE
+                        <div style={{
+                            flex: 1,
+                            overflow: 'auto',
+                            padding: '24px',
+                            display: 'flex',
+                            justifyContent: 'center'
+                        }}>
+                            <div style={{
+                                backgroundColor: 'white',
+                                padding: '48px',
+                                borderRadius: '8px',
+                                maxWidth: '900px',
+                                width: '100%',
+                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                            }}>
+                                <h1 style={{
+                                    fontSize: '32px',
+                                    fontWeight: 'bold',
+                                    color: '#111827',
+                                    marginBottom: '24px'
+                                }}>
+                                    {editorTitle || 'Sin título'}
+                                </h1>
+                                <div style={{
+                                    fontSize: '16px',
+                                    color: '#374151',
+                                    lineHeight: '1.75',
+                                    whiteSpace: 'pre-wrap'
+                                }}>
+                                    {editorContent || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Sin contenido...</span>}
                                 </div>
-
-                                <div>
-                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <LinkIcon className="h-4 w-4 text-blue-500" />
-                                        Recursos
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <label className="block text-sm font-medium text-gray-700">URL del Recurso</label>
-                                        <input
-                                            type="text"
-                                            value={editorFileUrl}
-                                            onChange={(e) => setEditorFileUrl(e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
-                                            placeholder="https://..."
-                                        />
-                                        <button className="w-full py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200">
-                                            Probar Enlace
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MAIN CONTENT AREA */}
-                        <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex justify-center">
-                            <div className={`
-                bg-white shadow-xl transition-all duration-500 flex flex-col
-                ${isPreviewMode ? 'w-full max-w-4xl rounded-none min-h-screen p-12' : 'w-full max-w-3xl rounded-xl min-h-[1100px] p-12 my-4'}
-              `}>
-                                {isPreviewMode ? (
-                                    <div className="prose prose-lg max-w-none">
-                                        <h1 className="text-4xl font-bold text-gray-900 mb-8">{editorTitle}</h1>
-                                        <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                                            {editorContent || <span className="text-gray-400 italic">Sin contenido...</span>}
-                                        </div>
-                                        {editorFileUrl && (
-                                            <div className="mt-12 p-6 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-4">
-                                                <div className="h-12 w-12 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
-                                                    <LinkIcon className="h-6 w-6 text-emerald-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900">Recurso Adjunto</h4>
-                                                    <a href={editorFileUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline break-all">
-                                                        {editorFileUrl}
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-8 h-full flex flex-col">
-                                        <input
-                                            type="text"
-                                            value={editorTitle}
-                                            onChange={(e) => setEditorTitle(e.target.value)}
-                                            className="w-full text-4xl font-bold text-gray-900 placeholder-gray-300 border-none focus:ring-0 p-0 bg-transparent"
-                                            placeholder="Título del Bloque"
-                                        />
-                                        <div className="h-px bg-gray-100 w-full"></div>
-                                        <textarea
-                                            value={editorContent}
-                                            onChange={(e) => setEditorContent(e.target.value)}
-                                            className="w-full flex-1 resize-none border-none focus:ring-0 p-0 text-lg leading-relaxed text-gray-700 placeholder-gray-300 bg-transparent"
-                                            placeholder="Escribe aquí el contenido..."
-                                        />
+                                {editorFileUrl && (
+                                    <div style={{
+                                        marginTop: '32px',
+                                        padding: '16px',
+                                        backgroundColor: '#f0fdf4',
+                                        border: '1px solid #86efac',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#047857', margin: '0 0 8px 0' }}>
+                                            🔗 Recurso Adjunto
+                                        </h4>
+                                        <a
+                                            href={editorFileUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ fontSize: '14px', color: '#10b981', wordBreak: 'break-all' }}
+                                        >
+                                            {editorFileUrl}
+                                        </a>
                                     </div>
                                 )}
                             </div>
                         </div>
+                    ) : (
+                        // EDIT MODE - 3 COLUMNAS
+                        <div style={{
+                            flex: 1,
+                            overflow: 'hidden',
+                            display: 'grid',
+                            gridTemplateColumns: '280px 1fr 300px',
+                            gap: 0
+                        }}>
+                            {/* COLUMNA IZQUIERDA: Guía Estratégica (3 preguntas) */}
+                            <div style={{
+                                backgroundColor: '#f0fdf4',
+                                borderRight: '1px solid #e5e7eb',
+                                overflow: 'auto',
+                                padding: '24px'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#047857',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                    <Sparkles style={{ height: '14px', width: '14px' }} />
+                                    Guía Estratégica
+                                </h3>
 
-                    </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: editingBlock.block_number === 1 ? 'white' : '#f0fdf4',
+                                        border: editingBlock.block_number === 1 ? '2px solid #10b981' : '1px solid #d1fae5',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{
+                                            fontSize: '13px',
+                                            fontWeight: 'bold',
+                                            color: '#111827',
+                                            marginBottom: '6px'
+                                        }}>
+                                            1. Concepto
+                                        </h4>
+                                        <p style={{
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                            margin: 0,
+                                            lineHeight: '1.5'
+                                        }}>
+                                            ¿Qué quiero transmitir exactamente? Define la idea central. ¿Qué deben aprender?
+                                        </p>
+                                    </div>
+
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: editingBlock.block_number === 2 ? 'white' : '#f0fdf4',
+                                        border: editingBlock.block_number === 2 ? '2px solid #10b981' : '1px solid #d1fae5',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{
+                                            fontSize: '13px',
+                                            fontWeight: 'bold',
+                                            color: '#111827',
+                                            marginBottom: '6px'
+                                        }}>
+                                            2. Valor
+                                        </h4>
+                                        <p style={{
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                            margin: 0,
+                                            lineHeight: '1.5'
+                                        }}>
+                                            ¿Por qué es útil? ¿Qué es lo que aporta? Beneficio práctico.
+                                        </p>
+                                    </div>
+
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: editingBlock.block_number === 3 ? 'white' : '#f0fdf4',
+                                        border: editingBlock.block_number === 3 ? '2px solid #10b981' : '1px solid #d1fae5',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <h4 style={{
+                                            fontSize: '13px',
+                                            fontWeight: 'bold',
+                                            color: '#111827',
+                                            marginBottom: '6px'
+                                        }}>
+                                            3. Acción
+                                        </h4>
+                                        <p style={{
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                            margin: 0,
+                                            lineHeight: '1.5'
+                                        }}>
+                                            ¿Cómo se lleva a la práctica? Pasos concretos para aplicar lo aprendido.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* COLUMNA CENTRAL: Contenido Principal */}
+                            <div style={{
+                                backgroundColor: 'white',
+                                overflow: 'auto',
+                                padding: '24px'
+                            }}>
+                                {/* Título del Bloque */}
+                                <div style={{
+                                    padding: '16px 24px',
+                                    backgroundColor: '#f9fafb',
+                                    borderRadius: '8px',
+                                    marginBottom: '16px',
+                                    border: '1px solid #e5e7eb'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: '8px'
+                                    }}>
+                                        Título del Bloque
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editorTitle}
+                                        onChange={(e) => setEditorTitle(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '6px',
+                                            fontSize: '16px',
+                                            fontWeight: '600',
+                                            backgroundColor: 'white'
+                                        }}
+                                        placeholder="Ej: Introducción al concepto..."
+                                    />
+                                </div>
+
+                                {/* Ideas Principales */}
+                                <div style={{
+                                    padding: '16px 24px',
+                                    backgroundColor: '#fffbeb',
+                                    borderRadius: '8px',
+                                    marginBottom: '16px',
+                                    border: '1px solid #fde68a'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#92400e',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: '8px'
+                                    }}>
+                                        💡 Ideas Principales
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            border: '1px solid #fbbf24',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            backgroundColor: 'white',
+                                            resize: 'vertical'
+                                        }}
+                                        placeholder="• Idea 1&#10;• Idea 2&#10;• Idea 3"
+                                    />
+                                </div>
+
+                                {/* Puntos Clave */}
+                                <div style={{
+                                    padding: '16px 24px',
+                                    backgroundColor: '#eff6ff',
+                                    borderRadius: '8px',
+                                    marginBottom: '16px',
+                                    border: '1px solid #93c5fd'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#1e40af',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: '8px'
+                                    }}>
+                                        ⭐ Puntos Más Importantes
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            border: '1px solid #3b82f6',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            backgroundColor: 'white',
+                                            resize: 'vertical'
+                                        }}
+                                        placeholder="• Punto clave 1&#10;• Punto clave 2&#10;• Punto clave 3"
+                                    />
+                                </div>
+
+                                {/* Contenido Completo */}
+                                <div style={{
+                                    padding: '16px 24px',
+                                    backgroundColor: '#f9fafb',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#374151',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: '8px'
+                                    }}>
+                                        📝 Contenido Completo
+                                    </label>
+                                    <textarea
+                                        value={editorContent}
+                                        onChange={(e) => setEditorContent(e.target.value)}
+                                        rows={15}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            lineHeight: '1.75',
+                                            backgroundColor: 'white',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit'
+                                        }}
+                                        placeholder="Escribe aquí el contenido completo del bloque...&#10;&#10;Puedes desarrollar las ideas principales y puntos clave que definiste arriba."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* COLUMNA DERECHA: Archivos y Enlaces */}
+                            <div style={{
+                                backgroundColor: '#fef3c7',
+                                borderLeft: '1px solid #e5e7eb',
+                                overflow: 'auto',
+                                padding: '24px'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#92400e',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                    <LinkIcon style={{ height: '14px', width: '14px' }} />
+                                    Recursos
+                                </h3>
+
+                                {/* URL del Recurso */}
+                                <div style={{
+                                    padding: '16px',
+                                    backgroundColor: 'white',
+                                    borderRadius: '8px',
+                                    marginBottom: '16px',
+                                    border: '1px solid #fbbf24'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#92400e',
+                                        marginBottom: '8px'
+                                    }}>
+                                        🔗 URL del Recurso
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editorFileUrl}
+                                        onChange={(e) => setEditorFileUrl(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 10px',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            marginBottom: '8px'
+                                        }}
+                                        placeholder="https://..."
+                                    />
+                                    <button style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        backgroundColor: '#fbbf24',
+                                        color: '#78350f',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}>
+                                        Probar Enlace
+                                    </button>
+                                </div>
+
+                                {/* Subir Archivos */}
+                                <div style={{
+                                    padding: '16px',
+                                    backgroundColor: 'white',
+                                    borderRadius: '8px',
+                                    border: '1px solid #fbbf24'
+                                }}>
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#92400e',
+                                        marginBottom: '8px'
+                                    }}>
+                                        📎 Subir Archivo
+                                    </label>
+                                    <div style={{
+                                        padding: '24px',
+                                        border: '2px dashed #fbbf24',
+                                        borderRadius: '6px',
+                                        textAlign: 'center',
+                                        backgroundColor: '#fffbeb',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <Upload style={{
+                                            height: '32px',
+                                            width: '32px',
+                                            color: '#f59e0b',
+                                            margin: '0 auto 8px'
+                                        }} />
+                                        <p style={{
+                                            fontSize: '12px',
+                                            color: '#92400e',
+                                            margin: 0
+                                        }}>
+                                            Click para subir<br />
+                                            <span style={{ fontSize: '11px', color: '#a16207' }}>
+                                                PDF, DOC, IMG...
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Ayuda */}
+                                <div style={{
+                                    marginTop: '24px',
+                                    padding: '12px',
+                                    backgroundColor: '#fef3c7',
+                                    borderRadius: '6px',
+                                    border: '1px solid #fbbf24'
+                                }}>
+                                    <p style={{
+                                        fontSize: '11px',
+                                        color: '#92400e',
+                                        margin: 0,
+                                        lineHeight: '1.5'
+                                    }}>
+                                        💡 <strong>Tip:</strong> Los archivos se subirán a Supabase Storage y los enlaces se validarán automáticamente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
