@@ -3,7 +3,8 @@ import {
     BookOpen, Plus, Search, Filter, MoreVertical,
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
-    Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2
+    Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2,
+    Layout, Type, Image as ImageIcon
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
@@ -27,6 +28,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [lessons, setLessons] = useState<Record<string, AcademyLesson[]>>({});
     const [blocks, setBlocks] = useState<Record<string, LessonBlock[]>>({});
     const [loading, setLoading] = useState(true);
+
+    // UI State
+    const [showAddLessonModal, setShowAddLessonModal] = useState(false);
+    const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
+    const [newLessonTitle, setNewLessonTitle] = useState('');
 
     // Editor State
     const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
@@ -96,18 +102,23 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         }
     };
 
-    const handleAddLesson = async (moduleId: string) => {
-        const title = prompt('Título de la nueva lección:');
-        if (!title) return;
+    const initiateAddLesson = (moduleId: string) => {
+        setTargetModuleId(moduleId);
+        setNewLessonTitle('');
+        setShowAddLessonModal(true);
+    };
+
+    const confirmAddLesson = async () => {
+        if (!targetModuleId || !newLessonTitle.trim()) return;
 
         try {
             // 1. Create Lesson
             const { data: lesson, error: lessonError } = await supabase
                 .from('academy_lessons')
                 .insert([{
-                    module_id: moduleId,
-                    title,
-                    order: (lessons[moduleId]?.length || 0) + 1,
+                    module_id: targetModuleId,
+                    title: newLessonTitle,
+                    order: (lessons[targetModuleId]?.length || 0) + 1,
                     status: 'planned'
                 }])
                 .select()
@@ -128,8 +139,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
             if (blocksError) throw blocksError;
 
-            // Refresh
-            loadLessons(moduleId);
+            // Refresh and Close
+            loadLessons(targetModuleId);
+            setShowAddLessonModal(false);
+            setTargetModuleId(null);
+            setNewLessonTitle('');
         } catch (error) {
             console.error('Error creating lesson:', error);
             alert('Error al crear la lección');
@@ -298,7 +312,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             {/* Add Lesson Button */}
                             <div className="p-4 border-t border-gray-100 bg-gray-50/30">
                                 <button
-                                    onClick={() => handleAddLesson(module.id)}
+                                    onClick={() => initiateAddLesson(module.id)}
                                     className="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium text-sm"
                                 >
                                     <Plus className="h-4 w-4" />
@@ -310,15 +324,54 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 )}
             </div>
 
+            {/* Add Lesson Modal */}
+            {showAddLessonModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100">
+                            <h3 className="text-lg font-bold text-gray-900">Nueva Lección</h3>
+                            <p className="text-sm text-gray-500">Añade una nueva lección al módulo</p>
+                        </div>
+                        <div className="p-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Título de la Lección</label>
+                            <input
+                                type="text"
+                                value={newLessonTitle}
+                                onChange={(e) => setNewLessonTitle(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                placeholder="Ej: Introducción a RRHH"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
+                            />
+                        </div>
+                        <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                            <button
+                                onClick={() => setShowAddLessonModal(false)}
+                                className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmAddLesson}
+                                disabled={!newLessonTitle.trim()}
+                                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Crear Lección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Lesson Detail Modal (The "Editor") */}
             {selectedLesson && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+                    <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
                         {/* Modal Header */}
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900">{selectedLesson.title}</h3>
-                                <p className="text-sm text-gray-500">Gestiona los 3 bloques de contenido de esta lección</p>
+                                <h3 className="text-2xl font-bold text-gray-900">{selectedLesson.title}</h3>
+                                <p className="text-sm text-gray-500">Gestiona los 3 bloques de contenido estratégico de esta lección</p>
                             </div>
                             <button
                                 onClick={() => setSelectedLesson(null)}
@@ -330,51 +383,73 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
                         {/* Modal Content - 3 Blocks Grid */}
                         <div className="p-8 overflow-y-auto flex-1 bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 {blocks[selectedLesson.id]?.map((block) => {
                                     const hasContent = block.content && block.content.length > 0;
                                     return (
                                         <div
                                             key={block.id}
                                             className={`
-                        bg-white rounded-xl border-2 shadow-sm p-6 flex flex-col h-full transition-all hover:shadow-md
-                        ${hasContent ? 'border-green-100' : 'border-gray-100'}
+                        bg-white rounded-2xl border shadow-sm flex flex-col h-full transition-all hover:shadow-lg group
+                        ${hasContent ? 'border-green-200 ring-1 ring-green-100' : 'border-gray-200'}
                       `}
                                         >
-                                            <div className="flex justify-between items-start mb-4">
-                                                <span className={`
-                          px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                          ${hasContent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}
-                        `}>
-                                                    Bloque {block.block_number}
-                                                </span>
+                                            {/* Block Header */}
+                                            <div className={`
+                        p-6 border-b flex justify-between items-start rounded-t-2xl
+                        ${hasContent ? 'bg-green-50/50 border-green-100' : 'bg-gray-50/50 border-gray-100'}
+                      `}>
+                                                <div>
+                                                    <span className={`
+                            px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                            ${hasContent ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}
+                          `}>
+                                                        Bloque {block.block_number}
+                                                    </span>
+                                                    <h4 className="text-lg font-bold text-gray-900 mt-3">
+                                                        {block.title || `Bloque ${block.block_number}`}
+                                                    </h4>
+                                                </div>
                                                 {hasContent ? (
-                                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                                    <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                                        <CheckCircle className="h-5 w-5" />
+                                                    </div>
                                                 ) : (
-                                                    <div className="h-5 w-5 rounded-full border-2 border-gray-200" />
+                                                    <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                                                        <Layout className="h-4 w-4" />
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            <h4 className="text-lg font-bold text-gray-900 mb-2">
-                                                {block.title || `Bloque ${block.block_number}`}
-                                            </h4>
+                                            {/* Block Content Preview */}
+                                            <div className="p-6 flex-1 flex flex-col">
+                                                <p className={`text-sm flex-1 line-clamp-6 ${hasContent ? 'text-gray-600' : 'text-gray-400 italic'}`}>
+                                                    {block.content || 'Este bloque aún no tiene contenido. Haz clic en el botón inferior para comenzar a redactar.'}
+                                                </p>
 
-                                            <p className="text-sm text-gray-500 mb-6 flex-1 line-clamp-4">
-                                                {block.content || 'Sin contenido definido. Haz clic en editar para comenzar.'}
-                                            </p>
+                                                {block.file_url && (
+                                                    <div className="mt-4 flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                                                        <LinkIcon className="h-3 w-3" />
+                                                        <span className="truncate">Recurso adjunto disponible</span>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                            <button
-                                                onClick={() => openBlockEditor(block)}
-                                                className={`
-                          w-full py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2
-                          ${hasContent
-                                                        ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                                                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}
-                        `}
-                                            >
-                                                <Edit3 className="h-4 w-4" />
-                                                {hasContent ? 'Editar Contenido' : 'Añadir Contenido'}
-                                            </button>
+                                            {/* Action Button */}
+                                            <div className="p-4 border-t border-gray-100">
+                                                <button
+                                                    onClick={() => openBlockEditor(block)}
+                                                    className={`
+                            w-full py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2
+                            ${hasContent
+                                                            ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                                                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'}
+                          `}
+                                                >
+                                                    <Edit3 className="h-4 w-4" />
+                                                    {hasContent ? 'Editar Contenido' : 'Añadir Contenido'}
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -386,8 +461,8 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
             {/* Block Editor Modal (Nested) */}
             {editingBlock && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex justify-between items-center z-10">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-900">Editar Bloque {editingBlock.block_number}</h3>
@@ -401,68 +476,82 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
+                        <div className="p-8 space-y-8">
                             {/* Strategic Guide */}
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold">
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                                <div className="flex items-center gap-2 mb-4 text-blue-800 font-bold">
                                     <HelpCircle className="h-5 w-5" />
                                     <span>Guía Estratégica</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4 text-sm">
-                                    <div className="p-3 bg-white rounded-lg border border-blue-100">
-                                        <strong className="block text-blue-800 mb-1">1. Concepto</strong>
-                                        <span className="text-blue-600">¿Qué quiero transmitir?</span>
+                                <div className="grid grid-cols-3 gap-6 text-sm">
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
+                                        <strong className="block text-blue-900 mb-1 text-base">1. Concepto</strong>
+                                        <span className="text-blue-700">¿Qué quiero transmitir?</span>
                                     </div>
-                                    <div className="p-3 bg-white rounded-lg border border-blue-100">
-                                        <strong className="block text-blue-800 mb-1">2. Valor</strong>
-                                        <span className="text-blue-600">¿Qué valor práctico aporto?</span>
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
+                                        <strong className="block text-blue-900 mb-1 text-base">2. Valor</strong>
+                                        <span className="text-blue-700">¿Qué valor práctico aporto?</span>
                                     </div>
-                                    <div className="p-3 bg-white rounded-lg border border-blue-100">
-                                        <strong className="block text-blue-800 mb-1">3. Acción</strong>
-                                        <span className="text-blue-600">¿Cómo se lleva a la práctica?</span>
+                                    <div className="bg-white/80 p-4 rounded-xl shadow-sm border border-blue-100">
+                                        <strong className="block text-blue-900 mb-1 text-base">3. Acción</strong>
+                                        <span className="text-blue-700">¿Cómo se lleva a la práctica?</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Form */}
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Título del Bloque</label>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                        <Type className="h-4 w-4 text-gray-400" />
+                                        Título del Bloque
+                                    </label>
                                     <input
                                         type="text"
                                         value={editorTitle}
                                         onChange={(e) => setEditorTitle(e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-lg"
                                         placeholder="Ej: Concepto Clave: El CV Visual"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
-                                    <textarea
-                                        value={editorContent}
-                                        onChange={(e) => setEditorContent(e.target.value)}
-                                        rows={8}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-                                        placeholder="Escribe aquí el contenido del bloque..."
-                                    />
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                        <FileText className="h-4 w-4 text-gray-400" />
+                                        Contenido
+                                    </label>
+                                    <div className="relative">
+                                        <textarea
+                                            value={editorContent}
+                                            onChange={(e) => setEditorContent(e.target.value)}
+                                            rows={12}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none leading-relaxed"
+                                            placeholder="Escribe aquí el contenido del bloque..."
+                                        />
+                                        <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                                            {editorContent.length} caracteres
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Recurso Adjunto (URL)</label>
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                                        <LinkIcon className="h-4 w-4 text-gray-400" />
+                                        Recurso Adjunto (URL)
+                                    </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
                                             value={editorFileUrl}
                                             onChange={(e) => setEditorFileUrl(e.target.value)}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                             placeholder="https://..."
                                         />
-                                        <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
-                                            <Upload className="h-5 w-5" />
+                                        <button className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+                                            Probar Link
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Enlace a PDF, PPT o vídeo en Supabase Storage.</p>
+                                    <p className="text-xs text-gray-500 mt-2 ml-1">Enlace a PDF, PPT o vídeo en Supabase Storage.</p>
                                 </div>
                             </div>
                         </div>
@@ -470,13 +559,13 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                         <div className="sticky bottom-0 bg-white border-t border-gray-100 p-6 flex justify-end gap-3 rounded-b-2xl">
                             <button
                                 onClick={() => setEditingBlock(null)}
-                                className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={saveBlock}
-                                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg shadow-blue-200"
                             >
                                 <Save className="h-5 w-5" />
                                 Guardar Cambios
