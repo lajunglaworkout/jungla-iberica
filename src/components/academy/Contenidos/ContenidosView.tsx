@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
-import ReactMarkdown from 'react-markdown'; // Assuming we might want this later, but for now standard text
 
 interface ContenidosViewProps {
     onBack: () => void;
@@ -334,35 +333,35 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
             {showAddLessonModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4 backdrop-blur-md">
                     <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 border border-white/20">
-                        <div className="p-8 border-b border-gray-100">
-                            <h3 className="text-2xl font-bold text-gray-900">Nueva Lección</h3>
-                            <p className="text-gray-500 mt-1">Añade una nueva lección al módulo</p>
+                        <div className="p-10 border-b border-gray-100">
+                            <h3 className="text-3xl font-bold text-gray-900">Nueva Lección</h3>
+                            <p className="text-gray-500 mt-2 text-base">Añade una nueva lección al módulo</p>
                         </div>
-                        <div className="p-8">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Título de la Lección</label>
+                        <div className="p-10">
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-gray-900 uppercase tracking-wider">Título de la Lección</label>
                                 <input
                                     type="text"
                                     value={newLessonTitle}
                                     onChange={(e) => setNewLessonTitle(e.target.value)}
-                                    className="w-full px-5 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-lg font-medium placeholder-gray-400"
+                                    className="w-full px-6 py-5 bg-white border-2 border-gray-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-xl font-medium placeholder-gray-400"
                                     placeholder="Ej: Introducción a RRHH"
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && confirmAddLesson()}
                                 />
                             </div>
                         </div>
-                        <div className="p-8 border-t border-gray-100 flex justify-end gap-4 bg-gray-50/50 rounded-b-3xl">
+                        <div className="p-10 border-t border-gray-100 flex justify-end gap-4 bg-gray-50/50 rounded-b-3xl">
                             <button
                                 onClick={() => setShowAddLessonModal(false)}
-                                className="px-6 py-3 text-gray-600 font-semibold hover:bg-gray-100 rounded-xl transition-colors"
+                                className="px-8 py-4 text-gray-700 font-bold hover:bg-gray-100 rounded-xl transition-colors text-lg"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={confirmAddLesson}
                                 disabled={!newLessonTitle.trim()}
-                                className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform hover:-translate-y-0.5"
+                                className="px-10 py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transform hover:-translate-y-0.5 text-lg"
                             >
                                 Crear Lección
                             </button>
