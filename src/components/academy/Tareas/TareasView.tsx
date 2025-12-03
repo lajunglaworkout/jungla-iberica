@@ -384,19 +384,20 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     </button>
                     <button
                         onClick={openAddModal}
+                        className="hover:shadow-lg hover:scale-105 transition-all"
                         style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                            color: 'white',
-                            padding: '12px 20px',
-                            borderRadius: '8px',
+                            backgroundColor: 'white',
+                            color: '#059669',
+                            padding: '12px 24px',
+                            borderRadius: '12px',
                             fontSize: '14px',
-                            fontWeight: '600',
+                            fontWeight: '700',
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            backdropFilter: 'blur(4px)'
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                         }}
                     >
                         <Plus className="h-5 w-5" />
@@ -406,7 +407,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3 mt-6 items-center">
+            <div className="flex gap-3 mt-12 items-center">
                 {/* Person Filter */}
                 <select
                     value={filterPerson}
