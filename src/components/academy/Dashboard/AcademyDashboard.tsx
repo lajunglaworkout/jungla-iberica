@@ -176,8 +176,11 @@ export const AcademyDashboard: React.FC = () => {
                 />
             </div>
 
+            {/* Spacer to separate KPIs from Navigation Cards */}
+            <div className="h-20"></div>
+
             {/* Navigation Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <NavigationCard
                     title="CONTENIDOS"
                     icon={BookOpen}
