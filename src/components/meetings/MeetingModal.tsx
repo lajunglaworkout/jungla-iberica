@@ -898,6 +898,23 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
           console.error('Error guardando tareas:', tasksError);
         } else {
           console.log('✅ Tareas nuevas guardadas:', tasksToSave.length);
+
+          // 🆕 ALSO SAVE TASKS IN MEETINGS TABLE FOR SYNC WITH ACADEMY
+          const tasksForMeetingField = generatedTasks.map((task: any) => ({
+            id: task.id || Date.now() + Math.random(),
+            title: task.title || task.titulo,
+            assigned_to: task.assignedTo || task.asignado_a || userEmail,
+            deadline: task.deadline || task.fecha_limite || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            status: task.status || task.estado || 'pendiente',
+            priority: task.priority || task.prioridad || 'media'
+          }));
+
+          await supabase
+            .from('meetings')
+            .update({ tasks: tasksForMeetingField })
+            .eq('id', meetingId);
+
+          console.log('✅ Tareas también guardadas en campo tasks de meetings');
         }
       }
 

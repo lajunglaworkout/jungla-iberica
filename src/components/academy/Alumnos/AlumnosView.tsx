@@ -1,11 +1,11 @@
 import React from 'react';
-import { ArrowLeft, Users, Database } from 'lucide-react';
+import { ArrowLeft, UserCheck, Database } from 'lucide-react';
 
-interface TutoresViewProps {
+interface AlumnosViewProps {
     onBack: () => void;
 }
 
-export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
+export const AlumnosView: React.FC<AlumnosViewProps> = ({ onBack }) => {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header Section - CRM Style */}
@@ -27,11 +27,11 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                             <ArrowLeft className="h-6 w-6" />
                         </button>
                         <div className="flex items-center gap-3">
-                            <Users className="h-8 w-8" />
-                            <h1 className="text-3xl font-bold">Tutores</h1>
+                            <UserCheck className="h-8 w-8" />
+                            <h1 className="text-3xl font-bold">Alumnos</h1>
                         </div>
                     </div>
-                    <p className="text-emerald-100 text-lg pl-16">Gestión de tutores de formación</p>
+                    <p className="text-emerald-100 text-lg pl-16">Seguimiento de estudiantes</p>
                 </div>
             </div>
 
@@ -73,7 +73,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                     maxWidth: '500px',
                     margin: '0 auto 32px'
                 }}>
-                    Los datos de tutores se importarán desde el CRM de Academy una vez esté desarrollado.
+                    Los datos de alumnos se importarán desde el CRM de Academy una vez esté desarrollado.
                     La gestión operativa se realizará en el software principal de Academy.
                 </p>
 
@@ -112,7 +112,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                         margin: 0,
                         fontWeight: '500'
                     }}>
-                        💡 <strong>Próximamente:</strong> Visualiza tutores, sus especialidades, centros asignados y compensación económica.
+                        💡 <strong>Próximamente:</strong> Visualiza estudiantes activos, progreso, cohortes, modalidades y satisfacción general.
                     </p>
                 </div>
             </div>

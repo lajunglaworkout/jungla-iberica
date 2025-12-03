@@ -16,6 +16,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
     const [tasks, setTasks] = useState<AcademyTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
+    const [filterPerson, setFilterPerson] = useState<'all' | 'me' | 'dani'>('all');
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
@@ -25,13 +26,13 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
     // Form states
     const [formTitle, setFormTitle] = useState('');
     const [formDescription, setFormDescription] = useState('');
-    const [formPriority, setFormPriority] = useState<'low' | 'medium' | 'high'>('medium');
+    const [formPriority, setFormPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
     const [formDueDate, setFormDueDate] = useState('');
     const [formStatus, setFormStatus] = useState<'pending' | 'in_progress' | 'completed'>('pending');
 
     useEffect(() => {
         loadTasks();
-    }, [filterStatus]);
+    }, [filterStatus, filterPerson]);
 
     const loadTasks = async () => {
         setLoading(true);
@@ -45,6 +46,22 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                 query = query.eq('status', filterStatus);
             }
 
+            // Filter by person
+            if (filterPerson === 'me') {
+                query = query.eq('assigned_to', user?.id);
+            } else if (filterPerson === 'dani') {
+                // Get Dani's user ID
+                const { data: daniUser } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('email', 'danivf1991@gmail.com')
+                    .single();
+
+                if (daniUser) {
+                    query = query.eq('assigned_to', daniUser.id);
+                }
+            }
+
             const { data, error } = await query;
 
             if (error) throw error;
@@ -56,10 +73,128 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
         }
     };
 
+    const syncMeetingTasks = async () => {
+        try {
+            // Get all Academy meetings with tasks - try case insensitive
+            const { data: meetings, error: meetingsError } = await supabase
+                .from('meetings')
+                .select('id, title, tasks, date, department')
+                .ilike('department', '%academy%');
+
+            console.log('🔍 Meetings query result:', meetings);
+
+            if (meetingsError) {
+                console.error('Error fetching meetings:', meetingsError);
+                throw meetingsError;
+            }
+
+            if (!meetings || meetings.length === 0) {
+                alert('No hay reuniones de Academy encontradas');
+                return;
+            }
+
+            console.log(`📋 Found ${meetings.length} Academy meetings`);
+
+            // Filter meetings with tasks
+            const meetingsWithTasks = meetings.filter(m => m.tasks && Array.isArray(m.tasks) && m.tasks.length > 0);
+
+            console.log(`✅ Meetings with tasks: ${meetingsWithTasks.length}`);
+
+            if (meetingsWithTasks.length === 0) {
+                alert(`Se encontraron ${meetings.length} reuniones de Academy pero ninguna tiene tareas. Las reuniones deben tener el campo 'tasks' con datos.`);
+                return;
+            }
+
+            let syncedCount = 0;
+
+            for (const meeting of meetingsWithTasks) {
+                const meetingTasks = meeting.tasks as any[];
+
+                console.log(`📝 Processing ${meetingTasks.length} tasks from meeting "${meeting.title}"`);
+
+                for (const task of meetingTasks) {
+                    // Check if task already exists
+                    const { data: existing } = await supabase
+                        .from('academy_tasks')
+                        .select('id')
+                        .eq('title', task.title)
+                        .eq('created_by', `meeting_${meeting.id}`);
+
+                    if (existing && existing.length > 0) {
+                        console.log(`⏭️ Skipping duplicate task: ${task.title}`);
+                        continue;
+                    }
+
+                    // Map assigned_to email to user ID
+                    let assignedToId = null;
+                    if (task.assigned_to) {
+                        const { data: assignedUser } = await supabase
+                            .from('users')
+                            .select('id')
+                            .eq('email', task.assigned_to)
+                            .single();
+
+                        assignedToId = assignedUser?.id || user?.id;
+                    }
+
+                    // Map priority from meeting format to academy format
+                    const priorityMap: Record<string, 'low' | 'normal' | 'high' | 'urgent'> = {
+                        'baja': 'low',
+                        'media': 'normal',
+                        'normal': 'normal',
+                        'alta': 'high',
+                        'urgente': 'urgent'
+                    };
+
+                    const priority = priorityMap[task.priority?.toLowerCase()] || 'normal';
+
+                    // Map status
+                    const statusMap: Record<string, 'pending' | 'in_progress' | 'completed'> = {
+                        'pendiente': 'pending',
+                        'en progreso': 'in_progress',
+                        'completada': 'completed',
+                        'pending': 'pending',
+                        'in_progress': 'in_progress',
+                        'completed': 'completed'
+                    };
+
+                    const status = statusMap[task.status?.toLowerCase()] || 'pending';
+
+                    // Insert task
+                    const { error: insertError } = await supabase
+                        .from('academy_tasks')
+                        .insert([{
+                            title: task.title,
+                            description: `Tarea de reunión: ${meeting.title}`,
+                            assigned_to: assignedToId,
+                            created_by: `meeting_${meeting.id}`,
+                            status: status,
+                            priority: priority,
+                            due_date: task.deadline || meeting.date,
+                            progress: status === 'completed' ? 100 : 0
+                        }]);
+
+                    if (!insertError) {
+                        syncedCount++;
+                        console.log(`✅ Synced task: ${task.title}`);
+                    } else {
+                        console.error(`❌ Error syncing task ${task.title}:`, insertError);
+                    }
+                }
+            }
+
+            alert(`✓ Sincronizadas ${syncedCount} tareas desde ${meetingsWithTasks.length} reuniones de Academy`);
+            loadTasks(); // Reload tasks
+        } catch (error) {
+            console.error('Error syncing meeting tasks:', error);
+            alert('Error al sincronizar tareas de reuniones');
+        }
+    };
+
     const resetForm = () => {
         setFormTitle('');
         setFormDescription('');
-        setFormPriority('medium');
+        setFormPriority('normal');
         setFormDueDate('');
         setFormStatus('pending');
     };
@@ -74,7 +209,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
         setFormTitle(task.title);
         setFormDescription(task.description || '');
         setFormPriority(task.priority as any);
-        setFormDueDate(task.due_date.split('T')[0]);
+        setFormDueDate(task.due_date ? task.due_date.split('T')[0] : '');
         setFormStatus(task.status as any);
         setShowEditModal(true);
     };
@@ -91,7 +226,8 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     status: formStatus,
                     priority: formPriority,
                     assigned_to: user?.id,
-                    due_date: new Date(formDueDate).toISOString()
+                    due_date: new Date(formDueDate).toISOString(),
+                    progress: 0
                 }])
                 .select()
                 .single();
@@ -163,7 +299,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'high': return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' };
-            case 'medium': return { bg: '#fed7aa', border: '#f97316', text: '#9a3412' };
+            case 'normal': return { bg: '#fed7aa', border: '#f97316', text: '#9a3412' };
             case 'low': return { bg: '#d1fae5', border: '#10b981', text: '#065f46' };
             default: return { bg: '#f3f4f6', border: '#d1d5db', text: '#374151' };
         }
@@ -215,33 +351,86 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     <p className="text-emerald-100 text-lg pl-16">Control de actividades y pendientes</p>
                 </div>
 
-                <button
-                    onClick={openAddModal}
-                    style={{
-                        position: 'absolute',
-                        top: '24px',
-                        right: '24px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        padding: '12px 20px',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backdropFilter: 'blur(4px)'
-                    }}
-                >
-                    <Plus className="h-5 w-5" />
-                    Nueva Tarea
-                </button>
+                <div style={{
+                    position: 'absolute',
+                    top: '24px',
+                    right: '24px',
+                    display: 'flex',
+                    gap: '12px',
+                    zIndex: 20
+                }}>
+                    <button
+                        onClick={syncMeetingTasks}
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                            color: 'white',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backdropFilter: 'blur(4px)'
+                        }}
+                        title="Sincronizar tareas desde reuniones"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                        </svg>
+                        Sincronizar
+                    </button>
+                    <button
+                        onClick={openAddModal}
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '12px 20px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backdropFilter: 'blur(4px)'
+                        }}
+                    >
+                        <Plus className="h-5 w-5" />
+                        Nueva Tarea
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6 items-center">
+                {/* Person Filter */}
+                <select
+                    value={filterPerson}
+                    onChange={(e) => setFilterPerson(e.target.value as any)}
+                    style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        border: '2px solid #e5e7eb',
+                        backgroundColor: 'white',
+                        color: '#374151',
+                        cursor: 'pointer',
+                        minWidth: '150px'
+                    }}
+                >
+                    <option value="all">👥 Todas las personas</option>
+                    <option value="me">👤 Mis tareas</option>
+                    <option value="dani">👨‍💼 Tareas de Dani</option>
+                </select>
+
+                <div style={{ width: '2px', height: '32px', backgroundColor: '#e5e7eb' }}></div>
+
+                {/* Status Filter */}
                 {['all', 'pending', 'in_progress', 'completed'].map((status) => (
                     <button
                         key={status}
@@ -274,7 +463,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     <p className="text-gray-500">Cargando tareas...</p>
                 </div>
             ) : tasks.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200" style={{ marginTop: '32px' }}>
                     <CheckSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-gray-900 mb-2">No hay tareas</h3>
                     <p className="text-gray-500 mb-6">No hay tareas con el filtro seleccionado</p>
@@ -290,7 +479,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     {tasks.map((task) => {
                         const priorityColors = getPriorityColor(task.priority);
                         const statusColors = getStatusColor(task.status);
-                        const isOverdue = new Date(task.due_date) < new Date() && task.status !== 'completed';
+                        const isOverdue = task.due_date ? new Date(task.due_date) < new Date() && task.status !== 'completed' : false;
 
                         return (
                             <div
@@ -320,7 +509,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                     letterSpacing: '0.5px',
                                     border: `1px solid ${priorityColors.border}`
                                 }}>
-                                    {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'}
+                                    {task.priority === 'urgent' ? 'Urgente' : task.priority === 'high' ? 'Alta' : task.priority === 'normal' ? 'Normal' : 'Baja'}
                                 </div>
 
                                 {/* Action Buttons */}
@@ -380,10 +569,10 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                     }}>
                                         <Calendar className="h-4 w-4" />
                                         <span className="font-medium">
-                                            {new Date(task.due_date).toLocaleDateString('es-ES', {
+                                            {task.due_date ? new Date(task.due_date).toLocaleDateString('es-ES', {
                                                 day: '2-digit',
                                                 month: 'short'
-                                            })}
+                                            }) : '-'}
                                         </span>
                                     </div>
                                     <div style={{
@@ -526,8 +715,9 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                         }}
                                     >
                                         <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
+                                        <option value="normal">Normal</option>
                                         <option value="high">Alta</option>
+                                        <option value="urgent">Urgente</option>
                                     </select>
                                 </div>
 
@@ -749,8 +939,9 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                         }}
                                     >
                                         <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
+                                        <option value="normal">Normal</option>
                                         <option value="high">Alta</option>
+                                        <option value="urgent">Urgente</option>
                                     </select>
                                 </div>
 

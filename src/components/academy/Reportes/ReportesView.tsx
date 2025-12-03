@@ -1,11 +1,11 @@
 import React from 'react';
-import { ArrowLeft, Users, Database } from 'lucide-react';
+import { ArrowLeft, BarChart3, Database } from 'lucide-react';
 
-interface TutoresViewProps {
+interface ReportesViewProps {
     onBack: () => void;
 }
 
-export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
+export const ReportesView: React.FC<ReportesViewProps> = ({ onBack }) => {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header Section - CRM Style */}
@@ -27,11 +27,11 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                             <ArrowLeft className="h-6 w-6" />
                         </button>
                         <div className="flex items-center gap-3">
-                            <Users className="h-8 w-8" />
-                            <h1 className="text-3xl font-bold">Tutores</h1>
+                            <BarChart3 className="h-8 w-8" />
+                            <h1 className="text-3xl font-bold">Reportes</h1>
                         </div>
                     </div>
-                    <p className="text-emerald-100 text-lg pl-16">Gestión de tutores de formación</p>
+                    <p className="text-emerald-100 text-lg pl-16">Análisis y métricas de rendimiento</p>
                 </div>
             </div>
 
@@ -73,8 +73,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                     maxWidth: '500px',
                     margin: '0 auto 32px'
                 }}>
-                    Los datos de tutores se importarán desde el CRM de Academy una vez esté desarrollado.
-                    La gestión operativa se realizará en el software principal de Academy.
+                    Los reportes se generarán con datos del CRM de Academy una vez esté desarrollado.
+                    Los análisis se basarán en datos reales de alumnos, ingresos y satisfacción.
                 </p>
 
                 <button
@@ -112,7 +112,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({ onBack }) => {
                         margin: 0,
                         fontWeight: '500'
                     }}>
-                        💡 <strong>Próximamente:</strong> Visualiza tutores, sus especialidades, centros asignados y compensación económica.
+                        💡 <strong>Próximamente:</strong> Accede a reportes de ingresos, alumnos activos, satisfacción, exportaciones PDF/Excel y gráficos interactivos.
                     </p>
                 </div>
             </div>
