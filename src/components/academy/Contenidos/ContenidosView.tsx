@@ -34,6 +34,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
     const [newLessonTitle, setNewLessonTitle] = useState('');
 
+    // Edit/Delete Lesson State
+    const [showEditLessonModal, setShowEditLessonModal] = useState(false);
+    const [editingLesson, setEditingLesson] = useState<AcademyLesson | null>(null);
+    const [editLessonTitle, setEditLessonTitle] = useState('');
+
     // Editor State
     const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
     const [editingBlock, setEditingBlock] = useState<LessonBlock | null>(null);
@@ -148,6 +153,83 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         } catch (error) {
             console.error('Error creating lesson:', error);
             alert('Error al crear la lección');
+        }
+    };
+
+    const initiateEditLesson = (lesson: AcademyLesson, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening the lesson editor
+        setEditingLesson(lesson);
+        setEditLessonTitle(lesson.title);
+        setShowEditLessonModal(true);
+    };
+
+    const confirmEditLesson = async () => {
+        if (!editingLesson || !editLessonTitle.trim()) return;
+
+        try {
+            const { error } = await supabase
+                .from('academy_lessons')
+                .update({ title: editLessonTitle })
+                .eq('id', editingLesson.id);
+
+            if (error) throw error;
+
+            // Update local state
+            setLessons(prev => ({
+                ...prev,
+                [editingLesson.module_id]: prev[editingLesson.module_id].map(l =>
+                    l.id === editingLesson.id ? { ...l, title: editLessonTitle } : l
+                )
+            }));
+
+            setShowEditLessonModal(false);
+            setEditingLesson(null);
+            setEditLessonTitle('');
+        } catch (error) {
+            console.error('Error updating lesson:', error);
+            alert('Error al actualizar la lección');
+        }
+    };
+
+    const deleteLesson = async (lesson: AcademyLesson, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening the lesson editor
+
+        if (!confirm(`¿Estás seguro de que deseas eliminar la lección "${lesson.title}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            // First delete all blocks
+            const { error: blocksError } = await supabase
+                .from('academy_lesson_blocks')
+                .delete()
+                .eq('lesson_id', lesson.id);
+
+            if (blocksError) throw blocksError;
+
+            // Then delete the lesson
+            const { error: lessonError } = await supabase
+                .from('academy_lessons')
+                .delete()
+                .eq('id', lesson.id);
+
+            if (lessonError) throw lessonError;
+
+            // Update local state
+            setLessons(prev => ({
+                ...prev,
+                [lesson.module_id]: prev[lesson.module_id].filter(l => l.id !== lesson.id)
+            }));
+
+            // Remove blocks from state
+            setBlocks(prev => {
+                const newBlocks = { ...prev };
+                delete newBlocks[lesson.id];
+                return newBlocks;
+            });
+        } catch (error) {
+            console.error('Error deleting lesson:', error);
+            alert('Error al eliminar la lección');
         }
     };
 
@@ -297,7 +379,23 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-6">
+                                                <div className="flex items-center gap-3">
+                                                    {/* Edit and Delete buttons */}
+                                                    <button
+                                                        onClick={(e) => initiateEditLesson(lesson, e)}
+                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Editar lección"
+                                                    >
+                                                        <Edit3 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => deleteLesson(lesson, e)}
+                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Eliminar lección"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+
                                                     <span className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                                         }`}>
                                                         {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
@@ -447,6 +545,127 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                 }}
                             >
                                 ✓ Crear Lección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Lesson Modal - ESTILO CRM */}
+            {showEditLessonModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        width: '90%',
+                        maxWidth: '600px',
+                        maxHeight: '90vh',
+                        overflow: 'auto',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }}>
+                        <div style={{
+                            padding: '24px',
+                            borderBottom: '1px solid #e5e7eb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Editar Lección</h2>
+                            <button
+                                onClick={() => setShowEditLessonModal(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: '#6b7280'
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f9fafb',
+                            borderBottom: '1px solid #e5e7eb'
+                        }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#374151',
+                                marginBottom: '8px'
+                            }}>
+                                Título de la Lección
+                            </label>
+                            <input
+                                type="text"
+                                value={editLessonTitle}
+                                onChange={(e) => setEditLessonTitle(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    backgroundColor: 'white'
+                                }}
+                                placeholder="Ej: Introducción a RRHH"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && confirmEditLesson()}
+                            />
+                        </div>
+
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f9fafb',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px'
+                        }}>
+                            <button
+                                onClick={() => setShowEditLessonModal(false)}
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: 'white',
+                                    color: '#374151',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmEditLesson}
+                                disabled={!editLessonTitle.trim()}
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: editLessonTitle.trim() ? 'pointer' : 'not-allowed',
+                                    opacity: editLessonTitle.trim() ? 1 : 0.5
+                                }}
+                            >
+                                ✓ Guardar Cambios
                             </button>
                         </div>
                     </div>

@@ -97,10 +97,10 @@ export const AcademyDashboard: React.FC = () => {
     };
 
     const renderDashboard = () => (
-        <div className="space-y-16 animate-in fade-in duration-500">
+        <div className="space-y-24 animate-in fade-in duration-500">
             {/* Header Section */}
             <div style={{
-                background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%)',
+                background: 'linear-gradient(135deg, #047857 0%, #10b981 50%, #34d399 100%)',
                 borderRadius: '16px',
                 padding: '32px',
                 color: 'white',
@@ -129,7 +129,7 @@ export const AcademyDashboard: React.FC = () => {
                         <GraduationCap className="h-8 w-8 text-white" />
                         <h1 className="text-3xl font-bold">La Jungla Academy</h1>
                     </div>
-                    <p className="text-blue-100 text-lg max-w-2xl">
+                    <p className="text-emerald-100 text-lg max-w-2xl">
                         Centro de Control y Gestión de Formación
                     </p>
                 </div>
