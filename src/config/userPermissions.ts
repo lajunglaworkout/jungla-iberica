@@ -48,7 +48,17 @@ export const TEAM_DATA: UserProfile[] = [
     email: 'vicente@lajungla.es',
     baseRole: 'director',
     center: 'central',
-    assignedModules: ['hr'],
+    center: 'central',
+    assignedModules: ['hr', 'online'],
+    isActive: true
+  },
+  {
+    id: '10',
+    name: 'Jesús Rosado',
+    email: 'jesus2003.betis@gmail.com',
+    baseRole: 'director',
+    center: 'sevilla',
+    assignedModules: ['online'],
     isActive: true
   },
   {
@@ -84,10 +94,10 @@ export const TEAM_DATA: UserProfile[] = [
 export const canUserAccessModule = (userEmail: string, moduleId: string): boolean => {
   const user = TEAM_DATA.find(u => u.email === userEmail);
   if (!user || !user.isActive) return false;
-  
+
   // CEO tiene acceso a todo
   if (user.baseRole === 'ceo') return true;
-  
+
   // Verificar módulos asignados
   return user.assignedModules.includes(moduleId);
 };
