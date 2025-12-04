@@ -460,7 +460,55 @@ const NavigationDashboard: React.FC = () => {
     }
   };
 
-  const modules = getAvailableModules();
+  // Wrapper para añadir módulos específicos por usuario independientemente del rol
+  const getFinalModules = () => {
+    const modules = getAvailableModules();
+
+    // Overrides específicos por email
+    if (employee?.email === 'vicente@lajungla.es') {
+      // Asegurar que Vicente tenga Online y Marketing
+      if (!modules.find(m => m.id === 'online')) {
+        modules.push({
+          id: 'online',
+          title: 'La Jungla Online',
+          description: 'Gestión de contenido online',
+          icon: Globe,
+          color: '#2563eb',
+          component: OnlineDashboard,
+          available: true
+        });
+      }
+      if (!modules.find(m => m.id === 'marketing')) {
+        modules.push({
+          id: 'marketing',
+          title: 'Marketing',
+          description: 'Contenido y publicaciones',
+          icon: Globe,
+          color: '#dc2626',
+          component: MarketingDashboard,
+          available: true
+        });
+      }
+    }
+
+    if (employee?.email === 'jesus2003.betis@gmail.com') {
+      if (!modules.find(m => m.id === 'online')) {
+        modules.push({
+          id: 'online',
+          title: 'La Jungla Online',
+          description: 'Gestión de contenido online',
+          icon: Globe,
+          color: '#2563eb',
+          component: OnlineDashboard,
+          available: true
+        });
+      }
+    }
+
+    return modules;
+  };
+
+  const modules = getFinalModules();
   console.log('Módulos disponibles para el usuario:', modules.map(m => m.title));
   console.log('Rol del usuario:', userRole);
   console.log('Email del empleado:', employee?.email);
