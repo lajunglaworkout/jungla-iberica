@@ -45,9 +45,8 @@ export const TEAM_DATA: UserProfile[] = [
   {
     id: '3',
     name: 'Vicente Corbaón',
-    email: 'vicente@lajungla.es',
+    email: 'lajunglacentral@gmail.com',
     baseRole: 'director',
-    center: 'central',
     center: 'central',
     assignedModules: ['hr', 'online'],
     isActive: true

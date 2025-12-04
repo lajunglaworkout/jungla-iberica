@@ -465,7 +465,7 @@ const NavigationDashboard: React.FC = () => {
     const modules = getAvailableModules();
 
     // Overrides específicos por email
-    if (employee?.email === 'vicente@lajungla.es') {
+    if (employee?.email === 'lajunglacentral@gmail.com') {
       // Asegurar que Vicente tenga Online y Marketing
       if (!modules.find(m => m.id === 'online')) {
         modules.push({
