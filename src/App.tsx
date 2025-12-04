@@ -35,6 +35,7 @@ import {
   DollarSign,
   ListTodo,
   GraduationCap,
+  Shield,
 } from 'lucide-react';
 
 // Importar todos los componentes del sistema
@@ -65,6 +66,7 @@ import { ContenidosView } from './components/academy/Contenidos/ContenidosView';
 import { TareasView } from './components/academy/Tareas/TareasView';
 import { OnlineDashboard } from './components/online/OnlineDashboard';
 import { MarketingDashboard } from './components/marketing/MarketingDashboard';
+import { UserManagementSystem } from './components/admin/UserManagementSystem';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -221,6 +223,15 @@ const NavigationDashboard: React.FC = () => {
         icon: Brain,
         color: '#7c3aed',
         component: IntelligentExecutiveDashboard,
+        available: true
+      },
+      {
+        id: 'admin-users',
+        title: 'Gestión de Accesos',
+        description: 'Alta de usuarios, centros y permisos',
+        icon: Shield,
+        color: '#10b981',
+        component: UserManagementSystem,
         available: true
       },
       {
