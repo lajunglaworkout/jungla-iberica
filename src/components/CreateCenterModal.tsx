@@ -7,10 +7,10 @@ import type { CenterType, CenterStatus } from '../types/center';
 interface CreateCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCenterCreated: () => void;
+  onSuccess: () => void;
 }
 
-export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, onClose, onCenterCreated }) => {
+export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, onClose, onSuccess }) => {
   // Estado unificado para todos los campos del formulario
   const [formData, setFormData] = useState({
     // Campos actuales (mantener)
@@ -18,7 +18,7 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
     city: '',
     type: 'Propio' as CenterType,
     status: 'Activo' as CenterStatus,
-    
+
     // NUEVOS CAMPOS AÑADIDOS:
     address: '',           // Dirección completa
     responsable: '',       // Gerente/Responsable del centro
@@ -129,7 +129,7 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
       }
 
       console.log('✅ Centro creado exitosamente:', formData.name);
-      
+
       // Resetear formulario
       setFormData({
         name: '',
@@ -148,7 +148,7 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
       });
 
       setLoading(false);
-      onCenterCreated(); // Avisar al panel principal para que refresque la lista
+      onSuccess(); // Avisar al panel principal para que refresque la lista
       onClose(); // Cerrar el modal
     } catch (err) {
       console.error('❌ Error al crear el centro:', err);
@@ -233,19 +233,19 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
     <div style={modalStyle}>
       <div style={contentStyle}>
         <div style={{ marginBottom: '32px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '700', 
-            color: '#111827', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
             margin: 0,
             marginBottom: '8px'
           }}>
             🏢 Crear Nuevo Centro
           </h2>
-          <p style={{ 
-            color: '#6b7280', 
-            fontSize: '14px', 
-            margin: 0 
+          <p style={{
+            color: '#6b7280',
+            fontSize: '14px',
+            margin: 0
           }}>
             Completa la información del nuevo centro deportivo
           </p>
@@ -253,9 +253,9 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
         <form onSubmit={handleSubmit}>
           {/* Layout en 2 columnas */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
             gap: '24px',
             marginBottom: '24px'
           }}>
@@ -263,11 +263,11 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <label style={labelStyle}>Nombre del Centro *</label>
-                <input 
-                  type="text" 
-                  value={formData.name} 
-                  onChange={e => updateFormData('name', e.target.value)} 
-                  required 
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={e => updateFormData('name', e.target.value)}
+                  required
                   style={inputStyle}
                   placeholder="Ej: La Jungla Sevilla Centro"
                 />
@@ -275,11 +275,11 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Ciudad *</label>
-                <input 
-                  type="text" 
-                  value={formData.city} 
-                  onChange={e => updateFormData('city', e.target.value)} 
-                  required 
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={e => updateFormData('city', e.target.value)}
+                  required
                   style={inputStyle}
                   placeholder="Ej: Sevilla"
                 />
@@ -287,10 +287,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Dirección Completa</label>
-                <input 
-                  type="text" 
-                  value={formData.address} 
-                  onChange={e => updateFormData('address', e.target.value)} 
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={e => updateFormData('address', e.target.value)}
                   style={inputStyle}
                   placeholder="Ej: Calle Ejemplo 123, 41001 Sevilla"
                 />
@@ -298,10 +298,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Responsable/Gerente</label>
-                <input 
-                  type="text" 
-                  value={formData.responsable} 
-                  onChange={e => updateFormData('responsable', e.target.value)} 
+                <input
+                  type="text"
+                  value={formData.responsable}
+                  onChange={e => updateFormData('responsable', e.target.value)}
                   style={inputStyle}
                   placeholder="Ej: Juan Pérez García"
                 />
@@ -309,10 +309,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Teléfono</label>
-                <input 
-                  type="tel" 
-                  value={formData.phone} 
-                  onChange={e => updateFormData('phone', e.target.value)} 
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => updateFormData('phone', e.target.value)}
                   style={inputStyle}
                   placeholder="Ej: +34 600 123 456"
                 />
@@ -320,10 +320,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Email</label>
-                <input 
-                  type="email" 
-                  value={formData.email} 
-                  onChange={e => updateFormData('email', e.target.value)} 
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => updateFormData('email', e.target.value)}
                   style={inputStyle}
                   placeholder="Ej: sevilla@lajungla.com"
                 />
@@ -334,9 +334,9 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <label style={labelStyle}>Tipo de Centro *</label>
-                <select 
-                  value={formData.type} 
-                  onChange={e => updateFormData('type', e.target.value as CenterType)} 
+                <select
+                  value={formData.type}
+                  onChange={e => updateFormData('type', e.target.value as CenterType)}
                   style={inputStyle}
                 >
                   <option value="Propio">🏢 Propio</option>
@@ -346,9 +346,9 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Estado Operativo *</label>
-                <select 
-                  value={formData.status} 
-                  onChange={e => updateFormData('status', e.target.value as CenterStatus)} 
+                <select
+                  value={formData.status}
+                  onChange={e => updateFormData('status', e.target.value as CenterStatus)}
                   style={inputStyle}
                 >
                   <option value="Activo">✅ Activo</option>
@@ -360,10 +360,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Capacidad Máxima (socios)</label>
-                <input 
-                  type="number" 
-                  value={formData.capacity} 
-                  onChange={e => updateFormData('capacity', parseInt(e.target.value) || 0)} 
+                <input
+                  type="number"
+                  value={formData.capacity}
+                  onChange={e => updateFormData('capacity', parseInt(e.target.value) || 0)}
                   style={inputStyle}
                   placeholder="Ej: 500"
                   min="0"
@@ -373,19 +373,19 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Hora Apertura</label>
-                  <input 
-                    type="time" 
-                    value={formData.opening_time} 
-                    onChange={e => updateFormData('opening_time', e.target.value)} 
+                  <input
+                    type="time"
+                    value={formData.opening_time}
+                    onChange={e => updateFormData('opening_time', e.target.value)}
                     style={inputStyle}
                   />
                 </div>
                 <div>
                   <label style={labelStyle}>Hora Cierre</label>
-                  <input 
-                    type="time" 
-                    value={formData.closing_time} 
-                    onChange={e => updateFormData('closing_time', e.target.value)} 
+                  <input
+                    type="time"
+                    value={formData.closing_time}
+                    onChange={e => updateFormData('closing_time', e.target.value)}
                     style={inputStyle}
                   />
                 </div>
@@ -393,10 +393,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
               <div>
                 <label style={labelStyle}>Objetivo Mensual (€)</label>
-                <input 
-                  type="number" 
-                  value={formData.monthly_target} 
-                  onChange={e => updateFormData('monthly_target', parseFloat(e.target.value) || 0)} 
+                <input
+                  type="number"
+                  value={formData.monthly_target}
+                  onChange={e => updateFormData('monthly_target', parseFloat(e.target.value) || 0)}
                   style={inputStyle}
                   placeholder="Ej: 25000"
                   min="0"
@@ -408,12 +408,12 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
 
           {/* Error message */}
           {error && (
-            <div style={{ 
-              backgroundColor: '#fef2f2', 
-              border: '1px solid #fecaca', 
-              borderRadius: '8px', 
-              padding: '12px', 
-              marginBottom: '24px' 
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '24px'
             }}>
               <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>
                 ❌ {error}
@@ -422,23 +422,23 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
           )}
 
           {/* Botones */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
             gap: '12px',
             borderTop: '1px solid #e5e7eb',
             paddingTop: '24px'
           }}>
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               disabled={loading}
               style={buttonSecondaryStyle}
             >
               Cancelar
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               style={buttonPrimaryStyle}
             >

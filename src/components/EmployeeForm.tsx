@@ -7,26 +7,28 @@ interface EmployeeFormProps {
   employee?: Employee | null;
   onSave: (employee: Employee) => void;
   onCancel: () => void;
+  availableDepartments?: { id: number; name: string }[];
 }
 
-const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel }) => {
+const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel, availableDepartments = [] }) => {
   const [formData, setFormData] = useState<Partial<Employee>>({
-    nombre: '',
-    apellidos: '',
+    first_name: '',
+    last_name: '',
     email: '',
-    telefono: '',
+    phone: '',
     dni: '',
     center_id: '',
-    departamento: '',
-    cargo: '',
-    numero_cuenta: '',
-    talla_camiseta: 'M',
-    talla_pantalon: '42',
-    rol: 'employee',
-    tipo_contrato: 'Indefinido',
-    jornada: 'Completa',
-    nivel_estudios: 'ESO',
-    activo: true,
+    // departamento: '', // Deprecated in favor of departments array
+    departments: [],
+    position: '',
+    bank_account_number: '',
+    shirt_size: 'M',
+    pant_size: '42',
+    role: 'Empleado',
+    contract_type: 'Indefinido',
+    work_schedule: 'Completa',
+    education_level: 'ESO',
+    is_active: true,
     tiene_contrato_firmado: false,
     tiene_alta_ss: false,
     tiene_formacion_riesgos: false,
@@ -65,14 +67,14 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
 
   const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
-    
+
     console.log('🔍 Validando campos:', {
-      nombre: formData.nombre,
+      first_name: formData.first_name,
       email: formData.email
     });
-    
+
     // Solo validar campos realmente obligatorios
-    if (!formData.nombre?.trim()) newErrors.nombre = 'El nombre es obligatorio';
+    if (!formData.first_name?.trim()) newErrors.first_name = 'El nombre es obligatorio';
     if (!formData.email?.trim()) newErrors.email = 'El email es obligatorio';
 
     // Validar formato de email si está presente
@@ -89,13 +91,13 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
 
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
-    
+
     console.log('📊 Resultado validación:', {
       isValid,
       errorsCount: Object.keys(newErrors).length,
       errors: newErrors
     });
-    
+
     return { isValid, errors: newErrors };
   };
 
@@ -103,11 +105,11 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
     console.log('🔵 handleSave llamado en EmployeeForm');
     console.log('📝 Datos del formulario:', formData);
     console.log('👤 Empleado existente:', employee);
-    
+
     const validation = validateForm();
     console.log('✅ Validación:', validation.isValid ? 'PASÓ' : 'FALLÓ');
     console.log('❌ Errores encontrados:', validation.errors);
-    
+
     if (!validation.isValid) {
       console.log('⚠️ Formulario no válido, abortando...');
       alert('⚠️ Por favor completa todos los campos obligatorios:\n' + Object.values(validation.errors).join('\n'));
@@ -116,38 +118,39 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
 
     setLoading(true);
     console.log('⏳ Preparando datos para guardar...');
-    
+
     try {
       const employeeData: Employee = {
         id: employee?.id || crypto.randomUUID(),
-        nombre: formData.nombre!,
-        apellidos: formData.apellidos!,
+        first_name: formData.first_name!,
+        last_name: formData.last_name!,
         email: formData.email!,
-        telefono: formData.telefono!,
+        phone: formData.phone!,
         dni: formData.dni!,
-        fecha_nacimiento: formData.fecha_nacimiento || new Date(),
-        direccion: formData.direccion || '',
-        ciudad: formData.ciudad || '',
-        codigo_postal: formData.codigo_postal || '',
+        birth_date: formData.birth_date || new Date(),
+        address: formData.address || '',
+        city: formData.city || '',
+        postal_code: formData.postal_code || '',
         center_id: formData.center_id!,
-        fecha_alta: formData.fecha_alta || new Date(),
-        tipo_contrato: formData.tipo_contrato || 'Indefinido',
-        jornada: formData.jornada || 'Completa',
-        salario_bruto_anual: formData.salario_bruto_anual || 0,
-        rol: formData.rol || 'employee',
-        departamento: formData.departamento!,
-        cargo: formData.cargo!,
-        numero_cuenta: formData.numero_cuenta!,
+        hire_date: formData.hire_date || new Date(),
+        contract_type: formData.contract_type || 'Indefinido',
+        work_schedule: formData.work_schedule || 'Completa',
+        gross_annual_salary: formData.gross_annual_salary || 0,
+        role: ((employee?.role as string) === 'admin' ? 'Admin' : employee?.role) || 'Empleado',
+        // departamento: formData.departamento!, // Deprecated
+        departments: formData.departments,
+        position: formData.position!,
+        bank_account_number: formData.bank_account_number!,
         iban: formData.iban,
         banco: formData.banco,
-        nivel_estudios: formData.nivel_estudios || 'ESO',
-        titulacion: formData.titulacion,
-        especialidad: formData.especialidad,
-        talla_camiseta: formData.talla_camiseta || 'M',
-        talla_pantalon: formData.talla_pantalon || '42',
-        talla_chaqueton: formData.talla_chaqueton || 'M',
+        education_level: formData.education_level || 'ESO',
+        degree: formData.degree,
+        specialization: formData.specialization,
+        shirt_size: formData.shirt_size || 'M',
+        pant_size: formData.pant_size || '42',
+        jacket_size: formData.jacket_size || 'M',
         foto_perfil: formData.foto_perfil,
-        activo: formData.activo !== false,
+        is_active: formData.is_active !== false,
         observaciones: formData.observaciones,
         tiene_contrato_firmado: formData.tiene_contrato_firmado || false,
         tiene_alta_ss: formData.tiene_alta_ss || false,
@@ -258,24 +261,24 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Nombre *</label>
                 <input
                   type="text"
-                  value={formData.nombre || ''}
-                  onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                  value={formData.first_name || ''}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                   style={inputStyle}
                   required
                 />
-                {errors.nombre && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.nombre}</div>}
+                {errors.first_name && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.first_name}</div>}
               </div>
-              
+
               <div>
                 <label style={labelStyle}>Apellidos</label>
                 <input
                   type="text"
-                  value={formData.apellidos || ''}
-                  onChange={(e) => setFormData({...formData, apellidos: e.target.value})}
+                  value={formData.last_name || ''}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                   style={inputStyle}
                   required
                 />
-                {errors.apellidos && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.apellidos}</div>}
+                {errors.last_name && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.last_name}</div>}
               </div>
 
               <div>
@@ -283,12 +286,12 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="text"
                   value={formData.dni || ''}
-                  onChange={(e) => setFormData({...formData, dni: e.target.value.toUpperCase()})}
+                  onChange={(e) => setFormData({ ...formData, dni: e.target.value.toUpperCase() })}
                   style={inputStyle}
                   placeholder="12345678A"
                   required
                 />
-                {errors.dni && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.dni}</div>}
+                {errors.dni && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.dni}</div>}
               </div>
 
               <div>
@@ -296,32 +299,32 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="email"
                   value={formData.email || ''}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   style={inputStyle}
                   required
                 />
-                {errors.email && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.email}</div>}
+                {errors.email && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.email}</div>}
               </div>
 
               <div>
                 <label style={labelStyle}>Teléfono</label>
                 <input
                   type="tel"
-                  value={formData.telefono || ''}
-                  onChange={(e) => setFormData({...formData, telefono: e.target.value})}
+                  value={formData.phone || ''}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   style={inputStyle}
                   placeholder="600000000"
                   required
                 />
-                {errors.telefono && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.telefono}</div>}
+                {errors.phone && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.phone}</div>}
               </div>
 
               <div>
                 <label style={labelStyle}>Fecha de Nacimiento</label>
                 <input
                   type="date"
-                  value={formData.fecha_nacimiento ? new Date(formData.fecha_nacimiento).toISOString().split('T')[0] : ''}
-                  onChange={(e) => setFormData({...formData, fecha_nacimiento: new Date(e.target.value)})}
+                  value={formData.birth_date ? new Date(formData.birth_date).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setFormData({ ...formData, birth_date: new Date(e.target.value) })}
                   style={inputStyle}
                 />
               </div>
@@ -330,8 +333,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Dirección Completa</label>
                 <input
                   type="text"
-                  value={formData.direccion || ''}
-                  onChange={(e) => setFormData({...formData, direccion: e.target.value})}
+                  value={formData.address || ''}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   style={inputStyle}
                   placeholder="Calle, número, piso..."
                 />
@@ -341,8 +344,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Ciudad</label>
                 <input
                   type="text"
-                  value={formData.ciudad || ''}
-                  onChange={(e) => setFormData({...formData, ciudad: e.target.value})}
+                  value={formData.city || ''}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   style={inputStyle}
                 />
               </div>
@@ -351,8 +354,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Código Postal</label>
                 <input
                   type="text"
-                  value={formData.codigo_postal || ''}
-                  onChange={(e) => setFormData({...formData, codigo_postal: e.target.value})}
+                  value={formData.postal_code || ''}
+                  onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                   style={inputStyle}
                   placeholder="41001"
                 />
@@ -367,7 +370,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Centro de Trabajo</label>
                 <select
                   value={formData.center_id || ''}
-                  onChange={(e) => setFormData({...formData, center_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, center_id: e.target.value })}
                   style={inputStyle}
                   required
                 >
@@ -377,64 +380,84 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                   <option value="3">Puerto</option>
                   <option value="0">Oficina Central</option>
                 </select>
-                {errors.center_id && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.center_id}</div>}
+                {errors.center_id && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.center_id}</div>}
               </div>
 
               <div>
-                <label style={labelStyle}>Departamento</label>
-                <select
-                  value={formData.departamento || ''}
-                  onChange={(e) => setFormData({...formData, departamento: e.target.value})}
-                  style={inputStyle}
-                  required
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="Dirección">Dirección</option>
-                  <option value="RRHH">RRHH y Procedimientos</option>
-                  <option value="Logística">Logística y Operaciones</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Ventas">Ventas</option>
-                  <option value="Contabilidad">Contabilidad</option>
-                  <option value="Eventos">Eventos</option>
-                  <option value="Online">Online</option>
-                  <option value="Entrenamiento">Entrenamiento</option>
-                  <option value="Recepción">Recepción</option>
-                </select>
-                {errors.departamento && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.departamento}</div>}
+                <label style={labelStyle}>Departamentos</label>
+                <div style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  maxHeight: '150px',
+                  overflowY: 'auto',
+                  backgroundColor: 'white'
+                }}>
+                  {availableDepartments.length > 0 ? (
+                    availableDepartments.map(dept => (
+                      <label key={dept.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.departments?.some(d => d.id === dept.id) || false}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            let newDepartments = [...(formData.departments || [])];
+
+                            if (isChecked) {
+                              newDepartments.push(dept);
+                            } else {
+                              newDepartments = newDepartments.filter(d => d.id !== dept.id);
+                            }
+
+                            setFormData({ ...formData, departments: newDepartments });
+                          }}
+                          style={{ width: '16px', height: '16px', accentColor: '#059669' }}
+                        />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{dept.name}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <div style={{ padding: '8px', color: '#6b7280', fontSize: '14px' }}>
+                      No hay departamentos disponibles.
+                    </div>
+                  )}
+                </div>
+                {errors.departments && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.departments}</div>}
               </div>
 
               <div>
                 <label style={labelStyle}>Cargo</label>
                 <input
                   type="text"
-                  value={formData.cargo || ''}
-                  onChange={(e) => setFormData({...formData, cargo: e.target.value})}
+                  value={formData.position || ''}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   style={inputStyle}
                   placeholder="Ej: Entrenador, Recepcionista..."
                   required
                 />
-                {errors.cargo && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.cargo}</div>}
+                {errors.position && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.position}</div>}
               </div>
 
               <div>
                 <label style={labelStyle}>Rol en el Sistema</label>
                 <select
-                  value={formData.rol || 'employee'}
-                  onChange={(e) => setFormData({...formData, rol: e.target.value as any})}
+                  value={formData.role || 'Empleado'}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                   style={inputStyle}
                   required
                 >
-                  <option value="employee">👤 Empleado de Sala</option>
-                  <option value="center_manager">👔 Encargado de Centro</option>
-                  <option value="manager">👨‍💼 Manager</option>
-                  <option value="admin">⚙️ Administrador</option>
+                  <option value="Empleado">👤 Empleado de Sala</option>
+                  <option value="Encargado">👔 Encargado de Centro</option>
+                  <option value="Encargado">👨‍💼 Manager</option>
+                  <option value="Director">⚙️ Administrador</option>
+                  <option value="Admin">👑 CEO / Superadmin</option>
                   {/* Superadmin solo para Carlos - no se puede crear desde aquí */}
                 </select>
-                {formData.rol === 'superadmin' && (
-                  <div style={{ 
-                    marginTop: '4px', 
-                    padding: '8px', 
-                    backgroundColor: '#fef3c7', 
+                {formData.role === 'Admin' && (
+                  <div style={{
+                    marginTop: '4px',
+                    padding: '8px',
+                    backgroundColor: '#fef3c7',
                     border: '1px solid #fbbf24',
                     borderRadius: '4px',
                     fontSize: '12px',
@@ -449,8 +472,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Fecha de Alta</label>
                 <input
                   type="date"
-                  value={formData.fecha_alta ? new Date(formData.fecha_alta).toISOString().split('T')[0] : ''}
-                  onChange={(e) => setFormData({...formData, fecha_alta: new Date(e.target.value)})}
+                  value={formData.hire_date ? new Date(formData.hire_date).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setFormData({ ...formData, hire_date: new Date(e.target.value) })}
                   style={inputStyle}
                   required
                 />
@@ -459,8 +482,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               <div>
                 <label style={labelStyle}>Tipo de Contrato</label>
                 <select
-                  value={formData.tipo_contrato || ''}
-                  onChange={(e) => setFormData({...formData, tipo_contrato: e.target.value as any})}
+                  value={formData.contract_type || ''}
+                  onChange={(e) => setFormData({ ...formData, contract_type: e.target.value as any })}
                   style={inputStyle}
                   required
                 >
@@ -475,13 +498,14 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               <div>
                 <label style={labelStyle}>Jornada</label>
                 <select
-                  value={formData.jornada || ''}
-                  onChange={(e) => setFormData({...formData, jornada: e.target.value as any})}
+                  value={formData.work_schedule || ''}
+                  onChange={(e) => setFormData({ ...formData, work_schedule: e.target.value as any })}
                   style={inputStyle}
                   required
                 >
                   <option value="">Seleccionar...</option>
                   <option value="Completa">Jornada Completa (40h)</option>
+                  <option value="Autónomo">Autónomo</option>
                   <option value="30h">Parcial (30h)</option>
                   <option value="20h">Parcial (20h)</option>
                   <option value="Parcial">Por horas</option>
@@ -492,8 +516,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Salario Bruto Anual</label>
                 <input
                   type="number"
-                  value={formData.salario_bruto_anual || ''}
-                  onChange={(e) => setFormData({...formData, salario_bruto_anual: parseFloat(e.target.value) || 0})}
+                  value={formData.gross_annual_salary || ''}
+                  onChange={(e) => setFormData({ ...formData, gross_annual_salary: parseFloat(e.target.value) || 0 })}
                   style={inputStyle}
                   placeholder="18000"
                   required
@@ -509,13 +533,13 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>IBAN / Número de Cuenta</label>
                 <input
                   type="text"
-                  value={formData.numero_cuenta || ''}
-                  onChange={(e) => setFormData({...formData, numero_cuenta: e.target.value})}
+                  value={formData.bank_account_number || ''}
+                  onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })}
                   style={inputStyle}
                   placeholder="ES00 0000 0000 0000 0000 0000"
                   required
                 />
-                {errors.numero_cuenta && <div style={{color: '#ef4444', fontSize: '12px'}}>{errors.numero_cuenta}</div>}
+                {errors.bank_account_number && <div style={{ color: '#ef4444', fontSize: '12px' }}>{errors.bank_account_number}</div>}
               </div>
 
               <div>
@@ -523,7 +547,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="text"
                   value={formData.banco || ''}
-                  onChange={(e) => setFormData({...formData, banco: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
                   style={inputStyle}
                   placeholder="Ej: Santander, BBVA..."
                 />
@@ -537,8 +561,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               <div>
                 <label style={labelStyle}>Nivel de Estudios</label>
                 <select
-                  value={formData.nivel_estudios || ''}
-                  onChange={(e) => setFormData({...formData, nivel_estudios: e.target.value as any})}
+                  value={formData.education_level || ''}
+                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value as any })}
                   style={inputStyle}
                 >
                   <option value="">Seleccionar...</option>
@@ -556,8 +580,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Titulación</label>
                 <input
                   type="text"
-                  value={formData.titulacion || ''}
-                  onChange={(e) => setFormData({...formData, titulacion: e.target.value})}
+                  value={formData.degree || ''}
+                  onChange={(e) => setFormData({ ...formData, degree: e.target.value })}
                   style={inputStyle}
                   placeholder="Ej: TAFAD, CAFYD..."
                 />
@@ -566,9 +590,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>Especialidad / Certificaciones</label>
                 <textarea
-                  value={formData.especialidad || ''}
-                  onChange={(e) => setFormData({...formData, especialidad: e.target.value})}
-                  style={{...inputStyle, minHeight: '80px'}}
+                  value={formData.specialization || ''}
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                  style={{ ...inputStyle, minHeight: '80px' }}
                   placeholder="Certificaciones deportivas, cursos relevantes..."
                 />
               </div>
@@ -583,7 +607,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>🧥 Chándal</label>
                 <select
                   value={formData.vestuario_chandal || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_chandal: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_chandal: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -598,7 +622,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>🧥 Sudadera Frío</label>
                 <select
                   value={formData.vestuario_sudadera_frio || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_sudadera_frio: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_sudadera_frio: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -613,7 +637,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>🦺 Chaleco Frío</label>
                 <select
                   value={formData.vestuario_chaleco_frio || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_chaleco_frio: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_chaleco_frio: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -628,7 +652,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>🩳 Pantalón Corto</label>
                 <select
                   value={formData.vestuario_pantalon_corto || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_pantalon_corto: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_pantalon_corto: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -643,7 +667,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>👕 Polo Verde</label>
                 <select
                   value={formData.vestuario_polo_verde || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_polo_verde: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_polo_verde: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -658,7 +682,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>💪 Camiseta Entrenamiento Personal</label>
                 <select
                   value={formData.vestuario_camiseta_entrenamiento || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_camiseta_entrenamiento: e.target.value as 'S' | 'M' | 'L' | 'XL'})}
+                  onChange={(e) => setFormData({ ...formData, vestuario_camiseta_entrenamiento: e.target.value as 'S' | 'M' | 'L' | 'XL' })}
                   style={inputStyle}
                 >
                   <option value="">Sin asignar</option>
@@ -673,8 +697,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>📝 Observaciones del Vestuario</label>
                 <textarea
                   value={formData.vestuario_observaciones || ''}
-                  onChange={(e) => setFormData({...formData, vestuario_observaciones: e.target.value})}
-                  style={{...inputStyle, minHeight: '80px', resize: 'vertical'}}
+                  onChange={(e) => setFormData({ ...formData, vestuario_observaciones: e.target.value })}
+                  style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
                   placeholder="Observaciones sobre el vestuario asignado..."
                 />
               </div>
@@ -688,7 +712,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="checkbox"
                   checked={formData.tiene_contrato_firmado || false}
-                  onChange={(e) => setFormData({...formData, tiene_contrato_firmado: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, tiene_contrato_firmado: e.target.checked })}
                   style={{ width: '18px', height: '18px' }}
                 />
                 <span>Contrato firmado</span>
@@ -698,7 +722,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="checkbox"
                   checked={formData.tiene_alta_ss || false}
-                  onChange={(e) => setFormData({...formData, tiene_alta_ss: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, tiene_alta_ss: e.target.checked })}
                   style={{ width: '18px', height: '18px' }}
                 />
                 <span>Alta en Seguridad Social</span>
@@ -708,7 +732,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <input
                   type="checkbox"
                   checked={formData.tiene_formacion_riesgos || false}
-                  onChange={(e) => setFormData({...formData, tiene_formacion_riesgos: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, tiene_formacion_riesgos: e.target.checked })}
                   style={{ width: '18px', height: '18px' }}
                 />
                 <span>Formación en Prevención de Riesgos Laborales</span>
@@ -718,8 +742,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
                 <label style={labelStyle}>Observaciones</label>
                 <textarea
                   value={formData.observaciones || ''}
-                  onChange={(e) => setFormData({...formData, observaciones: e.target.value})}
-                  style={{...inputStyle, minHeight: '100px'}}
+                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                  style={{ ...inputStyle, minHeight: '100px' }}
                   placeholder="Notas adicionales sobre el empleado..."
                 />
               </div>
@@ -747,7 +771,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel 
           >
             Cancelar
           </button>
-          
+
           <button
             onClick={() => {
               console.log('🖱️ Click en botón Actualizar/Crear');

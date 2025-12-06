@@ -1,47 +1,49 @@
 // ============ INTERFAZ COMPLETA DE EMPLEADO - TODOS LOS CAMPOS DE LA JUNGLA ============
 
 export interface Employee {
-  // Datos Personales
+  // Personal Data
   id: string;
-  nombre: string;
-  apellidos: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  telefono: string;
+  phone: string;
   dni: string;
-  fecha_nacimiento: Date;
-  direccion: string;
-  ciudad: string;
-  codigo_postal: string;
-  
-  // Datos Laborales
+  birth_date: Date;
+  address: string;
+  city: string;
+  postal_code: string;
+
+  // Work Data
   center_id: string;
-  centro_nombre?: string;
-  fecha_alta: Date;
-  fecha_baja?: Date;
-  tipo_contrato: 'Indefinido' | 'Temporal' | 'Prácticas' | 'Media Jornada' | 'Jornada Completa';
-  jornada: 'Completa' | 'Parcial' | '20h' | '30h' | '40h';
-  salario_bruto_anual: number;
-  salario_neto_mensual?: number;
-  rol: 'employee' | 'manager' | 'admin' | 'superadmin';
-  departamento: string;
-  cargo: string;
-  
-  // Datos Bancarios
-  numero_cuenta: string;
+  centro_nombre?: string; // Kept as is if it's a joined field, or rename if derived
+  hire_date: Date;
+  termination_date?: Date;
+  contract_type: 'Indefinido' | 'Temporal' | 'Prácticas' | 'Media Jornada' | 'Jornada Completa' | 'Autónomo';
+  work_schedule: 'Completa' | 'Parcial' | '20h' | '30h' | '40h';
+  gross_annual_salary: number;
+  salario_neto_mensual?: number; // Optional derived
+  role: UserRole;
+  department_id?: number; // Legacy, kept for backward compatibility
+  departamento?: string; // Legacy
+  departments?: { id: number; name: string }[]; // New multi-department support
+  position: string;
+
+  // Banking Data
+  bank_account_number: string;
   iban?: string;
   banco?: string;
-  
-  // Datos Académicos
-  nivel_estudios: 'ESO' | 'Bachillerato' | 'FP Medio' | 'FP Superior' | 'Universitario' | 'Máster' | 'Doctorado';
-  titulacion?: string;
-  especialidad?: string;
-  
-  // Uniformes
-  talla_camiseta: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
-  talla_pantalon: string; // 36, 38, 40, 42, 44, 46, 48, 50
-  talla_chaqueton: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
-  
-  // Vestuario La Jungla - Tallas asignadas
+
+  // Academic Data
+  education_level: 'ESO' | 'Bachillerato' | 'FP Medio' | 'FP Superior' | 'Universitario' | 'Máster' | 'Doctorado';
+  degree?: string;
+  specialization?: string;
+
+  // Uniforms
+  shirt_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+  pant_size: string; // 36, 38, 40, 42, 44, 46, 48, 50
+  jacket_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+
+  // Vestuario La Jungla - Tallas asignadas (Keep these as they might be specific app logic not in DB or JSON fields)
   vestuario_chandal?: 'S' | 'M' | 'L' | 'XL';
   vestuario_sudadera_frio?: 'S' | 'M' | 'L' | 'XL';
   vestuario_chaleco_frio?: 'S' | 'M' | 'L' | 'XL';
@@ -50,17 +52,17 @@ export interface Employee {
   vestuario_camiseta_entrenamiento?: 'S' | 'M' | 'L' | 'XL';
   vestuario_asignado_fecha?: Date;
   vestuario_observaciones?: string;
-  
-  // Otros
-  foto_perfil?: string;
-  activo: boolean;
-  observaciones?: string;
-  
-  // Documentos
-  tiene_contrato_firmado: boolean;
-  tiene_alta_ss: boolean;
-  tiene_formacion_riesgos: boolean;
-  
+
+  // Other
+  foto_perfil?: string; // profile_picture? Let's check if this was in DB. DB has no photo column in the list I saw, maybe it's storage.
+  is_active: boolean;
+  observaciones?: string; // observations?
+
+  // Documents
+  tiene_contrato_firmado: boolean; // has_signed_contract?
+  tiene_alta_ss: boolean; // has_social_security?
+  tiene_formacion_riesgos: boolean; // has_risk_training?
+
   // Timestamps
   created_at: Date;
   updated_at: Date;
@@ -104,16 +106,19 @@ export interface Payroll {
 
 // ============ CONSTANTES Y ETIQUETAS ============
 
+export type UserRole = 'Admin' | 'Director' | 'Encargado' | 'Empleado';
+
 export const DEPARTAMENTOS = [
   'Dirección',
-  'RRHH y Procedimientos', 
-  'Logística y Operaciones',
+  'RRHH',
+  'Logística',
   'Marketing',
   'Ventas',
   'Contabilidad',
   'Eventos',
   'Online',
   'Entrenamiento',
+  'Academy',
   'Recepción'
 ] as const;
 
@@ -129,17 +134,18 @@ export const TALLAS_PANTALON = ['36', '38', '40', '42', '44', '46', '48', '50', 
 
 export const TIPOS_CONTRATO = [
   'Indefinido',
-  'Temporal', 
+  'Temporal',
   'Prácticas',
   'Media Jornada',
-  'Jornada Completa'
+  'Jornada Completa',
+  'Autónomo'
 ] as const;
 
 export const JORNADAS = [
   'Completa',
   'Parcial',
   '20h',
-  '30h', 
+  '30h',
   '40h'
 ] as const;
 
@@ -154,8 +160,8 @@ export const NIVELES_ESTUDIOS = [
 ] as const;
 
 export const ROLES_SISTEMA = [
-  'employee',
-  'manager', 
-  'admin',
-  'superadmin'
+  'Empleado',
+  'Encargado',
+  'Director',
+  'Admin'
 ] as const;

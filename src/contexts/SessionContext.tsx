@@ -7,12 +7,15 @@ import { supabase } from '../lib/supabase';
 interface Employee {
   id?: string;
   user_id?: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone?: string;
   dni?: string;
   birth_date?: string;
   address?: string;
+  city?: string;
+  postal_code?: string;
   role: string;
   center_id?: string;
   position?: string;
@@ -26,21 +29,6 @@ interface Employee {
   centerName?: string;
   departmentName?: string;
   created_at?: string;
-  // Campos adicionales de compatibilidad
-  identificacion?: string;
-  nombre?: string;
-  correo_electronico?: string;
-  telefono?: string;
-  DNI?: string;
-  fecha_de_nacimiento?: string;
-  DIRECCION?: string;
-  id_del_centro?: string;
-  posicion?: string;
-  fecha_de_contratacion?: string;
-  tipo_de_contrato?: string;
-  imagen_de_perfil?: string;
-  esta_activo?: boolean;
-  id_departamento?: string;
 }
 
 interface DashboardConfig {
@@ -109,18 +97,43 @@ const ROLE_MAPPING: Record<string, string> = {
   'employee': 'employee'
 };
 
-// Lista de usuarios válidos de Supabase Authentication
 const VALID_USERS = [
-  'carlossuarezparra@gmail.com',
+  // Directivos
+  'carlossuarezparra@gmail.com',    // CEO
+  'beni.jungla@gmail.com',          // Director Logística
+  'lajunglacentral@gmail.com',      // Director RRHH (Vicente)
+  'danivf1991@gmail.com',           // Director Academy (Dani)
+
+  // Otros emails de marca
   'lajunglaworkoutmk@gmail.com',
   'lajunglaweeventos@gmail.com',
   'pedidoslajungla@gmail.com',
-  'beni.jungla@gmail.com',
-  'lajunglacentral@gmail.com',
   'rrhhlajungla@gmail.com',
   'lajunglawonline@gmail.com',
-  'franciscogiraldezmorales@gmail.com',
-  'danivf1991@gmail.com'
+
+  // SEVILLA
+  'franciscogiraldezmorales@gmail.com',  // Encargado
+  'salva.cabrera.29@gmail.com',          // Encargado
+  'surianjavi@gmail.com',                // Empleado
+  'sanfri13@gmail.com',                  // Empleado
+  'jesus58bm@gmail.com',                 // Empleado
+  'jesus2003.betis@gmail.com',           // Empleado + Online
+
+  // JEREZ
+  'ivan.2196@hotmail.com',               // Encargado
+  'pablo.benitez.pm@gmail.com',          // Encargado
+  'jlrodri1996@gmail.com',               // Empleado
+  'festepa02@gmail.com',                 // Empleado
+  'mariocruzroja2003@gmail.com',         // Empleado
+  'antoniodurancorrales@gmail.com',      // Empleado + Eventos
+
+  // PUERTO
+  'guillermo.ba24@gmail.com',            // Encargado
+  'adriyjmenez@gmail.com',               // Encargado
+  'josanfig95@gmail.com',                // Empleado
+  'manuelbellamerino@gmail.com',         // Empleado
+  'padillacruzjonathan@gmail.com',       // Empleado
+  'andujarvegajesus@gmail.com'           // Empleado
 ];
 
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -156,28 +169,48 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (employeeData && !dbError) {
         // Empleado encontrado en la BD
+        // 2. Obtener departamentos asignados (Multi-departamento)
+        const { data: empDepartments } = await supabase
+          .from('employee_departments')
+          .select('department_id, departments(id, name)')
+          .eq('employee_id', employeeData.id);
+
+        const departmentsList = empDepartments?.map((d: any) => ({
+          id: d.departments.id,
+          name: d.departments.name
+        })) || [];
+
         console.log('✅ Empleado encontrado en BD:', employeeData);
+        console.log('🏢 Departamentos asignados:', departmentsList);
         roleToUse = employeeData.role || 'employee';
+
+        // Force Superadmin for CEO regardless of DB role (since DB enum is limited to 'Admin')
+        if (email === 'carlossuarezparra@gmail.com') {
+          roleToUse = 'CEO';
+        }
 
         basicEmployee = {
           id: employeeData.id?.toString() || userId,
           user_id: userId,
-          name: employeeData.name || email.split('@')[0],
+          first_name: employeeData.first_name || email.split('@')[0],
+          last_name: employeeData.last_name || '',
           email: email,
-          role: roleToUse,
+          phone: employeeData.phone,
+          dni: employeeData.dni,
+          birth_date: employeeData.birth_date,
+          position: employeeData.position,
+          hire_date: employeeData.hire_date,
+          contract_type: employeeData.contract_type,
           center_id: employeeData.center_id?.toString(),
           is_active: true,
           workType: employeeData.center_id ? 'centro' : 'marca',
-          profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.name || email.split('@')[0])}&background=059669&color=fff`,
-          phone: employeeData.phone,
-          dni: employeeData.dni,
-          position: employeeData.position,
-          hire_date: employeeData.hire_date,
-          // Campos de compatibilidad
-          nombre: employeeData.name || email.split('@')[0],
-          correo_electronico: email,
-          esta_activo: true,
-          imagen_de_perfil: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.name || email.split('@')[0])}&background=059669&color=fff`
+          profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.first_name || email.split('@')[0])}&background=059669&color=fff`,
+          role: roleToUse as string, // Changed to string as UserRole is not defined here
+          departments: departmentsList,
+          // Mapeo de campos de BD a la interfaz Employee
+          address: employeeData.address,
+          city: employeeData.city,
+          postal_code: employeeData.postal_code
         };
       } else {
         // Fallback: crear empleado básico si no está en BD
@@ -192,16 +225,13 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         basicEmployee = {
           id: userId,
           user_id: userId,
-          name: email.split('@')[0],
+          first_name: email.split('@')[0],
+          last_name: '',
           email: email,
           role: roleToUse,
           is_active: true,
           workType: 'marca',
-          profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`,
-          nombre: email.split('@')[0],
-          correo_electronico: email,
-          esta_activo: true,
-          imagen_de_perfil: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
+          profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
         };
       }
 

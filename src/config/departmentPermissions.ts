@@ -119,6 +119,27 @@ export const DEPARTMENTS_CONFIG: Record<string, Department> = {
     icon: MoreHorizontal,
     color: '#6b7280',
     description: 'Reuniones diversas'
+  },
+  centro_sevilla: {
+    id: 'centro_sevilla',
+    name: 'Centro Sevilla',
+    icon: Building2,
+    color: '#059669',
+    description: 'Reuniones del Centro Sevilla'
+  },
+  centro_jerez: {
+    id: 'centro_jerez',
+    name: 'Centro Jerez',
+    icon: Building2,
+    color: '#3b82f6',
+    description: 'Reuniones del Centro Jerez'
+  },
+  centro_puerto: {
+    id: 'centro_puerto',
+    name: 'Centro Puerto',
+    icon: Building2,
+    color: '#8b5cf6',
+    description: 'Reuniones del Centro Puerto'
   }
 };
 
@@ -136,6 +157,13 @@ export const USER_DEPARTMENT_ACCESS: Record<string, UserDepartmentAccess> = {
     name: 'Benito Morales',
     role: 'Director Logística, Mantenimiento, Contabilidad y Ventas',
     departments: ['logistica', 'mantenimiento', 'contabilidad', 'ventas', 'centros_operativos'],
+    isAdmin: false
+  },
+  'lajunglacentral@gmail.com': {
+    email: 'lajunglacentral@gmail.com',
+    name: 'Vicente Benítez',
+    role: 'Director RRHH, Online y Gestión de Centros',
+    departments: ['direccion', 'rrhh', 'online', 'centros_operativos', 'centro_sevilla', 'centro_jerez', 'centro_puerto'],
     isAdmin: false
   },
   'vicente@jungla.com': {
@@ -225,8 +253,15 @@ export const USER_DEPARTMENT_ACCESS: Record<string, UserDepartmentAccess> = {
   'danivf1991@gmail.com': {
     email: 'danivf1991@gmail.com',
     name: 'Dani Valverde',
-    role: 'Director Academy',
-    departments: ['academy'],
+    role: 'Director Academy y Centro Sevilla',
+    departments: ['academy', 'centro_sevilla'],
+    isAdmin: false
+  },
+  'jesus2003.betis@gmail.com': {
+    email: 'jesus2003.betis@gmail.com',
+    name: 'Jesús González',
+    role: 'Responsable Online',
+    departments: ['online'],
     isAdmin: false
   }
 };

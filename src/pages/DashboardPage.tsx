@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getWeek, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { 
+import {
   Plus,
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  List, 
-  Grid3X3, 
-  CheckCircle, 
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Grid3X3,
+  CheckCircle,
   Bell,
   History,
   Package,
@@ -30,7 +30,7 @@ import { LogisticsMetrics } from '../components/logistics/LogisticsMetrics';
 import MaintenanceModule from '../components/MaintenanceModule';
 import TaskCompletionModal from '../components/meetings/TaskCompletionModal';
 import { IncidentVerificationNotification } from '../components/incidents/IncidentVerificationNotification';
-import UserManagement from '../components/UserManagement';
+import { UserManagementSystem } from '../components/admin/UserManagementSystem';
 import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
 import IncidentManagementModal from '../components/incidents/IncidentManagementModal';
 import { checklistIncidentService } from '../services/checklistIncidentService';
@@ -239,7 +239,7 @@ const DashboardPage: React.FC = () => {
         // Esto permite que cada usuario vea solo las reuniones donde participa
         const userEmail = employee?.email || 'carlossuarezparra@gmail.com';
         const meetingsResult = await loadMeetingsFromSupabase(userEmail);
-        
+
         // Cargar tareas pendientes del usuario
         const { data: tasksData, error: tasksError } = await supabase
           .from('tareas')
@@ -371,10 +371,10 @@ const DashboardPage: React.FC = () => {
         try {
           const pendingIncidents = await checklistIncidentService.getPendingIncidents();
           console.log('🚨 Incidencias encontradas:', pendingIncidents);
-          
+
           if (pendingIncidents && pendingIncidents.length > 0) {
             console.log(`🚨 Encontradas ${pendingIncidents.length} incidencias pendientes`);
-            
+
             // Agrupar por departamento
             const incidentsByDept = pendingIncidents.reduce((acc: any, incident: any) => {
               const dept = incident.department || 'General';
@@ -388,21 +388,21 @@ const DashboardPage: React.FC = () => {
               const incidentList = incidents as any[];
               const titles = incidentList.slice(0, 2).map((inc: any) => inc.title.replace('Incidencia: ', '')).join(', ');
               const remaining = incidentList.length > 2 ? ` y ${incidentList.length - 2} más` : '';
-              
+
               // Solo mostrar incidencias relevantes para el usuario actual
               const isVicente = employee?.email === 'lajunglacentral@gmail.com';
               const isBeni = employee?.email === 'beni.jungla@gmail.com';
-              
+
               console.log('🚨 Evaluando incidencia:', dept, 'para usuario:', employee?.email);
               console.log('🚨 Es Vicente:', isVicente, 'Es Beni:', isBeni);
-              
-              const shouldShowIncident = 
+
+              const shouldShowIncident =
                 (isBeni && (dept === 'Mantenimiento' || dept === 'Logística')) || // Beni ve Mantenimiento y Logística
                 (isVicente && (dept === 'Personal' || dept === 'Atención al Cliente')) || // Vicente ve Personal y Clientes
                 (userRole === 'superadmin'); // CEO ve todo
-              
+
               console.log('🚨 Mostrar incidencia:', shouldShowIncident);
-              
+
               if (shouldShowIncident) {
                 newAlerts.push({
                   id: `incidents-${dept.toLowerCase()}`,
@@ -413,12 +413,12 @@ const DashboardPage: React.FC = () => {
                   createdAt: incidentList[0].created_at || now,
                   isRead: false,
                   department: dept,
-                  actionUrl: dept === 'Mantenimiento' ? '/maintenance' : 
-                           dept === 'Logística' ? '/logistics' :
-                           dept === 'Personal' ? '/hr-management' : '/incidents',
-                  moduleId: dept === 'Mantenimiento' ? 'maintenance' : 
-                           dept === 'Logística' ? 'logistics' :
-                           dept === 'Personal' ? 'hr' : 'incidents'
+                  actionUrl: dept === 'Mantenimiento' ? '/maintenance' :
+                    dept === 'Logística' ? '/logistics' :
+                      dept === 'Personal' ? '/hr-management' : '/incidents',
+                  moduleId: dept === 'Mantenimiento' ? 'maintenance' :
+                    dept === 'Logística' ? 'logistics' :
+                      dept === 'Personal' ? 'hr' : 'incidents'
                 });
               }
             });
@@ -438,7 +438,7 @@ const DashboardPage: React.FC = () => {
 
         if (centerEmployees && centerEmployees.length > 0) {
           const employeeIds = centerEmployees.map((emp: any) => emp.id);
-          
+
           const { data: vacationRequests } = await supabase
             .from('vacation_requests')
             .select('*')
@@ -468,23 +468,23 @@ const DashboardPage: React.FC = () => {
         console.log('👑 CEO - Verificando incidencias vencidas...');
         try {
           const overdueIncidents = await checklistIncidentService.getOverdueIncidents();
-          
+
           if (overdueIncidents && overdueIncidents.length > 0) {
             console.log(`⏰ ${overdueIncidents.length} incidencias vencidas encontradas`);
-            
+
             // Agrupar por prioridad
             const critical = overdueIncidents.filter(i => i.priority === 'critica');
             const high = overdueIncidents.filter(i => i.priority === 'alta');
             const medium = overdueIncidents.filter(i => i.priority === 'media');
             const low = overdueIncidents.filter(i => i.priority === 'baja');
-            
+
             let description = '';
             if (critical.length > 0) description += `${critical.length} crítica${critical.length > 1 ? 's' : ''}, `;
             if (high.length > 0) description += `${high.length} alta${high.length > 1 ? 's' : ''}, `;
             if (medium.length > 0) description += `${medium.length} media${medium.length > 1 ? 's' : ''}, `;
             if (low.length > 0) description += `${low.length} baja${low.length > 1 ? 's' : ''}`;
             description = description.replace(/, $/, ''); // Quitar última coma
-            
+
             newAlerts.push({
               id: 'overdue-incidents',
               title: `⚠️ ${overdueIncidents.length} Incidencia${overdueIncidents.length > 1 ? 's' : ''} Vencida${overdueIncidents.length > 1 ? 's' : ''}`,
@@ -498,12 +498,12 @@ const DashboardPage: React.FC = () => {
               moduleId: 'incidents'
             });
           }
-          
+
           // Verificar incidencias próximas a vencer
           const nearDeadline = await checklistIncidentService.getIncidentsNearDeadline();
           if (nearDeadline && nearDeadline.length > 0) {
             console.log(`⚠️ ${nearDeadline.length} incidencias próximas a vencer`);
-            
+
             newAlerts.push({
               id: 'near-deadline-incidents',
               title: `⏰ ${nearDeadline.length} Incidencia${nearDeadline.length > 1 ? 's' : ''} Próxima${nearDeadline.length > 1 ? 's' : ''} a Vencer`,
@@ -527,11 +527,11 @@ const DashboardPage: React.FC = () => {
         console.log('📧 Cargando notificaciones de tareas para:', employee.email);
         try {
           const notificationsResult = await getUserNotifications(employee.email, true); // Solo no leídas
-          
+
           if (notificationsResult.success && notificationsResult.notifications) {
             const taskNotifications = notificationsResult.notifications;
             console.log(`📧 Encontradas ${taskNotifications.length} notificaciones de tareas`);
-            
+
             // Convertir notificaciones de tareas a alertas
             taskNotifications.forEach((notification: any) => {
               newAlerts.push({
@@ -595,7 +595,7 @@ const DashboardPage: React.FC = () => {
     const end = endOfMonth(selectedDate);
     const startWeek = startOfWeek(start, { locale: es });
     const endWeek = startOfWeek(addDays(end, 6), { locale: es });
-    
+
     return eachDayOfInterval({ start: startWeek, end: addDays(endWeek, 6) });
   };
 
@@ -615,7 +615,7 @@ const DashboardPage: React.FC = () => {
   // Manejar guardado de tarea
   const handleSaveTask = async (task: Task) => {
     setLoading(true);
-    
+
     try {
       // Si es una reunión, guardar en Supabase
       if (task.category === 'meeting') {
@@ -674,13 +674,13 @@ const DashboardPage: React.FC = () => {
     const weekDays = getWeekDays();
     const weekStart = format(weekDays[0], 'dd/MM', { locale: es });
     const weekEnd = format(weekDays[4], 'dd/MM', { locale: es });
-    
+
     return (
       <div className="calendar-container">
         {/* Header de la semana con navegación */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           padding: '16px 20px',
           backgroundColor: 'white',
@@ -690,10 +690,10 @@ const DashboardPage: React.FC = () => {
             <h2 style={{ margin: 0, color: '#111827', fontSize: '18px', fontWeight: '600' }}>
               Semana Laboral: {weekStart} - {weekEnd}
             </h2>
-            <span style={{ 
-              backgroundColor: '#f3f4f6', 
-              color: '#6b7280', 
-              padding: '4px 8px', 
+            <span style={{
+              backgroundColor: '#f3f4f6',
+              color: '#6b7280',
+              padding: '4px 8px',
               borderRadius: '4px',
               fontSize: '12px',
               fontWeight: '500'
@@ -701,7 +701,7 @@ const DashboardPage: React.FC = () => {
               {format(new Date(), 'MMMM yyyy', { locale: es })}
             </span>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={() => setSelectedDate(addDays(selectedDate, -7))}
@@ -720,7 +720,7 @@ const DashboardPage: React.FC = () => {
               <ChevronLeft size={16} />
               Anterior
             </button>
-            
+
             <button
               onClick={() => setSelectedDate(new Date())}
               style={{
@@ -736,7 +736,7 @@ const DashboardPage: React.FC = () => {
             >
               Hoy
             </button>
-            
+
             <button
               onClick={() => setSelectedDate(addDays(selectedDate, 7))}
               style={{
@@ -765,14 +765,14 @@ const DashboardPage: React.FC = () => {
             const dayName = format(day, 'EEEE', { locale: es });
             const dayNumber = format(day, 'd');
             const monthName = format(day, 'MMM', { locale: es });
-            
+
             return (
               <div key={index} className="day-column">
-                <div className="day-header" style={{ 
+                <div className="day-header" style={{
                   backgroundColor: isToday ? '#f0f9ff' : '#f8f9fa',
                   borderBottom: isToday ? '2px solid #059669' : '1px solid #eee'
                 }}>
-                  <div className="day-name" style={{ 
+                  <div className="day-name" style={{
                     color: isToday ? '#059669' : '#6b7280',
                     fontWeight: isToday ? '600' : '500'
                   }}>
@@ -784,25 +784,25 @@ const DashboardPage: React.FC = () => {
                   }}>
                     {dayNumber}
                   </div>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#9ca3af', 
+                  <div style={{
+                    fontSize: '11px',
+                    color: '#9ca3af',
                     marginTop: '2px',
                     textTransform: 'uppercase'
                   }}>
                     {monthName}
                   </div>
                 </div>
-                
-                <div className="day-events" style={{ 
+
+                <div className="day-events" style={{
                   padding: '8px',
                   minHeight: '300px',
                   backgroundColor: isToday ? '#fefffe' : 'white'
                 }}>
                   {dayTasks.length === 0 ? (
-                    <div style={{ 
-                      textAlign: 'center', 
-                      color: '#9ca3af', 
+                    <div style={{
+                      textAlign: 'center',
+                      color: '#9ca3af',
                       fontSize: '13px',
                       marginTop: '20px',
                       fontStyle: 'italic'
@@ -811,8 +811,8 @@ const DashboardPage: React.FC = () => {
                     </div>
                   ) : (
                     dayTasks.map(task => (
-                      <div 
-                        key={task.id} 
+                      <div
+                        key={task.id}
                         className={`event ${task.category} ${task.priority}`}
                         onClick={() => {
                           if (task.category === 'task') {
@@ -834,9 +834,9 @@ const DashboardPage: React.FC = () => {
                           cursor: 'pointer',
                           border: '1px solid #e5e7eb',
                           // 🎨 COLORES: Amarillo para reuniones, Rojo para tareas con deadline
-                          backgroundColor: task.category === 'meeting' 
+                          backgroundColor: task.category === 'meeting'
                             ? '#fef3c7' // Amarillo para reuniones
-                            : task.endTime 
+                            : task.endTime
                               ? '#fee2e2' // Rojo claro para tareas con hora de fin (deadline)
                               : '#dbeafe', // Azul claro para tareas sin deadline
                           transition: 'all 0.2s ease',
@@ -851,9 +851,9 @@ const DashboardPage: React.FC = () => {
                           e.currentTarget.style.boxShadow = 'none';
                         }}
                       >
-                        <div className="event-time" style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        <div className="event-time" style={{
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '4px',
                           fontSize: '12px',
                           color: '#6b7280',
@@ -863,7 +863,7 @@ const DashboardPage: React.FC = () => {
                           {task.startTime}
                           {task.endTime && ` - ${task.endTime}`}
                         </div>
-                        <div className="event-title" style={{ 
+                        <div className="event-title" style={{
                           fontWeight: '500',
                           fontSize: '13px',
                           color: '#111827',
@@ -872,9 +872,9 @@ const DashboardPage: React.FC = () => {
                           {task.title}
                         </div>
                         {task.meetingType && (
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: '4px',
                             fontSize: '11px',
                             color: '#059669'
@@ -884,7 +884,7 @@ const DashboardPage: React.FC = () => {
                           </div>
                         )}
                         {task.priority === 'high' && (
-                          <div style={{ 
+                          <div style={{
                             position: 'absolute',
                             top: '4px',
                             right: '4px',
@@ -897,11 +897,11 @@ const DashboardPage: React.FC = () => {
                       </div>
                     ))
                   )}
-                  
+
                   {/* Botón para añadir evento rápido */}
                   <button
                     onClick={() => {
-                      setNewTask({ 
+                      setNewTask({
                         startDate: format(day, 'yyyy-MM-dd'),
                         startTime: '09:00',
                         endTime: '10:00',
@@ -952,25 +952,25 @@ const DashboardPage: React.FC = () => {
   const renderMonthView = () => {
     const weeks = getWeeksInMonth();
     const monthName = format(selectedDate, 'MMMM yyyy', { locale: es });
-    
+
     return (
       <div className="calendar-container">
         <div className="month-header">
           <h2>{monthName}</h2>
           <div className="month-navigation">
-            <button 
+            <button
               className="btn btn-secondary"
               onClick={() => setSelectedDate(addDays(selectedDate, -30))}
             >
               ← Anterior
             </button>
-            <button 
+            <button
               className="btn btn-secondary"
               onClick={() => setSelectedDate(new Date())}
             >
               Hoy
             </button>
-            <button 
+            <button
               className="btn btn-secondary"
               onClick={() => setSelectedDate(addDays(selectedDate, 30))}
             >
@@ -978,7 +978,7 @@ const DashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="month-grid">
           {/* Header con días de la semana */}
           <div className="month-weekdays">
@@ -988,7 +988,7 @@ const DashboardPage: React.FC = () => {
               </div>
             ))}
           </div>
-          
+
           {/* Semanas del mes */}
           <div className="month-weeks">
             {weeks.map((week, weekIndex) => (
@@ -997,10 +997,10 @@ const DashboardPage: React.FC = () => {
                   const dayTasks = getTasksForDay(day);
                   const isCurrentMonthDay = isCurrentMonth(day);
                   const isDayToday = isToday(day);
-                  
+
                   return (
-                    <div 
-                      key={dayIndex} 
+                    <div
+                      key={dayIndex}
                       className={`month-day ${isCurrentMonthDay ? 'current-month' : 'other-month'} ${isDayToday ? 'today' : ''}`}
                       onClick={() => {
                         setSelectedDate(day);
@@ -1010,10 +1010,10 @@ const DashboardPage: React.FC = () => {
                       <div className="day-number">
                         {format(day, 'd')}
                       </div>
-                      
+
                       <div className="day-tasks">
                         {dayTasks.slice(0, 3).map(task => (
-                          <div 
+                          <div
                             key={task.id}
                             className={`month-task ${task.category} ${task.priority}`}
                             onClick={(e) => {
@@ -1057,14 +1057,14 @@ const DashboardPage: React.FC = () => {
           </h3>
           <span className="badge">{alerts.filter(a => !a.isRead).length}</span>
         </div>
-        
+
         <div className="alerts-list">
           <div className="alert-section">
             <h4>Pendientes</h4>
             {alerts.length === 0 ? (
-              <div style={{ 
-                padding: '20px', 
-                textAlign: 'center', 
+              <div style={{
+                padding: '20px',
+                textAlign: 'center',
                 color: '#6b7280',
                 fontSize: '14px'
               }}>
@@ -1096,9 +1096,9 @@ const DashboardPage: React.FC = () => {
                     <div className="alert-title">
                       {alert.title}
                       {alert.department && (
-                        <span style={{ 
-                          fontSize: '11px', 
-                          color: '#6b7280', 
+                        <span style={{
+                          fontSize: '11px',
+                          color: '#6b7280',
                           marginLeft: '8px',
                           fontWeight: 'normal'
                         }}>
@@ -1125,10 +1125,10 @@ const DashboardPage: React.FC = () => {
               Acciones Rápidas
             </h3>
           </div>
-          
+
           <div className="action-buttons-grid">
             {/* Nueva Tarea */}
-            <button 
+            <button
               className="action-btn primary"
               onClick={() => {
                 setSelectedTask(null);
@@ -1153,7 +1153,7 @@ const DashboardPage: React.FC = () => {
             {canUserCreateMeetings(employee?.email || '') && employee?.role !== 'center_manager' && (
               <>
                 {/* Nueva Reunión */}
-                <button 
+                <button
                   className="action-btn secondary"
                   onClick={() => {
                     setNewTask({
@@ -1176,10 +1176,10 @@ const DashboardPage: React.FC = () => {
                 </button>
 
                 {/* Historial Reuniones */}
-                <button 
+                <button
                   className="action-btn tertiary"
                   onClick={() => setShowMeetingHistory(!showMeetingHistory)}
-                  style={{ 
+                  style={{
                     backgroundColor: showMeetingHistory ? '#8b5cf6' : '#f3f4f6',
                     color: showMeetingHistory ? 'white' : '#374151'
                   }}
@@ -1192,13 +1192,13 @@ const DashboardPage: React.FC = () => {
 
             {/* Solo CEO puede ver gestión de usuarios */}
             {employee?.email === 'carlossuarezparra@gmail.com' && (
-              <button 
+              <button
                 className="action-btn users"
                 onClick={() => {
                   setShowUserManagement(!showUserManagement);
                   setShowMeetingHistory(false);
                 }}
-                style={{ 
+                style={{
                   backgroundColor: showUserManagement ? '#6366f1' : '#f3f4f6',
                   color: showUserManagement ? 'white' : '#374151'
                 }}
@@ -1209,7 +1209,7 @@ const DashboardPage: React.FC = () => {
             )}
 
             {/* Incidencias - Disponible para todos */}
-            <button 
+            <button
               className="action-btn incidents"
               onClick={() => setShowIncidentModal(true)}
               style={{ backgroundColor: '#ef4444', color: 'white' }}
@@ -1230,7 +1230,7 @@ const DashboardPage: React.FC = () => {
       showIncidentManagementModal,
       selectedDepartment
     });
-    
+
     // Si es una notificación de tarea, abrir modal de completar tarea
     if (alert.id.startsWith('task-notification-')) {
       console.log('📋 Abriendo modal de tarea:', alert.taskId);
@@ -1243,7 +1243,7 @@ const DashboardPage: React.FC = () => {
       setShowTaskCompletionModal(true);
       return;
     }
-    
+
     // Si es una alerta de incidencias vencidas o próximas a vencer
     if (alert.id === 'overdue-incidents' || alert.id === 'near-deadline-incidents') {
       console.log('🔥 ABRIENDO MODAL DE INCIDENCIAS VENCIDAS');
@@ -1253,7 +1253,7 @@ const DashboardPage: React.FC = () => {
       console.log('🔥 Estado después de setear:', { showIncidentManagementModal: true, showOverdueIncidentsOnly: true });
       return;
     }
-    
+
     // Si es una alerta de incidencias, abrir el modal de gestión
     if (alert.id.startsWith('incidents-')) {
       console.log('🔥 ABRIENDO MODAL DE GESTIÓN DE INCIDENCIAS:', alert.department);
@@ -1289,9 +1289,9 @@ const DashboardPage: React.FC = () => {
         <h1>
           Buenos días, {employee?.name || 'Usuario'}
           {loading && (
-            <span style={{ 
-              marginLeft: '1rem', 
-              fontSize: '0.8rem', 
+            <span style={{
+              marginLeft: '1rem',
+              fontSize: '0.8rem',
               color: '#059669',
               display: 'inline-flex',
               alignItems: 'center',
@@ -1312,14 +1312,14 @@ const DashboardPage: React.FC = () => {
         {/* Solo directivos ven las vistas de calendario - NO encargados de centro */}
         {employee?.role !== 'center_manager' && (
           <div className="view-toggle">
-            <button 
+            <button
               className={`btn ${currentView === 'week' ? 'active' : ''}`}
               onClick={() => setCurrentView('week')}
             >
               <List size={16} />
               Semana
             </button>
-            <button 
+            <button
               className={`btn ${currentView === 'month' ? 'active' : ''}`}
               onClick={() => setCurrentView('month')}
             >
@@ -1333,7 +1333,7 @@ const DashboardPage: React.FC = () => {
       {/* Contenido principal */}
       <div className="dashboard-content">
         {showMeetingHistory && (
-          <DepartmentMeetingHistory 
+          <DepartmentMeetingHistory
             tasks={tasks.filter(task => task.category === 'meeting')}
             onEditMeeting={(meeting) => {
               setSelectedTask(meeting);
@@ -1360,7 +1360,7 @@ const DashboardPage: React.FC = () => {
         )}
 
         {showUserManagement && (
-          <UserManagement />
+          <UserManagementSystem />
         )}
 
         {!showMeetingHistory && !showLogistics && !showMaintenance && !showUserManagement && (
@@ -1390,7 +1390,7 @@ const DashboardPage: React.FC = () => {
                   console.error('❌ Error eliminando reunión:', result.error);
                 }
               }
-              
+
               // Eliminar localmente en cualquier caso
               setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
             } catch (error) {
@@ -1510,7 +1510,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Notificación de Verificación de Incidencias */}
       {employee?.name && (
-        <IncidentVerificationNotification 
+        <IncidentVerificationNotification
           employeeName={employee.name}
         />
       )}

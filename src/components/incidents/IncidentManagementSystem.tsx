@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
-import { 
-  Calendar, 
-  Clock, 
-  User, 
-  FileText, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Calendar,
+  Clock,
+  User,
+  FileText,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   Plus,
   Filter,
@@ -148,10 +148,10 @@ const IncidentManagementSystem: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Cargar categorías
       await loadIncidentCategories();
-      
+
       // Cargar tipos de incidencias
       await loadIncidentTypes();
 
@@ -160,15 +160,15 @@ const IncidentManagementSystem: React.FC = () => {
         const { data: employeeData } = await supabase
           .from('employees')
           .select('id, name, email, position, center_id')
-          .eq('activo', true)
+          .eq('is_active', true)
           .order('name');
-        
+
         if (employeeData) setEmployees(employeeData);
       }
 
       // Cargar incidencias
       await loadIncidents();
-      
+
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -200,16 +200,16 @@ const IncidentManagementSystem: React.FC = () => {
       }
 
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('Error in incidents query:', error);
         // Si falla la vista, usar datos básicos
         setIncidents([]);
         return;
       }
-      
+
       if (data) setIncidents(data);
-      
+
     } catch (error) {
       console.error('Error loading incidents:', error);
       setIncidents([]);
@@ -263,7 +263,7 @@ const IncidentManagementSystem: React.FC = () => {
         quantity: 1
       });
       loadIncidents();
-      
+
     } catch (error) {
       console.error('Error creating incident:', error);
       alert('Error al crear la incidencia');
@@ -299,7 +299,7 @@ const IncidentManagementSystem: React.FC = () => {
 
       await loadIncidents();
       alert(`Incidencia ${status === 'approved' ? 'aprobada' : 'rechazada'} correctamente`);
-      
+
     } catch (error) {
       console.error('Error updating incident:', error);
       alert('Error al actualizar la incidencia');
@@ -343,12 +343,12 @@ const IncidentManagementSystem: React.FC = () => {
 
   const filteredIncidents = incidents.filter(incident => {
     const matchesSearch = incident.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         incident.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         incident.incident_type_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      incident.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      incident.incident_type_name.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = statusFilter === 'all' || incident.status === statusFilter;
     const matchesType = typeFilter === 'all' || incident.incident_type_id.toString() === typeFilter;
-    
+
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -363,11 +363,11 @@ const IncidentManagementSystem: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       {/* Header del módulo */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '32px' 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '32px'
       }}>
         <div>
           <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0, marginBottom: '8px' }}>
@@ -431,7 +431,7 @@ const IncidentManagementSystem: React.FC = () => {
             <User style={{ width: '16px', height: '16px' }} />
             Mis Incidencias
           </button>
-          
+
           {(isHR || isLogistics) && (
             <button
               onClick={() => setActiveTab('pending-approval')}
@@ -454,7 +454,7 @@ const IncidentManagementSystem: React.FC = () => {
               Pendientes de Aprobación
             </button>
           )}
-          
+
           {(isHR || isLogistics) && (
             <button
               onClick={() => setActiveTab('all-incidents')}
@@ -481,22 +481,22 @@ const IncidentManagementSystem: React.FC = () => {
       </div>
 
       {/* Barra de herramientas estilo CRM */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr auto auto', 
-        gap: '16px', 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr auto auto',
+        gap: '16px',
         marginBottom: '24px',
         alignItems: 'center'
       }}>
         <div style={{ position: 'relative' }}>
-          <Search style={{ 
-            position: 'absolute', 
-            left: '12px', 
-            top: '50%', 
-            transform: 'translateY(-50%)', 
-            color: '#9ca3af', 
-            width: '16px', 
-            height: '16px' 
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#9ca3af',
+            width: '16px',
+            height: '16px'
           }} />
           <input
             type="text"
@@ -525,7 +525,7 @@ const IncidentManagementSystem: React.FC = () => {
             }}
           />
         </div>
-        
+
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -545,7 +545,7 @@ const IncidentManagementSystem: React.FC = () => {
           <option value="approved">Aprobado</option>
           <option value="rejected">Rechazado</option>
         </select>
-        
+
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
@@ -570,8 +570,8 @@ const IncidentManagementSystem: React.FC = () => {
       {/* Grid de incidencias estilo CRM */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
         {filteredIncidents.map(incident => (
-          <div 
-            key={incident.id} 
+          <div
+            key={incident.id}
             style={{
               backgroundColor: 'white',
               borderRadius: '16px',
@@ -603,7 +603,7 @@ const IncidentManagementSystem: React.FC = () => {
                   </p>
                 </div>
               </div>
-              
+
               {/* Badges de estado y prioridad */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
                 <span style={{
@@ -611,14 +611,14 @@ const IncidentManagementSystem: React.FC = () => {
                   borderRadius: '6px',
                   fontSize: '12px',
                   fontWeight: '600',
-                  backgroundColor: incident.status === 'approved' ? '#dcfce7' : 
-                                 incident.status === 'rejected' ? '#fef2f2' : '#fef3c7',
-                  color: incident.status === 'approved' ? '#059669' : 
-                         incident.status === 'rejected' ? '#dc2626' : '#d97706'
+                  backgroundColor: incident.status === 'approved' ? '#dcfce7' :
+                    incident.status === 'rejected' ? '#fef2f2' : '#fef3c7',
+                  color: incident.status === 'approved' ? '#059669' :
+                    incident.status === 'rejected' ? '#dc2626' : '#d97706'
                 }}>
-                  {incident.status === 'pending' ? '⏳ Pendiente' : 
-                   incident.status === 'approved' ? '✅ Aprobado' : 
-                   incident.status === 'rejected' ? '❌ Rechazado' : incident.status}
+                  {incident.status === 'pending' ? '⏳ Pendiente' :
+                    incident.status === 'approved' ? '✅ Aprobado' :
+                      incident.status === 'rejected' ? '❌ Rechazado' : incident.status}
                 </span>
                 <span style={{
                   padding: '4px 8px',
@@ -626,19 +626,19 @@ const IncidentManagementSystem: React.FC = () => {
                   fontSize: '12px',
                   fontWeight: '600',
                   backgroundColor: incident.priority === 'urgent' ? '#fef2f2' :
-                                 incident.priority === 'high' ? '#fff7ed' :
-                                 incident.priority === 'normal' ? '#eff6ff' : '#f9fafb',
+                    incident.priority === 'high' ? '#fff7ed' :
+                      incident.priority === 'normal' ? '#eff6ff' : '#f9fafb',
                   color: incident.priority === 'urgent' ? '#dc2626' :
-                         incident.priority === 'high' ? '#ea580c' :
-                         incident.priority === 'normal' ? '#2563eb' : '#6b7280'
+                    incident.priority === 'high' ? '#ea580c' :
+                      incident.priority === 'normal' ? '#2563eb' : '#6b7280'
                 }}>
                   {incident.priority === 'urgent' ? '🔥 Urgente' :
-                   incident.priority === 'high' ? '⚡ Alta' :
-                   incident.priority === 'normal' ? '📋 Normal' : '📝 Baja'}
+                    incident.priority === 'high' ? '⚡ Alta' :
+                      incident.priority === 'normal' ? '📋 Normal' : '📝 Baja'}
                 </span>
               </div>
             </div>
-            
+
             {/* Información del empleado */}
             {(isHR || isLogistics) && (
               <div style={{ marginBottom: '16px' }}>
@@ -650,12 +650,12 @@ const IncidentManagementSystem: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Descripción */}
             <p style={{ color: '#374151', marginBottom: '16px', fontSize: '14px', lineHeight: '1.5' }}>
               {incident.description}
             </p>
-            
+
             {/* Fechas */}
             {incident.start_date && (
               <div style={{ marginBottom: '16px' }}>
@@ -666,10 +666,10 @@ const IncidentManagementSystem: React.FC = () => {
                     {incident.end_date && ` - ${new Date(incident.end_date).toLocaleDateString('es-ES')}`}
                   </span>
                   {incident.days_requested && (
-                    <span style={{ 
-                      padding: '2px 6px', 
-                      backgroundColor: '#f3f4f6', 
-                      borderRadius: '4px', 
+                    <span style={{
+                      padding: '2px 6px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '4px',
                       fontSize: '12px',
                       fontWeight: '500'
                     }}>
@@ -679,7 +679,7 @@ const IncidentManagementSystem: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Vestuario */}
             {incident.clothing_type && (
               <div style={{ marginBottom: '16px' }}>
@@ -693,11 +693,11 @@ const IncidentManagementSystem: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Footer con fecha y botones */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
               paddingTop: '16px',
               borderTop: '1px solid #e5e7eb'
@@ -710,71 +710,71 @@ const IncidentManagementSystem: React.FC = () => {
                   </span>
                 )}
               </div>
-              
+
               {/* Botones de acción */}
-              {incident.status === 'pending' && 
-               ((isHR && incident.approver_role === 'hr') || 
-                (isLogistics && incident.approver_role === 'logistics')) && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => updateIncidentStatus(incident.id, 'approved')}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#059669',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#047857';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
-                    }}
-                  >
-                    ✅ Aprobar
-                  </button>
-                  <button
-                    onClick={() => {
-                      const reason = prompt('Motivo del rechazo:');
-                      if (reason) updateIncidentStatus(incident.id, 'rejected', reason);
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#b91c1c';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                    }}
-                  >
-                    ❌ Rechazar
-                  </button>
-                </div>
-              )}
+              {incident.status === 'pending' &&
+                ((isHR && incident.approver_role === 'hr') ||
+                  (isLogistics && incident.approver_role === 'logistics')) && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => updateIncidentStatus(incident.id, 'approved')}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#059669',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#047857';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                      }}
+                    >
+                      ✅ Aprobar
+                    </button>
+                    <button
+                      onClick={() => {
+                        const reason = prompt('Motivo del rechazo:');
+                        if (reason) updateIncidentStatus(incident.id, 'rejected', reason);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#b91c1c';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#dc2626';
+                      }}
+                    >
+                      ❌ Rechazar
+                    </button>
+                  </div>
+                )}
             </div>
-            
+
             {/* Motivo de rechazo */}
             {incident.rejection_reason && (
-              <div style={{ 
-                marginTop: '16px', 
-                padding: '12px', 
-                backgroundColor: '#fef2f2', 
-                border: '1px solid #fecaca', 
-                borderRadius: '8px' 
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px'
               }}>
                 <p style={{ fontSize: '14px', color: '#dc2626', margin: 0 }}>
                   <strong>Motivo del rechazo:</strong> {incident.rejection_reason}
@@ -783,7 +783,7 @@ const IncidentManagementSystem: React.FC = () => {
             )}
           </div>
         ))}
-        
+
         {filteredIncidents.length === 0 && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -818,15 +818,15 @@ const IncidentManagementSystem: React.FC = () => {
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
             <div style={{ padding: '32px' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '24px'
               }}>
-                <h2 style={{ 
-                  fontSize: '24px', 
-                  fontWeight: '700', 
+                <h2 style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
                   color: '#111827',
                   margin: 0
                 }}>
@@ -849,7 +849,7 @@ const IncidentManagementSystem: React.FC = () => {
                   ❌
                 </button>
               </div>
-              
+
               <form onSubmit={(e) => { e.preventDefault(); createIncident(); }} style={{ display: 'grid', gap: '20px' }}>
                 {/* Selector de Categoría */}
                 <div>
@@ -866,7 +866,7 @@ const IncidentManagementSystem: React.FC = () => {
                     value={selectedCategory}
                     onChange={(e) => {
                       setSelectedCategory(e.target.value);
-                      setFormData({...formData, category_id: e.target.value, incident_type_id: ''});
+                      setFormData({ ...formData, category_id: e.target.value, incident_type_id: '' });
                     }}
                     required
                     style={{
@@ -890,7 +890,7 @@ const IncidentManagementSystem: React.FC = () => {
                   >
                     <option value="">Seleccionar categoría...</option>
                     {incidentCategories
-                      .filter((category, index, self) => 
+                      .filter((category, index, self) =>
                         index === self.findIndex(c => c.name === category.name)
                       )
                       .map(category => (
@@ -915,7 +915,7 @@ const IncidentManagementSystem: React.FC = () => {
                     </label>
                     <select
                       value={formData.incident_type_id}
-                      onChange={(e) => setFormData({...formData, incident_type_id: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, incident_type_id: e.target.value })}
                       required
                       style={{
                         width: '100%',
@@ -942,11 +942,11 @@ const IncidentManagementSystem: React.FC = () => {
                           // Encontrar la categoría seleccionada
                           const selectedCategoryData = incidentCategories.find(cat => cat.id.toString() === selectedCategory);
                           if (!selectedCategoryData) return false;
-                          
+
                           // Buscar todas las categorías con el mismo nombre
                           const categoriesWithSameName = incidentCategories.filter(cat => cat.name === selectedCategoryData.name);
                           const categoryIds = categoriesWithSameName.map(cat => cat.id);
-                          
+
                           console.log('Filtering type:', type.name, 'category_id:', type.category_id, 'selectedCategory:', selectedCategory, 'matching categoryIds:', categoryIds);
                           return type.category_id && categoryIds.includes(type.category_id);
                         })
@@ -956,7 +956,7 @@ const IncidentManagementSystem: React.FC = () => {
                     </select>
                   </div>
                 )}
-                
+
                 <div>
                   <label style={{
                     display: 'block',
@@ -970,7 +970,7 @@ const IncidentManagementSystem: React.FC = () => {
                   <input
                     type="text"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
                     style={{
                       width: '100%',
@@ -993,7 +993,7 @@ const IncidentManagementSystem: React.FC = () => {
                     placeholder="Ej: Solicitud de vacaciones agosto"
                   />
                 </div>
-                
+
                 <div>
                   <label style={{
                     display: 'block',
@@ -1006,7 +1006,7 @@ const IncidentManagementSystem: React.FC = () => {
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     required
                     rows={4}
                     style={{
@@ -1032,7 +1032,7 @@ const IncidentManagementSystem: React.FC = () => {
                     placeholder="Describe los detalles de tu solicitud..."
                   />
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{
@@ -1047,7 +1047,7 @@ const IncidentManagementSystem: React.FC = () => {
                     <input
                       type="date"
                       value={formData.start_date}
-                      onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
@@ -1068,7 +1068,7 @@ const IncidentManagementSystem: React.FC = () => {
                       }}
                     />
                   </div>
-                  
+
                   <div>
                     <label style={{
                       display: 'block',
@@ -1082,7 +1082,7 @@ const IncidentManagementSystem: React.FC = () => {
                     <input
                       type="date"
                       value={formData.end_date}
-                      onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
@@ -1104,7 +1104,7 @@ const IncidentManagementSystem: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label style={{
                     display: 'block',
@@ -1117,7 +1117,7 @@ const IncidentManagementSystem: React.FC = () => {
                   </label>
                   <select
                     value={formData.priority}
-                    onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -1143,157 +1143,157 @@ const IncidentManagementSystem: React.FC = () => {
                     <option value="urgent">🔥 Urgente</option>
                   </select>
                 </div>
-                
+
                 {/* Campos específicos para vestuario */}
-                {formData.incident_type_id && 
-                 incidentTypes.find(t => t.id.toString() === formData.incident_type_id)?.requires_clothing_details && (
-                  <div style={{
-                    padding: '20px',
-                    backgroundColor: '#f0fdf4',
-                    borderRadius: '12px',
-                    border: '2px solid #dcfce7'
-                  }}>
-                    <h4 style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#059669',
-                      marginBottom: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                {formData.incident_type_id &&
+                  incidentTypes.find(t => t.id.toString() === formData.incident_type_id)?.requires_clothing_details && (
+                    <div style={{
+                      padding: '20px',
+                      backgroundColor: '#f0fdf4',
+                      borderRadius: '12px',
+                      border: '2px solid #dcfce7'
                     }}>
-                      👕 Detalles del Vestuario
-                    </h4>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '8px'
-                        }}>
-                          👕 Tipo de prenda
-                        </label>
-                        <select
-                          value={formData.clothing_type}
-                          onChange={(e) => setFormData({...formData, clothing_type: e.target.value})}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '12px',
+                      <h4 style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: '#059669',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        👕 Detalles del Vestuario
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                        <div>
+                          <label style={{
+                            display: 'block',
                             fontSize: '14px',
-                            backgroundColor: 'white',
-                            transition: 'all 0.2s',
-                            outline: 'none'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = '#059669';
-                            e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = '#e5e7eb';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        >
-                          <option value="">Seleccionar prenda...</option>
-                          <option value="Polo">👕 Polo</option>
-                          <option value="Camiseta entrenamiento personal">🏃 Camiseta entrenamiento personal</option>
-                          <option value="Pantalón corto">🩳 Pantalón corto</option>
-                          <option value="Chándal completo">👔 Chándal completo</option>
-                          <option value="Sudadera frío">🧥 Sudadera frío</option>
-                          <option value="Chaquetón">🧥 Chaquetón</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '8px'
-                        }}>
-                          📏 Talla
-                        </label>
-                        <select
-                          value={formData.clothing_size}
-                          onChange={(e) => setFormData({...formData, clothing_size: e.target.value})}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '12px',
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
+                            👕 Tipo de prenda
+                          </label>
+                          <select
+                            value={formData.clothing_type}
+                            onChange={(e) => setFormData({ ...formData, clothing_type: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              backgroundColor: 'white',
+                              transition: 'all 0.2s',
+                              outline: 'none'
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#059669';
+                              e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#e5e7eb';
+                              e.target.style.boxShadow = 'none';
+                            }}
+                          >
+                            <option value="">Seleccionar prenda...</option>
+                            <option value="Polo">👕 Polo</option>
+                            <option value="Camiseta entrenamiento personal">🏃 Camiseta entrenamiento personal</option>
+                            <option value="Pantalón corto">🩳 Pantalón corto</option>
+                            <option value="Chándal completo">👔 Chándal completo</option>
+                            <option value="Sudadera frío">🧥 Sudadera frío</option>
+                            <option value="Chaquetón">🧥 Chaquetón</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{
+                            display: 'block',
                             fontSize: '14px',
-                            backgroundColor: 'white',
-                            transition: 'all 0.2s',
-                            outline: 'none'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = '#059669';
-                            e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = '#e5e7eb';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        >
-                          <option value="">Seleccionar...</option>
-                          <option value="XS">XS</option>
-                          <option value="S">S</option>
-                          <option value="M">M</option>
-                          <option value="L">L</option>
-                          <option value="XL">XL</option>
-                          <option value="XXL">XXL</option>
-                          <option value="XXXL">XXXL</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '8px'
-                        }}>
-                          🔢 Cantidad
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={formData.quantity}
-                          onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            border: '2px solid #e5e7eb',
-                            borderRadius: '12px',
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
+                            📏 Talla
+                          </label>
+                          <select
+                            value={formData.clothing_size}
+                            onChange={(e) => setFormData({ ...formData, clothing_size: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              backgroundColor: 'white',
+                              transition: 'all 0.2s',
+                              outline: 'none'
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#059669';
+                              e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#e5e7eb';
+                              e.target.style.boxShadow = 'none';
+                            }}
+                          >
+                            <option value="">Seleccionar...</option>
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                            <option value="XXXL">XXXL</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{
+                            display: 'block',
                             fontSize: '14px',
-                            backgroundColor: 'white',
-                            transition: 'all 0.2s',
-                            outline: 'none'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = '#059669';
-                            e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = '#e5e7eb';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        />
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
+                            🔢 Cantidad
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              backgroundColor: 'white',
+                              transition: 'all 0.2s',
+                              outline: 'none'
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#059669';
+                              e.target.style.boxShadow = '0 0 0 3px rgba(5, 150, 105, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#e5e7eb';
+                              e.target.style.boxShadow = 'none';
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'flex-end', 
-                  gap: '12px', 
+                  )}
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '12px',
                   paddingTop: '24px',
                   borderTop: '1px solid #e5e7eb',
                   marginTop: '24px'

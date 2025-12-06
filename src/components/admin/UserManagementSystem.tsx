@@ -13,7 +13,10 @@ import {
     CheckCircle,
     XCircle,
     Edit,
-    Trash2
+    Trash2,
+    Lock,
+    Key,
+    ChevronRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CreateCenterModal } from '../CreateCenterModal';
@@ -33,6 +36,7 @@ export const UserManagementSystem: React.FC = () => {
     // Data States
     const [users, setUsers] = useState<Employee[]>([]);
     const [centers, setCenters] = useState<any[]>([]);
+    const [departments, setDepartments] = useState<any[]>([]);
 
     // Modals State
     const [showCenterModal, setShowCenterModal] = useState(false);
@@ -47,6 +51,10 @@ export const UserManagementSystem: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
+            // Cargar departamentos para el mapeo
+            const { data: depsData } = await supabase.from('departments').select('*');
+            if (depsData) setDepartments(depsData);
+
             if (currentView === 'users') {
                 const { data, error } = await supabase
                     .from('employees')
@@ -82,256 +90,428 @@ export const UserManagementSystem: React.FC = () => {
         setShowUserModal(true);
     };
 
+    const handlePasswordReset = async (email: string) => {
+        if (!confirm(`¿Estás seguro de enviar un correo de restablecimiento de contraseña a ${email}?`)) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + '/reset-password',
+            });
+
+            if (error) throw error;
+            alert(`✅ Correo de recuperación enviado a ${email}`);
+        } catch (error: any) {
+            console.error('Error sending reset email:', error);
+            alert(`❌ Error al enviar correo: ${error.message}`);
+        }
+    };
+
     const handleSaveUser = async (userData: Partial<Employee>) => {
         try {
-            // Mapeo de datos para Supabase (similar a HRManagementSystem)
+            console.log('💾 Guardando usuario:', userData);
+
+            // Buscar ID del departamento
+            let departmentId = null;
+            if (userData.departamento) {
+                // Intentar buscar por nombre exacto o aproximado
+                const dep = departments.find(d =>
+                    d.name.toLowerCase() === userData.departamento?.toLowerCase() ||
+                    d.name.toLowerCase().includes(userData.departamento?.toLowerCase())
+                );
+
+                if (dep) {
+                    departmentId = dep.id;
+                } else {
+                    // Si no existe, crearlo (para soportar 'Academy' u otros nuevos)
+                    console.log(`⚠️ Departamento '${userData.departamento}' no encontrado. Creándolo...`);
+                    const { data: newDep, error: depError } = await supabase
+                        .from('departments')
+                        .insert([{ name: userData.departamento }])
+                        .select()
+                        .single();
+
+                    if (depError) {
+                        console.error('Error creando departamento:', depError);
+                        // Fallback: intentar seguir sin ID o mostrar error
+                    } else if (newDep) {
+                        departmentId = newDep.id;
+                        // Actualizar lista local
+                        setDepartments(prev => [...prev, newDep]);
+                    }
+                }
+            }
+
+            // Mapeo COMPLETO de datos para Supabase (igual que HRManagementSystem)
+            // Mapeo COMPLETO de datos para Supabase (igual que HRManagementSystem)
             const supabaseData = {
-                name: userData.nombre,
-                apellidos: userData.apellidos,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
                 email: userData.email,
-                phone: userData.telefono,
+                phone: userData.phone,
                 dni: userData.dni,
-                birth_date: userData.fecha_nacimiento,
-                address: userData.direccion,
+                birth_date: userData.birth_date,
+                address: userData.address,
+                city: userData.city,
+                postal_code: userData.postal_code,
+                // CONSTRAINT REMOVED: We now allow both Center and Department (e.g. for Antonio)
                 center_id: userData.center_id ? parseInt(String(userData.center_id)) : null,
-                role: userData.rol,
-                department: userData.departamento, // Usar departamento como string si no hay ID
-                position: userData.cargo,
-                is_active: userData.activo !== false,
-                // Añadir otros campos necesarios según EmployeeForm
+                role: userData.role === 'admin' ? 'Admin' :
+                    userData.role === 'director' ? 'Director' :
+                        userData.role === 'encargado' ? 'Encargado' :
+                            userData.role === 'empleado' ? 'Empleado' :
+                                userData.role,
+                department_id: departmentId,
+                position: userData.position,
+
+                // Datos laborales
+                hire_date: userData.hire_date,
+                contract_type: userData.contract_type,
+                work_schedule: userData.work_schedule,
+                gross_annual_salary: userData.gross_annual_salary,
+
+                // Datos bancarios
+                bank_account_number: userData.bank_account_number,
+                iban: userData.iban,
+                banco: userData.banco,
+
+                // Formación
+                education_level: userData.education_level,
+                degree: userData.degree,
+                specialization: userData.specialization,
+
+                // Tallas
+                shirt_size: userData.shirt_size,
+                pant_size: userData.pant_size,
+                jacket_size: userData.jacket_size,
+
+                is_active: userData.is_active !== false,
                 updated_at: new Date().toISOString()
             };
+
+            // Filtrar campos undefined
+            const cleanData = Object.fromEntries(
+                Object.entries(supabaseData).filter(([_, value]) => value !== undefined)
+            );
+
+            console.log('📤 Enviando a Supabase:', cleanData);
+
+            let savedUserId = selectedUser?.id;
 
             if (selectedUser) {
                 const { error } = await supabase
                     .from('employees')
-                    .update(supabaseData)
+                    .update(cleanData)
                     .eq('id', selectedUser.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase
+                const { data: newUser, error } = await supabase
                     .from('employees')
-                    .insert([{ ...supabaseData, created_at: new Date().toISOString() }]);
+                    .insert([{ ...cleanData, created_at: new Date().toISOString() }])
+                    .select()
+                    .single();
                 if (error) throw error;
+                savedUserId = newUser.id;
+            }
+
+            // 💾 Guardar departamentos (Multi-departamento)
+            if (savedUserId && userData.departments) {
+                console.log('🏢 Guardando departamentos para usuario:', savedUserId, userData.departments);
+
+                // 1. Eliminar asignaciones anteriores
+                const { error: deleteError } = await supabase
+                    .from('employee_departments')
+                    .delete()
+                    .eq('employee_id', savedUserId);
+
+                if (deleteError) {
+                    console.error('Error eliminando departamentos anteriores:', deleteError);
+                    throw deleteError;
+                }
+
+                // 2. Insertar nuevas asignaciones
+                if (userData.departments.length > 0) {
+                    const deptInserts = userData.departments.map(d => ({
+                        employee_id: savedUserId,
+                        department_id: d.id
+                    }));
+
+                    const { error: insertError } = await supabase
+                        .from('employee_departments')
+                        .insert(deptInserts);
+
+                    if (insertError) {
+                        console.error('Error insertando nuevos departamentos:', insertError);
+                        throw insertError;
+                    }
+                }
             }
 
             setShowUserModal(false);
             loadData();
-        } catch (error) {
-            console.error('Error saving user:', error);
-            alert('Error al guardar usuario');
+            alert('✅ Usuario guardado correctamente');
+        } catch (error: any) {
+            console.error('Error saving user FULL OBJECT:', error);
+            console.error('Error details:', error.details);
+            console.error('Error message:', error.message);
+            console.error('Error hint:', error.hint);
+            alert(`Error al guardar usuario: ${error.message} - ${error.details || ''}`);
         }
     };
 
     // Render Helpers
     const getRoleBadgeColor = (role: string) => {
         switch (role) {
-            case 'superadmin': return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'admin': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'manager': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'Admin': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'Director': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'Encargado': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
             default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Gestión de Accesos y Entidades</h1>
-                <p className="text-gray-500 mt-2">Administración centralizada de usuarios, centros y permisos.</p>
-            </div>
+        <div className="w-full h-full overflow-y-auto bg-gray-50/50 p-6">
+            <div className="max-w-[1600px] mx-auto">
+                {/* Header Section */}
+                <div className="mb-10 bg-emerald-600 p-8 rounded-2xl shadow-lg border border-emerald-500 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-white opacity-5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
 
-            {/* Tabs */}
-            <div className="flex gap-4 mb-8 border-b border-gray-200">
-                <button
-                    onClick={() => setCurrentView('users')}
-                    className={`pb-4 px-4 font-medium transition-colors relative ${currentView === 'users'
-                            ? 'text-emerald-600 border-b-2 border-emerald-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                >
-                    <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Usuarios y Accesos
-                    </div>
-                </button>
-                <button
-                    onClick={() => setCurrentView('centers')}
-                    className={`pb-4 px-4 font-medium transition-colors relative ${currentView === 'centers'
-                            ? 'text-emerald-600 border-b-2 border-emerald-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                >
-                    <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
-                        Centros y Franquicias
-                    </div>
-                </button>
-            </div>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center gap-3 text-white">
+                                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                    <Users size={28} className="text-white" />
+                                </div>
+                                Gestión de Accesos y Entidades
+                                <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full border border-emerald-400 shadow-sm">v2.1</span>
+                            </h1>
+                            <p className="text-emerald-50 mt-2 ml-14 text-lg opacity-90">Administración centralizada de usuarios, centros y permisos del sistema.</p>
+                        </div>
 
-            {/* Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div className="relative flex-1 w-full sm:max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder={`Buscar ${currentView === 'users' ? 'usuarios' : 'centros'}...`}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
-                    />
+                        <div className="flex gap-3 bg-white/10 p-1.5 rounded-xl backdrop-blur-md border border-white/10">
+                            <button
+                                onClick={() => setCurrentView('users')}
+                                className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${currentView === 'users'
+                                    ? 'bg-white text-emerald-700 shadow-md'
+                                    : 'text-emerald-50 hover:bg-white/10'
+                                    }`}
+                            >
+                                <Users size={18} />
+                                Usuarios
+                            </button>
+                            <button
+                                onClick={() => setCurrentView('centers')}
+                                className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${currentView === 'centers'
+                                    ? 'bg-white text-emerald-700 shadow-md'
+                                    : 'text-emerald-50 hover:bg-white/10'
+                                    }`}
+                            >
+                                <Building2 size={18} />
+                                Centros
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex gap-3 w-full sm:w-auto">
-                    {currentView === 'users' && (
-                        <select
-                            value={filterRole}
-                            onChange={(e) => setFilterRole(e.target.value)}
-                            className="px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-500 outline-none bg-white"
+                {/* Controls Section */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+                    <div className="relative w-full sm:max-w-md group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder={`Buscar ${currentView === 'users' ? 'usuarios por nombre o email' : 'centros'}...`}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 shadow-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                        {currentView === 'users' && (
+                            <select
+                                value={filterRole}
+                                onChange={(e) => setFilterRole(e.target.value)}
+                                className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-sm hover:border-emerald-300 transition-colors"
+                            >
+                                <option value="all">Todos los roles</option>
+                                <option value="Admin">👑 CEO / Superadmin</option>
+                                <option value="Director">👔 Director</option>
+                                <option value="Encargado">🏪 Gerente / Franquiciado</option>
+                                <option value="Empleado">👤 Empleado / Colaborador</option>
+                            </select>
+                        )}
+
+                        <button
+                            onClick={() => currentView === 'users' ? handleCreateUser() : setShowCenterModal(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 font-medium shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform hover:-translate-y-0.5"
                         >
-                            <option value="all">Todos los roles</option>
-                            <option value="superadmin">CEO / Superadmin</option>
-                            <option value="admin">Director</option>
-                            <option value="manager">Gerente / Franquiciado</option>
-                            <option value="employee">Empleado / Colaborador</option>
-                        </select>
-                    )}
-
-                    <button
-                        onClick={() => currentView === 'users' ? handleCreateUser() : setShowCenterModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium shadow-sm whitespace-nowrap"
-                    >
-                        <Plus className="h-5 w-5" />
-                        {currentView === 'users' ? 'Nuevo Usuario' : 'Nuevo Centro'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                {isLoading ? (
-                    <div className="p-12 text-center text-gray-500">Cargando datos...</div>
-                ) : currentView === 'users' ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol / Cargo</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Centro</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {users
-                                    .filter(u =>
-                                        (filterRole === 'all' || u.rol === filterRole) &&
-                                        (u.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    )
-                                    .map((user) => (
-                                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                                                        {user.nombre?.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{user.nombre} {user.apellidos}</p>
-                                                        <p className="text-sm text-gray-500">{user.email}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className={`inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(user.rol)}`}>
-                                                        {user.rol.toUpperCase()}
-                                                    </span>
-                                                    <span className="text-sm text-gray-600">{user.cargo}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {user.centro_nombre || 'Sin asignar'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {user.activo ? (
-                                                    <span className="inline-flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full text-xs font-medium border border-emerald-200">
-                                                        <CheckCircle className="h-3.5 w-3.5" /> Activo
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200">
-                                                        <XCircle className="h-3.5 w-3.5" /> Inactivo
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleEditUser(user)}
-                                                    className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                            </tbody>
-                        </table>
+                            <Plus size={20} />
+                            {currentView === 'users' ? 'Nuevo Usuario' : 'Nuevo Centro'}
+                        </button>
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-                        {centers
-                            .filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .map((center) => (
-                                <div key={center.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                </div>
+
+                {/* Content Table */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    {isLoading ? (
+                        <div className="p-20 text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                            <p className="text-gray-500 font-medium">Cargando datos...</p>
+                        </div>
+                    ) : currentView === 'users' ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol y Cargo</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ubicación</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {users
+                                        .filter(u =>
+                                            (filterRole === 'all' || u.role === filterRole) &&
+                                            (u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        )
+                                        .map((user) => (
+                                            <tr key={user.id} className="hover:bg-emerald-50/30 transition-colors group">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-lg shadow-sm border-2 border-white ring-2 ring-emerald-50">
+                                                            {user.first_name?.charAt(0).toUpperCase()}{user.last_name?.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900 text-base">{user.first_name} {user.last_name}</div>
+                                                            <div className="text-sm text-gray-500 flex items-center gap-1.5">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                                                {user.email}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className={`inline-flex w-fit items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${getRoleBadgeColor(user.role || 'Empleado')}`}>
+                                                            {(user.role || 'Empleado').toUpperCase()}
+                                                        </span>
+                                                        <span className="text-sm text-gray-600 font-medium">{user.position || 'Sin cargo'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg w-fit border border-gray-100">
+                                                        <MapPin size={14} className="text-gray-400" />
+                                                        <span className="text-sm font-medium">{user.centro_nombre || 'Sin asignar'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {user.is_active ? (
+                                                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium border border-emerald-100 shadow-sm">
+                                                            <span className="relative flex h-2 w-2">
+                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                            </span>
+                                                            Activo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 text-red-700 bg-red-50 px-3 py-1 rounded-full text-xs font-medium border border-red-100 shadow-sm">
+                                                            <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                                                            Inactivo
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handlePasswordReset(user.email)}
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-100"
+                                                            title="Enviar correo de recuperación de contraseña"
+                                                        >
+                                                            <Key size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditUser(user)}
+                                                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-100"
+                                                            title="Editar usuario"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                            {centers.map((center) => (
+                                <div key={center.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="p-3 bg-emerald-50 rounded-lg">
-                                            <Building2 className="h-6 w-6 text-emerald-600" />
+                                        <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                                            <Building2 size={24} />
                                         </div>
-                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${center.status === 'Activo' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${center.status === 'active'
+                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                            : 'bg-gray-100 text-gray-800 border border-gray-200'
                                             }`}>
-                                            {center.status}
+                                            {center.status === 'active' ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-1">{center.name}</h3>
-                                    <p className="text-sm text-gray-500 mb-4">{center.city}</p>
 
-                                    <div className="space-y-2 text-sm text-gray-600">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{center.name}</h3>
+
+                                    <div className="space-y-3 text-sm text-gray-600 mb-6">
                                         <div className="flex items-center gap-2">
-                                            <Users className="h-4 w-4 text-gray-400" />
-                                            <span>Responsable: {center.responsable || 'Sin asignar'}</span>
+                                            <MapPin size={16} className="text-gray-400" />
+                                            {center.city}, {center.province}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Phone className="h-4 w-4 text-gray-400" />
-                                            <span>{center.phone || 'Sin teléfono'}</span>
+                                            <Users size={16} className="text-gray-400" />
+                                            {center.manager_name || 'Sin gerente asignado'}
                                         </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-gray-100 flex justify-end">
+                                        <button className="text-emerald-600 font-medium hover:text-emerald-700 text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
+                                            Ver detalles <ChevronRight size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
-                    </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Modals */}
+                {showCenterModal && (
+                    <CreateCenterModal
+                        isOpen={showCenterModal}
+                        onClose={() => setShowCenterModal(false)}
+                        onSuccess={() => {
+                            setShowCenterModal(false);
+                            loadData();
+                        }}
+                    />
+                )}
+
+                {showUserModal && (
+                    <EmployeeForm
+                        employee={selectedUser}
+                        onSave={handleSaveUser}
+                        onCancel={() => setShowUserModal(false)}
+                        availableDepartments={departments}
+                    />
                 )}
             </div>
-
-            {/* Modals */}
-            <CreateCenterModal
-                isOpen={showCenterModal}
-                onClose={() => setShowCenterModal(false)}
-                onCenterCreated={() => {
-                    loadData();
-                    setShowCenterModal(false);
-                }}
-            />
-
-            {showUserModal && (
-                <EmployeeForm
-                    employee={selectedUser}
-                    onSave={handleSaveUser}
-                    onCancel={() => setShowUserModal(false)}
-                />
-            )}
         </div>
     );
 };

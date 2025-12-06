@@ -365,10 +365,10 @@ const NavigationDashboard: React.FC = () => {
       console.log('Todos los módulos para CEO:', allModules.map(m => m.title));
       return allModules;
     } else if (isAdmin) {
-      // Directores (admin) solo tienen acceso a SU módulo específico
-      const adminModules = [];
+      // ========== DIRECTORES: Acceso según especificación del usuario ==========
+      const adminModules: any[] = [];
 
-      // Determinar módulo específico por email del empleado
+      // BENI: Logística + Mantenimiento + Gestión de Centros
       if (employee?.email === 'beni.jungla@gmail.com') {
         adminModules.push({
           id: 'logistics',
@@ -388,7 +388,20 @@ const NavigationDashboard: React.FC = () => {
           component: MaintenanceModule,
           available: true
         });
-      } else if (employee?.email === 'lajunglacentral@gmail.com') {
+        adminModules.push({
+          id: 'centers',
+          title: 'Centros',
+          description: 'Gestión de centros deportivos',
+          icon: Building2,
+          color: '#0891b2',
+          component: null,
+          available: true,
+          hasSubmenu: true
+        });
+      }
+
+      // VICENTE: RRHH + Online + Gestión de Centros
+      else if (employee?.email === 'lajunglacentral@gmail.com') {
         adminModules.push({
           id: 'hr',
           title: 'RRHH y Procedimientos',
@@ -398,7 +411,6 @@ const NavigationDashboard: React.FC = () => {
           component: HRManagementSystem,
           available: true
         });
-        // Add Online and Marketing modules explicitly
         adminModules.push({
           id: 'online',
           title: 'La Jungla Online',
@@ -409,55 +421,19 @@ const NavigationDashboard: React.FC = () => {
           available: true
         });
         adminModules.push({
-          id: 'marketing',
-          title: 'Marketing',
-          description: 'Contenido y publicaciones',
-          icon: Globe,
-          color: '#dc2626',
-          component: MarketingDashboard,
-          available: true
-        });
-      } else if (employee?.email === 'diego@lajungla.es') {
-        adminModules.push({
-          id: 'marketing',
-          title: 'Marketing',
-          description: 'Contenido y publicaciones',
-          icon: Globe,
-          color: '#dc2626',
-          component: MarketingDashboard,
-          available: true
-        });
-      } else if (employee?.email === 'jonathan@lajungla.es') {
-        adminModules.push({
-          id: 'online',
-          title: 'Online',
-          description: 'Gestión de contenido online',
-          icon: Globe,
-          color: '#2563eb',
-          component: OnlineDashboard,
-          available: true
-        });
-      } else if (employee?.email === 'jesus2003.betis@gmail.com' || employee?.email === 'vicente@lajungla.es') {
-        adminModules.push({
-          id: 'online',
-          title: 'La Jungla Online',
-          description: 'Gestión de contenido online',
-          icon: Globe,
-          color: '#2563eb',
-          component: OnlineDashboard,
-          available: true
-        });
-      } else if (employee?.email === 'antonio@lajungla.es') {
-        adminModules.push({
-          id: 'events',
-          title: 'Eventos',
-          description: 'Gestión de eventos y actividades',
-          icon: Calendar,
-          color: '#7c2d12',
+          id: 'centers',
+          title: 'Centros',
+          description: 'Gestión de centros deportivos',
+          icon: Building2,
+          color: '#0891b2',
           component: null,
-          available: true
+          available: true,
+          hasSubmenu: true
         });
-      } else if (employee?.email === 'danivf1991@gmail.com') {
+      }
+
+      // DANI: Academy + Gestión Centro Sevilla (solo su centro)
+      else if (employee?.email === 'danivf1991@gmail.com') {
         adminModules.push({
           id: 'academy',
           title: 'Academy',
@@ -467,26 +443,112 @@ const NavigationDashboard: React.FC = () => {
           component: AcademyDashboard,
           available: true
         });
+        adminModules.push({
+          id: 'centers',
+          title: 'Gestión Centro Sevilla',
+          description: 'Gestión del Centro Sevilla',
+          icon: Building2,
+          color: '#059669',
+          component: null,
+          available: true,
+          hasSubmenu: true
+        });
       }
 
       return [...baseModules, ...adminModules];
     } else if (isCenterManager) {
-      // Encargados de centro: menú reducido (Dashboard + Gestión)
+      // Encargados de centro: Todos los módulos base + Gestión de su centro
       const centerManagerModule = {
         id: 'center-management',
         title: 'Gestión',
-        description: 'Gestión del Centro Sevilla',
+        description: 'Gestión del Centro',
         icon: Building2,
         color: '#059669',
         component: CenterManagement,
         available: true
       };
 
-      return [baseModules[0], centerManagerModule];
+      return [...baseModules, centerManagerModule];
     } else {
-      // Para otros roles, solo dashboard + reuniones + su módulo específico
-      const userDepartmentModules = departmentModules[userRole as keyof typeof departmentModules] || [];
-      return [...baseModules, ...userDepartmentModules];
+      // ========== EMPLEADOS DE CENTROS ==========
+
+      // Listas de emails por rol y centro
+      const encargadosSevilla = ['franciscogiraldezmorales@gmail.com', 'salva.cabrera.29@gmail.com'];
+      const encargadosJerez = ['ivan.2196@hotmail.com', 'pablo.benitez.pm@gmail.com'];
+      const encargadosPuerto = ['guillermo.ba24@gmail.com', 'adriyjmenez@gmail.com'];
+      const allEncargados = [...encargadosSevilla, ...encargadosJerez, ...encargadosPuerto];
+
+      const empleadosSevilla = ['surianjavi@gmail.com', 'sanfri13@gmail.com', 'jesus58bm@gmail.com', 'jesus2003.betis@gmail.com'];
+      const empleadosJerez = ['jlrodri1996@gmail.com', 'festepa02@gmail.com', 'mariocruzroja2003@gmail.com', 'antoniodurancorrales@gmail.com'];
+      const empleadosPuerto = ['josanfig95@gmail.com', 'manuelbellamerino@gmail.com', 'padillacruzjonathan@gmail.com', 'andujarvegajesus@gmail.com'];
+
+      const email = employee?.email || '';
+      const isEncargado = allEncargados.includes(email);
+
+      // Módulo base de gestión para todos los empleados de centro
+      const centerModule = {
+        id: 'center-management',
+        title: 'Gestión del Centro',
+        description: 'Tu centro de trabajo',
+        icon: Building2,
+        color: '#059669',
+        component: CenterManagement,
+        available: true
+      };
+
+      // Módulos extra para ENCARGADOS (revisiones de logística y mantenimiento)
+      const encargadoModules = isEncargado ? [
+        {
+          id: 'logistics-reviews',
+          title: 'Revisiones Logística',
+          description: 'Revisiones de inventario y vestuario',
+          icon: Package,
+          color: '#ea580c',
+          component: LogisticsManagementSystem,
+          available: true
+        },
+        {
+          id: 'maintenance-reviews',
+          title: 'Revisiones Mantenimiento',
+          description: 'Revisiones de instalaciones',
+          icon: AlertTriangle,
+          color: '#dc2626',
+          component: MaintenanceModule,
+          available: true
+        }
+      ] : [];
+
+      // Módulos extra para casos especiales
+      const extraModules: any[] = [];
+
+      // Jesús Rosado: +Online (sin facturación)
+      if (email === 'jesus2003.betis@gmail.com') {
+        extraModules.push({
+          id: 'online',
+          title: 'La Jungla Online',
+          description: 'Gestión de contenido online',
+          icon: Globe,
+          color: '#2563eb',
+          component: OnlineDashboard,
+          available: true,
+          hideBilling: true
+        });
+      }
+
+      // Antonio: +Eventos
+      if (email === 'antoniodurancorrales@gmail.com') {
+        extraModules.push({
+          id: 'events',
+          title: 'Eventos',
+          description: 'Gestión de eventos',
+          icon: Calendar,
+          color: '#7c2d12',
+          component: null,
+          available: true
+        });
+      }
+
+      return [...baseModules, centerModule, ...encargadoModules, ...extraModules];
     }
   };
 
@@ -614,7 +676,10 @@ const NavigationDashboard: React.FC = () => {
     }
 
     // Online Module Routing
-    if (selectedModule === 'online') return <OnlineDashboard />;
+    if (selectedModule === 'online') {
+      const hideBilling = module?.hideBilling || false;
+      return <OnlineDashboard hideBilling={hideBilling} />;
+    }
 
     // Usar el nuevo CenterManagementSystem rediseñado
     if (module.id === 'centers') {
@@ -653,6 +718,15 @@ const NavigationDashboard: React.FC = () => {
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
             userName={employee?.nombre || 'Carlos Suárez'}
             userRole={userRole || 'employee'}
+            onBack={() => setSelectedModule('main-dashboard')}
+          />
+        );
+      } else if (module.id === 'meetings') {
+        // Reuniones: pasar email para filtrar departamentos accesibles
+        return (
+          <Component
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.nombre || 'Carlos Suárez'}
             onBack={() => setSelectedModule('main-dashboard')}
           />
         );
@@ -761,7 +835,8 @@ const NavigationDashboard: React.FC = () => {
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
                     {userRole === 'superadmin' ? 'CEO' :
                       userRole === 'admin' ? 'Director' :
-                        userRole === 'manager' ? 'Encargado' : 'Empleado'}
+                        userRole === 'center_manager' ? 'Encargado' :
+                          userRole === 'manager' ? 'Encargado' : 'Empleado'}
                   </p>
                 </div>
               )}

@@ -24,7 +24,11 @@ interface DashboardMetrics {
     monthlyRevenue: number;
 }
 
-export const OnlineDashboard: React.FC = () => {
+interface OnlineDashboardProps {
+    hideBilling?: boolean;
+}
+
+export const OnlineDashboard: React.FC<OnlineDashboardProps> = ({ hideBilling = false }) => {
     const [activeView, setActiveView] = useState<string>('dashboard');
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -215,24 +219,28 @@ export const OnlineDashboard: React.FC = () => {
                     color="#f59e0b" // Amber
                     status="active"
                 />
-                <NavigationCard
-                    title="FACTURACIÓN"
-                    icon={DollarSign}
-                    metric={`${metrics.activeClients} Clientes`}
-                    subtext="Datos de Harbiz"
-                    onClick={() => setActiveView('facturacion')}
-                    color="#10b981" // Emerald
-                    status="active"
-                />
-                <NavigationCard
-                    title="REPORTES"
-                    icon={BarChart3}
-                    metric="Analytics"
-                    subtext="Performance y métricas"
-                    onClick={() => setActiveView('reportes')}
-                    color="#6366f1" // Indigo
-                    status="active"
-                />
+                {!hideBilling && (
+                    <NavigationCard
+                        title="FACTURACIÓN"
+                        icon={DollarSign}
+                        metric={`${metrics.activeClients} Clientes`}
+                        subtext="Datos de Harbiz"
+                        onClick={() => setActiveView('facturacion')}
+                        color="#10b981"
+                        status="active"
+                    />
+                )}
+                {!hideBilling && (
+                    <NavigationCard
+                        title="REPORTES"
+                        icon={BarChart3}
+                        metric="Analytics"
+                        subtext="Performance y métricas"
+                        onClick={() => setActiveView('reportes')}
+                        color="#6366f1"
+                        status="active"
+                    />
+                )}
             </div>
         </div>
     );

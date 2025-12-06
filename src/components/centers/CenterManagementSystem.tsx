@@ -19,39 +19,39 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
 
   // 🧹 DATOS RESETEADOS - Listos para datos reales
   const centersData = {
-    'sevilla': { 
-      name: 'Centro Sevilla', 
-      revenue: 0, 
-      expenses: 0, 
-      clients: 0, 
-      target: 0, 
-      margin: 0, 
+    'sevilla': {
+      name: 'Centro Sevilla',
+      revenue: 0,
+      expenses: 0,
+      clients: 0,
+      target: 0,
+      margin: 0,
       growth: 0,
       depreciation: 0,
       amortization: 0,
       cashInflow: 0,
       cashOutflow: 0
     },
-    'jerez': { 
-      name: 'Centro Jerez', 
-      revenue: 0, 
-      expenses: 0, 
-      clients: 0, 
-      target: 0, 
-      margin: 0, 
+    'jerez': {
+      name: 'Centro Jerez',
+      revenue: 0,
+      expenses: 0,
+      clients: 0,
+      target: 0,
+      margin: 0,
       growth: 0,
       depreciation: 0,
       amortization: 0,
       cashInflow: 0,
       cashOutflow: 0
     },
-    'puerto': { 
-      name: 'Centro Puerto', 
-      revenue: 0, 
-      expenses: 0, 
-      clients: 0, 
-      target: 0, 
-      margin: 0, 
+    'puerto': {
+      name: 'Centro Puerto',
+      revenue: 0,
+      expenses: 0,
+      clients: 0,
+      target: 0,
+      margin: 0,
       growth: 0,
       depreciation: 0,
       amortization: 0,
@@ -60,16 +60,28 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
     }
   };
 
+  // 🔐 Filtrar centros según el usuario
+  // Dani solo ve Sevilla, el resto ve todos los centros
+  const getUserAllowedCenters = () => {
+    if (userEmail === 'danivf1991@gmail.com') {
+      return { sevilla: centersData.sevilla };
+    }
+    // CEO y directores ven todos los centros
+    return centersData;
+  };
+
+  const filteredCentersData = getUserAllowedCenters();
+
   const totalRevenue = Object.values(centersData).reduce((sum, center) => sum + center.revenue, 0);
   const totalExpenses = Object.values(centersData).reduce((sum, center) => sum + center.expenses, 0);
   const totalClients = Object.values(centersData).reduce((sum, center) => sum + center.clients, 0);
   const totalTarget = Object.values(centersData).reduce((sum, center) => sum + center.target, 0);
-  
+
   // Cálculo del EBITDA (Earnings Before Interest, Taxes, Depreciation, and Amortization)
   const totalDepreciation = Object.values(centersData).reduce((sum, center) => sum + center.depreciation, 0);
   const totalAmortization = Object.values(centersData).reduce((sum, center) => sum + center.amortization, 0);
   const totalEBITDA = (totalRevenue - totalExpenses) + totalDepreciation + totalAmortization;
-  
+
   // Cálculo del Flujo de Caja
   const totalCashInflow = Object.values(centersData).reduce((sum, center) => sum + center.cashInflow, 0);
   const totalCashOutflow = Object.values(centersData).reduce((sum, center) => sum + center.cashOutflow, 0);
@@ -82,7 +94,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
 
   if (selectedCenter && selectedModule) {
     const centerData = centersData[selectedCenter as keyof typeof centersData];
-    
+
     if (selectedModule === 'accounting') {
       return (
         <AccountingModule
@@ -92,7 +104,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
         />
       );
     }
-    
+
     if (selectedModule === 'clients') {
       return (
         <ClientsModule
@@ -102,8 +114,8 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
         />
       );
     }
-    
-    
+
+
     if (selectedModule === 'config') {
       return (
         <ConfigModule
@@ -113,7 +125,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
         />
       );
     }
-    
+
     if (selectedModule === 'checklist') {
       return (
         <ChecklistModule
@@ -123,7 +135,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
         />
       );
     }
-    
+
     // Este return nunca debería ejecutarse ya que todos los módulos están implementados
     return null;
   }
@@ -148,13 +160,13 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Facturación Total</p>
             <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>€{totalRevenue.toLocaleString('es-ES')}</p>
           </div>
-          
+
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <Users style={{ width: '24px', height: '24px', color: '#3b82f6', marginBottom: '12px' }} />
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Clientes Totales</p>
             <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>{totalClients} / {totalTarget}</p>
           </div>
-          
+
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <BarChart3 style={{ width: '24px', height: '24px', color: '#8b5cf6', marginBottom: '12px' }} />
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>EBITDA</p>
@@ -162,7 +174,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
               €{totalEBITDA.toLocaleString('es-ES')}
             </p>
           </div>
-          
+
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <DollarSign style={{ width: '24px', height: '24px', color: '#f59e0b', marginBottom: '12px' }} />
             <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Flujo de Caja</p>
@@ -174,12 +186,12 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
 
         {/* Centros con Módulos */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-          {Object.entries(centersData).map(([centerId, center]) => (
+          {Object.entries(filteredCentersData).map(([centerId, center]) => (
             <div key={centerId} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
                 {center.name}
               </h3>
-              
+
               {/* Métricas del Centro */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
                 <div>
@@ -201,7 +213,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
                   </p>
                 </div>
               </div>
-              
+
               {/* Botones de Módulos */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <button
@@ -227,7 +239,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
                   <Calculator style={{ width: '16px', height: '16px' }} />
                   Contabilidad
                 </button>
-                
+
                 <button
                   onClick={() => handleModuleClick(centerId, 'checklist')}
                   style={{
@@ -251,7 +263,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
                   <ClipboardList style={{ width: '16px', height: '16px' }} />
                   Informes Checklist
                 </button>
-                
+
                 <button
                   onClick={() => handleModuleClick(centerId, 'clients')}
                   style={{
@@ -276,7 +288,7 @@ const CenterManagementSystem: React.FC<CenterManagementSystemProps> = ({ userEma
                   <Users style={{ width: '16px', height: '16px' }} />
                   Clientes
                 </button>
-                
+
                 <div style={{ marginTop: '12px' }}>
                   <button
                     onClick={() => handleModuleClick(centerId, 'config')}

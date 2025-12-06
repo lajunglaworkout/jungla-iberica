@@ -66,10 +66,10 @@ const Filters: React.FC<{
   onNewEmployee: () => void;
   userRole?: string;
 }> = ({ searchTerm, setSearchTerm, filterCenter, setFilterCenter, centerOptions, onNewEmployee, userRole }) => (
-  <div style={{ 
-    backgroundColor: 'white', 
-    padding: '20px', 
-    borderRadius: '12px', 
+  <div style={{
+    backgroundColor: 'white',
+    padding: '20px',
+    borderRadius: '12px',
     marginBottom: '24px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
   }}>
@@ -92,7 +92,7 @@ const Filters: React.FC<{
           />
         </div>
       </div>
-      
+
       <select
         value={filterCenter}
         onChange={(e) => setFilterCenter(e.target.value)}
@@ -158,14 +158,14 @@ const EmployeeCard: React.FC<{
         fontSize: '18px',
         fontWeight: 'bold'
       }}>
-        {employee.nombre.charAt(0)}{employee.apellidos.charAt(0)}
+        {employee.first_name.charAt(0)}{employee.last_name.charAt(0)}
       </div>
       <div style={{ flex: 1 }}>
         <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#111827' }}>
-          {employee.nombre} {employee.apellidos}
+          {employee.first_name} {employee.last_name}
         </h3>
         <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-          {employee.cargo} • {employee.centro_nombre}
+          {employee.position} • {employee.centro_nombre}
         </p>
       </div>
       <div style={{
@@ -173,10 +173,10 @@ const EmployeeCard: React.FC<{
         borderRadius: '12px',
         fontSize: '12px',
         fontWeight: '500',
-        backgroundColor: employee.activo ? '#10b98120' : '#ef444420',
-        color: employee.activo ? '#10b981' : '#ef4444'
+        backgroundColor: employee.is_active ? '#10b98120' : '#ef444420',
+        color: employee.is_active ? '#10b981' : '#ef4444'
       }}>
-        {employee.activo ? '✅ Activo' : '❌ Inactivo'}
+        {employee.is_active ? '✅ Activo' : '❌ Inactivo'}
       </div>
     </div>
 
@@ -185,10 +185,10 @@ const EmployeeCard: React.FC<{
         📧 {employee.email}
       </p>
       <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
-        📞 {employee.telefono}
+        📞 {employee.phone}
       </p>
       <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
-        🏢 {employee.departamento}
+        🏢 {employee.departamento || 'Sin departamento'}
       </p>
     </div>
 
@@ -283,7 +283,7 @@ const EmployeeList: React.FC<{
 const HRManagementSystem: React.FC = () => {
   const { employee, userRole } = useSession();
   const { centers: dataCenters } = useData();
-  
+
   // Estados principales
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -293,7 +293,7 @@ const HRManagementSystem: React.FC = () => {
   const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCenter, setFilterCenter] = useState('all');
-  
+
   // Estados para navegación del dashboard
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [currentModule, setCurrentModule] = useState<string>('dashboard');
@@ -336,11 +336,12 @@ const HRManagementSystem: React.FC = () => {
   }, []);
 
   // Determinar si es un empleado regular (no encargado/admin/director)
-  const isRegularEmployee = userRole === 'employee' || 
-    (!userRole?.includes('admin') && 
-     !userRole?.includes('manager') && 
-     !userRole?.includes('director') &&
-     userRole !== 'center_manager');
+  // Determinar si es un empleado regular (no encargado/admin/director)
+  const isRegularEmployee = userRole === 'Empleado' ||
+    (!userRole?.includes('Admin') &&
+      !userRole?.includes('Director') &&
+      !userRole?.includes('Encargado') &&
+      userRole !== 'Encargado');
 
   // Opciones de centros para filtros
   const centerOptions = [
@@ -356,97 +357,99 @@ const HRManagementSystem: React.FC = () => {
     setError(null);
     try {
       console.log('🔍 Cargando TODOS los empleados...');
-      
+
       // Cargar empleados de forma simple
       const { data: activeEmployeesData, error: activeError } = await supabase
         .from('employees')
         .select('*');
-      
+
       if (activeError) {
         console.error('❌ Error cargando empleados:', activeError);
         setError(`Error al cargar empleados: ${activeError.message}`);
         return;
       }
-      
+
       console.log('📊 Empleados cargados de BD:', activeEmployeesData?.length);
-      
+
       if (!activeEmployeesData || activeEmployeesData.length === 0) {
         console.log('⚠️ No se encontraron empleados en la base de datos');
         setEmployees([]);
         return;
       }
-      
+
       // Cargar centros por separado
       const { data: centersData } = await supabase
         .from('centers')
         .select('*');
-      
       // Mapear empleados de forma más simple y robusta
       const empleadosMapeados = activeEmployeesData.map((emp: any) => {
         const centro = centersData?.find(c => c.id === emp.center_id);
-        
+
         // Crear objeto Employee con valores por defecto seguros
         const empleadoMapeado: Employee = {
           id: emp.id || '',
-          nombre: emp.nombre || emp.name || 'Sin nombre',
-          apellidos: emp.apellidos || emp.last_name || '',
+          first_name: emp.first_name || 'Sin nombre',
+          last_name: emp.last_name || '',
           email: emp.email || '',
-          telefono: emp.telefono || emp.phone || '',
+          phone: emp.phone || '',
           dni: emp.dni || '',
-          fecha_nacimiento: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento) : new Date(),
-          direccion: emp.direccion || emp.address || '',
-          ciudad: emp.ciudad || emp.city || '',
-          codigo_postal: emp.codigo_postal || emp.postal_code || '',
+          birth_date: emp.birth_date ? new Date(emp.birth_date) : new Date(),
+          address: emp.address || '',
+          city: emp.city || '',
+          postal_code: emp.postal_code || '',
           center_id: emp.center_id || '0',
           centro_nombre: centro?.name || 'Oficina Central',
-          fecha_alta: emp.fecha_alta ? new Date(emp.fecha_alta) : new Date(),
-          fecha_baja: emp.fecha_baja ? new Date(emp.fecha_baja) : undefined,
-          tipo_contrato: emp.tipo_contrato || emp.contract_type || 'Indefinido',
-          jornada: emp.jornada || emp.workday || 'Completa',
-          salario_bruto_anual: emp.salario_bruto_anual || emp.annual_salary || 0,
-          salario_neto_mensual: emp.salario_neto_mensual || emp.monthly_salary || 0,
-          rol: emp.rol || emp.role || 'employee',
-          departamento: emp.departamento || emp.department || 'Operaciones',
-          cargo: emp.cargo || emp.position || 'Empleado',
-          numero_cuenta: emp.numero_cuenta || emp.account_number || '',
+          hire_date: emp.hire_date ? new Date(emp.hire_date) : new Date(),
+          termination_date: emp.termination_date ? new Date(emp.termination_date) : undefined,
+          contract_type: emp.contract_type || 'Indefinido',
+          work_schedule: emp.work_schedule || 'Completa',
+          gross_annual_salary: emp.gross_annual_salary || 0,
+          salario_neto_mensual: emp.salario_neto_mensual || 0,
+          role: emp.role || 'Empleado',
+          department_id: emp.department_id,
+          // Si tenemos department_id, podríamos buscar el nombre en una tabla de departamentos, 
+          // pero por ahora usaremos un valor por defecto o lo dejaremos opcional
+          departamento: 'Departamento ' + (emp.department_id || '?'),
+          position: emp.position || 'Empleado',
+          bank_account_number: emp.bank_account_number || '',
           iban: emp.iban || '',
-          banco: emp.banco || emp.bank || '',
-          nivel_estudios: emp.nivel_estudios || emp.education_level || 'ESO',
-          titulacion: emp.titulacion || emp.degree || '',
-          especialidad: emp.especialidad || emp.specialty || '',
-          talla_camiseta: emp.talla_camiseta || emp.shirt_size || 'M',
-          talla_pantalon: emp.talla_pantalon || emp.pants_size || '42',
-          talla_chaqueton: emp.talla_chaqueton || emp.jacket_size || 'M',
-          foto_perfil: emp.foto_perfil || emp.profile_image || '',
-          activo: emp.activo !== false && emp.is_active !== false,
-          observaciones: emp.observaciones || emp.notes || '',
-          tiene_contrato_firmado: emp.tiene_contrato_firmado || emp.has_signed_contract || false,
-          tiene_alta_ss: emp.tiene_alta_ss || emp.has_social_security || false,
-          tiene_formacion_riesgos: emp.tiene_formacion_riesgos || emp.has_risk_training || false,
+          banco: emp.banco || '',
+          education_level: emp.education_level || 'ESO',
+          degree: emp.degree || '',
+          specialization: emp.specialization || '',
+          shirt_size: emp.shirt_size || 'M',
+          pant_size: emp.pant_size || '42',
+          jacket_size: emp.jacket_size || 'M',
+          foto_perfil: emp.foto_perfil || '',
+          is_active: emp.is_active !== false,
+          observaciones: emp.observaciones || '',
+          tiene_contrato_firmado: emp.tiene_contrato_firmado || false,
+          tiene_alta_ss: emp.tiene_alta_ss || false,
+          tiene_formacion_riesgos: emp.tiene_formacion_riesgos || false,
           created_at: emp.created_at ? new Date(emp.created_at) : new Date(),
           updated_at: emp.updated_at ? new Date(emp.updated_at) : new Date()
         };
-        
+
         return empleadoMapeado;
       });
-      
+
       // Separar por tipo para logs
       const empleadosMarca = empleadosMapeados.filter(e => !e.center_id || e.center_id === '0');
       const empleadosCentros = empleadosMapeados.filter(e => e.center_id && e.center_id !== '0');
-      
+
       console.log('👔 Empleados MARCA (Oficina Central):', empleadosMarca.length);
       console.log('🏢 Empleados CENTROS:', empleadosCentros.length);
       console.log('📊 TOTAL:', empleadosMapeados.length);
-      
+
       // Mostrar algunos nombres para debug
       console.log('Primeros 5 empleados mapeados:');
       empleadosMapeados.slice(0, 5).forEach(e => {
-        console.log(`  - ${e.nombre} ${e.apellidos} (${e.centro_nombre}) - ${e.email}`);
+        console.log(`  - ${e.first_name} ${e.last_name} (${e.centro_nombre}) - ${e.email}`);
       });
-      
+
       setEmployees(empleadosMapeados);
       console.log('✅ Carga completa:', empleadosMapeados.length, 'empleados');
-      
+
     } catch (error: any) {
       console.error('❌ Error general en loadEmployees:', error);
       setError(`Error al cargar los datos: ${error.message}`);
@@ -464,53 +467,54 @@ const HRManagementSystem: React.FC = () => {
   const handleSaveEmployee = async (employeeData: Partial<Employee>) => {
     console.log('🔄 handleSaveEmployee llamado con:', employeeData);
     console.log('📝 Empleado seleccionado:', selectedEmployee);
-    
+
     setIsLoading(true);
     setError(null);
     try {
       // SEGURIDAD: Prevenir creación de superadmins desde el formulario
-      if (employeeData.rol === 'superadmin' && !selectedEmployee) {
+      if (employeeData.role === 'Admin' && !selectedEmployee) {
         alert('❌ No se pueden crear nuevos Superadmins. Este rol está reservado para el CEO.');
         setIsLoading(false);
         return;
       }
 
       // Si está editando y cambia a superadmin, también bloquear
-      if (employeeData.rol === 'superadmin' && selectedEmployee?.rol !== 'superadmin') {
+      if (employeeData.role === 'Admin' && selectedEmployee?.role !== 'Admin') {
         alert('❌ No se puede cambiar el rol a Superadmin. Este rol está reservado para el CEO.');
         setIsLoading(false);
         return;
       }
 
       // Preparar datos para Supabase con mapeo correcto de campos
+      // Preparar datos para Supabase con mapeo correcto de campos
       const supabaseData = {
-        name: employeeData.nombre || (employeeData as any).name, // 🔧 FIX: Usar 'name' en lugar de 'nombre'
-        apellidos: employeeData.apellidos,
+        first_name: employeeData.first_name,
+        last_name: employeeData.last_name,
         email: employeeData.email,
-        phone: employeeData.telefono || (employeeData as any).phone, // 🔧 FIX: Usar 'phone' en lugar de 'telefono'
+        phone: employeeData.phone,
         dni: employeeData.dni,
-        birth_date: employeeData.fecha_nacimiento, // 🔧 FIX: Usar 'birth_date'
-        address: employeeData.direccion, // 🔧 FIX: Usar 'address'
-        ciudad: employeeData.ciudad,
-        codigo_postal: employeeData.codigo_postal,
+        birth_date: employeeData.birth_date,
+        address: employeeData.address,
+        city: employeeData.city,
+        postal_code: employeeData.postal_code,
         center_id: employeeData.center_id ? parseInt(String(employeeData.center_id)) : null,
-        hire_date: employeeData.fecha_alta, // 🔧 FIX: Usar 'hire_date'
-        fecha_baja: employeeData.fecha_baja,
-        contract_type: employeeData.tipo_contrato, // 🔧 FIX: Usar 'contract_type'
-        jornada: employeeData.jornada,
-        salario_bruto_anual: employeeData.salario_bruto_anual,
-        role: employeeData.rol, // 🔧 FIX: Usar 'role' en lugar de 'base_role'
-        department_id: employeeData.departamento ? parseInt(String(employeeData.departamento)) : null, // 🔧 FIX CRÍTICO: Guardar department_id
-        position: employeeData.cargo, // 🔧 FIX: Usar 'position'
-        numero_cuenta: employeeData.numero_cuenta,
+        hire_date: employeeData.hire_date,
+        termination_date: employeeData.termination_date,
+        contract_type: employeeData.contract_type,
+        work_schedule: employeeData.work_schedule,
+        gross_annual_salary: employeeData.gross_annual_salary,
+        role: employeeData.role,
+        department_id: employeeData.department_id ? parseInt(String(employeeData.department_id)) : null,
+        position: employeeData.position,
+        bank_account_number: employeeData.bank_account_number,
         iban: employeeData.iban,
         banco: employeeData.banco,
-        nivel_estudios: employeeData.nivel_estudios,
-        titulacion: employeeData.titulacion,
-        especialidad: employeeData.especialidad,
-        talla_camiseta: employeeData.talla_camiseta,
-        talla_pantalon: employeeData.talla_pantalon,
-        talla_chaqueton: employeeData.talla_chaqueton,
+        education_level: employeeData.education_level,
+        degree: employeeData.degree,
+        specialization: employeeData.specialization,
+        shirt_size: employeeData.shirt_size,
+        pant_size: employeeData.pant_size,
+        jacket_size: employeeData.jacket_size,
         // Campos de vestuario La Jungla
         vestuario_chandal: (employeeData as any).vestuario_chandal,
         vestuario_sudadera_frio: (employeeData as any).vestuario_sudadera_frio,
@@ -520,7 +524,7 @@ const HRManagementSystem: React.FC = () => {
         vestuario_camiseta_entrenamiento: (employeeData as any).vestuario_camiseta_entrenamiento,
         vestuario_observaciones: (employeeData as any).vestuario_observaciones,
         foto_perfil: employeeData.foto_perfil,
-        is_active: employeeData.activo !== false, // Mapear activo a is_active
+        is_active: employeeData.is_active !== false,
         observaciones: employeeData.observaciones,
         tiene_contrato_firmado: employeeData.tiene_contrato_firmado,
         tiene_alta_ss: employeeData.tiene_alta_ss,
@@ -536,7 +540,7 @@ const HRManagementSystem: React.FC = () => {
       if (selectedEmployee) {
         console.log(`💾 Actualizando empleado con ID: ${selectedEmployee.id}`);
         console.log('📝 Datos a actualizar:', cleanData);
-        
+
         // 🔧 FIX CRÍTICO: Usar .select().single() para forzar la actualización
         const { data, error } = await supabase
           .from('employees')
@@ -544,37 +548,37 @@ const HRManagementSystem: React.FC = () => {
           .eq('id', selectedEmployee.id)
           .select()
           .single();
-        
+
         if (error) {
           console.error('❌ Error de Supabase:', error);
           throw error;
         }
-        
+
         console.log('✅ Empleado actualizado correctamente:', data);
         console.log('🔍 Verificando datos guardados:', {
           department_id: data?.department_id,
           role: data?.role,
-          name: data?.name
+          name: data?.first_name
         });
         alert('✅ Empleado actualizado correctamente');
       } else {
         console.log('➕ Creando nuevo empleado...');
         console.log('📝 Datos a insertar:', cleanData);
-        
+
         const { data, error } = await supabase
           .from('employees')
-          .insert([{...cleanData, created_at: new Date().toISOString()}])
+          .insert([{ ...cleanData, created_at: new Date().toISOString() }])
           .select();
-        
+
         if (error) {
           console.error('❌ Error de Supabase:', error);
           throw error;
         }
-        
+
         console.log('✅ Empleado creado correctamente:', data);
         alert('✅ Empleado creado correctamente');
       }
-      
+
       setShowEmployeeForm(false);
       setSelectedEmployee(null);
       await loadEmployees();
@@ -622,12 +626,12 @@ const HRManagementSystem: React.FC = () => {
 
   const filteredEmployees = employees.filter(employee => {
     const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = 
-      (employee.nombre || '').toLowerCase().includes(searchTermLower) ||
-      (employee.apellidos || '').toLowerCase().includes(searchTermLower) ||
+    const matchesSearch =
+      (employee.first_name || '').toLowerCase().includes(searchTermLower) ||
+      (employee.last_name || '').toLowerCase().includes(searchTermLower) ||
       employee.email.toLowerCase().includes(searchTermLower) ||
-      employee.cargo.toLowerCase().includes(searchTermLower) ||
-      employee.departamento.toLowerCase().includes(searchTermLower);
+      employee.position.toLowerCase().includes(searchTermLower) ||
+      (employee.departamento || '').toLowerCase().includes(searchTermLower);
 
     const matchesCenter = filterCenter === 'all' || String(employee.center_id) === filterCenter;
 
@@ -639,8 +643,8 @@ const HRManagementSystem: React.FC = () => {
   // Renderizado condicional basado en la vista actual
   if (currentView === 'dashboard') {
     return (
-      <HRDashboard 
-        onNavigate={handleNavigate} 
+      <HRDashboard
+        onNavigate={handleNavigate}
         userRole={userRole}
         isRegularEmployee={isRegularEmployee}
         currentEmployee={employee}
@@ -691,8 +695,8 @@ const HRManagementSystem: React.FC = () => {
       );
     case 'my-documents':
       return (
-        <DocumentManagement 
-          onBack={() => setCurrentView('dashboard')} 
+        <DocumentManagement
+          onBack={() => setCurrentView('dashboard')}
           currentEmployee={employee}
           isEmployee={true}
         />
@@ -729,7 +733,7 @@ const HRManagementSystem: React.FC = () => {
     if (error) {
       return (
         <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
-          <AlertCircle style={{ marginBottom: '10px', margin: 'auto' }}/>
+          <AlertCircle style={{ marginBottom: '10px', margin: 'auto' }} />
           <p style={{ fontWeight: 'bold' }}>Error al cargar los datos</p>
           <p>{error}</p>
         </div>
@@ -779,13 +783,13 @@ const HRManagementSystem: React.FC = () => {
               <span style={{ color: '#059669', fontWeight: '500' }}>Base de Datos</span>
             </div>
 
-            <HRHeader employeeCount={employees.length} activeCount={employees.filter(e => e.activo).length} />
-            <Filters 
-              searchTerm={searchTerm} 
-              setSearchTerm={setSearchTerm} 
-              filterCenter={filterCenter} 
-              setFilterCenter={setFilterCenter} 
-              centerOptions={centerOptions} 
+            <HRHeader employeeCount={employees.length} activeCount={employees.filter(e => e.is_active).length} />
+            <Filters
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              filterCenter={filterCenter}
+              setFilterCenter={setFilterCenter}
+              centerOptions={centerOptions}
               onNewEmployee={handleNewEmployee}
               userRole={userRole || undefined}
             />
@@ -850,7 +854,7 @@ const HRManagementSystem: React.FC = () => {
             Módulo en Desarrollo
           </h2>
           <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '32px', lineHeight: '1.6' }}>
-            Este módulo está siendo implementado como parte del sistema integral de RRHH. 
+            Este módulo está siendo implementado como parte del sistema integral de RRHH.
             Estará disponible en las próximas versiones del sistema.
           </p>
           <div style={{
