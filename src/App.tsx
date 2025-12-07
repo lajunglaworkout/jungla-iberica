@@ -67,6 +67,7 @@ import { TareasView } from './components/academy/Tareas/TareasView';
 import { OnlineDashboard } from './components/online/OnlineDashboard';
 import { MarketingDashboard } from './components/marketing/MarketingDashboard';
 import { UserManagementSystem } from './components/admin/UserManagementSystem';
+import { EventsDashboard } from './components/events/EventsDashboard';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -75,7 +76,23 @@ const NavigationDashboard: React.FC = () => {
   const [selectedModule, setSelectedModule] = useState<string | null>(() => {
     return localStorage.getItem('lastSelectedModule') || 'main-dashboard';
   });
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar siempre visible
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+
+  // Listen for window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Persistir módulo seleccionado
   useEffect(() => {
@@ -313,6 +330,15 @@ const NavigationDashboard: React.FC = () => {
         icon: Globe,
         component: OnlineDashboard,
         available: true
+      },
+      {
+        id: 'events',
+        title: 'Eventos',
+        description: 'Gestión de eventos',
+        icon: Calendar,
+        color: '#7c2d12',
+        component: EventsDashboard,
+        available: true
       }
     ];
 
@@ -430,6 +456,15 @@ const NavigationDashboard: React.FC = () => {
           available: true,
           hasSubmenu: true
         });
+        adminModules.push({
+          id: 'events',
+          title: 'Eventos',
+          description: 'Gestión de eventos',
+          icon: Calendar,
+          color: '#7c2d12',
+          component: EventsDashboard,
+          available: true
+        });
       }
 
       // DANI: Academy + Gestión Centro Sevilla (solo su centro)
@@ -535,7 +570,7 @@ const NavigationDashboard: React.FC = () => {
         });
       }
 
-      // Antonio: +Eventos
+      // Antonio: +Eventos (Responsable de Eventos)
       if (email === 'antoniodurancorrales@gmail.com') {
         extraModules.push({
           id: 'events',
@@ -543,7 +578,7 @@ const NavigationDashboard: React.FC = () => {
           description: 'Gestión de eventos',
           icon: Calendar,
           color: '#7c2d12',
-          component: null,
+          component: EventsDashboard,
           available: true
         });
       }
@@ -753,19 +788,59 @@ const NavigationDashboard: React.FC = () => {
       position: 'relative',
       overflow: 'hidden'
     }}>
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9
+          }}
+        />
+      )}
+
+      {/* Mobile hamburger button */}
+      {isMobile && !sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '16px',
+            zIndex: 20,
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            cursor: 'pointer'
+          }}
+        >
+          <Menu size={24} />
+        </button>
+      )}
+
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? '280px' : '80px',
-        minWidth: sidebarOpen ? '280px' : '80px',
+        width: isMobile ? (sidebarOpen ? '280px' : '0px') : (sidebarOpen ? '280px' : '80px'),
+        minWidth: isMobile ? (sidebarOpen ? '280px' : '0px') : (sidebarOpen ? '280px' : '80px'),
         backgroundColor: 'white',
-        borderRight: '1px solid #e5e7eb',
-        transition: 'width 0.3s ease',
-        display: 'flex',
+        borderRight: sidebarOpen ? '1px solid #e5e7eb' : 'none',
+        transition: 'all 0.3s ease',
+        display: sidebarOpen || !isMobile ? 'flex' : 'none',
         flexDirection: 'column',
         boxShadow: '4px 0 6px -1px rgba(0, 0, 0, 0.1)',
         position: 'fixed',
         zIndex: 10,
         overflowY: 'auto',
+        overflowX: 'hidden',
         height: '100vh',
         left: 0,
         top: 0
@@ -947,12 +1022,13 @@ const NavigationDashboard: React.FC = () => {
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
-        marginLeft: sidebarOpen ? '280px' : '80px',
+        marginLeft: isMobile ? 0 : (sidebarOpen ? '280px' : '80px'),
         transition: 'margin-left 0.3s ease',
         backgroundColor: '#f9fafb',
         minHeight: '100vh',
         maxHeight: '100vh',
-        width: `calc(100vw - ${sidebarOpen ? '280px' : '80px'})`
+        width: isMobile ? '100vw' : `calc(100vw - ${sidebarOpen ? '280px' : '80px'})`,
+        paddingTop: isMobile ? '70px' : 0
       }}>
         {selectedModule === 'main-dashboard' ? (
           // Para el dashboard principal, mostrar sin padding ni header adicional

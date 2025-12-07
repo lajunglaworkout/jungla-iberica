@@ -72,16 +72,16 @@ const CenterManagement: React.FC = () => {
 
   if (!employee) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         minHeight: '100vh',
         backgroundColor: '#f9fafb'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            fontSize: '48px', 
+          <div style={{
+            fontSize: '48px',
             marginBottom: '16px',
             animation: 'spin 1s linear infinite'
           }}>⏳</div>
@@ -97,27 +97,27 @@ const CenterManagement: React.FC = () => {
       <div
         style={{
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-          borderRadius: '16px',
-          padding: '32px',
-          marginBottom: '32px',
+          borderRadius: '12px',
+          padding: 'clamp(16px, 4vw, 32px)',
+          marginBottom: '24px',
           boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
           color: 'white'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-          <div style={{ 
-            backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-            borderRadius: '12px', 
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '12px',
             padding: '12px',
             backdropFilter: 'blur(10px)'
           }}>
             🏪
           </div>
           <div>
-            <h1 style={{ fontSize: '32px', fontWeight: 700, margin: 0 }}>
+            <h1 style={{ fontSize: 'clamp(20px, 5vw, 32px)', fontWeight: 700, margin: 0 }}>
               Gestión del Centro
             </h1>
-            <p style={{ margin: '8px 0 0 0', fontSize: '16px', opacity: 0.95 }}>
+            <p style={{ margin: '8px 0 0 0', fontSize: 'clamp(13px, 3vw, 16px)', opacity: 0.95 }}>
               Hola {employee.name?.split(' ')[0] || 'Empleado'}, bienvenido a tu panel de gestión
             </p>
           </div>
@@ -134,11 +134,11 @@ const CenterManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Grid de tarjetas optimizado */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-        gap: '20px' 
+      {/* Grid de tarjetas optimizado para móvil */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+        gap: 'clamp(12px, 3vw, 20px)'
       }}>
         {actionCards.map((card) => (
           <button
@@ -149,9 +149,9 @@ const CenterManagement: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              gap: '16px',
-              padding: '24px',
-              borderRadius: '16px',
+              gap: '12px',
+              padding: 'clamp(16px, 4vw, 24px)',
+              borderRadius: '12px',
               border: '1px solid #e5e7eb',
               backgroundColor: 'white',
               textAlign: 'left',
@@ -186,20 +186,20 @@ const CenterManagement: React.FC = () => {
             }}>
               {card.icon}
             </div>
-            
+
             {/* Contenido */}
             <div style={{ flex: 1 }}>
-              <div style={{ 
-                fontSize: '18px', 
-                fontWeight: 600, 
-                color: '#111827', 
+              <div style={{
+                fontSize: '18px',
+                fontWeight: 600,
+                color: '#111827',
                 marginBottom: '6px',
                 lineHeight: '1.4'
               }}>
                 {card.title}
               </div>
-              <div style={{ 
-                color: '#6b7280', 
+              <div style={{
+                color: '#6b7280',
                 fontSize: '14px',
                 lineHeight: '1.5'
               }}>
@@ -271,7 +271,7 @@ const CenterManagement: React.FC = () => {
             >
               ← Volver
             </button>
-            
+
             <ChecklistCompleteSystem
               centerId={employee?.center_id?.toString() || '9'}
               centerName={getCenterName(Number(employee?.center_id) || 9)}
@@ -323,20 +323,20 @@ const CenterManagement: React.FC = () => {
     }
   };
 
-  return activeAction === 'summary' 
+  return activeAction === 'summary'
     ? (
-      <div style={{ 
-        padding: '32px', 
-        backgroundColor: '#f9fafb', 
-        minHeight: '100vh' 
+      <div style={{
+        padding: 'clamp(12px, 4vw, 32px)',
+        backgroundColor: '#f9fafb',
+        minHeight: '100vh'
       }}>
         {renderSummary()}
       </div>
-    ) 
+    )
     : (
-      <div style={{ 
-        padding: '32px', 
-        backgroundColor: '#f9fafb', 
+      <div style={{
+        padding: 'clamp(12px, 4vw, 32px)',
+        backgroundColor: '#f9fafb',
         minHeight: '100vh',
         maxWidth: '1400px',
         margin: '0 auto'
