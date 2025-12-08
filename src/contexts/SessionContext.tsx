@@ -77,6 +77,11 @@ const DASHBOARD_CONFIGS: Record<string, DashboardConfig> = {
     sections: ['analytics'],
     permissions: ['read'],
     theme: 'light'
+  },
+  franquiciado: {
+    sections: ['franquiciado'],
+    permissions: ['read', 'message'],
+    theme: 'light'
   }
 };
 
@@ -94,7 +99,9 @@ const ROLE_MAPPING: Record<string, string> = {
   'superadmin': 'superadmin',
   'center_manager': 'center_manager',
   'manager': 'manager',
-  'employee': 'employee'
+  'employee': 'employee',
+  'Franquiciado': 'franquiciado',
+  'franquiciado': 'franquiciado'
 };
 
 const VALID_USERS = [
@@ -149,12 +156,6 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       console.log('🔍 Cargando datos del empleado para:', email);
 
-      // Verificar si es un usuario válido
-      if (!VALID_USERS.includes(email)) {
-        throw new Error(`Usuario ${email} no está autorizado`);
-      }
-
-      // Intentar cargar empleado desde la base de datos
       console.log('✅ Consultando empleado en base de datos para:', email);
 
       const { data: employeeData, error: dbError } = await supabase
@@ -168,7 +169,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       let roleToUse: string;
 
       if (employeeData && !dbError) {
-        // Empleado encontrado en la BD
+        // --- CASO 1: USUARIO ENCONTRADO EN BD (NUEVO SISTEMA) ---
+
         // 2. Obtener departamentos asignados (Multi-departamento)
         const { data: empDepartments } = await supabase
           .from('employee_departments')
@@ -205,16 +207,23 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           is_active: true,
           workType: employeeData.center_id ? 'centro' : 'marca',
           profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.first_name || email.split('@')[0])}&background=059669&color=fff`,
-          role: roleToUse as string, // Changed to string as UserRole is not defined here
+          role: roleToUse as string,
           departments: departmentsList,
-          // Mapeo de campos de BD a la interfaz Employee
           address: employeeData.address,
           city: employeeData.city,
           postal_code: employeeData.postal_code
         };
+
       } else {
-        // Fallback: crear empleado básico si no está en BD
-        console.log('⚠️ Empleado no encontrado en BD, creando básico');
+        // --- CASO 2: NO ENCONTRADO EN BD -> VERIFICAR WHITELIST (LEGACY) ---
+
+        // Verificar si es un usuario válido en la lista hardcoded
+        if (!VALID_USERS.includes(email)) {
+          throw new Error(`Usuario ${email} no está autorizado (No en BD ni en Whitelist)`);
+        }
+
+        // Fallback: crear empleado básico si no está en BD pero SÍ en whitelist
+        console.log('⚠️ Empleado no encontrado en BD, creando básico (Whitelist)');
         roleToUse = 'employee';
 
         // Solo para casos especiales conocidos

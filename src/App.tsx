@@ -68,6 +68,7 @@ import { OnlineDashboard } from './components/online/OnlineDashboard';
 import { MarketingDashboard } from './components/marketing/MarketingDashboard';
 import { UserManagementSystem } from './components/admin/UserManagementSystem';
 import { EventsDashboard } from './components/events/EventsDashboard';
+import { FranquiciadoDashboard } from './components/franquiciados/FranquiciadoDashboard';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -191,6 +192,54 @@ const NavigationDashboard: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [userRole, employee?.id]);
+
+  // *** FRANQUICIADO: Vista exclusiva sin navegación lateral ***
+  if (userRole === 'franquiciado') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+        {/* Header simple para franquiciado */}
+        <div style={{
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '12px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '36px' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <span style={{ fontWeight: 600, color: '#10b981', fontSize: '18px' }}>La Jungla Workout</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+              👤 {employee?.first_name} {employee?.last_name}
+            </span>
+            <button
+              onClick={signOut}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#fee2e2',
+                color: '#dc2626',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <LogOut size={16} />
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+        {/* Dashboard Franquiciado */}
+        <FranquiciadoDashboard />
+      </div>
+    );
+  }
 
   // Sistema de módulos optimizado por roles
   const getAvailableModules = () => {

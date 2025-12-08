@@ -108,14 +108,51 @@ export const UserManagementSystem: React.FC = () => {
         }
     };
 
-    const handleSaveUser = async (userData: Partial<Employee>) => {
+    // Handlers
+    const handleDeleteUser = async (user: Employee) => {
+        if (!confirm(`¿Estás seguro de que quieres eliminar al usuario ${user.first_name} ${user.last_name}?\nEsta acción es irreversible y eliminará tanto su acceso como su perfil.`)) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            console.log('🚨 Eliminando usuario:', user.id);
+
+            // Llamada a Edge Function para eliminar Auth y DB
+            // Usamos currentEmail para buscar el Auth UID ya que no lo tenemos vinculado.
+            const { data, error } = await supabase.functions.invoke('manage-users', {
+                body: {
+                    action: 'delete',
+                    employeeId: user.id,
+                    currentEmail: user.email
+                }
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            console.log('✅ Usuario eliminado:', data);
+
+            // Recargar lista
+            loadData();
+            alert('✅ Usuario eliminado correctamente');
+
+        } catch (error: any) {
+            console.error('Error deleting user:', error);
+            alert(`❌ Error al eliminar usuario: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSaveUser = async (userData: Partial<Employee>, authData?: { password?: string, authMethod?: 'invite' | 'password' }) => {
         try {
             console.log('💾 Guardando usuario:', userData);
+            console.log('🔑 Datos auth:', authData);
 
             // Buscar ID del departamento
             let departmentId = null;
             if (userData.departamento) {
-                // Intentar buscar por nombre exacto o aproximado
                 const dep = departments.find(d =>
                     d.name.toLowerCase() === userData.departamento?.toLowerCase() ||
                     d.name.toLowerCase().includes(userData.departamento?.toLowerCase())
@@ -124,28 +161,23 @@ export const UserManagementSystem: React.FC = () => {
                 if (dep) {
                     departmentId = dep.id;
                 } else {
-                    // Si no existe, crearlo (para soportar 'Academy' u otros nuevos)
-                    console.log(`⚠️ Departamento '${userData.departamento}' no encontrado. Creándolo...`);
-                    const { data: newDep, error: depError } = await supabase
+                    const { data: newDep } = await supabase
                         .from('departments')
                         .insert([{ name: userData.departamento }])
                         .select()
                         .single();
-
-                    if (depError) {
-                        console.error('Error creando departamento:', depError);
-                        // Fallback: intentar seguir sin ID o mostrar error
-                    } else if (newDep) {
+                    if (newDep) {
                         departmentId = newDep.id;
-                        // Actualizar lista local
                         setDepartments(prev => [...prev, newDep]);
                     }
                 }
             }
 
-            // Mapeo COMPLETO de datos para Supabase (igual que HRManagementSystem)
-            // Mapeo COMPLETO de datos para Supabase (igual que HRManagementSystem)
-            const supabaseData = {
+            // Preparar datos para tabla employees
+            // --- PREPARAR DATOS ---
+            // Cast to any to allow 'name' property which is required by DB but not in Employee interface
+            const dbData: any = {
+                name: userData.first_name, // REQUIRED by DB constraint
                 first_name: userData.first_name,
                 last_name: userData.last_name,
                 email: userData.email,
@@ -155,108 +187,113 @@ export const UserManagementSystem: React.FC = () => {
                 address: userData.address,
                 city: userData.city,
                 postal_code: userData.postal_code,
-                // CONSTRAINT REMOVED: We now allow both Center and Department (e.g. for Antonio)
                 center_id: userData.center_id ? parseInt(String(userData.center_id)) : null,
                 role: userData.role === 'admin' ? 'Admin' :
                     userData.role === 'director' ? 'Director' :
                         userData.role === 'encargado' ? 'Encargado' :
-                            userData.role === 'empleado' ? 'Empleado' :
-                                userData.role,
-                department_id: departmentId,
+                            userData.role === 'franquiciado' ? 'Franquiciado' :
+                                userData.role === 'empleado' ? 'Empleado' :
+                                    userData.role,
                 position: userData.position,
-
-                // Datos laborales
                 hire_date: userData.hire_date,
                 contract_type: userData.contract_type,
                 work_schedule: userData.work_schedule,
                 gross_annual_salary: userData.gross_annual_salary,
-
-                // Datos bancarios
                 bank_account_number: userData.bank_account_number,
                 iban: userData.iban,
                 banco: userData.banco,
-
-                // Formación
                 education_level: userData.education_level,
                 degree: userData.degree,
                 specialization: userData.specialization,
-
-                // Tallas
                 shirt_size: userData.shirt_size,
                 pant_size: userData.pant_size,
                 jacket_size: userData.jacket_size,
-
                 is_active: userData.is_active !== false,
-                updated_at: new Date().toISOString()
             };
 
-            // Filtrar campos undefined
-            const cleanData = Object.fromEntries(
-                Object.entries(supabaseData).filter(([_, value]) => value !== undefined)
+            const cleanDbData = Object.fromEntries(
+                Object.entries(dbData).filter(([_, value]) => value !== undefined)
             );
 
-            console.log('📤 Enviando a Supabase:', cleanData);
+            let savedEmployeeId: number | undefined;
 
-            let savedUserId = selectedUser?.id;
-
-            if (selectedUser) {
-                const { error } = await supabase
-                    .from('employees')
-                    .update(cleanData)
-                    .eq('id', selectedUser.id);
-                if (error) throw error;
-            } else {
-                const { data: newUser, error } = await supabase
-                    .from('employees')
-                    .insert([{ ...cleanData, created_at: new Date().toISOString() }])
-                    .select()
-                    .single();
-                if (error) throw error;
-                savedUserId = newUser.id;
-            }
-
-            // 💾 Guardar departamentos (Multi-departamento)
-            if (savedUserId && userData.departments) {
-                console.log('🏢 Guardando departamentos para usuario:', savedUserId, userData.departments);
-
-                // 1. Eliminar asignaciones anteriores
-                const { error: deleteError } = await supabase
-                    .from('employee_departments')
-                    .delete()
-                    .eq('employee_id', savedUserId);
-
-                if (deleteError) {
-                    console.error('Error eliminando departamentos anteriores:', deleteError);
-                    throw deleteError;
+            // --- CASO 1: CREAR NUEVO USUARIO ---
+            if (!selectedUser) {
+                // Validación básica para Auth
+                if (!authData?.password && authData?.authMethod === 'password') {
+                    throw new Error('La contraseña es obligatoria para nuevos usuarios (o selecciona invitación)');
                 }
 
-                // 2. Insertar nuevas asignaciones
+                // Llamada unificada a Edge Function (Auth + DB)
+                const { data: result, error: fnError } = await supabase.functions.invoke('manage-users', {
+                    body: {
+                        action: authData?.authMethod === 'invite' ? 'invite' : 'create',
+                        authData: {
+                            email: userData.email,
+                            password: authData?.password,
+                            redirectTo: window.location.origin + '/reset-password'
+                        },
+                        dbData: cleanDbData
+                    }
+                });
+
+                if (fnError) throw fnError;
+                if (result?.error) throw new Error(result.error);
+
+                console.log('✅ Usuario creado correctamente (Auth + DB):', result);
+                savedEmployeeId = result.employee?.id;
+
+            } else {
+                // --- CASO 2: ACTUALIZAR USUARIO ---
+
+                // Determinamos si hay cambios en Auth
+                const emailChanged = userData.email && userData.email !== selectedUser.email;
+                const passwordChanged = authData?.password && authData.password.length > 0;
+
+                const { data: result, error: fnError } = await supabase.functions.invoke('manage-users', {
+                    body: {
+                        action: 'update',
+                        // Pasamos employeeId para actualizar DB
+                        employeeId: selectedUser.id,
+                        // Pasamos currentEmail para que la Edge Function busque el UUID de Auth
+                        currentEmail: selectedUser.email,
+
+                        authData: {
+                            email: emailChanged ? userData.email : undefined,
+                            password: passwordChanged ? authData?.password : undefined
+                        },
+                        dbData: cleanDbData
+                    }
+                });
+
+                if (fnError) throw fnError;
+                if (result?.error) throw new Error(result.error);
+
+                savedEmployeeId = selectedUser.id;
+            }
+
+            // --- GUARDAR DEPARTAMENTOS (Common - Frontend Side) ---
+            if (savedEmployeeId && userData.departments) {
+                // Borrar anteriores
+                await supabase.from('employee_departments').delete().eq('employee_id', savedEmployeeId);
+
+                // Insertar nuevos
                 if (userData.departments.length > 0) {
                     const deptInserts = userData.departments.map(d => ({
-                        employee_id: savedUserId,
+                        employee_id: savedEmployeeId,
                         department_id: d.id
                     }));
-
-                    const { error: insertError } = await supabase
-                        .from('employee_departments')
-                        .insert(deptInserts);
-
-                    if (insertError) {
-                        console.error('Error insertando nuevos departamentos:', insertError);
-                        throw insertError;
-                    }
+                    await supabase.from('employee_departments').insert(deptInserts);
                 }
             }
 
             setShowUserModal(false);
             loadData();
             alert('✅ Usuario guardado correctamente');
+
         } catch (error: any) {
             console.error('Error saving user FULL OBJECT:', error);
-            console.error('Error details:', error.details);
-            console.error('Error message:', error.message);
-            console.error('Error hint:', error.hint);
-            alert(`Error al guardar usuario: ${error.message} - ${error.details || ''}`);
+            alert(`Error al guardar usuario: ${error.message}`);
         }
     };
 
@@ -316,41 +353,44 @@ export const UserManagementSystem: React.FC = () => {
                 </div>
 
                 {/* Controls Section */}
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-                    <div className="relative w-full sm:max-w-md group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 mb-8">
+                    {/* Search Input - Larger */}
+                    <div className="relative flex-1 lg:max-w-lg">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400" />
                         </div>
                         <input
                             type="text"
                             placeholder={`Buscar ${currentView === 'users' ? 'usuarios por nombre o email' : 'centros'}...`}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 shadow-sm"
+                            className="block w-full pl-12 pr-4 py-3.5 text-base border-2 border-gray-200 rounded-xl bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm"
                         />
                     </div>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {/* Filter + Button Group */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         {currentView === 'users' && (
                             <select
                                 value={filterRole}
                                 onChange={(e) => setFilterRole(e.target.value)}
-                                className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-sm hover:border-emerald-300 transition-colors"
+                                className="px-5 py-3.5 text-base rounded-xl border-2 border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 cursor-pointer shadow-sm hover:border-emerald-400 transition-all duration-200 min-w-[200px]"
                             >
-                                <option value="all">Todos los roles</option>
+                                <option value="all">📋 Todos los roles</option>
                                 <option value="Admin">👑 CEO / Superadmin</option>
                                 <option value="Director">👔 Director</option>
-                                <option value="Encargado">🏪 Gerente / Franquiciado</option>
-                                <option value="Empleado">👤 Empleado / Colaborador</option>
+                                <option value="Franquiciado">🏢 Franquiciado</option>
+                                <option value="Encargado">🏪 Encargado</option>
+                                <option value="Empleado">👤 Empleado</option>
                             </select>
                         )}
 
                         <button
                             onClick={() => currentView === 'users' ? handleCreateUser() : setShowCenterModal(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 font-medium shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform hover:-translate-y-0.5"
+                            className="flex items-center justify-center gap-3 px-8 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 font-semibold text-base shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform hover:-translate-y-0.5 whitespace-nowrap"
                         >
-                            <Plus size={20} />
-                            {currentView === 'users' ? 'Nuevo Usuario' : 'Nuevo Centro'}
+                            <Plus size={22} strokeWidth={2.5} />
+                            <span>{currentView === 'users' ? 'Nuevo Usuario' : 'Nuevo Centro'}</span>
                         </button>
                     </div>
                 </div>
@@ -442,6 +482,13 @@ export const UserManagementSystem: React.FC = () => {
                                                             title="Editar usuario"
                                                         >
                                                             <Edit size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteUser(user)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-transparent hover:border-red-100"
+                                                            title="Eliminar usuario"
+                                                        >
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
                                                 </td>

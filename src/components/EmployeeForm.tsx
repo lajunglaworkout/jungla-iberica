@@ -35,6 +35,11 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
     ...employee
   });
 
+  // Estado para gestión de credenciales (solo nuevos usuarios o admin)
+  const [password, setPassword] = useState('');
+  const [authMethod, setAuthMethod] = useState<'invite' | 'password'>('password');
+  const [showPassword, setShowPassword] = useState(false);
+
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -89,6 +94,15 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
       newErrors.dni = 'El DNI no es válido (formato: 12345678A)';
     }
 
+    // Validar contraseña si es nuevo usuario y método elegido es password
+    if (!employee && authMethod === 'password') {
+      if (!password) {
+        newErrors.password = 'La contraseña es obligatoria para nuevos usuarios';
+      } else if (password.length < 6) {
+        newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      }
+    }
+
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
 
@@ -136,7 +150,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
         contract_type: formData.contract_type || 'Indefinido',
         work_schedule: formData.work_schedule || 'Completa',
         gross_annual_salary: formData.gross_annual_salary || 0,
-        role: ((employee?.role as string) === 'admin' ? 'Admin' : employee?.role) || 'Empleado',
+        role: formData.role || 'Empleado',
         // departamento: formData.departamento!, // Deprecated
         departments: formData.departments,
         position: formData.position!,
@@ -160,7 +174,12 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
       };
 
       console.log('📤 Llamando a onSave con:', employeeData);
-      onSave(employeeData);
+
+      // Pasamos los datos extra como segundo argumento (si existen)
+      const authData = (!employee || password) ? { password, authMethod } : undefined;
+      // @ts-ignore - Ignoramos error de tipos por ahora ya que modificaremos el padre luego
+      onSave(employeeData, authData);
+
       console.log('✅ onSave ejecutado correctamente');
     } catch (error) {
       console.error('❌ Error guardando empleado:', error);
@@ -360,6 +379,81 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                   placeholder="41001"
                 />
               </div>
+
+              {/* Sección de Credenciales */}
+              <div style={{ gridColumn: 'span 2', marginTop: '16px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#059669', marginBottom: '12px' }}>
+                  🔑 Credenciales de Acceso
+                </h3>
+
+                <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="authMethod"
+                      checked={authMethod === 'password'}
+                      onChange={() => setAuthMethod('password')}
+                      style={{ accentColor: '#059669', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#374151' }}>Establecer contraseña manual</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="authMethod"
+                      checked={authMethod === 'invite'}
+                      onChange={() => setAuthMethod('invite')}
+                      style={{ accentColor: '#059669', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#374151' }}>Enviar invitación por email</span>
+                  </label>
+                </div>
+
+                {authMethod === 'password' && (
+                  <div>
+                    <label style={labelStyle}>Contraseña {employee ? '(Dejar en blanco para mantener la actual)' : '*'}</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={inputStyle}
+                        placeholder={employee ? "••••••••" : "Mínimo 6 caracteres"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          fontSize: '12px',
+                          fontWeight: 500
+                        }}
+                      >
+                        {showPassword ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                    </div>
+                    {errors.password && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.password}</div>}
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                      ⚠️ El usuario necesitará esta contraseña para acceder al sistema.
+                    </div>
+                  </div>
+                )}
+
+                {authMethod === 'invite' && (
+                  <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #dbeafe', color: '#1e40af', fontSize: '14px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span>✉️</span>
+                    <span>Se enviará un correo electrónico a <strong>{formData.email || '...'}</strong> con un enlace para que el usuario establezca su propia contraseña.</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -448,10 +542,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                 >
                   <option value="Empleado">👤 Empleado de Sala</option>
                   <option value="Encargado">👔 Encargado de Centro</option>
-                  <option value="Encargado">👨‍💼 Manager</option>
-                  <option value="Director">⚙️ Administrador</option>
+                  <option value="Franquiciado">🏢 Franquiciado</option>
+                  <option value="Director">⚙️ Director / Administrador</option>
                   <option value="Admin">👑 CEO / Superadmin</option>
-                  {/* Superadmin solo para Carlos - no se puede crear desde aquí */}
                 </select>
                 {formData.role === 'Admin' && (
                   <div style={{
@@ -756,45 +849,68 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
           padding: '20px',
           borderTop: '1px solid #e5e7eb',
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
+          gap: '12px',
           backgroundColor: '#f9fafb'
         }}>
           <button
             onClick={onCancel}
-            style={{
-              padding: '10px 20px',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            Cancelar
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('🖱️ Click en botón Actualizar/Crear');
-              console.log('⏳ Loading:', loading);
-              console.log('👤 Employee:', employee ? 'Editando' : 'Nuevo');
-              handleSave();
-            }}
             disabled={loading}
             style={{
               padding: '10px 20px',
-              backgroundColor: '#059669',
-              color: 'white',
-              border: 'none',
               borderRadius: '8px',
+              border: '1px solid #d1d5db',
+              backgroundColor: 'white',
+              color: loading ? '#9ca3af' : '#374151',
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.5 : 1,
+              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}
           >
-            <Save size={16} />
-            {loading ? 'Guardando...' : employee ? 'Actualizar' : 'Crear Empleado'}
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              console.log('🖱️ Click en botón Actualizar/Crear');
+              console.log('⏳ Loading:', loading);
+              console.log('👤 Employee:', employee ? 'Existente' : 'Nuevo');
+              handleSave();
+            }}
+            disabled={loading}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: loading ? '#6ee7b7' : '#059669',
+              color: 'white',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            {loading ? (
+              <>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid white',
+                  borderTopColor: 'transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                {employee ? 'Actualizar Trabajador' : 'Crear Trabajador'}
+              </>
+            )}
           </button>
         </div>
       </div>

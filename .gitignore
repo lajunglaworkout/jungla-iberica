@@ -34,4 +34,8 @@ dist-ssr
 # Backend environment
 backend/.env
 backend/.env.*
-!backend/.env.example
+
+# Supabase
+supabase/.temp/
+supabase/functions/_shared/deno.lock
+
