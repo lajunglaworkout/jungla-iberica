@@ -11,7 +11,29 @@ serve(async (req) => {
     }
 
     try {
-        // Create Supabase client with Admin rights (Service Role Key)
+        // 1. Verify Authentication
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            throw new Error('Missing Authorization header')
+        }
+
+        // Create a client context for the caller to verify their token
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        )
+
+        // Get the user from the token
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+        if (authError || !user) {
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+            )
+        }
+
+        // 2. Verify Role (RBAC) - Use Admin Client for this check
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -23,9 +45,32 @@ serve(async (req) => {
             }
         )
 
+        // Check user role in employees table or whitelist
+        // Note: For now we check employees table. If not found, we check the hardcoded list (legacy support)
+        // Ideally this should be purely DB based.
+        const { data: requestorProfile } = await supabaseAdmin
+            .from('employees')
+            .select('role, email')
+            .eq('email', user.email)
+            .single()
+
+        const ALLOWED_ROLES = ['Admin', 'Director', 'CEO', 'SuperAdmin', 'superadmin', 'admin'];
+        const isAllowed = ALLOWED_ROLES.includes(requestorProfile?.role) ||
+            user.email === 'carlossuarezparra@gmail.com' || // Hardcoded CEO Safety
+            user.email === 'lajunglacentral@gmail.com';  // Hardcoded HR Safety
+
+        if (!isAllowed) {
+            console.warn(`⛔ Access Denied for user ${user.email} (Role: ${requestorProfile?.role})`)
+            return new Response(
+                JSON.stringify({ error: 'Forbidden: Insufficient privileges' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+            )
+        }
+
+        // --- AUTHORIZED ---
         const { action, authData, dbData, userId, employeeId, currentEmail } = await req.json()
 
-        console.log(`🚀 Action: ${action}`, { userId, employeeId, currentEmail })
+        console.log(`🚀 Action: ${action} by ${user.email}`, { userId, employeeId, currentEmail })
 
         // Helper to find Auth User by Email (since we don't store UUID in employees table yet)
         const findAuthUserByEmail = async (email: string) => {
