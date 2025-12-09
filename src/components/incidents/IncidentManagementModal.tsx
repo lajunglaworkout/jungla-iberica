@@ -36,22 +36,22 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     console.log('🔍 Cargando incidencias para departamento:', department);
     console.log('👤 Usuario actual:', employee?.email, 'Rol:', employee?.role);
     console.log('⏰ Mostrar solo vencidas:', showOverdueOnly);
-    
+
     try {
       let data;
-      
+
       // Si se solicitan solo incidencias vencidas
       if (showOverdueOnly) {
         console.log('⏰ Cargando SOLO incidencias vencidas');
         data = await checklistIncidentService.getOverdueIncidents();
       } else {
         // Lógica original
-        // Definir usuarios con visión global (propietarios)
-        const isBeni = employee?.email === 'beni.jungla@gmail.com';
-        const isVicente = employee?.email === 'lajunglacentral@gmail.com';
-        const isCEO = employee?.role === 'superadmin';
-        const isOwner = isBeni || isVicente || isCEO;
-        
+        // Definir usuarios con visión global (Directores y CEO)
+        // 🔧 REFACTORIZADO: Usar roles en lugar de emails hardcodeados
+        const isCEO = employee?.role === 'superadmin' || userRole === 'superadmin';
+        const isDirector = employee?.role === 'admin' || userRole === 'admin';
+        const isOwner = isCEO || isDirector;
+
         if (isOwner) {
           // PROPIETARIOS (CEO, Beni, Vicente) → Visión global de TODAS las incidencias
           console.log('👑 Propietario - cargando TODAS las incidencias para visión global');
@@ -66,7 +66,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
           data = await checklistIncidentService.getPendingIncidents();
         }
       }
-      
+
       console.log('📋 Incidencias cargadas:', data);
       console.log('📋 Número de incidencias:', data.length);
       setIncidents(data);
@@ -107,18 +107,18 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     try {
       // Usar el nuevo método que requiere verificación
       await checklistIncidentService.closeIncidentWithVerification(
-        incidentId, 
-        response, 
+        incidentId,
+        response,
         employee?.name || 'Sistema'
       );
-      
+
       // Recargar incidencias
       await loadIncidents();
-      
+
       // Limpiar formulario
       setResponse('');
       setSelectedIncident(null);
-      
+
       alert('✅ Incidencia cerrada y enviada para verificación del empleado que la reportó.');
     } catch (error) {
       console.error('Error cerrando incidencia:', error);
@@ -133,7 +133,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
     } else {
       document.body.style.overflow = 'unset';
     }
-    
+
     return () => {
       document.body.style.overflow = 'unset';
     };
@@ -144,9 +144,9 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
   // Modal funcionando correctamente
 
   const modalContent = (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-      style={{ 
+      style={{
         zIndex: 2147483647,
         position: 'fixed',
         top: 0,
@@ -156,15 +156,15 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
       }}
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-7xl mx-4 h-[95vh] flex flex-col overflow-hidden"
-        style={{ 
+        style={{
           backgroundColor: 'white',
           zIndex: 1000000
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        
+
         {/* Header estilo CRM moderno */}
         <div style={{
           background: 'linear-gradient(to right, #22c55e, #16a34a)',
@@ -245,7 +245,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                 <span>➕</span>
                 <span>Crear Prueba</span>
               </button>
-              <button 
+              <button
                 onClick={onClose}
                 style={{
                   padding: '8px',
@@ -265,11 +265,11 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
         {/* Contenido principal */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* Lista de incidencias - Estilo CRM moderno */}
-          <div style={{ 
-            width: '50%', 
-            backgroundColor: '#f9fafb', 
-            display: 'flex', 
-            flexDirection: 'column' 
+          <div style={{
+            width: '50%',
+            backgroundColor: '#f9fafb',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <div style={{
               padding: '24px',
@@ -306,9 +306,9 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                 </div>
               </div>
             </div>
-            <div style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
               padding: '24px',
               display: 'flex',
               flexDirection: 'column',
@@ -381,8 +381,8 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                       padding: '24px',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
-                      boxShadow: selectedIncident?.id === incident.id 
-                        ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(59, 130, 246, 0.1)' 
+                      boxShadow: selectedIncident?.id === incident.id
+                        ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(59, 130, 246, 0.1)'
                         : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
                     }}
                   >
@@ -403,12 +403,12 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                         <CheckCircle style={{ width: '16px', height: '16px', color: 'white' }} />
                       </div>
                     )}
-                    
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'flex-start', 
-                      justifyContent: 'space-between', 
-                      marginBottom: '16px' 
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      marginBottom: '16px'
                     }}>
                       <div style={{ flex: 1 }}>
                         <h3 style={{
@@ -428,15 +428,15 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                             borderRadius: '20px',
                             fontSize: '11px',
                             fontWeight: '700',
-                            backgroundColor: incident.priority === 'critica' ? '#fef2f2' : 
-                                           incident.priority === 'alta' ? '#fff7ed' :
-                                           incident.priority === 'media' ? '#fefce8' : '#f0fdf4',
+                            backgroundColor: incident.priority === 'critica' ? '#fef2f2' :
+                              incident.priority === 'alta' ? '#fff7ed' :
+                                incident.priority === 'media' ? '#fefce8' : '#f0fdf4',
                             color: incident.priority === 'critica' ? '#dc2626' :
-                                   incident.priority === 'alta' ? '#ea580c' :
-                                   incident.priority === 'media' ? '#ca8a04' : '#16a34a',
-                            border: `1px solid ${incident.priority === 'critica' ? '#fecaca' : 
-                                                incident.priority === 'alta' ? '#fed7aa' :
-                                                incident.priority === 'media' ? '#fef3c7' : '#bbf7d0'}`
+                              incident.priority === 'alta' ? '#ea580c' :
+                                incident.priority === 'media' ? '#ca8a04' : '#16a34a',
+                            border: `1px solid ${incident.priority === 'critica' ? '#fecaca' :
+                              incident.priority === 'alta' ? '#fed7aa' :
+                                incident.priority === 'media' ? '#fef3c7' : '#bbf7d0'}`
                           }}>
                             🚨 {incident.priority?.toUpperCase()}
                           </span>
@@ -457,7 +457,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                             const timeRemaining = checklistIncidentService.getTimeRemaining(incident);
                             const isOverdue = checklistIncidentService.isIncidentOverdue(incident);
                             const maxTime = checklistIncidentService.getMaxResponseTime(incident.priority);
-                            
+
                             if (isOverdue) {
                               return (
                                 <span style={{
@@ -512,7 +512,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                         </div>
                       </div>
                     </div>
-                    
+
                     <p style={{
                       color: '#6b7280',
                       marginBottom: '16px',
@@ -523,10 +523,10 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden'
                     }}>{incident.description}</p>
-                    
+
                     <div style={{
                       display: 'flex',
-                      alignItems: 'center', 
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       paddingTop: '16px',
                       borderTop: '1px solid #f3f4f6'
@@ -589,10 +589,10 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
           </div>
 
           {/* Panel de detalles - Estilo CRM moderno */}
-          <div style={{ 
-            width: '50%', 
-            backgroundColor: 'white', 
-            display: 'flex', 
+          <div style={{
+            width: '50%',
+            backgroundColor: 'white',
+            display: 'flex',
             flexDirection: 'column',
             borderLeft: '1px solid #e5e7eb'
           }}>
@@ -634,9 +634,9 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
                 </div>
 
                 {/* Contenido moderno */}
-                <div style={{ 
-                  flex: 1, 
-                  padding: '24px', 
+                <div style={{
+                  flex: 1,
+                  padding: '24px',
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',

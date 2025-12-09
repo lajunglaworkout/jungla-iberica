@@ -381,20 +381,49 @@ export const EventTemplate: React.FC<EventTemplateProps> = ({ eventId, onBack })
     const saveGastos = async () => {
         setSaving(true);
         try {
-            await supabase.from('evento_gastos').delete().eq('evento_id', eventId);
-            if (gastos.length > 0) {
-                const gastosToInsert = gastos.map(g => ({
+            // 🔧 REFACTORIZADO: Usar UPSERT para evitar pérdida de gastos al editar concurrentemente
+            const gastosToUpsert = gastos.map(g => {
+                const gastoDB: any = {
                     evento_id: eventId,
                     partida: g.partida,
                     fecha: g.fecha,
                     coste: g.coste,
                     enlace_factura: g.enlace_factura
-                }));
-                await supabase.from('evento_gastos').insert(gastosToInsert);
+                };
+                if (g.id) {
+                    gastoDB.id = g.id;
+                }
+                return gastoDB;
+            });
+
+            if (gastosToUpsert.length > 0) {
+                const { data, error } = await supabase
+                    .from('evento_gastos')
+                    .upsert(gastosToUpsert)
+                    .select();
+
+                if (error) throw error;
+
+                if (data) {
+                    // Actualizar estado local con IDs generados
+                    const updatedGastos = data.map((g: any) => ({
+                        id: g.id,
+                        partida: g.partida,
+                        fecha: g.fecha,
+                        coste: g.coste,
+                        enlace_factura: g.enlace_factura
+                    }));
+                    setGastos(updatedGastos);
+                }
             }
-            alert('✅ Gastos guardados');
+
+            // Nota: Los gastos borrados en UI se borran individualmente con removeGasto, 
+            // así que no necesitamos borrar todo aquí.
+
+            alert('✅ Gastos guardados correctamente');
         } catch (error) {
             console.error('Error saving gastos:', error);
+            alert('❌ Error al guardar gastos');
         } finally {
             setSaving(false);
         }
@@ -443,10 +472,11 @@ export const EventTemplate: React.FC<EventTemplateProps> = ({ eventId, onBack })
     const saveParticipantes = async () => {
         setSaving(true);
         try {
-            // Delete existing and re-insert (simpler approach)
-            await supabase.from('evento_participantes').delete().eq('evento_id', eventId);
-            if (participantes.length > 0) {
-                const participantesToInsert = participantes.map(p => ({
+            // 🔧 REFACTORIZADO: Usar UPSERT en lugar de DELETE+INSERT para evitar pérdida de datos
+            // Preparar datos para upsert
+            const participantesToUpsert = participantes.map(p => {
+                // Base del objeto
+                const participanteDB: any = {
                     evento_id: eventId,
                     nombre: p.nombre,
                     email: p.email,
@@ -454,19 +484,60 @@ export const EventTemplate: React.FC<EventTemplateProps> = ({ eventId, onBack })
                     modalidad: p.modalidad,
                     nombre_equipo: p.nombre_equipo,
                     asistio: p.asistio
-                }));
-                await supabase.from('evento_participantes').insert(participantesToInsert);
+                };
+
+                // Si tiene ID, lo incluimos para que actualice en lugar de crear
+                if (p.id) {
+                    participanteDB.id = p.id;
+                }
+
+                return participanteDB;
+            });
+
+            if (participantesToUpsert.length > 0) {
+                const { data, error } = await supabase
+                    .from('evento_participantes')
+                    .upsert(participantesToUpsert)
+                    .select(); // Recuperar IDs generados
+
+                if (error) throw error;
+
+                // Actualizar estado local con los nuevos datos (especialmente IDs)
+                if (data) {
+                    // Mapear respuesta de vuelta al formato local
+                    const updatedParticipantes = data.map((p: any) => ({
+                        id: p.id,
+                        evento_id: p.evento_id,
+                        nombre: p.nombre,
+                        email: p.email,
+                        telefono: p.telefono,
+                        modalidad: p.modalidad,
+                        nombre_equipo: p.nombre_equipo,
+                        asistio: p.asistio
+                    }));
+                    setParticipantes(updatedParticipantes);
+                    setParticipantesCount(updatedParticipantes.length);
+                }
             }
-            setParticipantesCount(participantes.length);
-            // Update plazas_reales in evento
+
+            // Actualizar plazas reales
             if (evento) {
+                // Recalcular asistencia basado en estado actual
                 const asistieron = participantes.filter(p => p.asistio).length;
-                await supabase.from('eventos').update({ plazas_reales: asistieron }).eq('id', eventId);
+
+                // Actualizar evento sin borrar otros campos
+                await supabase.from('eventos').update({
+                    plazas_reales: asistieron,
+                    updated_at: new Date().toISOString()
+                }).eq('id', eventId);
+
                 setEvento({ ...evento, plazas_reales: asistieron });
             }
-            alert('✅ Asistentes guardados');
+
+            alert('✅ Asistentes guardados correctamente');
         } catch (error) {
             console.error('Error saving participantes:', error);
+            alert('❌ Error al guardar asistentes');
         } finally {
             setSaving(false);
         }

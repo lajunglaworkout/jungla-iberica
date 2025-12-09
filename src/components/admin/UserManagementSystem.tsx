@@ -33,6 +33,11 @@ export const UserManagementSystem: React.FC = () => {
     const [filterRole, setFilterRole] = useState('all');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Pagination State
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(10);
+    const [totalUsers, setTotalUsers] = useState(0);
+
     // Data States
     const [users, setUsers] = useState<Employee[]>([]);
     const [centers, setCenters] = useState<any[]>([]);
@@ -43,26 +48,56 @@ export const UserManagementSystem: React.FC = () => {
     const [showUserModal, setShowUserModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Employee | null>(null);
 
-    // Cargar datos iniciales
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPage(0);
+            loadData();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm, filterRole, currentView]);
+
+    // Pagination effect
     useEffect(() => {
         loadData();
-    }, [currentView]);
+    }, [page]);
+
+    // Solo cargar departamentos una vez al montar
+    useEffect(() => {
+        const loadDeps = async () => {
+            const { data: depsData } = await supabase.from('departments').select('*');
+            if (depsData) setDepartments(depsData);
+        }
+        loadDeps();
+    }, []);
 
     const loadData = async () => {
         setIsLoading(true);
         try {
-            // Cargar departamentos para el mapeo
-            const { data: depsData } = await supabase.from('departments').select('*');
-            if (depsData) setDepartments(depsData);
-
             if (currentView === 'users') {
-                const { data, error } = await supabase
+                let query = supabase
                     .from('employees')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                    .select('*', { count: 'exact' });
+
+                if (filterRole !== 'all') {
+                    query = query.eq('role', filterRole);
+                }
+
+                if (searchTerm) {
+                    query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+                }
+
+                const from = page * pageSize;
+                const to = from + pageSize - 1;
+
+                const { data, count, error } = await query
+                    .order('created_at', { ascending: false })
+                    .range(from, to);
 
                 if (error) throw error;
                 setUsers(data || []);
+                setTotalUsers(count || 0);
+
             } else {
                 const { data, error } = await supabase
                     .from('centers')
@@ -78,6 +113,7 @@ export const UserManagementSystem: React.FC = () => {
             setIsLoading(false);
         }
     };
+
 
     // Handlers
     const handleCreateUser = () => {
@@ -415,87 +451,103 @@ export const UserManagementSystem: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {users
-                                        .filter(u =>
-                                            (filterRole === 'all' || u.role === filterRole) &&
-                                            (u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-                                        )
-                                        .map((user) => (
-                                            <tr key={user.id} className="hover:bg-emerald-50/30 transition-colors group">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-lg shadow-sm border-2 border-white ring-2 ring-emerald-50">
-                                                            {user.first_name?.charAt(0).toUpperCase()}{user.last_name?.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-semibold text-gray-900 text-base">{user.first_name} {user.last_name}</div>
-                                                            <div className="text-sm text-gray-500 flex items-center gap-1.5">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                                                {user.email}
-                                                            </div>
+                                    {users.map((user) => (
+                                        <tr key={user.id} className="hover:bg-emerald-50/30 transition-colors group">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-lg shadow-sm border-2 border-white ring-2 ring-emerald-50">
+                                                        {user.first_name?.charAt(0).toUpperCase()}{user.last_name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-gray-900 text-base">{user.first_name} {user.last_name}</div>
+                                                        <div className="text-sm text-gray-500 flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                                            {user.email}
                                                         </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <span className={`inline-flex w-fit items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${getRoleBadgeColor(user.role || 'Empleado')}`}>
-                                                            {(user.role || 'Empleado').toUpperCase()}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className={`inline-flex w-fit items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${getRoleBadgeColor(user.role || 'Empleado')}`}>
+                                                        {(user.role || 'Empleado').toUpperCase()}
+                                                    </span>
+                                                    <span className="text-sm text-gray-600 font-medium">{user.position || 'Sin cargo'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg w-fit border border-gray-100">
+                                                    <MapPin size={14} className="text-gray-400" />
+                                                    <span className="text-sm font-medium">{user.centro_nombre || 'Sin asignar'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {user.is_active ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium border border-emerald-100 shadow-sm">
+                                                        <span className="relative flex h-2 w-2">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                                         </span>
-                                                        <span className="text-sm text-gray-600 font-medium">{user.position || 'Sin cargo'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg w-fit border border-gray-100">
-                                                        <MapPin size={14} className="text-gray-400" />
-                                                        <span className="text-sm font-medium">{user.centro_nombre || 'Sin asignar'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {user.is_active ? (
-                                                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium border border-emerald-100 shadow-sm">
-                                                            <span className="relative flex h-2 w-2">
-                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                                            </span>
-                                                            Activo
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 text-red-700 bg-red-50 px-3 py-1 rounded-full text-xs font-medium border border-red-100 shadow-sm">
-                                                            <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                                                            Inactivo
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => handlePasswordReset(user.email)}
-                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-100"
-                                                            title="Enviar correo de recuperación de contraseña"
-                                                        >
-                                                            <Key size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleEditUser(user)}
-                                                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-100"
-                                                            title="Editar usuario"
-                                                        >
-                                                            <Edit size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteUser(user)}
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-transparent hover:border-red-100"
-                                                            title="Eliminar usuario"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                        Activo
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-red-700 bg-red-50 px-3 py-1 rounded-full text-xs font-medium border border-red-100 shadow-sm">
+                                                        <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                                                        Inactivo
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => handlePasswordReset(user.email)}
+                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-100"
+                                                        title="Enviar correo de recuperación de contraseña"
+                                                    >
+                                                        <Key size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditUser(user)}
+                                                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-100"
+                                                        title="Editar usuario"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user)}
+                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-transparent hover:border-red-100"
+                                                        title="Eliminar usuario"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
+                            {/* Pagination Controls */}
+                            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                                <span className="text-sm text-gray-500">
+                                    Mostrando {page * pageSize + 1}-{Math.min((page + 1) * pageSize, totalUsers)} de {totalUsers} usuarios
+                                </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                                        disabled={page === 0}
+                                        className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <button
+                                        onClick={() => setPage(p => p + 1)}
+                                        disabled={(page + 1) * pageSize >= totalUsers}
+                                        className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">

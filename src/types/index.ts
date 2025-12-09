@@ -15,14 +15,14 @@ export interface User {
   lastLogin?: string;
   phone?: string;
   position?: string; // Cargo específico
-  
+
   // Información personal adicional
   dni?: string;
   birthDate?: string;
   address?: string;
   city?: string;
   postalCode?: string;
-  
+
   // Información laboral
   employeeType: 'brand' | 'center'; // Trabaja para la marca o para un centro
   hireDate?: string;
@@ -32,10 +32,10 @@ export interface User {
   bankAccount?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
-  
+
   // Foto de perfil
   profileImage?: string;
-  
+
   // Supervisor (para jerarquía)
   supervisorId?: string;
   canManageEmployees?: boolean; // Si puede contratar/gestionar empleados
@@ -48,7 +48,7 @@ export interface Permission {
 
 // ===== SISTEMA DE ROLES AVANZADO =====
 
-export type UserRole = 
+export type UserRole =
   | 'superadmin'
   | 'admin'
   | 'department_manager'
@@ -59,7 +59,7 @@ export type UserRole =
   | 'collaborator'
   | 'employee';
 
-export type BusinessUnit = 
+export type BusinessUnit =
   | 'jungla_workout'
   | 'jungla_online'
   | 'jungla_academy'
@@ -73,30 +73,30 @@ export interface RolePermissions {
   canCreateEmployees: boolean;
   canEditEmployees: boolean | string;
   canDeleteEmployees: boolean | string;
-  
+
   // Gestión de centros
   canViewAllCenters: boolean;
   canCreateCenters: boolean;
   canEditCenters: boolean | string;
   canDeleteCenters: boolean;
   canManageFranchises: boolean;
-  
+
   // Datos financieros y reportes
   canViewFinancials: boolean | string;
   canViewReports: boolean | string;
   canExportData: boolean;
-  
+
   // Configuración del sistema
   canManageSystem: boolean;
   canViewLogs: boolean;
   canManageIntegrations: boolean;
-  
+
   // Operaciones específicas
   canManageInventory: boolean | string;
   canManageTasks: boolean | string;
   canManageMarketing: boolean | string;
   canViewAnalytics: boolean | string;
-  
+
   // Reuniones y tareas ejecutivas
   canCreateMeetings: boolean;
   canManageExecutiveTasks: boolean;
@@ -123,7 +123,7 @@ export interface EmployeeWithRole {
   name: string;
   email: string;
   role: string;
-  
+
   // Datos de Supabase (tabla empleados)
   identificacion?: string;
   correo_electronico?: string;
@@ -138,7 +138,7 @@ export interface EmployeeWithRole {
   esta_activo?: boolean;
   id_del_centro?: string;
   id_departamento?: string;
-  
+
   // Propiedades de compatibilidad
   avatar?: string;
   phone?: string;
@@ -147,12 +147,12 @@ export interface EmployeeWithRole {
   isActive?: boolean;
   centerId?: string;
   departmentId?: string;
-  
+
   // Sistema de roles avanzado
   advancedRole: UserRole;
   permissions: RolePermissions;
   dashboardConfig: DashboardConfig;
-  
+
   // Metadatos
   createdAt?: string;
   updatedAt?: string;
@@ -164,11 +164,10 @@ export interface EmployeeWithRole {
 export function getAdvancedRole(dbRole: string, employee: any): UserRole {
   // Mapeo específico para tus usuarios
   const email = employee.correo_electronico || employee.email;
-  
+
   if (email === 'carlossuarezparra@gmail.com') return 'superadmin';  // Carlos
-  if (email === 'beni.jungla@gmail.com') return 'admin';            // Benito Morales
-  if (email === 'lajunglacentral@gmail.com') return 'admin';        // Vicente
-  
+
+
   // Mapeo por rol de BD
   switch (dbRole?.toLowerCase()) {
     case 'administrador':
@@ -449,24 +448,24 @@ export interface Center {
   managerId?: string;
   openingDate: string;
   status: 'Activo' | 'En Construcción' | 'Cerrado' | 'Suspendido';
-  
+
   // Datos específicos de franquicia
   franchisee?: string;
   franchiseeId?: string;
   monthlyFee?: number;
   contractStartDate?: string;
   contractEndDate?: string;
-  
+
   // Datos financieros
   bankAccount?: string;
   bankName?: string;
   billingEmail?: string;
-  
+
   // Configuración
   maxCapacity?: number;
   openingHours?: string;
   services?: string[];
-  
+
   createdAt: string;
   updatedAt: string;
 }

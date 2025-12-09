@@ -28,6 +28,8 @@ interface Employee {
   avatar?: string;
   centerName?: string;
   departmentName?: string;
+  departmentName?: string;
+  departments?: { id: string; name: string }[];
   created_at?: string;
 }
 
@@ -85,6 +87,7 @@ const DASHBOARD_CONFIGS: Record<string, DashboardConfig> = {
   }
 };
 
+
 // Mapeo de roles desde la BD a roles del sistema
 const ROLE_MAPPING: Record<string, string> = {
   'CEO': 'superadmin',
@@ -104,46 +107,8 @@ const ROLE_MAPPING: Record<string, string> = {
   'franquiciado': 'franquiciado'
 };
 
-const VALID_USERS = [
-  // Directivos
-  'carlossuarezparra@gmail.com',    // CEO
-  'beni.jungla@gmail.com',          // Director Logística
-  'lajunglacentral@gmail.com',      // Director RRHH (Vicente)
-  'danivf1991@gmail.com',           // Director Academy (Dani)
-
-  // Otros emails de marca
-  'lajunglaworkoutmk@gmail.com',
-  'lajunglaweeventos@gmail.com',
-  'pedidoslajungla@gmail.com',
-  'rrhhlajungla@gmail.com',
-  'lajunglawonline@gmail.com',
-
-  // SEVILLA
-  'franciscogiraldezmorales@gmail.com',  // Encargado
-  'salva.cabrera.29@gmail.com',          // Encargado
-  'surianjavi@gmail.com',                // Empleado
-  'sanfri13@gmail.com',                  // Empleado
-  'jesus58bm@gmail.com',                 // Empleado
-  'jesus2003.betis@gmail.com',           // Empleado + Online
-
-  // JEREZ
-  'ivan.2196@hotmail.com',               // Encargado
-  'pablo.benitez.pm@gmail.com',          // Encargado
-  'jlrodri1996@gmail.com',               // Empleado
-  'festepa02@gmail.com',                 // Empleado
-  'mariocruzroja2003@gmail.com',         // Empleado
-  'antoniodurancorrales@gmail.com',      // Empleado + Eventos
-
-  // PUERTO
-  'guillermo.ba24@gmail.com',            // Encargado
-  'adriyjmenez@gmail.com',               // Encargado
-  'josanfig95@gmail.com',                // Empleado
-  'manuelbellamerino@gmail.com',         // Empleado
-  'padillacruzjonathan@gmail.com',       // Empleado
-  'andujarvegajesus@gmail.com'           // Empleado
-];
-
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+
   const [user, setUser] = useState<User | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -186,11 +151,6 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.log('🏢 Departamentos asignados:', departmentsList);
         roleToUse = employeeData.role || 'employee';
 
-        // Force Superadmin for CEO regardless of DB role (since DB enum is limited to 'Admin')
-        if (email === 'carlossuarezparra@gmail.com') {
-          roleToUse = 'CEO';
-        }
-
         basicEmployee = {
           id: employeeData.id?.toString() || userId,
           user_id: userId,
@@ -215,33 +175,9 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         };
 
       } else {
-        // --- CASO 2: NO ENCONTRADO EN BD -> VERIFICAR WHITELIST (LEGACY) ---
-
-        // Verificar si es un usuario válido en la lista hardcoded
-        if (!VALID_USERS.includes(email)) {
-          throw new Error(`Usuario ${email} no está autorizado (No en BD ni en Whitelist)`);
-        }
-
-        // Fallback: crear empleado básico si no está en BD pero SÍ en whitelist
-        console.log('⚠️ Empleado no encontrado en BD, creando básico (Whitelist)');
-        roleToUse = 'employee';
-
-        // Solo para casos especiales conocidos
-        if (email === 'carlossuarezparra@gmail.com') {
-          roleToUse = 'SUPERADMIN';
-        }
-
-        basicEmployee = {
-          id: userId,
-          user_id: userId,
-          first_name: email.split('@')[0],
-          last_name: '',
-          email: email,
-          role: roleToUse,
-          is_active: true,
-          workType: 'marca',
-          profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=059669&color=fff`
-        };
+        // --- CASO 2: NO ENCONTRADO EN BD -> ERROR ---
+        console.warn(`⛔ Usuario ${email} autenticado pero no tiene perfil de empleado.`);
+        throw new Error(`Usuario no autorizado. Contacta con el administrador.`);
       }
 
       const mappedRole = ROLE_MAPPING[roleToUse] || 'employee';
@@ -252,7 +188,6 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       setDashboardConfig(config);
       setError(null);
 
-      console.log('✅ Empleado básico configurado:', basicEmployee);
       return true;
     } catch (err) {
       console.error('❌ Error cargando datos del empleado:', err);

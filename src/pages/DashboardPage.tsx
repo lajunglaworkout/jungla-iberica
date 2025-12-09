@@ -390,15 +390,21 @@ const DashboardPage: React.FC = () => {
               const remaining = incidentList.length > 2 ? ` y ${incidentList.length - 2} más` : '';
 
               // Solo mostrar incidencias relevantes para el usuario actual
-              const isVicente = employee?.email === 'lajunglacentral@gmail.com';
-              const isBeni = employee?.email === 'beni.jungla@gmail.com';
+              // 🔧 REFACTORIZADO: Usar departamentos asignados en lugar de emails hardcodeados
+              const userDepts = employee?.departments || [];
+              const hasLogistics = userDepts.some(d => d.id === 'logistics' || d.name === 'Logística');
+              const hasMaintenance = userDepts.some(d => d.id === 'maintenance' || d.name === 'Mantenimiento');
+              const hasHR = userDepts.some(d => d.id === 'hr' || d.name === 'RRHH' || d.name === 'Personal');
+              const hasCustomerService = userDepts.some(d => d.id === 'customer_service' || d.name === 'Atención al Cliente');
 
               console.log('🚨 Evaluando incidencia:', dept, 'para usuario:', employee?.email);
-              console.log('🚨 Es Vicente:', isVicente, 'Es Beni:', isBeni);
+              console.log('🏢 Departamentos del usuario:', userDepts);
 
               const shouldShowIncident =
-                (isBeni && (dept === 'Mantenimiento' || dept === 'Logística')) || // Beni ve Mantenimiento y Logística
-                (isVicente && (dept === 'Personal' || dept === 'Atención al Cliente')) || // Vicente ve Personal y Clientes
+                (hasMaintenance && dept === 'Mantenimiento') ||
+                (hasLogistics && dept === 'Logística') ||
+                (hasHR && dept === 'Personal') ||
+                (hasCustomerService && dept === 'Atención al Cliente') ||
                 (userRole === 'superadmin'); // CEO ve todo
 
               console.log('🚨 Mostrar incidencia:', shouldShowIncident);

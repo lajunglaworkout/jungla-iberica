@@ -211,9 +211,18 @@ const NavigationDashboard: React.FC = () => {
             <span style={{ fontWeight: 600, color: '#10b981', fontSize: '18px' }}>La Jungla Workout</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>
-              👤 {employee?.first_name} {employee?.last_name}
-            </span>
+            <div className="relative flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-700 font-bold text-lg border-2 border-white shadow-sm">
+                {(employee?.first_name || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isAuthenticated ? 'bg-emerald-500' : 'bg-gray-400'}`}></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 truncate text-sm">
+                {employee?.first_name} {employee?.last_name}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{employee?.email}</p>
+            </div>
             <button
               onClick={signOut}
               style={{
@@ -440,11 +449,16 @@ const NavigationDashboard: React.FC = () => {
       console.log('Todos los módulos para CEO:', allModules.map(m => m.title));
       return allModules;
     } else if (isAdmin) {
-      // ========== DIRECTORES: Acceso según especificación del usuario ==========
+      // ========== DIRECTORES (DB-BASED) ==========
+      // Ahora nos basamos en los DEPARTAMENTOS asignados en la BD
       const adminModules: any[] = [];
+      const departments = employee?.departments || [];
 
-      // BENI: Logística + Mantenimiento + Gestión de Centros
-      if (employee?.email === 'beni.jungla@gmail.com') {
+      // Helper para verificar departamento
+      const hasDept = (name: string) => departments.some(d => d.name.toLowerCase().includes(name.toLowerCase()));
+
+      // LOGÍSTICA
+      if (hasDept('logística') || hasDept('logistica')) {
         adminModules.push({
           id: 'logistics',
           title: 'Logística',
@@ -454,6 +468,10 @@ const NavigationDashboard: React.FC = () => {
           component: LogisticsManagementSystem,
           available: true
         });
+      }
+
+      // MANTENIMIENTO
+      if (hasDept('mantenimiento')) {
         adminModules.push({
           id: 'maintenance',
           title: 'Mantenimiento',
@@ -463,20 +481,10 @@ const NavigationDashboard: React.FC = () => {
           component: MaintenanceModule,
           available: true
         });
-        adminModules.push({
-          id: 'centers',
-          title: 'Centros',
-          description: 'Gestión de centros deportivos',
-          icon: Building2,
-          color: '#0891b2',
-          component: null,
-          available: true,
-          hasSubmenu: true
-        });
       }
 
-      // VICENTE: RRHH + Online + Gestión de Centros
-      else if (employee?.email === 'lajunglacentral@gmail.com') {
+      // RRHH
+      if (hasDept('rrhh') || hasDept('humanos')) {
         adminModules.push({
           id: 'hr',
           title: 'RRHH y Procedimientos',
@@ -486,6 +494,10 @@ const NavigationDashboard: React.FC = () => {
           component: HRManagementSystem,
           available: true
         });
+      }
+
+      // ONLINE
+      if (hasDept('online')) {
         adminModules.push({
           id: 'online',
           title: 'La Jungla Online',
@@ -495,16 +507,10 @@ const NavigationDashboard: React.FC = () => {
           component: OnlineDashboard,
           available: true
         });
-        adminModules.push({
-          id: 'centers',
-          title: 'Centros',
-          description: 'Gestión de centros deportivos',
-          icon: Building2,
-          color: '#0891b2',
-          component: null,
-          available: true,
-          hasSubmenu: true
-        });
+      }
+
+      // EVENTOS
+      if (hasDept('eventos')) {
         adminModules.push({
           id: 'events',
           title: 'Eventos',
@@ -516,8 +522,8 @@ const NavigationDashboard: React.FC = () => {
         });
       }
 
-      // DANI: Academy + Gestión Centro Sevilla (solo su centro)
-      else if (employee?.email === 'danivf1991@gmail.com') {
+      // ACADEMY
+      if (hasDept('academy') || hasDept('formación')) {
         adminModules.push({
           id: 'academy',
           title: 'Academy',
@@ -527,12 +533,16 @@ const NavigationDashboard: React.FC = () => {
           component: AcademyDashboard,
           available: true
         });
+      }
+
+      // BRAND MANAGEMENT (Default for Directors)
+      if (isAdmin) {
         adminModules.push({
           id: 'centers',
-          title: 'Gestión Centro Sevilla',
-          description: 'Gestión del Centro Sevilla',
+          title: 'Centros',
+          description: 'Gestión de centros deportivos',
           icon: Building2,
-          color: '#059669',
+          color: '#0891b2',
           component: null,
           available: true,
           hasSubmenu: true
@@ -556,18 +566,8 @@ const NavigationDashboard: React.FC = () => {
     } else {
       // ========== EMPLEADOS DE CENTROS ==========
 
-      // Listas de emails por rol y centro
-      const encargadosSevilla = ['franciscogiraldezmorales@gmail.com', 'salva.cabrera.29@gmail.com'];
-      const encargadosJerez = ['ivan.2196@hotmail.com', 'pablo.benitez.pm@gmail.com'];
-      const encargadosPuerto = ['guillermo.ba24@gmail.com', 'adriyjmenez@gmail.com'];
-      const allEncargados = [...encargadosSevilla, ...encargadosJerez, ...encargadosPuerto];
-
-      const empleadosSevilla = ['surianjavi@gmail.com', 'sanfri13@gmail.com', 'jesus58bm@gmail.com', 'jesus2003.betis@gmail.com'];
-      const empleadosJerez = ['jlrodri1996@gmail.com', 'festepa02@gmail.com', 'mariocruzroja2003@gmail.com', 'antoniodurancorrales@gmail.com'];
-      const empleadosPuerto = ['josanfig95@gmail.com', 'manuelbellamerino@gmail.com', 'padillacruzjonathan@gmail.com', 'andujarvegajesus@gmail.com'];
-
-      const email = employee?.email || '';
-      const isEncargado = allEncargados.includes(email);
+      const departments = employee?.departments || [];
+      const hasDept = (name: string) => departments.some(d => d.name.toLowerCase().includes(name.toLowerCase()));
 
       // Módulo base de gestión para todos los empleados de centro
       const centerModule = {
@@ -580,33 +580,11 @@ const NavigationDashboard: React.FC = () => {
         available: true
       };
 
-      // Módulos extra para ENCARGADOS (revisiones de logística y mantenimiento)
-      const encargadoModules = isEncargado ? [
-        {
-          id: 'logistics-reviews',
-          title: 'Revisiones Logística',
-          description: 'Revisiones de inventario y vestuario',
-          icon: Package,
-          color: '#ea580c',
-          component: LogisticsManagementSystem,
-          available: true
-        },
-        {
-          id: 'maintenance-reviews',
-          title: 'Revisiones Mantenimiento',
-          description: 'Revisiones de instalaciones',
-          icon: AlertTriangle,
-          color: '#dc2626',
-          component: MaintenanceModule,
-          available: true
-        }
-      ] : [];
-
-      // Módulos extra para casos especiales
+      // Módulos extra basados en departamentos/roles
       const extraModules: any[] = [];
 
-      // Jesús Rosado: +Online (sin facturación)
-      if (email === 'jesus2003.betis@gmail.com') {
+      // ONLINE
+      if (hasDept('online')) {
         extraModules.push({
           id: 'online',
           title: 'La Jungla Online',
@@ -619,8 +597,8 @@ const NavigationDashboard: React.FC = () => {
         });
       }
 
-      // Antonio: +Eventos (Responsable de Eventos)
-      if (email === 'antoniodurancorrales@gmail.com') {
+      // EVENTOS
+      if (hasDept('eventos')) {
         extraModules.push({
           id: 'events',
           title: 'Eventos',
@@ -632,7 +610,7 @@ const NavigationDashboard: React.FC = () => {
         });
       }
 
-      return [...baseModules, centerModule, ...encargadoModules, ...extraModules];
+      return [...baseModules, centerModule, ...extraModules];
     }
   };
 
@@ -770,7 +748,7 @@ const NavigationDashboard: React.FC = () => {
       return (
         <CenterManagementSystem
           userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-          userName={employee?.nombre || 'Carlos Suárez'}
+          userName={employee?.first_name || 'Carlos Suárez'}
           onBack={() => setSelectedModule('main-dashboard')}
         />
       );
@@ -791,108 +769,77 @@ const NavigationDashboard: React.FC = () => {
         return (
           <Component
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-            userName={employee?.nombre || 'Carlos Suárez'}
+            userName={employee?.first_name || 'Carlos Suárez'}
             userRole={userRole || 'employee'}
             onBack={() => setSelectedModule('main-dashboard')}
           />
         );
       } else if (module.id === 'my-tasks') {
         return (
-          <Component
+          <MyTasksPage />
+        );
+      } else if (module.id === 'hr') {
+        return (
+          <HRManagementSystem
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-            userName={employee?.nombre || 'Carlos Suárez'}
-            userRole={userRole || 'employee'}
-            onBack={() => setSelectedModule('main-dashboard')}
+            initialView={(module as any).initialView}
           />
         );
-      } else if (module.id === 'meetings') {
-        // Reuniones: pasar email para filtrar departamentos accesibles
+      } else if (module.id === 'logistics') {
         return (
-          <Component
+          <LogisticsManagementSystem
             userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-            userName={employee?.nombre || 'Carlos Suárez'}
-            onBack={() => setSelectedModule('main-dashboard')}
+            initialView={(module as any).initialView}
           />
+        );
+      } else if (module.id === 'marketing') {
+        return (
+          <MarketingDashboard />
         );
       } else {
         // Otros módulos que no requieren props especiales
-        return <Component {...({} as any)} />;
+        return (
+          <Component
+            onBack={() => setSelectedModule('main-dashboard')}
+            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
+            userName={employee?.first_name || 'Usuario'}
+            userRole={userRole || 'employee'}
+          />
+        );
       }
     }
 
     return (
       <EmptyState
-        title={`${module.title} - En Desarrollo`}
-        description="Esta funcionalidad estará disponible próximamente"
+        title={`Módulo ${module.title}`}
+        description="Este módulo está en desarrollo o no tiene componente asignado."
       />
     );
   };
 
+  const getPageTitle = () => {
+    const module = modules.find(m => m.id === selectedModule);
+    return module ? module.title : 'Dashboard';
+  };
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      display: 'flex',
-      width: '100%',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Mobile backdrop */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 9
-          }}
-        />
-      )}
-
-      {/* Mobile hamburger button */}
-      {isMobile && !sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          style={{
-            position: 'fixed',
-            top: '16px',
-            left: '16px',
-            zIndex: 20,
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            backgroundColor: '#059669',
-            color: 'white',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            cursor: 'pointer'
-          }}
-        >
-          <Menu size={24} />
-        </button>
-      )}
-
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Sidebar */}
       <div style={{
-        width: isMobile ? (sidebarOpen ? '280px' : '0px') : (sidebarOpen ? '280px' : '80px'),
-        minWidth: isMobile ? (sidebarOpen ? '280px' : '0px') : (sidebarOpen ? '280px' : '80px'),
+        width: sidebarOpen ? '280px' : '80px',
+        flexShrink: 0,
         backgroundColor: 'white',
-        borderRight: sidebarOpen ? '1px solid #e5e7eb' : 'none',
-        transition: 'all 0.3s ease',
-        display: sidebarOpen || !isMobile ? 'flex' : 'none',
+        borderRight: '1px solid #e5e7eb',
+        display: 'flex',
         flexDirection: 'column',
-        boxShadow: '4px 0 6px -1px rgba(0, 0, 0, 0.1)',
+        transition: 'width 0.3s ease',
         position: 'fixed',
-        zIndex: 10,
-        overflowY: 'auto',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 1000,
         overflowX: 'hidden',
         height: '100vh',
-        left: 0,
-        top: 0
       }}>
         {/* Contenido del sidebar */}
         {/* Logo y toggle */}
@@ -936,37 +883,39 @@ const NavigationDashboard: React.FC = () => {
         </div>
 
         {/* Perfil del usuario */}
-        {employee && (
-          <div style={{
-            padding: '20px',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || employee.nombre || '')}&background=059669&color=fff`}
-                alt="Avatar"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%'
-                }}
-              />
-              {sidebarOpen && (
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
-                    {employee.name || employee.nombre}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                    {userRole === 'superadmin' ? 'CEO' :
-                      userRole === 'admin' ? 'Director' :
-                        userRole === 'center_manager' ? 'Encargado' :
-                          userRole === 'manager' ? 'Encargado' : 'Empleado'}
-                  </p>
-                </div>
-              )}
+        {
+          employee && (
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || employee.nombre || '')}&background=059669&color=fff`}
+                  alt="Avatar"
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%'
+                  }}
+                />
+                {sidebarOpen && (
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
+                      {employee.name || employee.nombre}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                      {userRole === 'superadmin' ? 'CEO' :
+                        userRole === 'admin' ? 'Director' :
+                          userRole === 'center_manager' ? 'Encargado' :
+                            userRole === 'manager' ? 'Encargado' : 'Empleado'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Módulos de navegación */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
@@ -1064,269 +1013,299 @@ const NavigationDashboard: React.FC = () => {
             {sidebarOpen && 'Cerrar Sesión'}
           </button>
         </div>
-      </div>
+      </div >
 
-      {/* Área de contenido principal */}
-      <div style={{
+      {/* Main Content Area */}
+      <main style={{
         flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        minWidth: 0,
+        overflow: 'hidden',
+        backgroundColor: '#f9fafb',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        width: '100%',
         marginLeft: isMobile ? 0 : (sidebarOpen ? '280px' : '80px'),
         transition: 'margin-left 0.3s ease',
-        backgroundColor: '#f9fafb',
-        minHeight: '100vh',
-        maxHeight: '100vh',
-        width: isMobile ? '100vw' : `calc(100vw - ${sidebarOpen ? '280px' : '80px'})`,
-        paddingTop: isMobile ? '70px' : 0
       }}>
-        {selectedModule === 'main-dashboard' ? (
-          // Para el dashboard principal, mostrar sin padding ni header adicional
-          renderModule()
-        ) : (
-          // Para otros módulos, mantener la estructura original
-          <>
-            {/* Header del contenido */}
-            <div style={{
-              backgroundColor: 'white',
-              borderBottom: '1px solid #e5e7eb',
-              padding: '16px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
-                  {modules.find(m => m.id === selectedModule)?.title || 'Dashboard Ejecutivo'}
-                </h2>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                  {new Date().toLocaleDateString('es-ES', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
+        {/* Mobile Header Spacer */}
+        <div style={{ display: isMobile ? 'block' : 'none', height: '70px', width: '100%', flexShrink: 0 }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => setShowVacationNotifications(!showVacationNotifications)}
-                    style={{
-                      padding: '8px',
-                      backgroundColor: '#f3f4f6',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      position: 'relative'
-                    }}
-                  >
-                    <Bell style={{ height: '20px', width: '20px', color: '#6b7280' }} />
-                    {vacationNotifications.length > 0 && (
-                      <span style={{
-                        position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: '16px',
-                        height: '16px',
-                        fontSize: '10px',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        {vacationNotifications.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Panel de notificaciones */}
-                  {showVacationNotifications && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                      marginTop: '8px',
-                      backgroundColor: 'white',
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
-                      border: '1px solid #e5e7eb',
-                      width: '350px',
-                      maxHeight: '400px',
-                      overflowY: 'auto',
-                      zIndex: 1000
-                    }}>
-                      <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                        <h3 style={{ margin: 0, color: '#111827', fontSize: '16px', fontWeight: 'bold' }}>
-                          🏖️ Solicitudes de Vacaciones ({vacationNotifications.length})
-                        </h3>
-                      </div>
-
-                      {vacationNotifications.length === 0 ? (
-                        <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
-                          No hay solicitudes pendientes
-                        </div>
-                      ) : (
-                        vacationNotifications.map(request => (
-                          <div
-                            key={request.id}
-                            style={{
-                              padding: '16px',
-                              borderBottom: '1px solid #f3f4f6',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => {
-                              // Navegar al módulo de vacaciones
-                              setSelectedModule('center-management');
-                              setShowVacationNotifications(false);
-                            }}
-                          >
-                            <div style={{ fontWeight: 'bold', color: '#111827', fontSize: '14px', marginBottom: '4px' }}>
-                              {request.employee_name}
-                            </div>
-                            <div style={{ color: '#374151', fontSize: '13px', marginBottom: '4px' }}>
-                              {request.start_date} al {request.end_date} • {request.days_requested} días
-                            </div>
-                            <div style={{ color: '#6b7280', fontSize: '12px' }}>
-                              {request.reason || 'Sin motivo especificado'}
-                            </div>
-                          </div>
-                        ))
-                      )}
-
-                      {vacationNotifications.length > 0 && (
-                        <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedModule('center-management');
-                              setShowVacationNotifications(false);
-                            }}
-                            style={{
-                              padding: '8px 16px',
-                              backgroundColor: '#059669',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            Ver todas las solicitudes
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Contenido del módulo */}
-            <div style={{ padding: '24px' }}>
-              {renderModule()}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Modales del sistema */}
-      {/* Modales del sistema */}
-
-      {showMeetingModal && (
-        <StrategicMeetingSystem
-          isOpen={showMeetingModal}
-          onClose={() => setShowMeetingModal(false)}
-          onComplete={() => {
-            setShowMeetingModal(false);
-            window.location.reload();
-          }}
-        />
-      )}
-
-      {showMeetingHistoryModal && (
-        <MeetingHistorySystem
-          isOpen={showMeetingHistoryModal}
-          onClose={() => setShowMeetingHistoryModal(false)}
-          userEmail={employee?.email} // 🔧 NUEVO: Filtrar por email del usuario
-        />
-      )}
-
-      {/* MODAL CRÍTICO: ChecklistCompleteSystem */}
-      {showChecklist && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+        {/* Dynamic Header */}
+        <header style={{
           backgroundColor: 'white',
-          zIndex: 9999,
-          overflowY: 'auto'
-        }}>
-          <ChecklistCompleteSystem
-            centerId={employee?.center_id?.toString() || '9'}
-            centerName={employee?.centerName || 'Centro'}
-            onClose={() => setShowChecklist(false)}
-          />
-        </div>
-      )}
-
-      {/* MODAL CRÍTICO: Historial de Checklists */}
-      {showChecklistHistory && selectedCenterForHistory && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '16px 24px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          backdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '80%',
-            maxWidth: '800px',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            position: 'relative'
-          }}>
+          <div>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {getPageTitle()}
+            </h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontWeight: '500' }}>
+              Bienvenido de nuevo, <span style={{ color: '#059669' }}>{employee?.first_name}</span>
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
-              onClick={() => {
-                console.log('🔒 Cerrando modal de historial');
-                setShowChecklistHistory(false);
-              }}
+              onClick={() => setShowVacationNotifications(!showVacationNotifications)}
               style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                fontSize: '24px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
+                padding: '8px',
                 color: '#6b7280',
-                fontWeight: 'bold'
+                backgroundColor: '#f3f4f6',
+                borderRadius: '8px',
+                transition: 'all 0.2s ease',
+                position: 'relative',
+                cursor: 'pointer',
+                border: 'none'
               }}
             >
-              ✕
+              <Bell style={{ height: '20px', width: '20px' }} />
+              {vacationNotifications.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {vacationNotifications.length}
+                </span>
+              )}
             </button>
+            <div style={{ height: '32px', width: '1px', backgroundColor: '#e5e7eb', margin: '0 8px' }}></div>
+            <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>
+              {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+        </header>
 
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '24px' }}>
-              📋 Historial de Checklists - {selectedCenterForHistory}
-            </h2>
+        {/* Scrollable Content */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: '32px',
+          scrollBehavior: 'smooth'
+        }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', height: '100%' }}>
+            {renderModule()}
+          </div>
+        </div>
+      </main>
 
-            <ChecklistHistory centerName={selectedCenterForHistory} />
+      {/* Vacation Notification Toast */}
+      {showVacationNotifications && vacationNotifications.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 50,
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb',
+          width: '320px',
+          overflow: 'hidden',
+          animation: 'slideUp 0.3s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: '#fff7ed',
+            padding: '12px 16px',
+            borderBottom: '1px solid #fed7aa',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={16} color="#c2410c" />
+              <span style={{ fontWeight: 600, color: '#9a3412', fontSize: '14px' }}>
+                Solicitudes Pendientes ({vacationNotifications.length})
+              </span>
+            </div>
+            <button
+              onClick={() => setShowVacationNotifications(false)}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9a3412', padding: 0 }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {vacationNotifications.map((req, idx) => (
+              <div
+                key={req.id}
+                onClick={() => {
+                  setSelectedModule('incidents');
+                  setShowVacationNotifications(false);
+                }}
+                style={{
+                  padding: '12px 16px',
+                  borderBottom: idx < vacationNotifications.length - 1 ? '1px solid #f3f4f6' : 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                    Empleado #{req.employee_id}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                    {new Date(req.requested_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p style={{ fontSize: '12px', color: '#4b5563', margin: 0 }}>
+                  Solicita <span style={{ fontWeight: 500 }}>{req.type === 'vacation' ? 'Vacaciones' : 'Día Personal'}</span>
+                </p>
+                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                  {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+            <div style={{ padding: '8px', borderTop: '1px solid #f3f4f6', textAlign: 'center' }}>
+              <button
+                onClick={() => {
+                  setSelectedModule('incidents');
+                  setShowVacationNotifications(false);
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#059669',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                Ver todas las solicitudes →
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+
+      {/* Modales del sistema */}
+      {/* Modales del sistema */}
+
+      {
+        showMeetingModal && (
+          <StrategicMeetingSystem
+            isOpen={showMeetingModal}
+            onClose={() => setShowMeetingModal(false)}
+            onComplete={() => {
+              setShowMeetingModal(false);
+              window.location.reload();
+            }}
+          />
+        )
+      }
+
+      {
+        showMeetingHistoryModal && (
+          <MeetingHistorySystem
+            isOpen={showMeetingHistoryModal}
+            onClose={() => setShowMeetingHistoryModal(false)}
+            userEmail={employee?.email} // 🔧 NUEVO: Filtrar por email del usuario
+          />
+        )
+      }
+
+      {/* MODAL CRÍTICO: ChecklistCompleteSystem */}
+      {
+        showChecklist && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'white',
+            zIndex: 9999,
+            overflowY: 'auto'
+          }}>
+            <ChecklistCompleteSystem
+              centerId={employee?.center_id?.toString() || '9'}
+              centerName={employee?.centerName || 'Centro'}
+              onClose={() => setShowChecklist(false)}
+            />
+          </div>
+        )
+      }
+
+      {/* MODAL CRÍTICO: Historial de Checklists */}
+      {
+        showChecklistHistory && selectedCenterForHistory && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              width: '80%',
+              maxWidth: '800px',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => {
+                  console.log('🔒 Cerrando modal de historial');
+                  setShowChecklistHistory(false);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  fontSize: '24px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  fontWeight: 'bold'
+                }}
+              >
+                ✕
+              </button>
+
+              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '24px' }}>
+                📋 Historial de Checklists - {selectedCenterForHistory}
+              </h2>
+
+              <ChecklistHistory centerName={selectedCenterForHistory} />
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
