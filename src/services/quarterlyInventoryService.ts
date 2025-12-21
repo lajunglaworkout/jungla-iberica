@@ -44,7 +44,7 @@ interface QuarterlyReviewItem {
 }
 
 class QuarterlyInventoryService {
-  
+
   // Eliminar revisión completa (Beni)
   async deleteReview(quarter: string, year: number) {
     try {
@@ -135,13 +135,13 @@ class QuarterlyInventoryService {
   }) {
     try {
       console.log('📋 Creando revisión trimestral de inventario...');
-      
+
       // Primero eliminar cualquier revisión existente para este quarter/year
       console.log(`🗑️ Eliminando revisión existente ${data.quarter}-${data.year} si existe...`);
       await this.deleteReview(data.quarter, data.year);
-      
+
       const reviews: QuarterlyReview[] = [];
-      
+
       // Crear una revisión por cada centro
       for (const center of data.centers) {
         const reviewData: QuarterlyReview = {
@@ -164,7 +164,7 @@ class QuarterlyInventoryService {
           .single();
 
         if (error) throw error;
-        
+
         console.log(`✅ Revisión creada para ${center.name}:`, review.id);
         reviews.push(review);
       }
@@ -184,7 +184,7 @@ class QuarterlyInventoryService {
       // 1. Actualizar status de la revisión
       const { data: review, error: reviewError } = await supabase
         .from('quarterly_reviews')
-        .update({ 
+        .update({
           status: 'active',
           activated_at: new Date().toISOString()
         })
@@ -269,7 +269,7 @@ class QuarterlyInventoryService {
   async getAssignments(centerId: number, status?: string) {
     try {
       console.log('🔍 Buscando asignaciones para centro:', centerId, 'con status:', status);
-      
+
       let query = supabase
         .from('quarterly_inventory_assignments')
         .select(`
@@ -288,10 +288,10 @@ class QuarterlyInventoryService {
         console.error('❌ Error en query:', error);
         throw error;
       }
-      
+
       console.log('✅ Asignaciones encontradas:', data?.length || 0);
       console.log('📋 Datos:', data);
-      
+
       return { success: true, assignments: data };
     } catch (error) {
       console.error('❌ Error obteniendo asignaciones:', error);
@@ -337,57 +337,7 @@ class QuarterlyInventoryService {
     }
   }
 
-  // Crear tabla quarterly_review_items si no existe
-  async createReviewItemsTableIfNotExists() {
-    try {
-      console.log('🔧 Verificando/creando tabla quarterly_review_items...');
 
-      const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS quarterly_review_items (
-          id BIGSERIAL PRIMARY KEY,
-          assignment_id BIGINT NOT NULL REFERENCES quarterly_inventory_assignments(id) ON DELETE CASCADE,
-          inventory_item_id BIGINT NOT NULL REFERENCES inventory_items(id),
-          product_name TEXT NOT NULL,
-          category TEXT,
-          current_system_quantity INTEGER NOT NULL DEFAULT 0,
-          counted_quantity INTEGER DEFAULT 0,
-          regular_quantity INTEGER DEFAULT 0,
-          deteriorated_quantity INTEGER DEFAULT 0,
-          to_remove_quantity INTEGER DEFAULT 0,
-          observations TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          UNIQUE(assignment_id, inventory_item_id)
-        );
-      `;
-
-      const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
-
-      if (error) {
-        console.error('❌ Error creando tabla:', error);
-        // Intentar ejecutar directamente con supabase
-        const { error: directError } = await supabase.from('quarterly_review_items').select('id').limit(1);
-        if (directError && directError.message.includes('does not exist')) {
-          console.log('⚠️ Tabla no existe, intentando crear manualmente...');
-          // Aquí podríamos mostrar un mensaje al usuario para que ejecute el SQL manualmente
-          throw new Error('Tabla quarterly_review_items no existe. Ejecuta el script SQL create-quarterly-review-items-table.sql');
-        }
-      } else {
-        console.log('✅ Tabla quarterly_review_items verificada/creada');
-
-        // Crear índices
-        const indexSQL = `
-          CREATE INDEX IF NOT EXISTS idx_quarterly_review_items_assignment_id ON quarterly_review_items(assignment_id);
-          CREATE INDEX IF NOT EXISTS idx_quarterly_review_items_inventory_item_id ON quarterly_review_items(inventory_item_id);
-        `;
-
-        await supabase.rpc('exec_sql', { sql: indexSQL });
-      }
-    } catch (error) {
-      console.error('❌ Error en createReviewItemsTableIfNotExists:', error);
-      throw error;
-    }
-  }
 
   // Completar revisión (Encargado)
   async completeAssignment(assignmentId: number, completedBy: string) {
@@ -436,8 +386,8 @@ class QuarterlyInventoryService {
       if (itemsError) throw itemsError;
 
       if (!items || items.length === 0) {
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: 'No hay items marcados para eliminar',
           removedItems: []
         };
@@ -448,12 +398,12 @@ class QuarterlyInventoryService {
       // 2. AUTOMÁTICAMENTE actualizar cantidades en inventory_items
       const updates = items.map(async (item) => {
         const newQuantity = item.current_system_quantity - item.to_remove_quantity;
-        
+
         console.log(`🗑️ ${item.product_name}: ${item.current_system_quantity} → ${newQuantity} (eliminando ${item.to_remove_quantity})`);
-        
+
         return supabase
           .from('inventory_items')
-          .update({ 
+          .update({
             quantity: newQuantity,
             updated_at: new Date().toISOString()
           })
@@ -465,7 +415,7 @@ class QuarterlyInventoryService {
       // 3. Marcar revisión como completada
       await supabase
         .from('quarterly_reviews')
-        .update({ 
+        .update({
           status: 'completed',
           approved_by: authorizedBy,
           approved_date: new Date().toISOString()
@@ -473,9 +423,9 @@ class QuarterlyInventoryService {
         .eq('id', reviewId);
 
       console.log(`✅ ${items.length} items eliminados automáticamente del inventario`);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         message: `${items.length} items eliminados del inventario`,
         removedItems: items.map(i => ({
           name: i.product_name,

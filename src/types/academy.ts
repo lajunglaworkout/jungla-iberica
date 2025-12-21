@@ -48,6 +48,14 @@ export interface AcademyLessonFile {
     uploaded_at: string;
 }
 
+export type ProductionStatus =
+    | 'not_started'
+    | 'content_created'
+    | 'prompts_ready'
+    | 'recording'
+    | 'editing'
+    | 'completed';
+
 export interface AcademyLessonBlock {
     id: string;
     lesson_id: string;
@@ -55,6 +63,28 @@ export interface AcademyLessonBlock {
     title: string;
     description?: string;
     duration?: number;
+    // New fields Phase 6
+    main_ideas?: string;
+    key_points?: string;
+    full_content?: string;
+    genspark_prompt?: string;
+    video_url?: string;
+    ppt_url?: string;
+    production_status?: ProductionStatus;
+    progress_percentage?: number;
+    downloadables?: AcademyBlockDownloadable[];
+}
+
+export interface AcademyBlockDownloadable {
+    id: string;
+    block_id: string;
+    name: string;
+    type: 'pdf' | 'excel' | 'word' | 'image';
+    prompt_generation?: string;
+    file_url?: string;
+    status: 'pending' | 'generated' | 'uploaded';
+    order: number;
+    created_at: string;
 }
 
 export interface AcademyTask {
@@ -69,8 +99,23 @@ export interface AcademyTask {
     progress: number;
     module_related?: string;
     lesson_related?: string;
+    block_related?: string; // New field for block context
     completed_at?: string;
     created_at: string;
+}
+
+export type SharedContentType = 'prompt' | 'guide' | 'resource';
+
+export interface AcademySharedContent {
+    id: string;
+    title: string;
+    content: string;
+    type: SharedContentType;
+    category?: string;
+    tags?: string[];
+    created_at: string;
+    created_by?: string;
+    is_public: boolean;
 }
 
 export interface AcademyTutor {

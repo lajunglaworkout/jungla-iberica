@@ -823,13 +823,13 @@ const NavigationDashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       {/* Sidebar */}
       <div style={{
         width: sidebarOpen ? '280px' : '80px',
         flexShrink: 0,
-        backgroundColor: 'white',
-        borderRight: '1px solid #e5e7eb',
+        backgroundColor: '#0f172a',
+        borderRight: 'none',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.3s ease',
@@ -843,43 +843,62 @@ const NavigationDashboard: React.FC = () => {
       }}>
         {/* Contenido del sidebar */}
         {/* Logo y toggle */}
+        {/* Logo y toggle */}
         <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e5e7eb',
+          padding: sidebarOpen ? '20px' : '20px 10px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: sidebarOpen ? 'space-between' : 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '20px',
-              fontWeight: 'bold'
-            }}>
-              🌿
-            </div>
-            {sidebarOpen && (
+          {sidebarOpen && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                flexShrink: 0
+              }}>
+                🌿
+              </div>
               <div>
-                <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+                <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', margin: 0, whiteSpace: 'nowrap' }}>
                   La Jungla
                 </h1>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, whiteSpace: 'nowrap' }}>
                   CRM Ejecutivo
                 </p>
               </div>
-            )}
-          </div>
-          {/* Sidebar siempre visible - botón deshabilitado */}
-          <div style={{ padding: '8px' }}>
-            <Menu style={{ height: '20px', width: '20px', color: '#059669' }} />
-          </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              padding: '8px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              color: '#059669',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ecfdf5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            title={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+          >
+            {sidebarOpen ? <ChevronLeft size={20} className="text-slate-400 hover:text-white" /> : <Menu size={24} className="text-emerald-400" />}
+          </button>
         </div>
 
         {/* Perfil del usuario */}
@@ -887,7 +906,7 @@ const NavigationDashboard: React.FC = () => {
           employee && (
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #e5e7eb'
+              borderBottom: '1px solid rgba(255,255,255,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <img
@@ -896,15 +915,16 @@ const NavigationDashboard: React.FC = () => {
                   style={{
                     width: '40px',
                     height: '40px',
-                    borderRadius: '50%'
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.1)'
                   }}
                 />
                 {sidebarOpen && (
                   <div>
-                    <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', margin: 0 }}>
                       {employee.name || employee.nombre}
                     </p>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
                       {userRole === 'superadmin' ? 'CEO' :
                         userRole === 'admin' ? 'Director' :
                           userRole === 'center_manager' ? 'Encargado' :
@@ -941,43 +961,46 @@ const NavigationDashboard: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  backgroundColor: isActive ? `${module.color}10` : 'transparent',
-                  border: `2px solid ${isActive ? module.color : 'transparent'}`,
-                  borderRadius: '8px',
+                  backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                  border: `1px solid ${isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent'}`,
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  justifyContent: sidebarOpen ? 'flex-start' : 'center'
+                  justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                  color: isActive ? 'white' : '#94a3b8'
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                    e.currentTarget.style.color = '#fff';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#94a3b8';
                   }
                 }}
               >
                 <Icon style={{
                   height: '20px',
                   width: '20px',
-                  color: isActive ? module.color : '#6b7280',
+                  color: isActive ? module.color : 'inherit',
                   flexShrink: 0
                 }} />
                 {sidebarOpen && (
                   <div style={{ textAlign: 'left' }}>
                     <p style={{
                       fontSize: '14px',
-                      fontWeight: isActive ? '600' : '500',
-                      color: isActive ? module.color : '#374151',
+                      fontWeight: isActive ? '700' : '500',
+                      color: 'inherit',
                       margin: 0
                     }}>
                       {module.title}
                     </p>
                     <p style={{
                       fontSize: '11px',
-                      color: '#9ca3af',
+                      color: 'rgba(255,255,255,0.4)',
                       margin: 0
                     }}>
                       {module.description}
@@ -1033,7 +1056,6 @@ const NavigationDashboard: React.FC = () => {
 
         {/* Dynamic Header */}
         <header style={{
-          backgroundColor: 'white',
           borderBottom: '1px solid #e5e7eb',
           padding: '16px 24px',
           display: 'flex',

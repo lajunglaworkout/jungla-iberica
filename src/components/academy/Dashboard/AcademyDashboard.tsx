@@ -9,6 +9,7 @@ import { NavigationCard } from './NavigationCard';
 import { ContenidosView } from '../Contenidos/ContenidosView';
 import { TareasView } from '../Tareas/TareasView';
 import { TutoresView } from '../Tutores/TutoresView';
+import { SharedResourcesView } from '../Recursos/SharedResourcesView';
 import { supabase } from '../../../lib/supabase';
 
 // Interfaces for dashboard data
@@ -90,6 +91,8 @@ export const AcademyDashboard: React.FC = () => {
                 return <TareasView onBack={() => setActiveView('dashboard')} />;
             case 'tutores':
                 return <TutoresView onBack={() => setActiveView('dashboard')} />;
+            case 'recursos':
+                return <SharedResourcesView onBack={() => setActiveView('dashboard')} />;
             case 'dashboard':
             default:
                 return renderDashboard();
@@ -206,6 +209,15 @@ export const AcademyDashboard: React.FC = () => {
                     subtext="Gestión de equipo docente"
                     onClick={() => setActiveView('tutores')}
                     color="#10b981"
+                    status="active"
+                />
+                <NavigationCard
+                    title="RECURSOS"
+                    icon={Brain}
+                    metric="Biblioteca"
+                    subtext="Prompts y Guías"
+                    onClick={() => setActiveView('recursos')}
+                    color="#6366f1"
                     status="active"
                 />
                 <NavigationCard

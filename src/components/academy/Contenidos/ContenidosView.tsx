@@ -4,7 +4,7 @@ import {
     FileText, Video, Link as LinkIcon, ChevronDown,
     ChevronRight, Clock, CheckCircle, AlertCircle, ArrowLeft,
     Edit3, Save, X, Upload, Download, HelpCircle, Eye, Trash2,
-    Layout, Type, Image as ImageIcon, Sparkles, Zap, Maximize2, Minimize2
+    Layout, Type, Image as ImageIcon, Sparkles, Zap, Maximize2, Minimize2, CheckSquare
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { AcademyModule, AcademyLesson } from '../../../types/academy';
@@ -21,7 +21,348 @@ interface LessonBlock {
     content?: string;
     file_url?: string;
     duration?: number;
+    // New fields Phase 6
+    main_ideas?: string;
+    key_points?: string;
+    full_content?: string;
+    genspark_prompt?: string;
+    video_url?: string;
+    ppt_url?: string;
+    production_status?: 'not_started' | 'content_created' | 'prompts_ready' | 'recording' | 'editing' | 'completed';
+    progress_percentage?: number;
+    downloadables?: any[]; // We will type this properly inside the component or use the global type
 }
+
+// --- HELPER COMPONENTS ---
+
+const ProgressBar = ({ progress }: { progress: number }) => (
+    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+        <div
+            className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        ></div>
+        <div className="text-right text-xs text-gray-500 mt-1">{Math.round(progress)}% Completado</div>
+    </div>
+);
+
+const CollapsibleSection = ({
+    title,
+    children,
+    icon,
+    defaultExpanded = true,
+    rightElement
+}: {
+    title: string,
+    children: React.ReactNode,
+    icon?: React.ReactNode,
+    defaultExpanded?: boolean,
+    rightElement?: React.ReactNode
+}) => {
+
+
+    const [expanded, setExpanded] = useState(defaultExpanded);
+
+    return (
+        <div className={`border rounded-xl mb-5 bg-white shadow-sm overflow-hidden transition-all duration-300 
+            ${expanded ? 'border-emerald-500/30 ring-4 ring-emerald-50/50' : 'border-gray-100 hover:border-emerald-200'}`}>
+            <div
+                className="flex items-center justify-between p-5 cursor-pointer hover:bg-emerald-50/30 transition-colors"
+                onClick={() => setExpanded(!expanded)}
+            >
+                <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg transition-colors ${expanded ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-50 text-gray-500'}`}>
+                        {icon}
+                    </div>
+                    <h3 className={`font-bold text-base transition-colors ${expanded ? 'text-emerald-950' : 'text-gray-700'}`}>
+                        {title}
+                    </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                    {rightElement}
+                    <div className={`p-1 rounded-full transition-all duration-300 ${expanded ? 'bg-emerald-100 rotate-180' : 'bg-transparent'}`}>
+                        <ChevronDown className={`h-5 w-5 transition-colors ${expanded ? 'text-emerald-600' : 'text-gray-400'}`} />
+                    </div>
+                </div>
+            </div>
+
+            {expanded && (
+                <div className="p-5 border-t border-emerald-50/50 animate-in slide-in-from-top-2 duration-300 bg-white">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const FileUpload = ({
+    blockId,
+    fileType,
+    onUploadComplete,
+    existingUrl,
+    onDelete
+}: {
+    blockId: string,
+    fileType: 'video' | 'ppt',
+    onUploadComplete: (url: string) => void,
+    existingUrl?: string,
+    onDelete: () => void
+}) => {
+    const [uploading, setUploading] = useState(false);
+    const [progress, setProgress] = useState(0);
+
+    const handleUpload = async (file: File) => {
+        setUploading(true);
+        try {
+            // 1. Validar tamaño
+            const maxSize = fileType === 'video' ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert(`Archivo demasiado grande. Máximo ${maxSize / 1024 / 1024}MB`);
+                return;
+            }
+
+            // 2. Validar tipo
+            const validTypes = fileType === 'video'
+                ? ['video/mp4', 'video/quicktime', 'video/webm']
+                : ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/pdf'];
+
+            if (!validTypes.includes(file.type) && !file.name.endsWith('.pptx') && !file.name.endsWith('.ppt')) {
+                // Relaxed check for PPT as mime types vary
+            }
+
+            // 3. Subir a Storage
+            const bucket = fileType === 'video' ? 'academy-videos' : 'academy-presentations';
+            const fileName = `${blockId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            // 4. Obtener URL pública
+            const { data: urlData } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(fileName);
+
+            // 5. Actualizar bloque
+            const fieldName = fileType === 'video' ? 'video_url' : 'ppt_url';
+            await supabase
+                .from('academy_lesson_blocks')
+                .update({ [fieldName]: urlData.publicUrl })
+                .eq('id', blockId);
+
+            onUploadComplete(urlData.publicUrl);
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Error al subir el archivo: ' + (error as Error).message);
+        } finally {
+            setUploading(false);
+            setProgress(0);
+        }
+    };
+
+    return (
+        <div className="group border-2 border-dashed border-emerald-200 rounded-xl p-6 text-center hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-300 bg-white">
+            {existingUrl ? (
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 overflow-hidden">
+                        <div className={`p-3 rounded-lg ${fileType === 'video' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {fileType === 'video' ? <Video className="h-6 w-6" /> : <Layout className="h-6 w-6" />}
+                        </div>
+                        <div className="flex flex-col items-start text-left">
+                            <span className="text-xs font-bold uppercase text-gray-600 tracking-wider mb-0.5">Archivo Subido</span>
+                            <a href={existingUrl} target="_blank" rel="noreferrer" className="text-sm font-bold text-gray-900 hover:text-emerald-700 hover:underline truncate max-w-[200px] transition-colors">
+                                {existingUrl.split('/').pop()}
+                            </a>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onDelete}
+                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all"
+                        title="Eliminar archivo"
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {uploading ? (
+                        <div className="space-y-3 py-4">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto"></div>
+                            <p className="text-sm font-bold text-emerald-900 animate-pulse">Subiendo archivo...</p>
+                        </div>
+                    ) : (
+                        <div className="relative py-4 group-hover:scale-[1.02] transition-transform duration-300">
+                            <input
+                                type="file"
+                                accept={fileType === 'video' ? '.mp4,.mov,.webm' : '.ppt,.pptx,.pdf'}
+                                onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="pointer-events-none">
+                                <div className="bg-emerald-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-emerald-100 transition-colors border border-emerald-100">
+                                    <Upload className="h-8 w-8 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
+                                </div>
+                                <p className="text-sm font-bold text-gray-800 mb-1">
+                                    Click o arrastra tu {fileType === 'video' ? 'Video' : 'Presentación'}
+                                </p>
+                                <p className="text-xs text-gray-500 font-medium">
+                                    {fileType === 'video' ? 'MP4, MOV (Máx 500MB)' : 'PDF, PPTX (Máx 50MB)'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
+
+// Simplified DownloadableManager for now, fully functional logic inside main component or this
+const DownloadableManager = ({ blockId, downloadables, onUpdate }: { blockId: string, downloadables: any[], onUpdate: () => void }) => {
+    // Logic to add/remove downloadables
+    const [isAdding, setIsAdding] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newType, setNewType] = useState('pdf');
+
+    const addDownloadable = async () => {
+        if (!newName) return;
+        try {
+            // We need to insert into academy_block_downloadables
+            // Check if table exists first? Assume yes after migration script.
+            const { error } = await supabase
+                .from('academy_block_downloadables')
+                .insert({
+                    block_id: blockId,
+                    name: newName,
+                    type: newType,
+                    status: 'pending'
+                });
+
+            if (error) throw error;
+            onUpdate();
+            setIsAdding(false);
+            setNewName('');
+        } catch (err) {
+            console.error(err);
+            alert('Error al crear descargable');
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            {downloadables.map(d => (
+                <div key={d.id} className="border border-emerald-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-extrabold uppercase p-1.5 bg-slate-100 rounded text-slate-700 tracking-wider">
+                                {d.type}
+                            </span>
+                            <span className="font-bold text-gray-900 text-sm">{d.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1.5
+                                ${d.status === 'uploaded' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                {d.status === 'uploaded' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                {d.status === 'uploaded' ? 'Listo' : 'Pendiente'}
+                            </span>
+                            <button
+                                onClick={async () => {
+                                    if (confirm('¿Borrar descargable?')) {
+                                        await supabase.from('academy_block_downloadables').delete().eq('id', d.id);
+                                        onUpdate();
+                                    }
+                                }}
+                                className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-all opacity-0 group-hover:opacity-100"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Prompt Section */}
+                    <div className="mb-4">
+                        <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-2 block">
+                            🤖 Prompt Generación IA
+                        </label>
+                        <textarea
+                            className="w-full text-xs p-3 border border-gray-300 rounded-lg h-20 bg-gray-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none placeholder-gray-500 text-gray-800"
+                            placeholder="Describe qué debe contener este recurso para generarlo con IA..."
+                            defaultValue={d.prompt_generation || ''}
+                            onBlur={async (e) => {
+                                if (e.target.value !== d.prompt_generation) {
+                                    await supabase.from('academy_block_downloadables').update({ prompt_generation: e.target.value }).eq('id', d.id);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* File Upload Section - Mini version */}
+                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        {d.file_url ? (
+                            <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-2">
+                                <Download className="h-4 w-4" /> Ver Archivo Final
+                            </a>
+                        ) : (
+                            <label className="cursor-pointer text-xs font-bold bg-white border border-gray-300 hover:border-emerald-400 hover:text-emerald-800 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm w-full justification-center">
+                                <Upload className="h-3 w-3" /> Subir Archivo Final
+                                <input type="file" className="hidden" onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const fileName = `${d.id}_${file.name}`;
+                                        const { data } = await supabase.storage.from('academy-downloadables').upload(fileName, file);
+                                        if (data) {
+                                            const { data: url } = supabase.storage.from('academy-downloadables').getPublicUrl(fileName);
+                                            await supabase.from('academy_block_downloadables').update({ file_url: url.publicUrl, status: 'uploaded' }).eq('id', d.id);
+                                            onUpdate();
+                                        }
+                                    }
+                                }} />
+                            </label>
+                        )}
+                    </div>
+                </div>
+            ))}
+
+            {isAdding ? (
+                <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 animate-in fade-in">
+                    <input
+                        type="text"
+                        placeholder="Nombre del recurso (ej: Plantilla Excel)"
+                        className="w-full p-2 border border-emerald-300 rounded mb-2"
+                        value={newName}
+                        onChange={e => setNewName(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                        <select
+                            value={newType}
+                            onChange={e => setNewType(e.target.value)}
+                            className="p-2 border border-emerald-300 rounded"
+                        >
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel</option>
+                            <option value="word">Word</option>
+                            <option value="image">Imagen</option>
+                        </select>
+                        <button onClick={addDownloadable} className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Añadir</button>
+                        <button onClick={() => setIsAdding(false)} className="text-gray-500 px-4 py-2">Cancelar</button>
+                    </div>
+                </div>
+            ) : (
+                <button
+                    onClick={() => setIsAdding(true)}
+                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-500 hover:text-emerald-600 flex items-center justify-center gap-2 transition-all"
+                >
+                    <Plus className="h-4 w-4" /> Añadir Material Descargable
+                </button>
+            )}
+        </div>
+    );
+};
+
 
 export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [modules, setModules] = useState<AcademyModule[]>([]);
@@ -42,10 +383,133 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     // Editor State
     const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
     const [editingBlock, setEditingBlock] = useState<LessonBlock | null>(null);
-    const [editorContent, setEditorContent] = useState('');
     const [editorTitle, setEditorTitle] = useState('');
-    const [editorFileUrl, setEditorFileUrl] = useState('');
-    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [editorContent, setEditorContent] = useState('');
+
+    const [editorKeyPoints, setEditorKeyPoints] = useState('');
+    const [editorFullContent, setEditorFullContent] = useState('');
+    const [editorGensparkPrompt, setEditorGensparkPrompt] = useState('');
+    const [activeModalField, setActiveModalField] = useState<'none' | 'prompt' | 'points' | 'content'>('none');
+
+    // Toast State
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+    // Task Creation State
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newTaskDescription, setNewTaskDescription] = useState('');
+    const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
+
+    const openTaskModal = () => {
+        if (!editingBlock || !selectedLesson) return;
+        setNewTaskTitle(`Revisar: ${editingBlock.title}`);
+        setNewTaskDescription(`Revisión requerida para el bloque ${editingBlock.block_number} de la lección "${selectedLesson.title}".\n\n- Revisar contenido\n- Verificar adjuntos`);
+        setNewTaskPriority('normal');
+        setShowTaskModal(true);
+    };
+
+    const handleCreateTask = async () => {
+        if (!newTaskTitle.trim() || !editingBlock || !selectedLesson) return;
+
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+
+            const { error } = await supabase
+                .from('academy_tasks')
+                .insert([{
+                    title: newTaskTitle,
+                    description: newTaskDescription,
+                    priority: newTaskPriority,
+                    status: 'pending',
+                    assigned_to: userData.user?.id,
+                    created_by: `block_${editingBlock.id}`, // Traceability
+                    block_related: editingBlock.id,
+                    lesson_related: selectedLesson.id,
+                    progress: 0,
+                    created_at: new Date().toISOString()
+                }]);
+
+            if (error) throw error;
+
+            setShowTaskModal(false);
+            setNewTaskTitle('');
+            setNewTaskDescription('');
+            // Optional: Show a specific toast for task creation, but success toast is fine for now
+            alert('✅ Tarea creada y vinculada correctamente');
+        } catch (error) {
+            console.error('Error creating task:', error);
+            alert('Error al crear la tarea vinculada');
+        }
+    };
+
+    // Auto-hide toast
+    useEffect(() => {
+        if (showSuccessToast) {
+            const timer = setTimeout(() => setShowSuccessToast(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [showSuccessToast]);
+    const [editorVideoUrl, setEditorVideoUrl] = useState('');
+    const [editorPptUrl, setEditorPptUrl] = useState('');
+    const [editorDownloadables, setEditorDownloadables] = useState<any[]>([]);
+    const [editorFileUrl, setEditorFileUrl] = useState(''); // Legacy fallback
+
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Helper Functions
+    const calculateProgress = () => {
+        let progress = 0;
+        if (editorKeyPoints && editorFullContent) progress += 40;
+        if (editorGensparkPrompt) progress += 10;
+        if (editorDownloadables.length > 0) {
+            const withPrompts = editorDownloadables.filter(d => d.prompt_generation).length;
+            progress += Math.floor((withPrompts / editorDownloadables.length) * 15);
+            const uploaded = editorDownloadables.filter(d => d.status === 'uploaded').length;
+            progress += Math.floor((uploaded / editorDownloadables.length) * 15);
+        }
+        if (editorVideoUrl) progress += 10;
+        if (editorPptUrl) progress += 10;
+        return Math.min(100, progress);
+    };
+
+    const loadDownloadables = async (blockId: string) => {
+        const { data } = await supabase
+            .from('academy_block_downloadables')
+            .select('*')
+            .eq('block_id', blockId)
+            .order('order', { ascending: true });
+        setEditorDownloadables(data || []);
+    };
+
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !editingBlock) return;
+
+        try {
+            // 1. Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${editingBlock.lesson_id}/${editingBlock.id}/${Date.now()}.${fileExt}`;
+            const { data, error } = await supabase.storage
+                .from('academy-files')
+                .upload(fileName, file);
+
+            if (error) throw error;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('academy-files')
+                .getPublicUrl(fileName);
+
+            // 3. Update State
+            setEditorFileUrl(publicUrl);
+            alert('Archivo subido correctamente');
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Error al subir el archivo');
+        }
+    };
 
 
 
@@ -262,24 +726,50 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         }
     };
 
+
+
     const openBlockEditor = (block: LessonBlock) => {
         setEditingBlock(block);
         setEditorTitle(block.title || '');
+        // Map new fields or fallback to content if migrating
         setEditorContent(block.content || '');
-        setEditorFileUrl(block.file_url || '');
-        setIsPreviewMode(false);
+
+        setEditorKeyPoints(block.key_points || '');
+        setEditorFullContent(block.full_content || block.content || ''); // Fallback to content if full_content empty
+        setEditorGensparkPrompt(block.genspark_prompt || '');
+        setEditorVideoUrl(block.video_url || '');
+        setEditorPptUrl(block.ppt_url || '');
+
+        loadDownloadables(block.id);
     };
 
     const saveBlock = async () => {
         if (!editingBlock) return;
+
+        const currentProgress = calculateProgress();
+
+        // Determine status based on progress
+        let status = 'not_started';
+        if (currentProgress > 0 && currentProgress < 40) status = 'content_created';
+        else if (currentProgress >= 40 && currentProgress < 75) status = 'prompts_ready';
+        else if (currentProgress >= 75 && currentProgress < 90) status = 'recording';
+        else if (currentProgress >= 90 && currentProgress < 100) status = 'editing';
+        else if (currentProgress === 100) status = 'completed';
 
         try {
             const { error } = await supabase
                 .from('academy_lesson_blocks')
                 .update({
                     title: editorTitle,
-                    content: editorContent,
-                    file_url: editorFileUrl
+                    content: editorFullContent, // Sync legacy content field with full content
+
+                    key_points: editorKeyPoints,
+                    full_content: editorFullContent,
+                    genspark_prompt: editorGensparkPrompt,
+                    video_url: editorVideoUrl,
+                    ppt_url: editorPptUrl,
+                    progress_percentage: currentProgress,
+                    production_status: status
                 })
                 .eq('id', editingBlock.id);
 
@@ -290,12 +780,26 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 ...prev,
                 [editingBlock.lesson_id]: prev[editingBlock.lesson_id].map(b =>
                     b.id === editingBlock.id
-                        ? { ...b, title: editorTitle, content: editorContent, file_url: editorFileUrl }
+                        ? {
+                            ...b,
+                            title: editorTitle,
+                            content: editorFullContent,
+
+                            key_points: editorKeyPoints,
+                            full_content: editorFullContent,
+                            genspark_prompt: editorGensparkPrompt,
+                            video_url: editorVideoUrl,
+                            ppt_url: editorPptUrl,
+                            progress_percentage: currentProgress,
+                            production_status: status as any
+                        }
                         : b
                 )
             }));
 
-            setEditingBlock(null);
+            setShowSuccessToast(true);
+            // alert('Guardado correctamente'); // Optional feedback
+            // setEditingBlock(null); // Don't close editor on save, just save
         } catch (error) {
             console.error('Error saving block:', error);
             alert('Error al guardar el bloque');
@@ -941,6 +1445,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                 )
             }
 
+
             {/* FULL SCREEN BLOCK EDITOR - ESTILO CRM CON 3 COLUMNAS */}
             {
                 editingBlock && (
@@ -1004,12 +1509,12 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <button
-                                    onClick={() => setIsPreviewMode(!isPreviewMode)}
+                                    onClick={openTaskModal}
                                     style={{
                                         padding: '8px 16px',
-                                        backgroundColor: isPreviewMode ? '#d1fae5' : '#f3f4f6',
-                                        color: isPreviewMode ? '#047857' : '#374151',
-                                        border: 'none',
+                                        backgroundColor: '#eff6ff',
+                                        color: '#3b82f6',
+                                        border: '1px solid #bfdbfe',
                                         borderRadius: '6px',
                                         fontSize: '14px',
                                         fontWeight: '500',
@@ -1019,9 +1524,10 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                         gap: '6px'
                                     }}
                                 >
-                                    {isPreviewMode ? '✏️ Editar' : '👁 Vista Previa'}
+                                    <CheckSquare style={{ height: '16px', width: '16px' }} />
+                                    Nueva Tarea
                                 </button>
-                                <div style={{ width: '1px', height: '24px', backgroundColor: '#d1d5db' }}></div>
+
                                 <button
                                     onClick={() => setEditingBlock(null)}
                                     style={{
@@ -1032,10 +1538,14 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                         borderRadius: '6px',
                                         fontSize: '14px',
                                         fontWeight: '500',
-                                        cursor: 'pointer'
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
                                     }}
                                 >
-                                    Cancelar
+                                    <ArrowLeft style={{ height: '16px', width: '16px' }} />
+                                    Volver atrás
                                 </button>
                                 <button
                                     onClick={saveBlock}
@@ -1060,450 +1570,433 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                         </div>
 
                         {/* Body con 3 columnas - ESTILO CRM */}
-                        {isPreviewMode ? (
-                            // PREVIEW MODE
-                            <div style={{
-                                flex: 1,
-                                overflow: 'auto',
-                                padding: '24px',
-                                display: 'flex',
-                                justifyContent: 'center'
-                            }}>
-                                <div style={{
-                                    backgroundColor: 'white',
-                                    padding: '48px',
-                                    borderRadius: '8px',
-                                    maxWidth: '900px',
-                                    width: '100%',
-                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                                }}>
-                                    <h1 style={{
-                                        fontSize: '32px',
-                                        fontWeight: 'bold',
-                                        color: '#111827',
-                                        marginBottom: '24px'
-                                    }}>
-                                        {editorTitle || 'Sin título'}
-                                    </h1>
-                                    <div style={{
-                                        fontSize: '16px',
-                                        color: '#374151',
-                                        lineHeight: '1.75',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {editorContent || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Sin contenido...</span>}
-                                    </div>
-                                    {editorFileUrl && (
-                                        <div style={{
-                                            marginTop: '32px',
-                                            padding: '16px',
-                                            backgroundColor: '#f0fdf4',
-                                            border: '1px solid #86efac',
-                                            borderRadius: '8px'
-                                        }}>
-                                            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#047857', margin: '0 0 8px 0' }}>
-                                                🔗 Recurso Adjunto
-                                            </h4>
-                                            <a
-                                                href={editorFileUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                style={{ fontSize: '14px', color: '#10b981', wordBreak: 'break-all' }}
-                                            >
-                                                {editorFileUrl}
-                                            </a>
+                        {/* Body con 3 columnas - ESTILO CRM */}
+                        {/* EDIT MODE - NEW LAYOUT (PHASE 6) */}
+                        <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+
+                            {/* Progress Bar & Status Header */}
+                            {/* Progress Bar & Status Header - PREMIUM JUNGLE STYLE */}
+                            <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border-b border-emerald-100 px-6 py-5">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h2 className="text-xl font-bold text-emerald-900 flex items-center gap-2">
+                                        <Edit3 className="h-5 w-5 text-emerald-600" />
+                                        <span className="opacity-60 text-emerald-700 font-medium text-sm uppercase tracking-wider mr-1">Editando:</span>
+                                        {editingBlock.title}
+                                    </h2>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex flex-col items-end mr-2">
+                                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Estado de Producción</span>
+                                            <span className={`px-3 py-0.5 rounded-full text-xs font-extrabold uppercase tracking-wide border
+                                                ${calculateProgress() >= 100 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                                    calculateProgress() > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                                {calculateProgress() >= 100 ? 'Completado' : calculateProgress() > 0 ? 'En Progreso' : 'Sin Empezar'}
+                                            </span>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
+                                <ProgressBar progress={calculateProgress()} />
                             </div>
-                        ) : (
-                            // EDIT MODE - 3 COLUMNAS
-                            <div style={{
-                                flex: 1,
-                                overflow: 'hidden',
-                                display: 'grid',
-                                gridTemplateColumns: '280px 1fr 300px',
-                                gap: 0
-                            }}>
-                                {/* COLUMNA IZQUIERDA: Guía Estratégica (3 preguntas) */}
-                                <div style={{
-                                    backgroundColor: '#f0fdf4',
-                                    borderRight: '1px solid #e5e7eb',
-                                    overflow: 'auto',
-                                    padding: '24px'
-                                }}>
-                                    <h3 style={{
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        color: '#047857',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        marginBottom: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}>
-                                        <Sparkles style={{ height: '14px', width: '14px' }} />
+
+                            <div className="flex-1 overflow-hidden grid grid-cols-12 gap-0 bg-slate-50/50">
+
+                                {/* COLUMN 1: STRATEGIC GUIDE (25%) - CARD STYLE */}
+                                <div className="hidden lg:block col-span-3 bg-gradient-to-b from-slate-50 to-white border-r border-gray-200 overflow-y-auto p-5 custom-scrollbar h-full">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2 pl-1">
+                                        <Sparkles className="h-4 w-4 text-amber-500" />
                                         Guía Estratégica
                                     </h3>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        <div style={{
-                                            padding: '12px',
-                                            backgroundColor: editingBlock.block_number === 1 ? 'white' : '#f0fdf4',
-                                            border: editingBlock.block_number === 1 ? '2px solid #10b981' : '1px solid #d1fae5',
-                                            borderRadius: '8px'
-                                        }}>
-                                            <h4 style={{
-                                                fontSize: '13px',
-                                                fontWeight: 'bold',
-                                                color: '#111827',
-                                                marginBottom: '6px'
-                                            }}>
-                                                1. Concepto
-                                            </h4>
-                                            <p style={{
-                                                fontSize: '12px',
-                                                color: '#6b7280',
-                                                margin: 0,
-                                                lineHeight: '1.5'
-                                            }}>
-                                                ¿Qué quiero transmitir exactamente? Define la idea central. ¿Qué deben aprender?
+                                    <div className="space-y-5">
+                                        <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">1</span>
+                                                <h4 className="font-bold text-gray-800 text-sm">Concepto</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
+                                                Define la idea central. ¿Qué deben aprender exactamente en este bloque?
                                             </p>
                                         </div>
 
-                                        <div style={{
-                                            padding: '12px',
-                                            backgroundColor: editingBlock.block_number === 2 ? 'white' : '#f0fdf4',
-                                            border: editingBlock.block_number === 2 ? '2px solid #10b981' : '1px solid #d1fae5',
-                                            borderRadius: '8px'
-                                        }}>
-                                            <h4 style={{
-                                                fontSize: '13px',
-                                                fontWeight: 'bold',
-                                                color: '#111827',
-                                                marginBottom: '6px'
-                                            }}>
-                                                2. Valor
-                                            </h4>
-                                            <p style={{
-                                                fontSize: '12px',
-                                                color: '#6b7280',
-                                                margin: 0,
-                                                lineHeight: '1.5'
-                                            }}>
-                                                ¿Por qué es útil? ¿Qué es lo que aporta? Beneficio práctico.
+                                        <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">2</span>
+                                                <h4 className="font-bold text-gray-800 text-sm">Valor</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
+                                                ¿Por qué es útil? ¿Qué beneficio práctico obtienen al ver esto?
                                             </p>
                                         </div>
 
-                                        <div style={{
-                                            padding: '12px',
-                                            backgroundColor: editingBlock.block_number === 3 ? 'white' : '#f0fdf4',
-                                            border: editingBlock.block_number === 3 ? '2px solid #10b981' : '1px solid #d1fae5',
-                                            borderRadius: '8px'
-                                        }}>
-                                            <h4 style={{
-                                                fontSize: '13px',
-                                                fontWeight: 'bold',
-                                                color: '#111827',
-                                                marginBottom: '6px'
-                                            }}>
-                                                3. Acción
-                                            </h4>
-                                            <p style={{
-                                                fontSize: '12px',
-                                                color: '#6b7280',
-                                                margin: 0,
-                                                lineHeight: '1.5'
-                                            }}>
-                                                ¿Cómo se lleva a la práctica? Pasos concretos para aplicar lo aprendido.
+                                        <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">3</span>
+                                                <h4 className="font-bold text-gray-800 text-sm">Acción</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
+                                                Pasos concretos. ¿Qué deben hacer diferente después de ver este video?
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* COLUMNA CENTRAL: Contenido Principal */}
-                                <div style={{
-                                    backgroundColor: 'white',
-                                    overflow: 'auto',
-                                    padding: '24px'
-                                }}>
-                                    {/* Título del Bloque */}
-                                    <div style={{
-                                        padding: '16px 24px',
-                                        backgroundColor: '#f9fafb',
-                                        borderRadius: '8px',
-                                        marginBottom: '16px',
-                                        border: '1px solid #e5e7eb'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#6b7280',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            marginBottom: '8px'
-                                        }}>
+                                {/* COLUMN 2: CONTENT CREATION (50%) - CLEAN CANVAS */}
+                                <div className="col-span-6 bg-white overflow-y-auto p-8 custom-scrollbar relative">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+
+                                    {/* Block Title Input */}
+                                    <div className="mb-10 group">
+                                        <label className="block text-xs font-bold text-emerald-800 uppercase tracking-widest mb-3 group-focus-within:text-emerald-700 transition-colors">
                                             Título del Bloque
                                         </label>
                                         <input
                                             type="text"
                                             value={editorTitle}
                                             onChange={(e) => setEditorTitle(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 12px',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '6px',
-                                                fontSize: '16px',
-                                                fontWeight: '600',
-                                                backgroundColor: 'white'
-                                            }}
-                                            placeholder="Ej: Introducción al concepto..."
+                                            className="w-full text-3xl font-bold text-gray-900 border-none border-b-2 border-emerald-200 focus:border-emerald-600 focus:ring-0 px-0 py-3 placeholder-gray-400 transition-all bg-transparent"
+                                            placeholder="Escribe el título aquí..."
                                         />
-                                    </div>
-
-                                    {/* Ideas Principales */}
-                                    <div style={{
-                                        padding: '16px 24px',
-                                        backgroundColor: '#fffbeb',
-                                        borderRadius: '8px',
-                                        marginBottom: '16px',
-                                        border: '1px solid #fde68a'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#92400e',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            marginBottom: '8px'
-                                        }}>
-                                            💡 Ideas Principales
-                                        </label>
-                                        <textarea
-                                            rows={3}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 12px',
-                                                border: '1px solid #fbbf24',
-                                                borderRadius: '6px',
-                                                fontSize: '14px',
-                                                backgroundColor: 'white',
-                                                resize: 'vertical'
-                                            }}
-                                            placeholder="• Idea 1&#10;• Idea 2&#10;• Idea 3"
-                                        />
-                                    </div>
-
-                                    {/* Puntos Clave */}
-                                    <div style={{
-                                        padding: '16px 24px',
-                                        backgroundColor: '#eff6ff',
-                                        borderRadius: '8px',
-                                        marginBottom: '16px',
-                                        border: '1px solid #93c5fd'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#1e40af',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            marginBottom: '8px'
-                                        }}>
-                                            ⭐ Puntos Más Importantes
-                                        </label>
-                                        <textarea
-                                            rows={3}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 12px',
-                                                border: '1px solid #3b82f6',
-                                                borderRadius: '6px',
-                                                fontSize: '14px',
-                                                backgroundColor: 'white',
-                                                resize: 'vertical'
-                                            }}
-                                            placeholder="• Punto clave 1&#10;• Punto clave 2&#10;• Punto clave 3"
-                                        />
-                                    </div>
-
-                                    {/* Contenido Completo */}
-                                    <div style={{
-                                        padding: '16px 24px',
-                                        backgroundColor: '#f9fafb',
-                                        borderRadius: '8px',
-                                        border: '1px solid #e5e7eb'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#374151',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            marginBottom: '8px'
-                                        }}>
-                                            📝 Contenido Completo
-                                        </label>
-                                        <textarea
-                                            value={editorContent}
-                                            onChange={(e) => setEditorContent(e.target.value)}
-                                            rows={15}
-                                            style={{
-                                                width: '100%',
-                                                padding: '12px',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '6px',
-                                                fontSize: '14px',
-                                                lineHeight: '1.75',
-                                                backgroundColor: 'white',
-                                                resize: 'vertical',
-                                                fontFamily: 'inherit'
-                                            }}
-                                            placeholder="Escribe aquí el contenido completo del bloque...&#10;&#10;Puedes desarrollar las ideas principales y puntos clave que definiste arriba."
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* COLUMNA DERECHA: Archivos y Enlaces */}
-                                <div style={{
-                                    backgroundColor: '#fef3c7',
-                                    borderLeft: '1px solid #e5e7eb',
-                                    overflow: 'auto',
-                                    padding: '24px'
-                                }}>
-                                    <h3 style={{
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        color: '#92400e',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        marginBottom: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}>
-                                        <LinkIcon style={{ height: '14px', width: '14px' }} />
-                                        Recursos
-                                    </h3>
-
-                                    {/* URL del Recurso */}
-                                    <div style={{
-                                        padding: '16px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '8px',
-                                        marginBottom: '16px',
-                                        border: '1px solid #fbbf24'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#92400e',
-                                            marginBottom: '8px'
-                                        }}>
-                                            🔗 URL del Recurso
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editorFileUrl}
-                                            onChange={(e) => setEditorFileUrl(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '8px 10px',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: '6px',
-                                                fontSize: '13px',
-                                                marginBottom: '8px'
-                                            }}
-                                            placeholder="https://..."
-                                        />
-                                        <button style={{
-                                            width: '100%',
-                                            padding: '8px',
-                                            backgroundColor: '#fbbf24',
-                                            color: '#78350f',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            cursor: 'pointer'
-                                        }}>
-                                            Probar Enlace
-                                        </button>
-                                    </div>
-
-                                    {/* Subir Archivos */}
-                                    <div style={{
-                                        padding: '16px',
-                                        backgroundColor: 'white',
-                                        borderRadius: '8px',
-                                        border: '1px solid #fbbf24'
-                                    }}>
-                                        <label style={{
-                                            display: 'block',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            color: '#92400e',
-                                            marginBottom: '8px'
-                                        }}>
-                                            📎 Subir Archivo
-                                        </label>
-                                        <div style={{
-                                            padding: '24px',
-                                            border: '2px dashed #fbbf24',
-                                            borderRadius: '6px',
-                                            textAlign: 'center',
-                                            backgroundColor: '#fffbeb',
-                                            cursor: 'pointer'
-                                        }}>
-                                            <Upload style={{
-                                                height: '32px',
-                                                width: '32px',
-                                                color: '#f59e0b',
-                                                margin: '0 auto 8px'
-                                            }} />
-                                            <p style={{
-                                                fontSize: '12px',
-                                                color: '#92400e',
-                                                margin: 0
-                                            }}>
-                                                Click para subir<br />
-                                                <span style={{ fontSize: '11px', color: '#a16207' }}>
-                                                    PDF, DOC, IMG...
-                                                </span>
-                                            </p>
+                                        <div className="flex gap-4 mt-4 text-xs font-medium text-slate-500">
+                                            <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded text-slate-600">
+                                                <Clock className="h-3 w-3" /> Duración estimada: 4 min
+                                            </span>
                                         </div>
                                     </div>
 
-                                    {/* Ayuda */}
-                                    <div style={{
-                                        marginTop: '24px',
-                                        padding: '12px',
-                                        backgroundColor: '#fef3c7',
-                                        borderRadius: '6px',
-                                        border: '1px solid #fbbf24'
-                                    }}>
-                                        <p style={{
-                                            fontSize: '11px',
-                                            color: '#92400e',
-                                            margin: 0,
-                                            lineHeight: '1.5'
-                                        }}>
-                                            💡 <strong>Tip:</strong> Los archivos se subirán a Supabase Storage y los enlaces se validarán automáticamente.
+                                    {/* Collapsible Content Sections */}
+
+
+                                    <CollapsibleSection title="⭐ Puntos Más Importantes" icon={<CheckCircle className="h-5 w-5 text-amber-600" />}>
+                                        <div className="bg-amber-50/50 p-1 rounded-xl border border-amber-100/50 relative group/field">
+                                            <button
+                                                onClick={() => setActiveModalField('points')}
+                                                className="absolute top-2 right-2 bg-white/80 hover:bg-white p-1.5 rounded-lg text-amber-600 hover:text-amber-700 shadow-sm border border-amber-100 transition-all opacity-0 group-hover/field:opacity-100 z-10"
+                                                title="Pantalla completa"
+                                            >
+                                                <Maximize2 className="h-4 w-4" />
+                                            </button>
+                                            <textarea
+                                                value={editorKeyPoints}
+                                                onChange={(e) => setEditorKeyPoints(e.target.value)}
+                                                className="w-full min-h-[160px] p-5 text-sm border-0 bg-transparent focus:ring-0 focus:outline-none transition-all resize-none placeholder-amber-400/70 text-amber-900 leading-relaxed font-medium"
+                                                placeholder="Resume aquí los 3-5 conceptos clave que el alumno debe recordar para siempre..."
+                                            />
+                                        </div>
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="📝 Contenido Completo (Guion)" icon={<FileText className="h-5 w-5 text-emerald-600" />}>
+                                        <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm relative group/field">
+                                            <button
+                                                onClick={() => setActiveModalField('content')}
+                                                className="absolute top-2 right-2 bg-white/90 hover:bg-white p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 shadow-sm border border-emerald-100 transition-all opacity-0 group-hover/field:opacity-100 z-10"
+                                                title="Pantalla completa"
+                                            >
+                                                <Maximize2 className="h-4 w-4" />
+                                            </button>
+                                            <textarea
+                                                value={editorFullContent}
+                                                onChange={(e) => setEditorFullContent(e.target.value)}
+                                                className="w-full min-h-[500px] p-6 text-base leading-relaxed border-0 bg-transparent focus:ring-0 focus:outline-none transition-all font-mono text-gray-800 placeholder-gray-400"
+                                                placeholder="Escribe aquí el guion completo..."
+                                            />
+                                        </div>
+                                    </CollapsibleSection>
+                                </div>
+
+                                {/* COLUMN 3: ASSETS & FILES (25%) - TOOLS PANEL */}
+                                <div className="col-span-3 bg-slate-50/80 border-l border-emerald-100 overflow-y-auto p-6 custom-scrollbar backdrop-blur-sm">
+
+                                    {/* Prompt for PPT */}
+                                    <div className="mb-6">
+                                        <CollapsibleSection
+                                            title="🎨 Crear Presentación (Genspark)"
+                                            icon={<Sparkles className="h-5 w-5 text-purple-600" />}
+                                            defaultExpanded={true}
+                                        >
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setActiveModalField('prompt')}
+                                                    className="absolute top-2 right-2 bg-white/80 hover:bg-white p-1.5 rounded-lg text-purple-600 hover:text-purple-700 shadow-sm border border-purple-100 transition-all z-10"
+                                                    title="Pantalla completa"
+                                                >
+                                                    <Maximize2 className="h-4 w-4" />
+                                                </button>
+                                                <div className="absolute inset-x-0 -top-2 h-2 bg-gradient-to-b from-purple-50 to-transparent pointer-events-none"></div>
+                                                <textarea
+                                                    value={editorGensparkPrompt}
+                                                    onChange={(e) => setEditorGensparkPrompt(e.target.value)}
+                                                    className="w-full min-h-[120px] p-4 text-sm border border-purple-100 rounded-xl mb-3 bg-purple-50/50 focus:bg-white focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none text-slate-800 leading-relaxed"
+                                                    placeholder="Prompt para generar la presentación..."
+                                                />
+                                                <div className="flex gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => { navigator.clipboard.writeText(editorGensparkPrompt); alert('Copiado!'); }}
+                                                        className="text-xs bg-white border border-purple-200 px-4 py-2 rounded-lg hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 font-bold text-gray-600 transition-all shadow-sm"
+                                                    >
+                                                        Copiar
+                                                    </button>
+                                                    <a
+                                                        href="https://genspark.ai"
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-xs bg-purple-200 text-slate-900 border border-purple-300 px-4 py-2 rounded-lg hover:bg-purple-300 hover:shadow-md font-bold flex items-center gap-2 transition-all shadow-sm"
+                                                    >
+                                                        Ir a Genspark <LinkIcon className="h-3 w-3" />
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </CollapsibleSection>
+                                    </div>
+
+                                    {/* Downloadables */}
+                                    <div className="mb-8">
+                                        <div className="flex items-center justify-between mb-4 pl-1">
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Download className="h-4 w-4" /> Materiales
+                                            </h3>
+                                        </div>
+                                        <DownloadableManager
+                                            blockId={editingBlock.id}
+                                            downloadables={editorDownloadables}
+                                            onUpdate={() => loadDownloadables(editingBlock.id)}
+                                        />
+                                    </div>
+
+                                    <hr className="border-gray-200/50 my-8" />
+
+                                    {/* Final Adjustments */}
+                                    <div className="space-y-8">
+                                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                            🎬 Archivos Finales
+                                        </h3>
+
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Video Grabado (.mp4)</label>
+                                            <FileUpload
+                                                blockId={editingBlock.id}
+                                                fileType="video"
+                                                existingUrl={editorVideoUrl}
+                                                onUploadComplete={(url) => setEditorVideoUrl(url)}
+                                                onDelete={async () => {
+                                                    if (confirm('¿Borrar video?')) {
+                                                        await supabase.from('academy_lesson_blocks').update({ video_url: null }).eq('id', editingBlock.id);
+                                                        setEditorVideoUrl('');
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Presentación (.ppt/pdf)</label>
+                                            <FileUpload
+                                                blockId={editingBlock.id}
+                                                fileType="ppt"
+                                                existingUrl={editorPptUrl}
+                                                onUploadComplete={(url) => setEditorPptUrl(url)}
+                                                onDelete={async () => {
+                                                    if (confirm('¿Borrar presentación?')) {
+                                                        await supabase.from('academy_lesson_blocks').update({ ppt_url: null }).eq('id', editingBlock.id);
+                                                        setEditorPptUrl('');
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                                        <p className="text-xs text-emerald-800 flex items-start gap-2">
+                                            <span className="mt-0.5">ℹ️</span>
+                                            <span>
+                                                <strong>Tip:</strong> Los archivos se subirán a Supabase Storage y los enlaces se validarán automáticamente.
+                                            </span>
                                         </p>
                                     </div>
+
                                 </div>
                             </div>
-                        )}
+                        </div>
+
                     </div>
-                )
-            }
+                )}
+
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="fixed bottom-8 right-8 bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-0 z-[100]">
+                    <CheckCircle className="h-6 w-6" />
+                    <div>
+                        <h4 className="font-bold text-sm">¡Guardado con éxito!</h4>
+                        <p className="text-xs text-emerald-100">Los cambios se han actualizado correctamente.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Generic Expanded Editor Modal */}
+            {activeModalField !== 'none' && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 lg:p-8">
+                    <div className={`bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden
+                        ${activeModalField === 'prompt' ? 'border-t-4 border-purple-500' :
+                            activeModalField === 'points' ? 'border-t-4 border-amber-500' : 'border-t-4 border-emerald-500'}`}>
+
+                        {/* Modal Header */}
+                        <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
+                            <div className="flex items-center gap-4">
+                                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm
+                                    ${activeModalField === 'prompt' ? 'bg-purple-100 text-purple-600' :
+                                        activeModalField === 'points' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                    {activeModalField === 'prompt' && <Sparkles className="h-6 w-6" />}
+                                    {activeModalField === 'points' && <CheckCircle className="h-6 w-6" />}
+                                    {activeModalField === 'content' && <FileText className="h-6 w-6" />}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">
+                                        {activeModalField === 'prompt' && 'Prompt de Genspark'}
+                                        {activeModalField === 'points' && 'Puntos Más Importantes'}
+                                        {activeModalField === 'content' && 'Contenido Completo (Guion)'}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        {activeModalField === 'prompt' && 'Edita el prompt con comodidad y detalle.'}
+                                        {activeModalField === 'points' && 'Define los conceptos clave con claridad.'}
+                                        {activeModalField === 'content' && 'Escribe el guion completo sin distracciones.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setActiveModalField('none')}
+                                    className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-gray-400 hover:text-gray-600 transition-all border border-transparent hover:border-gray-100"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 p-0 overflow-hidden flex flex-col bg-slate-50/30">
+                            <div className="flex-1 p-8 overflow-y-auto">
+                                <div className={`w-full h-full min-h-[500px] p-8 rounded-xl border shadow-sm text-lg leading-relaxed resize-none font-medium focus-within:ring-4 focus-within:ring-opacity-20 transition-all bg-white
+                                ${activeModalField === 'prompt' ? 'border-purple-100 focus-within:border-purple-400 focus-within:ring-purple-500 text-slate-700 font-mono' :
+                                        activeModalField === 'points' ? 'border-amber-100 focus-within:border-amber-400 focus-within:ring-amber-500 text-amber-900' :
+                                            'border-emerald-100 focus-within:border-emerald-400 focus-within:ring-emerald-500 text-slate-800 font-serif'}`}>
+
+                                    <textarea
+                                        value={
+                                            activeModalField === 'prompt' ? editorGensparkPrompt :
+                                                activeModalField === 'points' ? editorKeyPoints :
+                                                    editorFullContent
+                                        }
+                                        onChange={(e) => {
+                                            if (activeModalField === 'prompt') setEditorGensparkPrompt(e.target.value);
+                                            if (activeModalField === 'points') setEditorKeyPoints(e.target.value);
+                                            if (activeModalField === 'content') setEditorFullContent(e.target.value);
+                                        }}
+                                        className="w-full h-full bg-transparent border-none focus:ring-0 resize-none outline-none"
+                                        placeholder="Escribe aquí..."
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="px-8 py-5 bg-white border-t border-gray-100 flex justify-end gap-3 z-10">
+                                <button
+                                    onClick={() => setActiveModalField('none')}
+                                    className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition-colors"
+                                >
+                                    Cerrar (Esc)
+                                </button>
+                                <button
+                                    onClick={() => setActiveModalField('none')}
+                                    className={`px-8 py-3 rounded-xl text-white font-bold shadow-lg transition-all transform hover:translate-y-[-2px] hover:shadow-xl
+                                    ${activeModalField === 'prompt' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' :
+                                            activeModalField === 'points' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' :
+                                                'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
+                                >
+                                    Guardar y Volver
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TASK CREATION MODAL */}
+            {showTaskModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 200 // Higher than block editor
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        width: '90%',
+                        maxWidth: '500px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }}>
+                        <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Nueva Tarea Vinculada</h3>
+                            <button onClick={() => setShowTaskModal(false)}><X className="h-5 w-5 text-gray-400" /></button>
+                        </div>
+
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                                <input
+                                    type="text"
+                                    value={newTaskTitle}
+                                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                                <textarea
+                                    rows={4}
+                                    value={newTaskDescription}
+                                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
+                                <div className="flex gap-2">
+                                    {['low', 'normal', 'high', 'urgent'].map((p) => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setNewTaskPriority(p as any)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${newTaskPriority === p
+                                                ? 'bg-slate-800 text-white border-slate-800'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            {p === 'low' ? 'Baja' : p === 'normal' ? 'Normal' : p === 'high' ? 'Alta' : 'Urgente'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '16px 24px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                            <button
+                                onClick={() => setShowTaskModal(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleCreateTask}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm"
+                            >
+                                Crear Tarea
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+

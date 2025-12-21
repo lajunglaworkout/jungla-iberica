@@ -20,73 +20,6 @@ export interface InventoryMovement {
 
 class InventoryMovementService {
 
-    // Crear tabla si no existe
-    async createTableIfNotExists() {
-        try {
-            console.log('🔧 Verificando/creando tabla inventory_movements...');
-
-            const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS inventory_movements (
-          id BIGSERIAL PRIMARY KEY,
-          inventory_item_id BIGINT REFERENCES inventory_items(id),
-          user_id TEXT,
-          user_name TEXT,
-          center_id BIGINT,
-          type TEXT,
-          quantity_change INTEGER,
-          previous_quantity INTEGER,
-          new_quantity INTEGER,
-          reason TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-      `;
-
-            const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
-
-            if (error) {
-                console.error('❌ Error creando tabla inventory_movements:', error);
-                // Fallback: intentar crearla via insert si falla el RPC (a veces pasa en desarrollo)
-                return { success: false, error };
-            }
-
-            // Crear índices
-            const indexSQL = `
-        CREATE INDEX IF NOT EXISTS idx_inventory_movements_item_id ON inventory_movements(inventory_item_id);
-        CREATE INDEX IF NOT EXISTS idx_inventory_movements_center_id ON inventory_movements(center_id);
-        CREATE INDEX IF NOT EXISTS idx_inventory_movements_created_at ON inventory_movements(created_at);
-      `;
-
-            await supabase.rpc('exec_sql', { sql: indexSQL });
-
-            console.log('✅ Tabla inventory_movements verificada');
-
-            // Asegurar que existe la columna max_stock en inventory_items
-            await this.ensureMaxStockColumn();
-
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Error en createTableIfNotExists:', error);
-            return { success: false, error };
-        }
-    }
-
-    // Asegurar columna max_stock
-    async ensureMaxStockColumn() {
-        try {
-            console.log('🔧 Verificando columna max_stock en inventory_items...');
-            const sql = `
-        ALTER TABLE inventory_items 
-        ADD COLUMN IF NOT EXISTS max_stock INTEGER DEFAULT 20;
-      `;
-            const { error } = await supabase.rpc('exec_sql', { sql });
-            if (error) throw error;
-            console.log('✅ Columna max_stock verificada');
-        } catch (error) {
-            console.error('❌ Error creando columna max_stock:', error);
-        }
-    }
-
-
     // Registrar un movimiento
     async recordMovement(movement: InventoryMovement) {
         try {
@@ -99,21 +32,7 @@ class InventoryMovementService {
                 .single();
 
             if (error) {
-                // Si el error es que la tabla no existe, intentamos crearla y reintentamos
-                if (error.message?.includes('relation "inventory_movements" does not exist')) {
-                    console.log('⚠️ La tabla no existe, intentando crearla...');
-                    await this.createTableIfNotExists();
-
-                    // Reintento
-                    const { data: retryData, error: retryError } = await supabase
-                        .from('inventory_movements')
-                        .insert(movement)
-                        .select()
-                        .single();
-
-                    if (retryError) throw retryError;
-                    return { success: true, movement: retryData };
-                }
+                console.error('❌ Error registrando movimiento:', error);
                 throw error;
             }
 
@@ -171,12 +90,7 @@ class InventoryMovementService {
             const { data, error } = await query;
 
             if (error) {
-                // Si la tabla no existe, crearla y devolver lista vacía
-                if (error.message?.includes('relation "inventory_movements" does not exist')) {
-                    console.log('⚠️ La tabla inventory_movements no existe, creándola...');
-                    await this.createTableIfNotExists();
-                    return { success: true, movements: [] };
-                }
+                console.error('❌ Error obteniendo movimientos:', error);
                 throw error;
             }
 
