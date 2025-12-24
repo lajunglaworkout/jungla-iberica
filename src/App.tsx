@@ -1038,6 +1038,20 @@ const NavigationDashboard: React.FC = () => {
         </div>
       </div >
 
+      {/* Mobile Overlay Backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 999,
+            transition: 'opacity 0.3s ease'
+          }}
+        />
+      )}
+
       {/* Main Content Area */}
       <main style={{
         flex: 1,
@@ -1068,13 +1082,35 @@ const NavigationDashboard: React.FC = () => {
           backdropFilter: 'blur(8px)',
           backgroundColor: 'rgba(255, 255, 255, 0.8)'
         }}>
-          <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {getPageTitle()}
-            </h2>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontWeight: '500' }}>
-              Bienvenido de nuevo, <span style={{ color: '#059669' }}>{employee?.first_name}</span>
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Mobile Hamburger Menu */}
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                style={{
+                  padding: '8px',
+                  backgroundColor: '#f0fdf4',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Menu size={20} className="text-emerald-600" />
+              </button>
+            )}
+            <div>
+              <h2 style={{ fontSize: isMobile ? '18px' : '24px', fontWeight: 'bold', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {getPageTitle()}
+              </h2>
+              {!isMobile && (
+                <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', fontWeight: '500' }}>
+                  Bienvenido de nuevo, <span style={{ color: '#059669' }}>{employee?.first_name}</span>
+                </p>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button

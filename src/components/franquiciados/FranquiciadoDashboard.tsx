@@ -1152,7 +1152,14 @@ export const FranquiciadoDashboard: React.FC = () => {
     );
 
     return (
-        <div style={{ padding: 'clamp(16px, 4vw, 32px)', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{
+            padding: 'clamp(12px, 4vw, 32px)',
+            maxWidth: '1400px',
+            margin: '0 auto',
+            width: '100%',
+            boxSizing: 'border-box',
+            overflowX: 'hidden'
+        }}>
             {/* Header */}
             <div style={{
                 background: 'linear-gradient(135deg, #064e3b 0%, #10b981 50%, #34d399 100%)',
@@ -1299,8 +1306,8 @@ export const FranquiciadoDashboard: React.FC = () => {
 
                                         {/* Score Badge */}
                                         <div className={`px-3 py-1 rounded-full text-sm font-bold ${overallScore >= 80 ? 'bg-emerald-100 text-emerald-700' :
-                                                overallScore >= 60 ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-red-100 text-red-700'
+                                            overallScore >= 60 ? 'bg-amber-100 text-amber-700' :
+                                                'bg-red-100 text-red-700'
                                             }`}>
                                             {overallScore}%
                                         </div>
@@ -1311,8 +1318,8 @@ export const FranquiciadoDashboard: React.FC = () => {
                                                 <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
                                                     <div
                                                         className={`h-full rounded-full transition-all ${overallScore >= 80 ? 'bg-emerald-500' :
-                                                                overallScore >= 60 ? 'bg-amber-500' :
-                                                                    'bg-red-500'
+                                                            overallScore >= 60 ? 'bg-amber-500' :
+                                                                'bg-red-500'
                                                             }`}
                                                         style={{ width: `${overallScore}%` }}
                                                     />
@@ -1358,8 +1365,8 @@ export const FranquiciadoDashboard: React.FC = () => {
                                                     <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full ${kpi.status === 'green' ? 'bg-emerald-500' :
-                                                                    kpi.status === 'amber' ? 'bg-amber-500' :
-                                                                        'bg-red-500'
+                                                                kpi.status === 'amber' ? 'bg-amber-500' :
+                                                                    'bg-red-500'
                                                                 }`}
                                                             style={{ width: `${Math.min(100, kpi.isInverse ? (kpi.current <= kpi.target ? 100 : Math.max(20, 100 - ((kpi.current - kpi.target) / kpi.target) * 50)) : (kpi.current / kpi.target) * 100)}%` }}
                                                         />
@@ -1397,46 +1404,33 @@ export const FranquiciadoDashboard: React.FC = () => {
                     })()}
 
                     {/* Financial & Clients Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                         {/* Facturación */}
                         <div
                             onClick={() => setActiveView('finance')}
-                            style={{
-                                backgroundColor: 'white',
-                                borderRadius: '28px',
-                                padding: '32px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)'
-                            }}
-                            className="hover:shadow-2xl hover:shadow-emerald-200/40 hover:-translate-y-2 relative group overflow-hidden"
+                            className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-emerald-200/40 hover:-translate-y-1 relative group overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ChevronRight className="text-emerald-500" />
                             </div>
                             <SectionHeader title="Facturación del Mes" icon={DollarSign} color="#10b981" />
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                                <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#16a34a' }}>{financial.ingresos.toLocaleString()} €</div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Ingresos</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                <div className="text-center p-3 sm:p-4 bg-green-50 rounded-xl">
+                                    <div className="text-lg sm:text-2xl font-bold text-green-600">{financial.ingresos.toLocaleString()} €</div>
+                                    <div className="text-xs text-gray-500">Ingresos</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#fef2f2', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#dc2626' }}>{financial.gastos.toLocaleString()} €</div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Gastos</div>
+                                <div className="text-center p-3 sm:p-4 bg-red-50 rounded-xl">
+                                    <div className="text-lg sm:text-2xl font-bold text-red-600">{financial.gastos.toLocaleString()} €</div>
+                                    <div className="text-xs text-gray-500">Gastos</div>
                                 </div>
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: '16px',
-                                    backgroundColor: financial.balance >= 0 ? '#f0fdf4' : '#fef2f2',
-                                    borderRadius: '12px',
-                                    border: `2px solid ${financial.balance >= 0 ? '#16a34a' : '#dc2626'}`
-                                }}>
-                                    <div style={{ fontSize: '24px', fontWeight: 700, color: financial.balance >= 0 ? '#16a34a' : '#dc2626' }}>
+                                <div className={`text-center p-3 sm:p-4 rounded-xl border-2 ${financial.balance >= 0 ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'
+                                    }`}>
+                                    <div className={`text-lg sm:text-2xl font-bold ${financial.balance >= 0 ? 'text-green-600' : 'text-red-600'
+                                        }`}>
                                         {financial.balance >= 0 ? '+' : ''}{financial.balance.toLocaleString()} €
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280' }}>Balance</div>
+                                    <div className="text-xs text-gray-500">Balance</div>
                                 </div>
                             </div>
                         </div>
@@ -1444,123 +1438,101 @@ export const FranquiciadoDashboard: React.FC = () => {
                         {/* Clientes */}
                         <div
                             onClick={() => setActiveView('clients')}
-                            style={{
-                                backgroundColor: 'white',
-                                borderRadius: '28px',
-                                padding: '32px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)'
-                            }}
-                            className="hover:shadow-2xl hover:shadow-fuchsia-200/40 hover:-translate-y-2 relative group overflow-hidden"
+                            className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-fuchsia-200/40 hover:-translate-y-1 relative group overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-50/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ChevronRight className="text-violet-500" />
                             </div>
                             <SectionHeader title="Clientes" icon={Users} color="#8b5cf6" />
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#f5f3ff', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#7c3aed' }}>{clients.activos}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Activos</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                                <div className="text-center p-2 sm:p-3 bg-violet-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-violet-600">{clients.activos}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Activos</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dcfce7', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#16a34a' }}>+{clients.altasMes}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Altas</div>
+                                <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-green-600">+{clients.altasMes}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Altas</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#fef2f2', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#dc2626' }}>-{clients.bajasMes}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Bajas</div>
+                                <div className="text-center p-2 sm:p-3 bg-red-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-red-600">-{clients.bajasMes}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Bajas</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#2563eb' }}>{clients.retencion}%</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Retención</div>
+                                <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-blue-600">{clients.retencion}%</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Retención</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Incidencias & Eventos Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                         {/* Incidencias */}
                         <div
                             onClick={() => setActiveView('incidents')}
-                            style={{
-                                backgroundColor: 'white',
-                                borderRadius: '28px',
-                                padding: '32px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)'
-                            }}
-                            className="hover:shadow-2xl hover:shadow-orange-200/40 hover:-translate-y-2 relative group overflow-hidden"
+                            className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-orange-200/40 hover:-translate-y-1 relative group overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-orange-50/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ChevronRight className="text-orange-500" />
                             </div>
                             <SectionHeader title="Incidencias" icon={AlertTriangle} color="#f59e0b" />
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: '20px',
-                                    backgroundColor: incidenciasMetrics.abiertas > 0 ? '#fef2f2' : '#f0fdf4',
-                                    borderRadius: '12px',
-                                    border: `2px solid ${incidenciasMetrics.abiertas > 0 ? '#fca5a5' : '#86efac'}`
-                                }}>
-                                    <div style={{ fontSize: '36px', fontWeight: 700, color: incidenciasMetrics.abiertas > 0 ? '#dc2626' : '#16a34a' }}>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                <div className={`text-center p-3 sm:p-5 rounded-xl border-2 ${incidenciasMetrics.abiertas > 0 ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'
+                                    }`}>
+                                    <div className={`text-2xl sm:text-4xl font-bold ${incidenciasMetrics.abiertas > 0 ? 'text-red-600' : 'text-green-600'
+                                        }`}>
                                         {incidenciasMetrics.abiertas}
                                     </div>
-                                    <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>🔴 Abiertas</div>
+                                    <div className="text-xs sm:text-sm text-gray-500 font-medium">🔴 Abiertas</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#f0fdf4', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '36px', fontWeight: 700, color: '#16a34a' }}>{incidenciasMetrics.cerradas}</div>
-                                    <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>🟢 Cerradas</div>
+                                <div className="text-center p-3 sm:p-5 bg-green-50 rounded-xl">
+                                    <div className="text-2xl sm:text-4xl font-bold text-green-600">{incidenciasMetrics.cerradas}</div>
+                                    <div className="text-xs sm:text-sm text-gray-500 font-medium">🟢 Cerradas</div>
                                 </div>
                             </div>
                             <div className="mt-4 text-xs text-center text-orange-600 font-medium">Ver detalles y reportar &rarr;</div>
                         </div>
 
                         {/* Eventos */}
-                        <div style={{ backgroundColor: 'white', borderRadius: '28px', padding: '32px', border: 'none', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)' }}>
+                        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg">
                             <SectionHeader title="Eventos" icon={Calendar} color="#3b82f6" />
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#2563eb' }}>{eventos.realizados}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Realizados</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                                <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-blue-600">{eventos.realizados}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Realizados</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#d97706' }}>{eventos.pendientes}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Pendientes</div>
+                                <div className="text-center p-2 sm:p-3 bg-amber-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-amber-600">{eventos.pendientes}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Pendientes</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#f5f3ff', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#7c3aed' }}>{eventos.participantes}</div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Particip.</div>
+                                <div className="text-center p-2 sm:p-3 bg-violet-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-violet-600">{eventos.participantes}</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Particip.</div>
                                 </div>
-                                <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#f59e0b' }}>
-                                        <Star size={16} style={{ display: 'inline', marginRight: '4px' }} fill="#f59e0b" />
+                                <div className="text-center p-2 sm:p-3 bg-amber-50 rounded-lg">
+                                    <div className="text-lg sm:text-xl font-bold text-amber-500 flex items-center justify-center gap-1">
+                                        <Star size={14} className="fill-amber-500" />
                                         {eventos.satisfaccion}
                                     </div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>Media</div>
+                                    <div className="text-[10px] sm:text-xs text-gray-500">Media</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Reuniones & Comms */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                         {/* Reuniones */}
-                        <div style={{ backgroundColor: 'white', borderRadius: '28px', padding: '32px', border: 'none', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)' }}>
+                        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg">
                             <SectionHeader title="Juntas" icon={FileText} color="#6366f1" />
                             {reuniones.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '32px', color: '#6b7280' }}>
-                                    <p style={{ margin: 0 }}>No hay reuniones recientes</p>
+                                <div className="text-center py-6 sm:py-8 text-gray-500">
+                                    <p className="text-sm">No hay reuniones recientes</p>
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div className="flex flex-col gap-2">
                                     {reuniones.slice(0, 3).map(reunion => (
                                         <div key={reunion.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
                                             <div>
