@@ -4,7 +4,7 @@
 export type NotificationType = 'incident' | 'event' | 'message' | 'task' | 'system' | 'vacation';
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
-export interface Notification {
+export interface AppNotification {
     id: string;
     user_id: number;
     type: NotificationType;

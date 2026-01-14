@@ -4,10 +4,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from './SessionContext';
-import { Notification, NotificationCreate } from '../types/notifications';
+import { AppNotification, NotificationCreate } from '../types/notifications';
 
 interface NotificationContextType {
-    notifications: Notification[];
+    notifications: AppNotification[];
     unreadCount: number;
     loading: boolean;
     error: string | null;
@@ -22,7 +22,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { employee } = useSession();
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -153,7 +153,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 },
                 (payload) => {
                     console.log('🔔 Nueva notificación recibida:', payload.new);
-                    const newNotification = payload.new as Notification;
+                    const newNotification = payload.new as AppNotification;
                     setNotifications(prev => [newNotification, ...prev]);
 
                     // Opcional: Reproducir sonido o mostrar toast
@@ -174,7 +174,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     filter: `user_id=eq.${employee.id}`
                 },
                 (payload) => {
-                    const updatedNotification = payload.new as Notification;
+                    const updatedNotification = payload.new as AppNotification;
                     setNotifications(prev =>
                         prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
                     );

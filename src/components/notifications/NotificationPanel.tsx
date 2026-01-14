@@ -18,7 +18,7 @@ import {
     ExternalLink
 } from 'lucide-react';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { Notification, NOTIFICATION_CONFIG, PRIORITY_CONFIG, NotificationType } from '../../types/notifications';
+import { AppNotification, NOTIFICATION_CONFIG, PRIORITY_CONFIG, NotificationType } from '../../types/notifications';
 
 // Mapeo de iconos
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -50,8 +50,8 @@ const formatRelativeTime = (dateString: string): string => {
 };
 
 // Agrupar notificaciones por fecha
-const groupNotificationsByDate = (notifications: Notification[]): Record<string, Notification[]> => {
-    const groups: Record<string, Notification[]> = {};
+const groupNotificationsByDate = (notifications: AppNotification[]): Record<string, AppNotification[]> => {
+    const groups: Record<string, AppNotification[]> = {};
     const today = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
 
@@ -81,7 +81,7 @@ const groupNotificationsByDate = (notifications: Notification[]): Record<string,
 };
 
 interface NotificationItemProps {
-    notification: Notification;
+    notification: AppNotification;
     onMarkAsRead: (id: string) => void;
     onDelete: (id: string) => void;
     onNavigate?: (link: string) => void;

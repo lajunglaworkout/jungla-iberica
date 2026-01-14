@@ -374,6 +374,21 @@ export const notifySystemAlert = async (
   }
 };
 
+// Eliminar notificaciones de una tarea específica
+export const deleteTaskNotifications = async (taskId: string | number): Promise<void> => {
+  try {
+    // Eliminamos notificaciones que tengan este task_id en su metadata
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .match({ 'metadata->task_id': taskId });
+
+    if (error) throw error;
+  } catch (err) {
+    console.error('Error deleting task notifications:', err);
+  }
+};
+
 export default {
   createNotification,
   notifyIncident,
@@ -385,5 +400,78 @@ export default {
   notifyVacationResponse,
   notifyTaskAssigned,
   notifyTaskDueSoon,
-  notifySystemAlert
+  notifySystemAlert,
+  deleteTaskNotifications,
+  getUserNotifications,
+  createTaskNotification
+};
+
+// Obtener notificaciones de un usuario (para compatibilidad con DashboardPage)
+export const getUserNotifications = async (userEmail: string, onlyUnread: boolean = false): Promise<{ success: boolean; notifications?: any[]; error?: string }> => {
+  try {
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('email', userEmail)
+      .single();
+
+    if (!employee) return { success: false, error: 'User not found' };
+
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', employee.id)
+      .order('created_at', { ascending: false });
+
+    if (onlyUnread) {
+      query = query.eq('is_read', false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Mapear al formato esperado por DashboardPage
+    const mappedNotifications = (data || []).map(n => ({
+      id: n.id,
+      title: n.title,
+      message: n.body,
+      type: n.type === 'task' ? 'task_assigned' : 'system',
+      created_at: n.created_at,
+      is_read: n.is_read,
+      task_id: n.metadata?.task_id
+    }));
+
+    return { success: true, notifications: mappedNotifications };
+  } catch (err) {
+    console.error('Error fetching user notifications:', err);
+    return { success: false, error: 'Error fetching notifications' };
+  }
+};
+
+// Crear notificación de tarea (para compatibilidad con MeetingResultsPanel)
+export const createTaskNotification = async (
+  taskId: number,
+  userEmail: string,
+  taskTitle: string,
+  meetingTitle: string
+): Promise<void> => {
+  try {
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('email', userEmail)
+      .single();
+
+    if (employee) {
+      await notifyTaskAssigned({
+        taskId,
+        taskTitle,
+        assigneeId: employee.id,
+        assignerName: meetingTitle
+      });
+    }
+  } catch (err) {
+    console.error('Error in createTaskNotification:', err);
+  }
 };
