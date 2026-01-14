@@ -69,6 +69,8 @@ import { MarketingDashboard } from './components/marketing/MarketingDashboard';
 import { UserManagementSystem } from './components/admin/UserManagementSystem';
 import { EventsDashboard } from './components/events/EventsDashboard';
 import { FranquiciadoDashboard } from './components/franquiciados/FranquiciadoDashboard';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationPanel, NotificationBell } from './components/notifications/NotificationPanel';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -81,6 +83,7 @@ const NavigationDashboard: React.FC = () => {
   // Mobile detection
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
 
   // Listen for window resize
   useEffect(() => {
@@ -118,7 +121,7 @@ const NavigationDashboard: React.FC = () => {
       userRole,
       employee: employee ? {
         id: employee.id,
-        name: employee.name,
+        name: employee.first_name,
         email: employee.email,
         role: employee.role
       } : 'No autenticado'
@@ -776,21 +779,19 @@ const NavigationDashboard: React.FC = () => {
         );
       } else if (module.id === 'my-tasks') {
         return (
-          <MyTasksPage />
+          <MyTasksPage
+            userEmail={employee?.email || ''}
+            userName={`${employee?.first_name || ''} ${employee?.last_name || ''}`}
+            userRole={userRole || 'employee'}
+          />
         );
       } else if (module.id === 'hr') {
         return (
-          <HRManagementSystem
-            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-            initialView={(module as any).initialView}
-          />
+          <HRManagementSystem />
         );
       } else if (module.id === 'logistics') {
         return (
-          <LogisticsManagementSystem
-            userEmail={employee?.email || 'carlossuarezparra@gmail.com'}
-            initialView={(module as any).initialView}
-          />
+          <LogisticsManagementSystem />
         );
       } else if (module.id === 'marketing') {
         return (
@@ -828,7 +829,7 @@ const NavigationDashboard: React.FC = () => {
       <div style={{
         width: sidebarOpen ? '280px' : '80px',
         flexShrink: 0,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#047857',
         borderRight: 'none',
         display: 'flex',
         flexDirection: 'column',
@@ -853,26 +854,23 @@ const NavigationDashboard: React.FC = () => {
         }}>
           {sidebarOpen && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '20px',
-                fontWeight: 'bold',
-                flexShrink: 0
-              }}>
-                🌿
-              </div>
+              <img
+                src="/logo.png"
+                alt="La Jungla Workout"
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '10px',
+                  backgroundColor: 'white',
+                  padding: '4px',
+                  flexShrink: 0
+                }}
+              />
               <div>
                 <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', margin: 0, whiteSpace: 'nowrap' }}>
                   La Jungla
                 </h1>
-                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, whiteSpace: 'nowrap' }}>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', margin: 0, whiteSpace: 'nowrap' }}>
                   CRM Ejecutivo
                 </p>
               </div>
@@ -910,7 +908,7 @@ const NavigationDashboard: React.FC = () => {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || employee.nombre || '')}&background=059669&color=fff`}
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.first_name || '')}&background=059669&color=fff`}
                   alt="Avatar"
                   style={{
                     width: '40px',
@@ -922,7 +920,7 @@ const NavigationDashboard: React.FC = () => {
                 {sidebarOpen && (
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', margin: 0 }}>
-                      {employee.name || employee.nombre}
+                      {employee.first_name} {employee.last_name}
                     </p>
                     <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
                       {userRole === 'superadmin' ? 'CEO' :
@@ -967,7 +965,7 @@ const NavigationDashboard: React.FC = () => {
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                  color: isActive ? 'white' : '#94a3b8'
+                  color: isActive ? 'white' : 'rgba(255, 255, 255, 0.85)'
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
@@ -978,7 +976,7 @@ const NavigationDashboard: React.FC = () => {
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#94a3b8';
+                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)';
                   }
                 }}
               >
@@ -1000,7 +998,7 @@ const NavigationDashboard: React.FC = () => {
                     </p>
                     <p style={{
                       fontSize: '11px',
-                      color: 'rgba(255,255,255,0.4)',
+                      color: 'rgba(255,255,255,0.7)',
                       margin: 0
                     }}>
                       {module.description}
@@ -1113,40 +1111,20 @@ const NavigationDashboard: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => setShowVacationNotifications(!showVacationNotifications)}
-              style={{
-                padding: '8px',
-                color: '#6b7280',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                cursor: 'pointer',
-                border: 'none'
-              }}
-            >
-              <Bell style={{ height: '20px', width: '20px' }} />
-              {vacationNotifications.length > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '2px',
-                  right: '2px',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '16px',
-                  height: '16px',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {vacationNotifications.length}
-                </span>
-              )}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <NotificationBell
+                onClick={() => setShowNotificationPanel(!showNotificationPanel)}
+                isOpen={showNotificationPanel}
+              />
+              <NotificationPanel
+                isOpen={showNotificationPanel}
+                onClose={() => setShowNotificationPanel(false)}
+                onNavigate={(moduleId) => {
+                  setSelectedModule(moduleId);
+                  setShowNotificationPanel(false);
+                }}
+              />
+            </div>
             <div style={{ height: '32px', width: '1px', backgroundColor: '#e5e7eb', margin: '0 8px' }}></div>
             <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>
               {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -1490,9 +1468,11 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <DataProvider>
-      <NavigationDashboard />
-    </DataProvider>
+    <NotificationProvider>
+      <DataProvider>
+        <NavigationDashboard />
+      </DataProvider>
+    </NotificationProvider>
   );
 };
 

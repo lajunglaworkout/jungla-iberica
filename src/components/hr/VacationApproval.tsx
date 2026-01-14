@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, X, Clock, CheckCircle, XCircle, MapPin, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { notifyVacationResponse } from '../../services/notificationService';
 import { useData } from '../../contexts/DataContext';
 
 interface VacationApprovalProps {
@@ -33,7 +34,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
         .from('vacation_requests')
         .select('*')
         .order('requested_at', { ascending: false });
-      
+
       if (!vacationData) {
         setRequests([]);
         setLoading(false);
@@ -42,7 +43,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
 
       // Obtener IDs de empleados
       const employeeIds = [...new Set(vacationData.map(v => v.employee_id))];
-      
+
       // Cargar datos de empleados con centro
       const { data: employeesData } = await supabase
         .from('employees')
@@ -79,6 +80,22 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
       .eq('id', id);
 
     if (!error) {
+      // Enviar notificación al empleado
+      const request = requests.find(r => r.id === id);
+      if (request) {
+        try {
+          await notifyVacationResponse({
+            employeeId: request.employee_id,
+            status: status,
+            startDate: request.start_date,
+            endDate: request.end_date,
+            reviewerName: currentEmployee?.nombre || 'RRHH'
+          });
+        } catch (notifyErr) {
+          console.error('Error sending vacation response notification:', notifyErr);
+        }
+      }
+
       loadRequests();
       alert(`Solicitud ${status === 'approved' ? 'aprobada' : 'rechazada'}`);
     }
@@ -91,7 +108,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
       rejected: { bg: '#fee2e2', color: '#991b1b', icon: <XCircle size={14} /> }
     };
     const style = colors[status as keyof typeof colors];
-    
+
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '4px',
@@ -131,7 +148,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
             <Filter size={20} style={{ color: '#6b7280' }} />
             <span style={{ fontWeight: '600', color: '#374151' }}>Filtros:</span>
           </div>
-          
+
           {/* Selector de Centro */}
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
@@ -197,9 +214,9 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
           Solicitudes Pendientes ({pending.length})
         </h2>
         {pending.map(request => (
-          <div key={request.id} style={{ 
-            padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', 
-            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+          <div key={request.id} style={{
+            padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px',
+            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
             <div>
               <div style={{ fontWeight: '600', marginBottom: '4px' }}>
@@ -238,9 +255,9 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>Historial ({filteredRequests.filter(r => r.status !== 'pending').length})</h2>
         {filteredRequests.filter(r => r.status !== 'pending').map(request => (
-          <div key={request.id} style={{ 
-            padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', 
-            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+          <div key={request.id} style={{
+            padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px',
+            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
             <div>
               <div style={{ fontWeight: '600', marginBottom: '4px' }}>

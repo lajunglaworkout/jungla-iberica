@@ -1,6 +1,6 @@
 // src/components/StrategicMeetingSystem.tsx - CORREGIDO SIN ERRORES TypeScript
 import React, { useState } from 'react';
-import { 
+import {
   Calendar, Clock, Users, Target, TrendingUp, TrendingDown,
   Building2, UserCheck, Briefcase, Heart, Globe, Zap,
   Plus, Save, ArrowLeft, ChevronRight, ChevronDown,
@@ -8,6 +8,7 @@ import {
   BarChart3, DollarSign, UserMinus, Award, Activity
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyTaskAssigned } from '../services/notificationService';
 
 // ============ INTERFACES CORREGIDAS ============
 interface MeetingData {
@@ -16,8 +17,8 @@ interface MeetingData {
   date: string;
   participants: string[];
   metrics: Record<string, string>;
-  objectives: Array<{id: number; title: string; status: string}>;
-  tasks: Array<{id: number; title: string; assignedTo: string; deadline: string; priority: string}>;
+  objectives: Array<{ id: number; title: string; status: string }>;
+  tasks: Array<{ id: number; title: string; assignedTo: string; deadline: string; priority: string }>;
   notes: string;
 }
 
@@ -169,15 +170,15 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
     const loadRealEmployees = async () => {
       try {
         console.log('🔍 Intentando cargar empleados desde Supabase...');
-        
+
         // Primero verificar qué hay en la tabla sin filtros
         const { data: allEmployees, error: allError } = await supabase
           .from('employees')
           .select('*')
           .order('name', { ascending: true });
-        
+
         console.log('📊 Total empleados en tabla:', allEmployees?.length || 0);
-        
+
         if (allError) {
           console.error('❌ Error cargando todos los empleados:', allError);
           setRealEmployees(LEADERSHIP_TEAM);
@@ -199,7 +200,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
 
         setRealEmployees(mappedEmployees);
         console.log('✅ Empleados mapeados:', mappedEmployees);
-        
+
       } catch (error) {
         console.error('❌ Error general:', error);
         setRealEmployees(LEADERSHIP_TEAM);
@@ -215,7 +216,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           .order('date', { ascending: false });
 
         if (error) throw error;
-        
+
         // Mapear los datos para asegurar que todos los campos necesarios existan
         const formattedMeetings = (data || []).map(meeting => ({
           id: meeting.id,
@@ -229,7 +230,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           notes: meeting.notes || '',
           created_at: meeting.created_at || new Date().toISOString()
         }));
-        
+
         setMeetings(formattedMeetings);
         console.log(`✅ Reuniones cargadas: ${formattedMeetings.length}`);
       } catch (error) {
@@ -254,7 +255,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
       if (!selectedDepartment) {
         throw new Error('Debe seleccionar un departamento');
       }
-      
+
       if (!selectedType) {
         throw new Error('Tipo de reunión no válido');
       }
@@ -316,7 +317,36 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           actualizado_en: new Date().toISOString()
         }));
 
-        await supabase.from('tareas').insert(tasksData);
+        const { data: savedTasks, error: tasksError } = await supabase
+          .from('tareas')
+          .insert(tasksData)
+          .select();
+
+        if (tasksError) throw tasksError;
+
+        // 4. Enviar notificaciones de tareas asignadas
+        if (savedTasks && savedTasks.length > 0) {
+          // Obtener IDs de empleados a partir de correos si es necesario
+          // Nota: En StrategicMeetingSystem, assignedTo es el email (id del leadership member)
+          for (const task of savedTasks) {
+            // Buscar el empleado por email para obtener su ID numérico
+            const { data: empData } = await supabase
+              .from('employees')
+              .select('id')
+              .eq('email', task.asignado_a)
+              .single();
+
+            if (empData) {
+              await notifyTaskAssigned({
+                taskId: task.id,
+                taskTitle: task.titulo,
+                assigneeId: empData.id,
+                assignerName: 'Dirección',
+                dueDate: task.fecha_limite
+              });
+            }
+          }
+        }
       }
 
       return meetingRecord;
@@ -327,7 +357,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
   };
 
   // ============ COMPONENTES DE PASOS ============
-  
+
   // Componente para mostrar el historial de reuniones
   const MeetingHistory = () => {
     const filteredMeetings = meetings.filter(meeting => {
@@ -341,7 +371,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
         <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Filtrar por departamento:</label>
-            <select 
+            <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
               style={{
@@ -362,7 +392,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Filtrar por tipo:</label>
-            <select 
+            <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               style={{
@@ -391,15 +421,15 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
             <FileText style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
             <h3 style={{ margin: '0 0 8px', color: '#111827' }}>No hay reuniones registradas</h3>
             <p style={{ margin: 0, color: '#6b7280' }}>
-              {filterDepartment || filterType 
-                ? 'No hay reuniones que coincidan con los filtros seleccionados.' 
+              {filterDepartment || filterType
+                ? 'No hay reuniones que coincidan con los filtros seleccionados.'
                 : 'Crea tu primera reunión para comenzar.'}
             </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {filteredMeetings.map((meeting) => (
-              <div 
+              <div
                 key={meeting.id}
                 style={{
                   backgroundColor: 'white',
@@ -408,7 +438,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                   overflow: 'hidden'
                 }}
               >
-                <div 
+                <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -458,7 +488,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                     transform: expandedMeeting === meeting.id ? 'rotate(180deg)' : 'rotate(0)'
                   }} />
                 </div>
-                
+
                 {expandedMeeting === meeting.id && (
                   <div style={{ padding: '0 16px 16px', borderTop: '1px solid #e5e7eb' }}>
                     {meeting.notes && (
@@ -469,7 +499,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                         </p>
                       </div>
                     )}
-                    
+
                     {meeting.objectives?.length > 0 && (
                       <div style={{ marginBottom: '16px' }}>
                         <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Objetivos:</h4>
@@ -482,7 +512,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                         </ul>
                       </div>
                     )}
-                    
+
                     {meeting.tasks?.length > 0 && (
                       <div>
                         <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Tareas:</h4>
@@ -508,8 +538,8 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                               </div>
                               <div style={{
                                 fontSize: '12px',
-                                color: task.priority === 'Alta' ? '#dc2626' : 
-                                       task.priority === 'Media' ? '#d97706' : '#059669',
+                                color: task.priority === 'Alta' ? '#dc2626' :
+                                  task.priority === 'Media' ? '#d97706' : '#059669',
                                 fontWeight: '500'
                               }}>
                                 {task.priority}
@@ -576,7 +606,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                   </p>
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Clock style={{ height: '16px', width: '16px' }} />
@@ -762,17 +792,17 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
     }, [meetingData.department]);
 
     const updateTaskStatus = (taskId: number, newStatus: string) => {
-      setPreviousTasks(prev => prev.map(task => 
+      setPreviousTasks(prev => prev.map(task =>
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
     };
 
     const updateTaskComments = (taskId: number, comments: string) => {
-      setPreviousTasks(prev => prev.map(task => 
+      setPreviousTasks(prev => prev.map(task =>
         task.id === taskId ? { ...task, comments } : task
       ));
     };
-    
+
     return (
       <div style={{ padding: '20px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -782,11 +812,11 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           <p style={{ color: '#6b7280' }}>
             Revisa las tareas de la semana anterior y los KPIs del departamento
           </p>
-          <div style={{ 
-            backgroundColor: '#f0fdf4', 
-            border: '1px solid #bbf7d0', 
-            borderRadius: '8px', 
-            padding: '12px', 
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            padding: '12px',
             marginTop: '16px',
             display: 'inline-block'
           }}>
@@ -858,7 +888,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                       </select>
                     </div>
                   </div>
-                  
+
                   {(task.status === 'pendiente' || task.status === 'en_progreso' || task.comments) && (
                     <div style={{ marginTop: '8px' }}>
                       <textarea
@@ -1213,8 +1243,8 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                   height: '16px',
                   width: '16px',
                   color: task.priority === 'critica' ? '#ef4444' :
-                         task.priority === 'alta' ? '#f97316' :
-                         task.priority === 'media' ? '#f59e0b' : '#6b7280'
+                    task.priority === 'alta' ? '#f97316' :
+                      task.priority === 'media' ? '#f59e0b' : '#6b7280'
                 }} />
                 <span style={{ flex: 1, fontSize: '14px', color: '#111827' }}>
                   {task.title}
@@ -1262,11 +1292,11 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
           <p style={{ color: '#6b7280' }}>
             Revisa toda la información de la reunión antes de guardar
           </p>
-          <div style={{ 
-            backgroundColor: '#f0fdf4', 
-            border: '1px solid #bbf7d0', 
-            borderRadius: '8px', 
-            padding: '12px', 
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            padding: '12px',
             marginTop: '16px',
             display: 'inline-block'
           }}>
@@ -1523,7 +1553,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                 {viewMode === 'create' ? 'Nueva Reunión Estratégica' : 'Historial de Reuniones'}
               </h1>
               <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                {viewMode === 'create' 
+                {viewMode === 'create'
                   ? 'Configuración inteligente basada en tipo y departamento'
                   : 'Consulta y revisa reuniones anteriores'}
               </p>
@@ -1555,7 +1585,7 @@ const StrategicMeetingSystem: React.FC<StrategicMeetingSystemProps> = ({ isOpen,
                 </span>
               </div>
               <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '10px', height: '8px' }}>
-                <div 
+                <div
                   style={{
                     backgroundColor: '#059669',
                     height: '8px',

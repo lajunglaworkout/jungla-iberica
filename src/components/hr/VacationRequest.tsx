@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { notifyVacationRequest } from '../../services/notificationService';
 
 interface VacationRequestProps {
   onBack: () => void;
@@ -10,7 +11,7 @@ interface VacationRequestProps {
 
 const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmployee }) => {
   console.log('🚨 VacationRequest COMPONENT CARGADO - SI VES ESTO, EL COMPONENTE FUNCIONA');
-  
+
   const [showModal, setShowModal] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [balance, setBalance] = useState({ total: 22, used: 0, available: 22 });
@@ -24,12 +25,12 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
 
   const loadVacationData = async () => {
     if (!currentEmployee?.id) return;
-    
+
     const { data } = await supabase
       .from('vacation_requests')
       .select('*')
       .eq('employee_id', currentEmployee.id);
-    
+
     if (data) {
       setRequests(data);
       const used = data.filter(r => r.status === 'approved').reduce((sum, r) => sum + r.days_requested, 0);
@@ -39,7 +40,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
 
   const calculateDays = (start: string, end: string) => {
     if (!start || !end) return 0;
-    
+
     const diffTime = Math.abs(new Date(end).getTime() - new Date(start).getTime());
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
@@ -51,7 +52,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
     }
 
     const daysRequested = calculateDays(formData.start_date, formData.end_date);
-    
+
     if (daysRequested > balance.available) {
       alert(`No tienes suficientes días disponibles. Solicitas: ${daysRequested}, Disponibles: ${balance.available}`);
       return;
@@ -78,16 +79,29 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
         return;
       }
 
+      // Enviar notificación a RRHH
+      try {
+        await notifyVacationRequest({
+          employeeId: currentEmployee.id,
+          employeeName: currentEmployee.nombre || 'Empleado',
+          startDate: formData.start_date,
+          endDate: formData.end_date,
+          days: daysRequested
+        });
+      } catch (notifyErr) {
+        console.error('Error sending vacation notification:', notifyErr);
+      }
+
       // Éxito
       alert(`¡Solicitud enviada correctamente!\n\nDías solicitados: ${daysRequested}\nFechas: ${formData.start_date} al ${formData.end_date}\n\nTu solicitud será revisada por RRHH.`);
-      
+
       // Limpiar formulario y cerrar modal
       setFormData({ start_date: '', end_date: '', reason: '' });
       setShowModal(false);
-      
+
       // Recargar datos
       loadVacationData();
-      
+
     } catch (error) {
       console.error('Error inesperado:', error);
       alert('Error inesperado. Inténtalo de nuevo.');
@@ -101,7 +115,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
       rejected: { bg: '#fee2e2', color: '#991b1b', icon: <XCircle size={14} /> }
     };
     const style = colors[status as keyof typeof colors];
-    
+
     return (
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '4px',
@@ -143,11 +157,11 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
             setShowModal(true);
             console.log('🔍 BOTÓN CLICKEADO - Nuevo estado:', true);
           }}
-          style={{ 
-            padding: '12px 20px', 
-            backgroundColor: '#059669', 
-            color: 'white', 
-            border: 'none', 
+          style={{
+            padding: '12px 20px',
+            backgroundColor: '#059669',
+            color: 'white',
+            border: 'none',
             borderRadius: '8px',
             cursor: 'pointer',
             display: 'flex',
@@ -182,9 +196,9 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
           <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px' }}>No tienes solicitudes de vacaciones</p>
         ) : (
           requests.map((request, index) => (
-            <div key={index} style={{ 
-              padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', 
-              marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+            <div key={index} style={{
+              padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px',
+              marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
               <div>
                 <div style={{ fontWeight: '500' }}>
@@ -224,13 +238,13 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
             <h3 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>
               🏖️ Nueva Solicitud de Vacaciones
             </h3>
-            
+
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>Fecha de Inicio:</label>
               <input
                 type="date"
                 value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -242,13 +256,13 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                 }}
               />
             </div>
-            
+
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>Fecha de Fin:</label>
               <input
                 type="date"
                 value={formData.end_date}
-                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -260,12 +274,12 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                 }}
               />
             </div>
-            
+
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>Motivo:</label>
               <textarea
                 value={formData.reason}
-                onChange={(e) => setFormData({...formData, reason: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                 placeholder="Describe el motivo de tu solicitud..."
                 style={{
                   width: '100%',
@@ -281,7 +295,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                 }}
               />
             </div>
-            
+
             {formData.start_date && formData.end_date && (
               <div style={{
                 padding: '16px',
@@ -298,7 +312,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                 </div>
               </div>
             )}
-            
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => {

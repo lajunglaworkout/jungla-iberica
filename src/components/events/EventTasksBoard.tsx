@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Plus, Trash2, ChevronDown, Calendar, User, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { notifyTaskAssigned } from '../../services/notificationService';
 
 interface Tarea {
     id: number;
@@ -126,6 +127,25 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
             setTareas(tareas.map(t =>
                 t.id === tareaId ? { ...t, [field]: value } : t
             ));
+
+            // Enviar notificación si se asigna a alguien
+            if (field === 'persona_designada_id' && value) {
+                const tarea = tareas.find(t => t.id === tareaId);
+                const evento = eventos.find(e => e.id === tarea?.evento_id);
+                if (tarea && evento) {
+                    try {
+                        await notifyTaskAssigned({
+                            taskId: tareaId,
+                            userId: value,
+                            taskTitle: tarea.descripcion,
+                            description: `Nueva tarea asignada en el evento "${evento.nombre}".`,
+                            dueDate: tarea.fecha_limite
+                        });
+                    } catch (notifyErr) {
+                        console.error('Error sending task notification:', notifyErr);
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error updating tarea:', error);
         }

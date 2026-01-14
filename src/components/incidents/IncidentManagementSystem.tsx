@@ -17,6 +17,7 @@ import {
   Heart,
   Briefcase
 } from 'lucide-react';
+import { notifyIncident, notifyIncidentStatusChange } from '../../services/notificationService';
 
 interface IncidentCategory {
   id: number;
@@ -241,11 +242,25 @@ const IncidentManagementSystem: React.FC = () => {
         status: 'pending'
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('incidents')
-        .insert([incidentData]);
+        .insert([incidentData])
+        .select();
 
       if (error) throw error;
+
+      // Enviar notificación a los encargados
+      if (data && data[0]) {
+        const typeName = incidentTypes.find(t => t.id === incidentData.incident_type_id)?.name || 'Incidencia';
+        await notifyIncident({
+          incidentId: data[0].id,
+          centerId: employee.center_id,
+          category: typeName,
+          description: incidentData.description,
+          priority: incidentData.priority,
+          reporterName: `${employee.first_name} ${employee.last_name || ''}`
+        });
+      }
 
       alert('Incidencia creada correctamente');
       setShowCreateForm(false);
@@ -296,6 +311,17 @@ const IncidentManagementSystem: React.FC = () => {
         .eq('id', incidentId);
 
       if (error) throw error;
+
+      // Enviar notificación al reportador
+      const incident = incidents.find(i => i.id === incidentId);
+      if (incident) {
+        await notifyIncidentStatusChange({
+          incidentId: incidentId,
+          reporterId: incident.employee_id,
+          newStatus: status,
+          resolverName: employee?.first_name
+        });
+      }
 
       await loadIncidents();
       alert(`Incidencia ${status === 'approved' ? 'aprobada' : 'rechazada'} correctamente`);

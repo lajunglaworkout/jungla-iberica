@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, Package, Wrench, Users, Building, Send, CheckCircle, Camera, Upload, Image, Plus, ArrowRight, ChevronRight } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
 import { supabase } from '../../lib/supabase';
+import { notifyIncident } from '../../services/notificationService';
 
 interface SmartIncidentModalProps {
   isOpen: boolean;
@@ -158,6 +159,18 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         .single();
 
       if (error) throw error;
+
+      // Enviar notificación a los encargados
+      if (savedIncident) {
+        await notifyIncident({
+          incidentId: savedIncident.id,
+          centerId: parseInt(centerId),
+          category: selectedType.name,
+          description: description,
+          priority: priority === 'critica' ? 'urgent' : priority === 'alta' ? 'high' : priority === 'media' ? 'normal' : 'low',
+          reporterName: employee ? `${employee.first_name} ${employee.last_name || ''}` : 'Franquiciado'
+        });
+      }
 
       setShowSuccess(true);
       setTimeout(() => {

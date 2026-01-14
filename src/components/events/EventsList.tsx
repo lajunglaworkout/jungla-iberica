@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
+import { notifyEvent } from '../../services/notificationService';
 
 interface Evento {
     id: number;
@@ -405,10 +406,36 @@ const EventFormModal: React.FC<{
                     .eq('id', evento.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('eventos')
-                    .insert([dataToSave]);
+                    .insert([dataToSave])
+                    .select();
                 if (error) throw error;
+
+                // Enviar notificación si se creó correctamente
+                if (data && data[0]) {
+                    // Solo notificamos si hay un centro asociado por ahora
+                    // Si es global (alcance === 'todos' o 'marca'), podríamos notificar a todos los centros
+                    // o a los admins. Por ahora, si hay center_id (el del creador o el del evento)
+                    const centerToNotify = data[0].center_id;
+
+                    if (centerToNotify) {
+                        try {
+                            // Obtener el nombre del empleado desde el contexto si es posible
+                            const creatorName = "Un administrador"; // Placeholder si no hay acceso al nombre completo fácil aquí
+
+                            await notifyEvent({
+                                eventId: data[0].id,
+                                eventName: data[0].nombre,
+                                eventDate: data[0].fecha_evento,
+                                centerId: centerToNotify,
+                                creatorName: creatorName
+                            });
+                        } catch (notifyErr) {
+                            console.error('Error sending event notification:', notifyErr);
+                        }
+                    }
+                }
             }
             onSave();
         } catch (error) {

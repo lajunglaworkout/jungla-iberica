@@ -9,6 +9,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
 import SmartIncidentModal from '../incidents/SmartIncidentModal';
+import { notifyFranchiseeMessage } from '../../services/notificationService';
 
 // Interfaces
 interface FinancialMetrics {
@@ -510,6 +511,19 @@ export const FranquiciadoDashboard: React.FC = () => {
                 .select('*')
                 .eq('center_id', centerId).order('created_at', { ascending: false }).limit(10);
             setMensajes(mensajesData || []);
+
+            // Enviar notificación a los administradores
+            try {
+                await notifyFranchiseeMessage({
+                    franchiseeId: employee?.id ? parseInt(employee.id) : 0,
+                    centerId: centerId,
+                    subject: newMessage.asunto.trim(),
+                    franchiseeName: employee ? `${employee.first_name} ${employee.last_name || ''}` : 'Franquiciado'
+                });
+            } catch (notifyErr) {
+                console.error('Error sending franchisee message notification:', notifyErr);
+            }
+
             setNewMessage({ categoria: 'informacion', asunto: '', mensaje: '', prioridad: 'normal' });
             setShowMessageForm(false);
             alert('✅ Mensaje enviado correctamente');
