@@ -30,7 +30,11 @@ interface LessonBlock {
     ppt_url?: string;
     production_status?: 'not_started' | 'content_created' | 'prompts_ready' | 'recording' | 'editing' | 'completed';
     progress_percentage?: number;
-    downloadables?: any[]; // We will type this properly inside the component or use the global type
+    downloadables?: any[];
+    // Strategic Guide Fields
+    concepto?: string;
+    valor?: string;
+    accion?: string;
 }
 
 // --- HELPER COMPONENTS ---
@@ -222,7 +226,17 @@ const FileUpload = ({
 };
 
 // Simplified DownloadableManager for now, fully functional logic inside main component or this
-const DownloadableManager = ({ blockId, downloadables, onUpdate }: { blockId: string, downloadables: any[], onUpdate: () => void }) => {
+const DownloadableManager = ({
+    blockId,
+    downloadables,
+    onUpdate,
+    onOpenContentModal
+}: {
+    blockId: string,
+    downloadables: any[],
+    onUpdate: () => void,
+    onOpenContentModal: (downloadable: { id: string; name: string; prompt_generation: string }) => void
+}) => {
     // Logic to add/remove downloadables
     const [isAdding, setIsAdding] = useState(false);
     const [newName, setNewName] = useState('');
@@ -283,21 +297,43 @@ const DownloadableManager = ({ blockId, downloadables, onUpdate }: { blockId: st
                         </div>
                     </div>
 
-                    {/* Prompt Section */}
+                    {/* Content Button - Opens Modal */}
                     <div className="mb-4">
                         <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-2 block">
-                            🤖 Prompt Generación IA
+                            📝 Contenido Texto Plano
                         </label>
-                        <textarea
-                            className="w-full text-xs p-3 border border-gray-300 rounded-lg h-20 bg-gray-50 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none placeholder-gray-500 text-gray-800"
-                            placeholder="Describe qué debe contener este recurso para generarlo con IA..."
-                            defaultValue={d.prompt_generation || ''}
-                            onBlur={async (e) => {
-                                if (e.target.value !== d.prompt_generation) {
-                                    await supabase.from('academy_block_downloadables').update({ prompt_generation: e.target.value }).eq('id', d.id);
-                                }
-                            }}
-                        />
+                        <button
+                            onClick={() => onOpenContentModal({
+                                id: d.id,
+                                name: d.name,
+                                prompt_generation: d.prompt_generation || ''
+                            })}
+                            className="w-full text-left p-4 border border-gray-200 rounded-xl bg-gray-50 hover:bg-white hover:border-emerald-400 hover:shadow-md transition-all group/btn"
+                        >
+                            {d.prompt_generation ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                        <FileText className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-700 line-clamp-2 leading-relaxed">
+                                            {d.prompt_generation.substring(0, 120)}
+                                            {d.prompt_generation.length > 120 ? '...' : ''}
+                                        </p>
+                                        <span className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1 group-hover/btn:underline">
+                                            <Maximize2 className="h-3 w-3" /> Editar contenido
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 text-gray-400">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                                        <Plus className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-sm font-medium">Añadir contenido de texto plano...</span>
+                                </div>
+                            )}
+                        </button>
                     </div>
 
                     {/* File Upload Section - Mini version */}
@@ -379,6 +415,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [showEditLessonModal, setShowEditLessonModal] = useState(false);
     const [editingLesson, setEditingLesson] = useState<AcademyLesson | null>(null);
     const [editLessonTitle, setEditLessonTitle] = useState('');
+    const [editLessonOrder, setEditLessonOrder] = useState<number>(1);
 
     // Editor State
     const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
@@ -389,7 +426,21 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
     const [editorKeyPoints, setEditorKeyPoints] = useState('');
     const [editorFullContent, setEditorFullContent] = useState('');
     const [editorGensparkPrompt, setEditorGensparkPrompt] = useState('');
+
+    // Strategic Guide Fields
+    const [editorConcepto, setEditorConcepto] = useState('');
+    const [editorValor, setEditorValor] = useState('');
+    const [editorAccion, setEditorAccion] = useState('');
+
     const [activeModalField, setActiveModalField] = useState<'none' | 'prompt' | 'points' | 'content'>('none');
+
+    // Downloadable Content Modal State
+    const [downloadableModalOpen, setDownloadableModalOpen] = useState(false);
+    const [editingDownloadable, setEditingDownloadable] = useState<{ id: string; name: string; prompt_generation: string } | null>(null);
+    const [downloadablePromptText, setDownloadablePromptText] = useState('');
+
+    // Lesson Sort Mode
+    const [lessonSortMode, setLessonSortMode] = useState<'order' | 'completed' | 'pending'>('order');
 
     // Toast State
     const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -565,6 +616,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         e.stopPropagation(); // Prevent opening the lesson editor
         setEditingLesson(lesson);
         setEditLessonTitle(lesson.title);
+        setEditLessonOrder(lesson.order);
         setShowEditLessonModal(true);
     };
 
@@ -574,7 +626,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         try {
             const { error } = await supabase
                 .from('academy_lessons')
-                .update({ title: editLessonTitle })
+                .update({ title: editLessonTitle, order: editLessonOrder })
                 .eq('id', editingLesson.id);
 
             if (error) throw error;
@@ -583,13 +635,14 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
             setLessons(prev => ({
                 ...prev,
                 [editingLesson.module_id]: prev[editingLesson.module_id].map(l =>
-                    l.id === editingLesson.id ? { ...l, title: editLessonTitle } : l
+                    l.id === editingLesson.id ? { ...l, title: editLessonTitle, order: editLessonOrder } : l
                 )
             }));
 
             setShowEditLessonModal(false);
             setEditingLesson(null);
             setEditLessonTitle('');
+            setEditLessonOrder(1);
         } catch (error) {
             console.error('Error updating lesson:', error);
             alert('Error al actualizar la lección');
@@ -740,6 +793,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
         setEditorVideoUrl(block.video_url || '');
         setEditorPptUrl(block.ppt_url || '');
 
+        // Strategic Guide Fields
+        setEditorConcepto(block.concepto || '');
+        setEditorValor(block.valor || '');
+        setEditorAccion(block.accion || '');
+
         loadDownloadables(block.id);
     };
 
@@ -769,7 +827,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                     video_url: editorVideoUrl,
                     ppt_url: editorPptUrl,
                     progress_percentage: currentProgress,
-                    production_status: status
+                    production_status: status,
+                    // Strategic Guide Fields
+                    concepto: editorConcepto,
+                    valor: editorValor,
+                    accion: editorAccion
                 })
                 .eq('id', editingBlock.id);
 
@@ -791,7 +853,10 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                             video_url: editorVideoUrl,
                             ppt_url: editorPptUrl,
                             progress_percentage: currentProgress,
-                            production_status: status as any
+                            production_status: status as any,
+                            concepto: editorConcepto,
+                            valor: editorValor,
+                            accion: editorAccion
                         }
                         : b
                 )
@@ -894,91 +959,120 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
 
                                 {/* Lessons List */}
                                 <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {/* Sort Selector */}
+                                    {(lessons[module.id]?.length || 0) > 1 && (
+                                        <div className="flex justify-end mb-2">
+                                            <select
+                                                value={lessonSortMode}
+                                                onChange={(e) => setLessonSortMode(e.target.value as 'order' | 'completed' | 'pending')}
+                                                className="text-xs px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-600 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                                            >
+                                                <option value="order">📋 Por orden numérico</option>
+                                                <option value="completed">✅ Completadas primero</option>
+                                                <option value="pending">⏳ Pendientes primero</option>
+                                            </select>
+                                        </div>
+                                    )}
+
                                     {lessons[module.id]?.length === 0 ? (
                                         <div className="p-12 text-center text-gray-400 italic">
                                             No hay lecciones en este módulo.
                                         </div>
                                     ) : (
-                                        lessons[module.id]?.map((lesson) => {
-                                            const lessonBlocks = blocks[lesson.id] || [];
-                                            const completedBlocks = lessonBlocks.filter(b => b.content).length;
-                                            const totalBlocks = 3;
+                                        [...(lessons[module.id] || [])]
+                                            .sort((a, b) => {
+                                                if (lessonSortMode === 'completed') {
+                                                    const aCompleted = a.status === 'completed' ? 1 : 0;
+                                                    const bCompleted = b.status === 'completed' ? 1 : 0;
+                                                    return bCompleted - aCompleted || a.order - b.order;
+                                                } else if (lessonSortMode === 'pending') {
+                                                    const aCompleted = a.status === 'completed' ? 1 : 0;
+                                                    const bCompleted = b.status === 'completed' ? 1 : 0;
+                                                    return aCompleted - bCompleted || a.order - b.order;
+                                                }
+                                                return a.order - b.order;
+                                            })
+                                            .map((lesson, lessonIndex) => {
+                                                const lessonBlocks = blocks[lesson.id] || [];
+                                                const completedBlocks = lessonBlocks.filter(b => b.content).length;
+                                                const totalBlocks = 3;
+                                                const lessonNumber = `${module.order}.${lessonIndex + 1}`;
 
-                                            return (
-                                                <div
-                                                    key={lesson.id}
-                                                    style={{
-                                                        backgroundColor: 'white',
-                                                        border: '2px solid #e5e7eb',
-                                                        borderRadius: '12px',
-                                                        padding: '20px 24px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                                                    }}
-                                                    className="hover:shadow-md hover:border-emerald-300"
-                                                    onClick={() => openLessonEditor(lesson)}
-                                                >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                        <div className="flex items-center gap-6">
-                                                            <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
-                                                                {lesson.order}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                                                    {lesson.title}
-                                                                </h4>
-                                                                <div className="flex items-center gap-3 mt-2">
-                                                                    {/* Block Indicators */}
-                                                                    <div className="flex gap-1.5">
-                                                                        {[1, 2, 3].map(num => {
-                                                                            const block = lessonBlocks.find(b => b.block_number === num);
-                                                                            const hasContent = block?.content;
-                                                                            return (
-                                                                                <div
-                                                                                    key={num}
-                                                                                    className={`h-2 w-8 rounded-full transition-all ${hasContent ? 'bg-emerald-500 shadow-sm shadow-emerald-200' : 'bg-gray-200'}`}
-                                                                                    title={`Bloque ${num}: ${hasContent ? 'Completado' : 'Vacío'}`}
-                                                                                />
-                                                                            );
-                                                                        })}
+                                                return (
+                                                    <div
+                                                        key={lesson.id}
+                                                        style={{
+                                                            backgroundColor: 'white',
+                                                            border: '2px solid #e5e7eb',
+                                                            borderRadius: '12px',
+                                                            padding: '20px 24px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                                                        }}
+                                                        className="hover:shadow-md hover:border-emerald-300 group"
+                                                        onClick={() => openLessonEditor(lesson)}
+                                                    >
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                            <div className="flex items-center gap-6">
+                                                                <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
+                                                                    {lessonNumber}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                                                        {lesson.title}
+                                                                    </h4>
+                                                                    <div className="flex items-center gap-3 mt-2">
+                                                                        {/* Block Indicators */}
+                                                                        <div className="flex gap-1.5">
+                                                                            {[1, 2, 3].map(num => {
+                                                                                const block = lessonBlocks.find(b => b.block_number === num);
+                                                                                const hasContent = block?.content;
+                                                                                return (
+                                                                                    <div
+                                                                                        key={num}
+                                                                                        className={`h-2 w-8 rounded-full transition-all ${hasContent ? 'bg-emerald-500 shadow-sm shadow-emerald-200' : 'bg-gray-200'}`}
+                                                                                        title={`Bloque ${num}: ${hasContent ? 'Completado' : 'Vacío'}`}
+                                                                                    />
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                        <span className="text-xs font-medium text-gray-400 ml-2">
+                                                                            {completedBlocks}/{totalBlocks} Bloques
+                                                                        </span>
                                                                     </div>
-                                                                    <span className="text-xs font-medium text-gray-400 ml-2">
-                                                                        {completedBlocks}/{totalBlocks} Bloques
-                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3">
+                                                                {/* Edit and Delete buttons */}
+                                                                <button
+                                                                    onClick={(e) => initiateEditLesson(lesson, e)}
+                                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                                    title="Editar lección"
+                                                                >
+                                                                    <Edit3 className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => deleteLesson(lesson, e)}
+                                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                                    title="Eliminar lección"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+
+                                                                <span className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                                                    }`}>
+                                                                    {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
+                                                                </span>
+                                                                <div className="h-10 w-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:border-emerald-200 group-hover:text-emerald-600 transition-all">
+                                                                    <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-emerald-500" />
                                                                 </div>
                                                             </div>
                                                         </div>
-
-                                                        <div className="flex items-center gap-3">
-                                                            {/* Edit and Delete buttons */}
-                                                            <button
-                                                                onClick={(e) => initiateEditLesson(lesson, e)}
-                                                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                                title="Editar lección"
-                                                            >
-                                                                <Edit3 className="h-4 w-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => deleteLesson(lesson, e)}
-                                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                                title="Eliminar lección"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-
-                                                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                                                }`}>
-                                                                {lesson.status === 'completed' ? 'Completado' : 'En Desarrollo'}
-                                                            </span>
-                                                            <div className="h-10 w-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:border-emerald-200 group-hover:text-emerald-600 transition-all">
-                                                                <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-emerald-500" />
-                                                            </div>
-                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })
+                                                );
+                                            })
                                     )}
                                 </div>
 
@@ -1202,6 +1296,40 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && confirmEditLesson()}
                                 />
+                            </div>
+
+                            {/* Order Input */}
+                            <div style={{
+                                padding: '16px 24px',
+                                backgroundColor: '#f9fafb',
+                                borderBottom: '1px solid #e5e7eb'
+                            }}>
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '8px'
+                                }}>
+                                    Orden de la Lección
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={editLessonOrder}
+                                    onChange={(e) => setEditLessonOrder(parseInt(e.target.value) || 1)}
+                                    style={{
+                                        width: '100px',
+                                        padding: '10px 12px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        backgroundColor: 'white'
+                                    }}
+                                />
+                                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                                    Menor número = aparece primero en la lista
+                                </p>
                             </div>
 
                             <div style={{
@@ -1456,7 +1584,7 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                         right: 0,
                         bottom: 0,
                         backgroundColor: '#f9fafb',
-                        zIndex: 100,
+                        zIndex: 1000,
                         display: 'flex',
                         flexDirection: 'column'
                     }}>
@@ -1612,9 +1740,12 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">1</span>
                                                 <h4 className="font-bold text-gray-800 text-sm">Concepto</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
-                                                Define la idea central. ¿Qué deben aprender exactamente en este bloque?
-                                            </p>
+                                            <textarea
+                                                value={editorConcepto}
+                                                onChange={(e) => setEditorConcepto(e.target.value)}
+                                                className="w-full text-xs text-slate-700 leading-relaxed p-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none min-h-[80px]"
+                                                placeholder="Define la idea central. ¿Qué deben aprender exactamente en este bloque?"
+                                            />
                                         </div>
 
                                         <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
@@ -1622,9 +1753,12 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">2</span>
                                                 <h4 className="font-bold text-gray-800 text-sm">Valor</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
-                                                ¿Por qué es útil? ¿Qué beneficio práctico obtienen al ver esto?
-                                            </p>
+                                            <textarea
+                                                value={editorValor}
+                                                onChange={(e) => setEditorValor(e.target.value)}
+                                                className="w-full text-xs text-slate-700 leading-relaxed p-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none min-h-[80px]"
+                                                placeholder="¿Por qué es útil? ¿Qué beneficio práctico obtienen al ver esto?"
+                                            />
                                         </div>
 
                                         <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
@@ -1632,9 +1766,12 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-bold shadow-sm group-hover:scale-110 transition-transform">3</span>
                                                 <h4 className="font-bold text-gray-800 text-sm">Acción</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 leading-relaxed pl-11">
-                                                Pasos concretos. ¿Qué deben hacer diferente después de ver este video?
-                                            </p>
+                                            <textarea
+                                                value={editorAccion}
+                                                onChange={(e) => setEditorAccion(e.target.value)}
+                                                className="w-full text-xs text-slate-700 leading-relaxed p-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none min-h-[80px]"
+                                                placeholder="Pasos concretos. ¿Qué deben hacer diferente después de ver este video?"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1758,6 +1895,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                             blockId={editingBlock.id}
                                             downloadables={editorDownloadables}
                                             onUpdate={() => loadDownloadables(editingBlock.id)}
+                                            onOpenContentModal={(d) => {
+                                                setEditingDownloadable(d);
+                                                setDownloadablePromptText(d.prompt_generation);
+                                                setDownloadableModalOpen(true);
+                                            }}
                                         />
                                     </div>
 
@@ -1907,6 +2049,92 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                     ${activeModalField === 'prompt' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' :
                                             activeModalField === 'points' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' :
                                                 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
+                                >
+                                    Guardar y Volver
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* DOWNLOADABLE CONTENT MODAL */}
+            {downloadableModalOpen && editingDownloadable && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 lg:p-8">
+                    <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border-t-4 border-emerald-500">
+
+                        {/* Modal Header */}
+                        <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm bg-emerald-100 text-emerald-600">
+                                    <FileText className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">
+                                        📝 Contenido: {editingDownloadable.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        Escribe el contenido en texto plano para este material descargable.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setDownloadableModalOpen(false);
+                                        setEditingDownloadable(null);
+                                        setDownloadablePromptText('');
+                                    }}
+                                    className="p-2.5 hover:bg-white hover:shadow-md rounded-xl text-gray-400 hover:text-gray-600 transition-all border border-transparent hover:border-gray-100"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 p-0 overflow-hidden flex flex-col bg-slate-50/30">
+                            <div className="flex-1 p-8 overflow-y-auto">
+                                <div className="w-full h-full min-h-[500px] p-8 rounded-xl border shadow-sm text-lg leading-relaxed resize-none font-medium focus-within:ring-4 focus-within:ring-opacity-20 transition-all bg-white border-emerald-100 focus-within:border-emerald-400 focus-within:ring-emerald-500">
+                                    <textarea
+                                        value={downloadablePromptText}
+                                        onChange={(e) => setDownloadablePromptText(e.target.value)}
+                                        className="w-full h-full bg-transparent border-none focus:ring-0 resize-none outline-none text-slate-800 font-mono"
+                                        placeholder="Escribe aquí el contenido en texto plano del material descargable..."
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="px-8 py-5 bg-white border-t border-gray-100 flex justify-end gap-3 z-10">
+                                <button
+                                    onClick={() => {
+                                        setDownloadableModalOpen(false);
+                                        setEditingDownloadable(null);
+                                        setDownloadablePromptText('');
+                                    }}
+                                    className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition-colors"
+                                >
+                                    Cerrar (Esc)
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (editingDownloadable) {
+                                            await supabase
+                                                .from('academy_block_downloadables')
+                                                .update({ prompt_generation: downloadablePromptText })
+                                                .eq('id', editingDownloadable.id);
+
+                                            // Reload downloadables if editingBlock exists
+                                            if (editingBlock) {
+                                                loadDownloadables(editingBlock.id);
+                                            }
+
+                                            setDownloadableModalOpen(false);
+                                            setEditingDownloadable(null);
+                                            setDownloadablePromptText('');
+                                        }
+                                    }}
+                                    className="px-8 py-3 rounded-xl text-white font-bold shadow-lg transition-all transform hover:translate-y-[-2px] hover:shadow-xl bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
                                 >
                                     Guardar y Volver
                                 </button>

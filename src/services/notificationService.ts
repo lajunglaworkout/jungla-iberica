@@ -401,9 +401,7 @@ export default {
   notifyTaskAssigned,
   notifyTaskDueSoon,
   notifySystemAlert,
-  deleteTaskNotifications,
-  getUserNotifications,
-  createTaskNotification
+  deleteTaskNotifications
 };
 
 // Obtener notificaciones de un usuario (para compatibilidad con DashboardPage)
