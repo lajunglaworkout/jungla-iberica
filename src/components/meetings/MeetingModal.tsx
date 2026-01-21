@@ -2912,8 +2912,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                             }}>
                               Asignar a:
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={task.assignedTo || task.asignado_a || ''}
                               onChange={(e) => {
                                 const newTasks = [...generatedTasks];
@@ -2924,7 +2923,6 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                                 };
                                 setGeneratedTasks(newTasks);
                               }}
-                              placeholder="email1@ejemplo.com, email2@ejemplo.com"
                               style={{
                                 flex: 1,
                                 padding: '6px 8px',
@@ -2933,7 +2931,14 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                                 fontSize: '13px',
                                 backgroundColor: 'white'
                               }}
-                            />
+                            >
+                              <option value="">-- Seleccionar empleado --</option>
+                              {employees.map(emp => (
+                                <option key={emp.id} value={emp.email}>
+                                  {emp.name} ({emp.email})
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           {/* 🔧 NUEVO: Campo de fecha límite */}
