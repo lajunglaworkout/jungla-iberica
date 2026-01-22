@@ -241,28 +241,35 @@ const DownloadableManager = ({
     const [isAdding, setIsAdding] = useState(false);
     const [newName, setNewName] = useState('');
     const [newType, setNewType] = useState('pdf');
+    const [error, setError] = useState(false);
 
     const addDownloadable = async () => {
-        if (!newName) return;
+        if (!newName.trim()) {
+            setError(true);
+            return;
+        }
+
         try {
-            // We need to insert into academy_block_downloadables
-            // Check if table exists first? Assume yes after migration script.
-            const { error } = await supabase
+            console.log('🚀 Enviando petición a Supabase...');
+            const { data, error } = await supabase
                 .from('academy_block_downloadables')
                 .insert({
                     block_id: blockId,
                     name: newName,
                     type: newType,
                     status: 'pending'
-                });
+                })
+                .select();
 
             if (error) throw error;
+
             onUpdate();
             setIsAdding(false);
             setNewName('');
+            setError(false);
         } catch (err) {
-            console.error(err);
-            alert('Error al crear descargable');
+            console.error('🔥 Error:', err);
+            alert('Error al crear descargable (ver consola)');
         }
     };
 
@@ -303,12 +310,18 @@ const DownloadableManager = ({
                             📝 Contenido Texto Plano
                         </label>
                         <button
-                            onClick={() => onOpenContentModal({
-                                id: d.id,
-                                name: d.name,
-                                prompt_generation: d.prompt_generation || ''
-                            })}
-                            className="w-full text-left p-4 border border-gray-200 rounded-xl bg-gray-50 hover:bg-white hover:border-emerald-400 hover:shadow-md transition-all group/btn"
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                console.log('✅ FORCE CLICK TRIGGERED', d.id);
+                                onOpenContentModal({
+                                    id: d.id,
+                                    name: d.name,
+                                    prompt_generation: d.prompt_generation || ''
+                                });
+                            }}
+                            className="w-full text-left p-4 border border-gray-200 rounded-xl bg-gray-50 hover:bg-white hover:border-emerald-400 hover:shadow-md transition-all group/btn cursor-pointer pointer-events-auto relative z-10"
                         >
                             {d.prompt_generation ? (
                                 <div className="flex items-start gap-3">
@@ -367,11 +380,15 @@ const DownloadableManager = ({
                 <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 animate-in fade-in">
                     <input
                         type="text"
-                        placeholder="Nombre del recurso (ej: Plantilla Excel)"
-                        className="w-full p-2 border border-emerald-300 rounded mb-2"
+                        placeholder="Nombre del recurso (ej: Plantilla Excel) *"
+                        className={`w-full p-2 border rounded mb-1 ${error ? 'border-red-500 bg-red-50 focus:ring-red-500 placeholder-red-400' : 'border-emerald-300'}`}
                         value={newName}
-                        onChange={e => setNewName(e.target.value)}
+                        onChange={e => {
+                            setNewName(e.target.value);
+                            if (e.target.value) setError(false);
+                        }}
                     />
+                    {error && <p className="text-xs text-red-500 font-bold mb-2">⚠️ El nombre es obligatorio</p>}
                     <div className="flex gap-2">
                         <select
                             value={newType}
@@ -383,7 +400,18 @@ const DownloadableManager = ({
                             <option value="word">Word</option>
                             <option value="image">Imagen</option>
                         </select>
-                        <button onClick={addDownloadable} className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Añadir</button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🔘 Click en AÑADIR');
+                                addDownloadable();
+                            }}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-bold shadow-sm active:transform active:scale-95 transition-all"
+                        >
+                            Añadir
+                        </button>
                         <button onClick={() => setIsAdding(false)} className="text-gray-500 px-4 py-2">Cancelar</button>
                     </div>
                 </div>
@@ -1896,9 +1924,11 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
                                             downloadables={editorDownloadables}
                                             onUpdate={() => loadDownloadables(editingBlock.id)}
                                             onOpenContentModal={(d) => {
+                                                console.log('🏗️ onOpenContentModal llamado con:', d);
                                                 setEditingDownloadable(d);
                                                 setDownloadablePromptText(d.prompt_generation);
                                                 setDownloadableModalOpen(true);
+                                                console.log('✅ Estado actualizado to open modal');
                                             }}
                                         />
                                     </div>
@@ -2059,8 +2089,9 @@ export const ContenidosView: React.FC<ContenidosViewProps> = ({ onBack }) => {
             )}
 
             {/* DOWNLOADABLE CONTENT MODAL */}
+            {console.log('🎨 Render cycle - Modal Open:', downloadableModalOpen, 'Editing:', editingDownloadable?.name)}
             {downloadableModalOpen && editingDownloadable && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 lg:p-8">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 lg:p-8 pointer-events-auto">
                     <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border-t-4 border-emerald-500">
 
                         {/* Modal Header */}
