@@ -73,40 +73,44 @@ export const AIAnalysisService = {
      * Runs a full analysis scan and generates persistence alerts if needed
      */
     runFullAnalysis: async () => {
-        // 1. Check for overdue objectives and create alerts
-        const { data: objectives } = await supabase
-            .from('objetivos')
-            .select('*')
-            .neq('estado', 'completado')
-            .lt('fecha_limite', new Date().toISOString());
+        try {
+            // 1. Check for overdue objectives and create alerts
+            const { data: objectives, error: objError } = await supabase
+                .from('objetivos')
+                .select('*')
+                .neq('estado', 'completado')
+                .lt('fecha_limite', new Date().toISOString());
 
-        if (objectives) {
-            for (const obj of objectives) {
-                // Check if alert already exists to avoid spam
-                const { data: existing } = await supabase
+            if (objError) throw objError;
+
+            if (objectives && objectives.length > 0) {
+                // Get all existing active alerts for overdue objectives in one go
+                const { data: existingAlerts } = await supabase
                     .from('alertas_automaticas')
-                    .select('id')
-                    .eq('objetivo_relacionado_id', obj.id)
+                    .select('objetivo_relacionado_id')
                     .eq('tipo_alerta', 'objetivo_vencido')
-                    .eq('estado', 'activa') // Only check active alerts
-                    .single();
+                    .eq('estado', 'activa')
+                    .in('objetivo_relacionado_id', objectives.map(o => o.id));
 
-                if (!existing) {
-                    await supabase.from('alertas_automaticas').insert({
-                        tipo_alerta: 'objetivo_vencido',
-                        titulo: `Vencido: ${obj.titulo}`,
-                        descripcion: `Este objetivo venció el ${new Date(obj.fecha_limite).toLocaleDateString()}. Se requiere acción inmediata.`,
-                        nivel_urgencia: 'urgent',
-                        departamento_afectado: obj.departamento,
-                        objetivo_relacionado_id: obj.id,
-                        es_automatica: true,
-                        accion_recomendada: 'Reprogramar fecha o marcar como no completado'
-                    });
+                const existingIds = new Set(existingAlerts?.map(a => a.objetivo_relacionado_id) || []);
+
+                for (const obj of objectives) {
+                    if (!existingIds.has(obj.id)) {
+                        await supabase.from('alertas_automaticas').insert({
+                            tipo_alerta: 'objetivo_vencido',
+                            titulo: `Vencido: ${obj.titulo}`,
+                            descripcion: `Venció el ${new Date(obj.fecha_limite).toLocaleDateString()}.`,
+                            nivel_urgencia: 'urgent',
+                            departamento_afectado: obj.departamento,
+                            objetivo_relacionado_id: obj.id,
+                            es_automatica: true,
+                            accion_recomendada: 'Reprogramar o cerrar'
+                        });
+                    }
                 }
             }
+        } catch (err) {
+            console.error('Error in AI Analysis:', err);
         }
-
-        // 2. Check for "Stagnant" objectives (No updates in 30 days) - Placeholder logic
-        // ...
     }
 };
