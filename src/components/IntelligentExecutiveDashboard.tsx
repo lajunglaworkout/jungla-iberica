@@ -1,6 +1,6 @@
 // src/components/IntelligentExecutiveDashboard.tsx - Sistema Ejecutivo Inteligente
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Calendar, Clock, Target, Flag, MessageSquare, FileText, Send,
   AlertCircle, CheckCircle, TrendingUp, TrendingDown, Zap,
   Brain, BarChart3, Users, Bell, X, Plus, Eye, Edit, Trash2,
@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
+
+import { ObjectiveModal } from './dashboard/ObjectiveModal';
+import { MeetingModal } from './dashboard/MeetingModal';
 
 // Interfaces para el sistema inteligente
 interface SmartObjective {
@@ -116,18 +119,18 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   const { employee } = useSession();
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<'dashboard' | 'objectives' | 'alerts' | 'meetings'>('dashboard');
-  
+
   // Estados para datos
   const [objectives, setObjectives] = useState<SmartObjective[]>([]);
   const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [meetings, setMeetings] = useState<SmartMeeting[]>([]);
   const [departmentMetrics, setDepartmentMetrics] = useState<DepartmentMetrics[]>([]);
-  
+
   // Estados para modales
   const [showObjectiveModal, setShowObjectiveModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  
+
   // Cargar todos los datos
   useEffect(() => {
     loadDashboardData();
@@ -154,7 +157,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       .from('objetivos')
       .select('*')
       .order('creado_en', { ascending: false });
-    
+
     if (!error && data) {
       setObjectives(data);
     }
@@ -166,7 +169,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       .select('*')
       .eq('estado', 'activa')
       .order('creado_en', { ascending: false });
-    
+
     if (!error && data) {
       setAlerts(data);
     }
@@ -177,7 +180,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       .from('reuniones')
       .select('*')
       .order('fecha', { ascending: false });
-    
+
     if (!error && data) {
       setMeetings(data);
     }
@@ -188,7 +191,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       .from('metricas_departamento')
       .select('*')
       .order('calculado_en', { ascending: false });
-    
+
     if (!error && data) {
       setDepartmentMetrics(data);
     }
@@ -203,8 +206,8 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       const deadline = new Date(obj.fecha_limite);
       return deadline < new Date() && obj.estado !== 'completado';
     }).length;
-    
-    const avgProbability = objectives.length > 0 
+
+    const avgProbability = objectives.length > 0
       ? Math.round(objectives.reduce((sum, obj) => sum + (obj.probabilidad_cumplimiento || 0), 0) / objectives.length)
       : 0;
 
@@ -253,7 +256,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           <AlertTriangle style={{ height: '20px', width: '20px', color: '#ef4444' }} />
         </div>
       )}
-      
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <div style={{
           padding: '12px',
@@ -262,7 +265,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         }}>
           {icon}
         </div>
-        
+
         {trend && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {trend === 'up' && <TrendingUp style={{ height: '16px', width: '16px', color: '#10b981' }} />}
@@ -271,19 +274,19 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', marginBottom: '4px' }}>
         {title}
       </h3>
-      
+
       <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
         {value}
       </p>
-      
+
       <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: prediction ? '8px' : '0' }}>
         {subtitle}
       </p>
-      
+
       {prediction && (
         <div style={{
           padding: '8px 12px',
@@ -343,8 +346,8 @@ const IntelligentExecutiveDashboard: React.FC = () => {
               padding: '16px',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              backgroundColor: alert.nivel_urgencia === 'critical' ? '#fef2f2' : 
-                               alert.nivel_urgencia === 'urgent' ? '#fff7ed' : '#f9fafb'
+              backgroundColor: alert.nivel_urgencia === 'critical' ? '#fef2f2' :
+                alert.nivel_urgencia === 'urgent' ? '#fff7ed' : '#f9fafb'
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <div style={{ marginTop: '2px' }}>
@@ -353,7 +356,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                   {alert.nivel_urgencia === 'warning' && <AlertCircle style={{ height: '20px', width: '20px', color: '#d97706' }} />}
                   {alert.nivel_urgencia === 'info' && <Bell style={{ height: '20px', width: '20px', color: '#2563eb' }} />}
                 </div>
-                
+
                 <div style={{ flex: 1 }}>
                   <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0, marginBottom: '4px' }}>
                     {alert.titulo}
@@ -361,7 +364,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                   <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '8px' }}>
                     {alert.descripcion}
                   </p>
-                  
+
                   {alert.accion_recomendada && (
                     <div style={{
                       padding: '8px 12px',
@@ -377,7 +380,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#9ca3af' }}>
                     <span>{alert.departamento_afectado}</span>
                     <span>•</span>
@@ -393,9 +396,9 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
+
                 <button
-                  onClick={() => {/* Marcar como vista */}}
+                  onClick={() => {/* Marcar como vista */ }}
                   style={{
                     padding: '4px',
                     border: 'none',
@@ -411,7 +414,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           ))
         )}
       </div>
-      
+
       {alerts.length > 5 && (
         <button
           onClick={() => setActiveView('alerts')}
@@ -460,7 +463,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           <Brain style={{ height: '16px', width: '16px' }} />
           <span style={{ fontSize: '14px', fontWeight: '500' }}>IA Activa</span>
         </div>
-        
+
         <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
           Sistema Ejecutivo Inteligente 🧠
         </h2>
@@ -484,7 +487,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           color="#3b82f6"
           trend="up"
         />
-        
+
         <SmartKPICard
           title="Probabilidad Promedio"
           value={`${kpis.avgProbability}%`}
@@ -494,7 +497,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           trend={kpis.avgProbability >= 70 ? 'up' : kpis.avgProbability >= 50 ? 'stable' : 'down'}
           prediction={`Tendencia ${kpis.avgProbability >= 70 ? 'positiva' : 'a mejorar'}`}
         />
-        
+
         <SmartKPICard
           title="Objetivos en Riesgo"
           value={kpis.riskyObjectives}
@@ -504,7 +507,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           alert={kpis.riskyObjectives > 0}
           trend={kpis.riskyObjectives > 0 ? 'down' : 'stable'}
         />
-        
+
         <SmartKPICard
           title="Tasa de Completitud"
           value={`${kpis.completionRate}%`}
@@ -532,7 +535,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '20px' }}>
           Análisis Predictivo por Departamento
         </h3>
-        
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -543,7 +546,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
             const completedCount = deptObjectives.filter(obj => obj.estado === 'completado').length;
             const riskyCount = deptObjectives.filter(obj => obj.riesgo_calculado === 'alto' || obj.riesgo_calculado === 'critico').length;
             const completionRate = deptObjectives.length > 0 ? Math.round((completedCount / deptObjectives.length) * 100) : 0;
-            
+
             return (
               <div key={dept.id} style={{
                 padding: '20px',
@@ -562,14 +565,14 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <span style={{ fontSize: '14px', color: '#6b7280' }}>Completitud</span>
                   <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
                     {completionRate}%
                   </span>
                 </div>
-                
+
                 <div style={{
                   width: '100%',
                   height: '8px',
@@ -585,7 +588,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                     transition: 'width 0.3s ease'
                   }} />
                 </div>
-                
+
                 {riskyCount > 0 && (
                   <div style={{
                     padding: '8px 12px',
@@ -635,7 +638,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           <Target style={{ height: '20px', width: '20px' }} />
           Nuevo Objetivo
         </button>
-        
+
         <button
           onClick={() => setShowMeetingModal(true)}
           style={{
@@ -655,7 +658,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           <Calendar style={{ height: '20px', width: '20px' }} />
           Nueva Reunión
         </button>
-        
+
         <button
           onClick={() => setActiveView('alerts')}
           style={{
@@ -738,9 +741,90 @@ const IntelligentExecutiveDashboard: React.FC = () => {
 
       {/* Content */}
       {activeView === 'dashboard' && <DashboardView />}
-      {activeView === 'objectives' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Objetivos (en desarrollo)</div>}
+
+      {activeView === 'objectives' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-800">Objetivos Estratégicos</h2>
+            <button
+              onClick={() => setShowObjectiveModal(true)}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg flex items-center gap-2 hover:bg-emerald-700"
+            >
+              <Plus size={18} />
+              Nuevo Objetivo
+            </button>
+          </div>
+
+          <div className="grid gap-4">
+            {objectives.map(obj => (
+              <div key={obj.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-lg ${obj.estado === 'completado' ? 'bg-emerald-100 text-emerald-600' :
+                    obj.riesgo_calculado === 'alto' ? 'bg-red-100 text-red-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
+                    <Target size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{obj.titulo}</h3>
+                    <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                      <span>{obj.departamento}</span>
+                      <span>•</span>
+                      <span>Vence: {new Date(obj.fecha_limite).toLocaleDateString()}</span>
+                      {obj.probabilidad_cumplimiento && (
+                        <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                          <Brain size={12} />
+                          {obj.probabilidad_cumplimiento}% prob.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${obj.estado === 'pendiente' ? 'bg-gray-100 text-gray-600' :
+                    obj.estado === 'en_progreso' ? 'bg-blue-100 text-blue-600' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                    {obj.estado.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {objectives.length === 0 && (
+              <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <Target className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <p className="text-gray-500">No hay objetivos definidos aún.</p>
+                <button
+                  onClick={() => setShowObjectiveModal(true)}
+                  className="mt-4 text-emerald-600 font-medium hover:underline"
+                >
+                  Crear el primer objetivo
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeView === 'alerts' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Alertas (en desarrollo)</div>}
       {activeView === 'meetings' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Reuniones (en desarrollo)</div>}
+
+      {/* Modals */}
+      {showObjectiveModal && (
+        <ObjectiveModal
+          onClose={() => setShowObjectiveModal(false)}
+          onSave={() => {
+            loadDashboardData();
+            setActiveView('objectives'); // Switch to view upon create
+          }}
+        />
+      )}
+
+      {showMeetingModal && (
+        <MeetingModal onClose={() => setShowMeetingModal(false)} />
+      )}
     </div>
   );
 };
