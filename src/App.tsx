@@ -58,6 +58,7 @@ import MaintenanceModule from './components/MaintenanceModule';
 import IncidentManagementSystem from './components/incidents/IncidentManagementSystem';
 import CEODashboard from './components/CEODashboard';
 import PendingTasksSystem from './components/PendingTasksSystem';
+import { SystemAuditView } from './components/admin/SystemAuditView';
 import DashboardPage from './pages/DashboardPage';
 import MyTasksPage from './pages/MyTasksPage';
 import MaintenanceDirectorDashboard from './components/maintenance/MaintenanceDirectorDashboard';
@@ -71,6 +72,7 @@ import { EventsDashboard } from './components/events/EventsDashboard';
 import { FranquiciadoDashboard } from './components/franquiciados/FranquiciadoDashboard';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { NotificationPanel, NotificationBell } from './components/notifications/NotificationPanel';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -299,8 +301,18 @@ const NavigationDashboard: React.FC = () => {
         title: 'Dashboard Inteligente',
         description: 'Sistema con IA predictiva y KPIs críticos',
         icon: Brain,
+        icon: Brain,
         color: '#7c3aed',
         component: IntelligentExecutiveDashboard,
+        available: true
+      },
+      {
+        id: 'audit-guardian',
+        title: 'System Guardian',
+        description: 'Auditoría y salud del sistema',
+        icon: Shield,
+        color: '#0ea5e9',
+        component: SystemAuditView,
         available: true
       },
       {
@@ -1496,7 +1508,9 @@ const App: React.FC = () => {
 
   return (
     <SessionProvider>
-      <AppContent />
+      <GlobalErrorBoundary>
+        <AppContent />
+      </GlobalErrorBoundary>
     </SessionProvider>
   );
 };
