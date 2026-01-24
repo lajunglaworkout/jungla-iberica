@@ -165,6 +165,23 @@ const IntelligentExecutiveDashboard: React.FC = () => {
     }
   };
 
+  const dismissAlert = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('alertas_automaticas')
+        .update({ estado: 'resuelta' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update local state smoothly
+      setAlerts(prev => prev.filter(a => a.id !== id));
+      loadDashboardData(); // Refresh counts
+    } catch (err) {
+      console.error('Error dismissing alert:', err);
+    }
+  };
+
   const loadObjectives = async () => {
     const { data, error } = await supabase
       .from('objetivos')
@@ -411,16 +428,11 @@ const IntelligentExecutiveDashboard: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => {/* Marcar como vista */ }}
-                  style={{
-                    padding: '4px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer'
-                  }}
+                  onClick={() => dismissAlert(alert.id!)}
+                  className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Marcar como resuelta"
                 >
-                  <X style={{ height: '16px', width: '16px', color: '#9ca3af' }} />
+                  <X size={16} />
                 </button>
               </div>
             </div>
@@ -487,9 +499,16 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         {briefing && briefing.highlights.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-2">
             {briefing.highlights.map((h, i) => (
-              <span key={i} className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium backdrop-blur-sm border border-white/10">
+              <button
+                key={i}
+                onClick={() => {
+                  if (h.toLowerCase().includes('objetivos')) setActiveView('objectives');
+                  else if (h.toLowerCase().includes('alerta') || h.toLowerCase().includes('riesgo')) setActiveView('alerts');
+                }}
+                className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium backdrop-blur-sm border border-white/10 hover:bg-white/30 transition-colors text-left cursor-pointer"
+              >
                 {h}
-              </span>
+              </button>
             ))}
           </div>
         )}
