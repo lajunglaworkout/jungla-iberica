@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
+import { AIAnalysisService, DailyBriefing } from '../services/aiAnalysisService';
 
 import { ObjectiveModal } from './dashboard/ObjectiveModal';
 import { MeetingModal } from './dashboard/MeetingModal';
@@ -131,6 +132,9 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
 
+  // AI Briefing State
+  const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
+
   // Cargar todos los datos
   useEffect(() => {
     loadDashboardData();
@@ -139,12 +143,21 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
+      // Run AI Analysis first (creates alerts if needed)
+      await AIAnalysisService.runFullAnalysis();
+
       await Promise.all([
         loadObjectives(),
         loadAlerts(),
         loadMeetings(),
         loadDepartmentMetrics()
       ]);
+
+      // Generate Briefing
+      if (employee?.first_name) {
+        const b = await AIAnalysisService.generateBriefing(employee.first_name);
+        setBriefing(b);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -465,11 +478,21 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         </div>
 
         <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          Sistema Ejecutivo Inteligente 🧠
+          {briefing ? briefing.greeting : 'Sistema Ejecutivo Inteligente'} 🧠
         </h2>
-        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
-          Dashboard predictivo con IA - Carlos, Benito y Vicente
+        <p style={{ fontSize: '16px', opacity: 0.9, margin: 0, maxWidth: '80%' }}>
+          {briefing ? briefing.summary : 'Analizando datos en tiempo real...'}
         </p>
+
+        {briefing && briefing.highlights.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {briefing.highlights.map((h, i) => (
+              <span key={i} className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium backdrop-blur-sm border border-white/10">
+                {h}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* KPIs inteligentes */}
