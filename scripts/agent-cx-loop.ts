@@ -1,11 +1,23 @@
+import 'dotenv/config'; // Cargar .env
 import puppeteer from 'puppeteer';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURACIÓN ---
-// (Idealmente esto viene de variables de entorno)
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://gfnjlmfziczimaohgkct.supabase.co';
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'TU_CLAVE_AQUI';
+// Prioridad a la clave secreta del agente, si no, fallback (pero ahora queremos la secreta)
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_KEY) {
+    console.error("❌ FALTA SUPABASE_KEY en .env");
+    process.exit(1);
+}
+
+// Advertencia de seguridad en log
+if (SUPABASE_KEY.startsWith('sb_secret') || !SUPABASE_KEY.includes('anon')) {
+    console.log('🔒 Agente ejecutándose con CRDENCIALES PRIVILEGIADAS (Service Role).');
+}
+
 const INTERVAL_MINUTES = 30;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -68,27 +80,33 @@ async function runSync() {
 
         console.log(`📥 Detectados ${messages.length} hilos.`);
 
-        // 3. Subir a Supabase (Mock por ahora, usando 'tareas' o tabla temporal si no existe messages)
-        // En producción crearíamos tabla 'inbox_messages'
+        // 3. Subir a Supabase (REAL)
         console.log('☁️ Sincronizando con CRM...');
-        /*
-        const { error } = await supabase.from('inbox_messages').upsert(messages.map(m => ({
-            sender: m.sender,
-            content: m.preview,
-            received_at: new Date(), // Parsear fecha real sería mejor
-            source: 'wodbuster'
-        })));
-        */
 
-        // Por seguridad en esta demo, solo logueamos
-        console.log('✅ Sincronización completada (Lectura).');
+        for (const msg of messages) {
+            // Upsert basado en contenido raw para evitar duplicados exactos (chapuza temporal, idealmente ID unico)
+            const { error } = await supabase.from('inbox_messages').upsert({
+                sender: msg.sender,
+                content: msg.preview,
+                raw_data: msg,
+                source: 'wodbuster',
+                status: 'new'
+            }, { onConflict: 'content' }); // Usar content como pseudo-ID por ahora
+
+            if (error) {
+                // Si falla porque no existe la tabla, avisar pero no crashear
+                console.log(`   ⚠️ Error DB: ${error.message} (¿Ejecutaste la migración?)`);
+            }
+        }
+
+        console.log('✅ Sincronización completada.');
         messages.slice(0, 3).forEach(m => console.log(`   - ${m.sender}: ${m.preview.substring(0, 30)}...`));
 
         // --- FASE 4: GUARDARRAÍLES Y RESPUESTA ---
         // El Agente NUNCA contesta solo. Busca órdenes aprobadas.
         console.log('🛡️ Verificando respuestas aprobadas por humanos...');
 
-        /* 
+        /*
            LÓGICA DE SEGURIDAD:
            1. Buscamos en Supabase mensajes con status = 'APPROVED_TO_SEND'
            2. Solo si existe esa flag explícita, el robot escribe.
