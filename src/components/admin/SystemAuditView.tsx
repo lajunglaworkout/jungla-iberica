@@ -89,63 +89,56 @@ export const SystemAuditView: React.FC = () => {
     const health = getHealthStatus();
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="mb-8 flex justify-between items-start">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Shield className="h-8 w-8 text-emerald-600" />
-                        System Guardian
-                    </h1>
-                    <p className="text-gray-500">Auditoría y salud del sistema en tiempo real</p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className={`px-4 py-2 rounded-full text-white font-bold flex items-center gap-2 ${health.color}`}>
-                        <health.icon size={20} />
+        <div className="p-6">
+            <div className="mb-6 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <div className={`px-3 py-1 rounded-full text-white text-sm font-bold flex items-center gap-2 ${health.color}`}>
+                        <health.icon size={16} />
                         {health.text}
                     </div>
+                </div>
+
+                <div className="flex gap-2">
                     <button
                         onClick={loadLogs}
-                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-2 text-sm"
                     >
-                        <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        Actualizar
                     </button>
                 </div>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-red-100 rounded-lg text-red-600">
+                        <div className="p-2 bg-white rounded-lg text-red-600 shadow-sm">
                             <AlertTriangle size={20} />
                         </div>
                         <h3 className="font-semibold text-gray-700">Errores Hoy</h3>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">{stats.errorsToday}</p>
-                    <p className="text-xs text-gray-500 mt-1">Requieren revisión</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                        <div className="p-2 bg-white rounded-lg text-blue-600 shadow-sm">
                             <Database size={20} />
                         </div>
                         <h3 className="font-semibold text-gray-700">Logs (24h)</h3>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">--</p>
-                    <p className="text-xs text-gray-500 mt-1">Eventos registrados</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                        <div className="p-2 bg-white rounded-lg text-purple-600 shadow-sm">
                             <Terminal size={20} />
                         </div>
-                        <h3 className="font-semibold text-gray-700">Último Despliegue</h3>
+                        <h3 className="font-semibold text-gray-700">Versión</h3>
                     </div>
-                    <p className="text-lg font-bold text-gray-900">v3.5.0</p>
-                    <p className="text-xs text-gray-500 mt-1">Hace 2 días</p>
+                    <p className="text-xl font-bold text-gray-900">v3.5.0</p>
                 </div>
             </div>
 
@@ -153,10 +146,9 @@ export const SystemAuditView: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Logs Feed */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div className="lg:col-span-2">
+                    <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                            <Terminal size={18} className="text-gray-400" />
                             Live Logs
                         </h3>
 
@@ -164,98 +156,105 @@ export const SystemAuditView: React.FC = () => {
                             <select
                                 value={filterLevel}
                                 onChange={(e) => setFilterLevel(e.target.value)}
-                                className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white focus:ring-emerald-500 focus:border-emerald-500"
+                                className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-gray-50 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                             >
-                                <option value="all">Todos</option>
+                                <option value="all">Todos los niveles</option>
                                 <option value="error">Errores</option>
-                                <option value="warning">Warnings</option>
-                                <option value="info">Info</option>
+                                <option value="warning">Advertencias</option>
+                                <option value="info">Información</option>
                             </select>
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto max-h-[600px]">
-                        {logs.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
-                                No hay logs registrados recientemente
-                            </div>
-                        ) : (
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-medium">
-                                    <tr>
-                                        <th className="px-6 py-3">Nivel</th>
-                                        <th className="px-6 py-3">Módulo</th>
-                                        <th className="px-6 py-3">Mensaje</th>
-                                        <th className="px-6 py-3 text-right">Hace</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {logs.map((log) => (
-                                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
-                                            <td className="px-6 py-3 whitespace-nowrap">
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold uppercase
-                          ${log.level === 'error' || log.level === 'critical' ? 'bg-red-100 text-red-700' :
-                                                        log.level === 'warning' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-blue-50 text-blue-600'}`}>
-                                                    {log.level}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-3 font-medium text-gray-700">
-                                                {log.module}
-                                            </td>
-                                            <td className="px-6 py-3 text-gray-600 max-w-md truncate group-hover:whitespace-normal group-hover:break-words">
-                                                {log.message}
-                                                {log.user_email && <div className="text-xs text-gray-400 mt-1">Usuario: {log.user_email}</div>}
-                                            </td>
-                                            <td className="px-6 py-3 text-right text-gray-400 text-xs whitespace-nowrap">
-                                                {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
-                                            </td>
+                    <div className="border border-gray-100 rounded-xl overflow-hidden">
+                        <div className="overflow-y-auto max-h-[500px]">
+                            {logs.length === 0 ? (
+                                <div className="p-12 text-center text-gray-400 bg-gray-50/50">
+                                    <Terminal size={32} className="mx-auto mb-3 opacity-20" />
+                                    No hay logs registrados recientemente
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase tracking-wider sticky top-0">
+                                        <tr>
+                                            <th className="px-6 py-3 font-semibold">Nivel</th>
+                                            <th className="px-6 py-3 font-semibold">Módulo</th>
+                                            <th className="px-6 py-3 font-semibold">Mensaje</th>
+                                            <th className="px-6 py-3 text-right font-semibold">Tiempo</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {logs.map((log) => (
+                                            <tr key={log.id} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-6 py-3 whitespace-nowrap">
+                                                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold
+                                                        ${log.level === 'error' || log.level === 'critical' ? 'bg-red-100 text-red-600' :
+                                                            log.level === 'warning' ? 'bg-amber-100 text-amber-600' :
+                                                                'bg-blue-50 text-blue-600'
+                                                        }`} title={log.level}>
+                                                        {log.level === 'error' ? '!' : log.level === 'warning' ? '⚠️' : 'i'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-3 font-medium text-gray-600 text-xs uppercase tracking-wide">
+                                                    {log.module}
+                                                </td>
+                                                <td className="px-6 py-3 text-gray-700">
+                                                    <div className="max-w-md truncate group-hover:whitespace-normal group-hover:break-words">
+                                                        {log.message}
+                                                    </div>
+                                                    {log.user_email && <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                        <Activity size={10} /> {log.user_email}
+                                                    </div>}
+                                                </td>
+                                                <td className="px-6 py-3 text-right text-gray-400 text-xs whitespace-nowrap font-mono">
+                                                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Suggestions Panel */}
-                <div className="bg-gradient-to-br from-emerald-50 to-white rounded-xl shadow-sm border border-emerald-100 p-6">
-                    <h3 className="font-bold text-emerald-900 mb-4 flex items-center gap-2">
-                        <Brain size={20} className="text-emerald-600" />
-                        Sugerencias IA
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl p-6 border border-indigo-100 h-fit">
+                    <h3 className="font-bold text-indigo-900 mb-6 flex items-center gap-2">
+                        <Brain size={20} className="text-indigo-600" />
+                        Análisis de Salud
                     </h3>
 
                     <div className="space-y-4">
                         {stats.errorsToday === 0 ? (
-                            <div className="p-4 bg-white/60 rounded-lg border border-emerald-200">
-                                <p className="text-sm text-emerald-800 font-medium">✨ Sistema optimizado</p>
-                                <p className="text-xs text-emerald-600 mt-1">No detecto patrones de error significativos hoy. ¡Buen trabajo!</p>
+                            <div className="p-4 bg-white/80 rounded-lg border border-indigo-100 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                    <CheckCircle className="text-emerald-500 mt-0.5" size={18} />
+                                    <div>
+                                        <p className="text-sm text-gray-800 font-semibold">Sistema Estable</p>
+                                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">No se han detectado anomalías críticas en las últimas 24 horas.</p>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
-                            <div className="p-4 bg-white/60 rounded-lg border border-amber-200">
-                                <p className="text-sm text-amber-800 font-medium">🔍 Investigar Errores Recientes</p>
-                                <p className="text-xs text-amber-600 mt-1">
-                                    Se han detectado {stats.errorsToday} fallos hoy. Revisa la tabla de logs para identificar si es un problema recurrente en un módulo específico.
-                                </p>
+                            <div className="p-4 bg-white/80 rounded-lg border border-red-100 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="text-red-500 mt-0.5" size={18} />
+                                    <div>
+                                        <p className="text-sm text-gray-800 font-semibold">Atención Requerida</p>
+                                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                            {stats.errorsToday} errores detectados hoy. Se recomienda revisar los logs marcados en rojo.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        {/* Placeholder for future smart suggestions */}
-                        <div className="p-4 bg-white/40 rounded-lg border border-dashed border-gray-300">
-                            <p className="text-xs text-gray-500 italic">
-                                El agente está aprendiendo patrones de uso. Vuelve en 24h para ver recomendaciones de rendimiento.
+                        <div className="p-4 bg-white/50 rounded-lg border border-dashed border-indigo-200">
+                            <p className="text-xs text-indigo-400 text-center">
+                                El motor de IA está monitorizando la latencia y carga del servidor en tiempo real.
                             </p>
                         </div>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-emerald-100">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Acciones Rápidas</h4>
-                        <button className="w-full py-2 bg-white border border-gray-200 hover:border-emerald-300 text-gray-600 rounded-lg text-sm font-medium transition-colors mb-2">
-                            Limpiar logs antiguos
-                        </button>
-                        <button className="w-full py-2 bg-white border border-gray-200 hover:border-emerald-300 text-gray-600 rounded-lg text-sm font-medium transition-colors">
-                            Ver reporte semanal
-                        </button>
                     </div>
                 </div>
             </div>

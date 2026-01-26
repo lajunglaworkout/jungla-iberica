@@ -14,6 +14,10 @@ import { AIAnalysisService, DailyBriefing } from '../services/aiAnalysisService'
 
 import { ObjectiveModal } from './dashboard/ObjectiveModal';
 import { MeetingModal } from './dashboard/MeetingModal';
+import { SystemAuditView } from './admin/SystemAuditView';
+import WodbusterMetricsPanel from './dashboard/WodbusterMetricsPanel';
+import { CXInboxView } from './dashboard/CXInboxView';
+import { MultiCenterAnalysis } from './dashboard/MultiCenterAnalysis';
 
 // Interfaces para el sistema inteligente
 interface SmartObjective {
@@ -119,7 +123,7 @@ const LEADERSHIP_TEAM = [
 const IntelligentExecutiveDashboard: React.FC = () => {
   const { employee } = useSession();
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'dashboard' | 'objectives' | 'alerts' | 'meetings'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'objectives' | 'alerts' | 'meetings' | 'system' | 'cx_inbox' | 'analytics'>('dashboard');
 
   // Estados para datos
   const [objectives, setObjectives] = useState<SmartObjective[]>([]);
@@ -566,6 +570,11 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         <SmartAlertsPanel />
       </div>
 
+      {/* KPIs Wodbuster - Multi-Centro */}
+      <div style={{ marginBottom: '32px' }}>
+        <WodbusterMetricsPanel />
+      </div>
+
       {/* Análisis por departamentos */}
       <div style={{
         backgroundColor: 'white',
@@ -752,9 +761,12 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       }}>
         {[
           { id: 'dashboard', label: 'Dashboard IA', icon: Brain },
+          { id: 'analytics', label: 'Análisis Métricas', icon: BarChart3 },
           { id: 'objectives', label: 'Objetivos', icon: Target },
+          { id: 'cx_inbox', label: 'Inbox CX', icon: MessageSquare },
           { id: 'alerts', label: `Alertas (${alerts.length})`, icon: Bell },
-          { id: 'meetings', label: 'Reuniones', icon: Calendar }
+          { id: 'meetings', label: 'Reuniones', icon: Calendar },
+          { id: 'system', label: 'Salud Sistema', icon: Shield }
         ].map(tab => (
           <button
             key={tab.id}
@@ -850,8 +862,15 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         </div>
       )}
 
+      {activeView === 'cx_inbox' && <CXInboxView />}
+      {activeView === 'analytics' && <MultiCenterAnalysis />}
       {activeView === 'alerts' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Alertas (en desarrollo)</div>}
       {activeView === 'meetings' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Reuniones (en desarrollo)</div>}
+      {activeView === 'system' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <SystemAuditView />
+        </div>
+      )}
 
       {/* Modals */}
       {showObjectiveModal && (

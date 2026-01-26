@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "Jungla Iberica - Wodbuster Bridge",
+    "version": "1.0",
+    "description": "Puente entre Wodbuster y Jungla Dashboard con IA",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "host_permissions": [
+        "https://*.wodbuster.com/*",
+        "https://gfnjlmfziczimaohgkct.supabase.co/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.wodbuster.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    }
+}

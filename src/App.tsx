@@ -306,15 +306,7 @@ const NavigationDashboard: React.FC = () => {
         component: IntelligentExecutiveDashboard,
         available: true
       },
-      {
-        id: 'audit-guardian',
-        title: 'System Guardian',
-        description: 'Auditoría y salud del sistema',
-        icon: Shield,
-        color: '#0ea5e9',
-        component: SystemAuditView,
-        available: true
-      },
+
       {
         id: 'admin-users',
         title: 'Gestión de Accesos',

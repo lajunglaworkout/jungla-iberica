@@ -1,10 +1,12 @@
 import { supabase } from '../lib/supabase';
+import { wodbusterService, CombinedMetrics, WodbusterMetrics } from './wodbusterService';
 
 export interface DailyBriefing {
     greeting: string;
     summary: string;
     mood: 'positive' | 'neutral' | 'concern';
     highlights: string[];
+    allCentersMetrics?: CombinedMetrics;
 }
 
 export const AIAnalysisService = {
@@ -13,15 +15,18 @@ export const AIAnalysisService = {
      */
     generateBriefing: async (employeeName: string): Promise<DailyBriefing> => {
         try {
-            // 1. Fetch key stats
-            const today = new Date().toISOString();
+            // 1. Fetch key stats from internal systems
             const { data: objectives } = await supabase.from('objetivos').select('*').neq('estado', 'completado');
             const { count: criticalAlerts } = await supabase.from('alertas_automaticas')
                 .select('*', { count: 'exact', head: true })
                 .eq('nivel_urgencia', 'critical')
                 .eq('estado', 'activa');
 
-            // 2. Analyze logic (Simple "Expert System" rules for now, LLM later)
+            // 🤖 LIVE GROWTH DATA FROM ALL 3 WODBUSTER CENTERS
+            const allMetrics = await wodbusterService.getAllCentersMetrics();
+            const { combined, sevilla, jerez, puerto } = allMetrics;
+
+            // 2. Analyze objectives
             const overdue = objectives?.filter(o => new Date(o.fecha_limite) < new Date()).length || 0;
             const atRisk = objectives?.filter(o => o.riesgo_calculado === 'alto' || o.riesgo_calculado === 'critico').length || 0;
 
@@ -29,21 +34,26 @@ export const AIAnalysisService = {
             let summary = "Todo parece estar en orden hoy.";
             const highlights: string[] = [];
 
-            if ((criticalAlerts || 0) > 0 || overdue > 2) {
+            // 3. Build intelligent summary (simplified - details now in Wodbuster panel)
+            if ((criticalAlerts || 0) > 0) {
                 mood = 'concern';
-                summary = `Atención requerida: Tienes ${criticalAlerts} alertas críticas y ${overdue} objetivos vencidos.`;
-            } else if (atRisk > 2) {
-                mood = 'neutral';
-                summary = "El sistema es estable, pero hay riesgos latentes que vigilar.";
-            } else {
-                mood = 'positive';
-                summary = "Excelente progreso. El rendimiento general es óptimo.";
+                summary = `🚨 Atención: ${criticalAlerts} alertas críticas requieren acción.`;
+            } else if (combined.atletasActivos > 0) {
+                // Simple summary - detailed breakdown is in the Wodbuster panel
+                summary = `🏋️ La Jungla: ${combined.atletasActivos} socios activos en los 3 centros.`;
+
+                // Only show alerts for concerning metrics
+                if (combined.atletasEnRiesgo > 10) {
+                    mood = 'concern';
+                }
+            } else if (overdue > 2) {
+                mood = 'concern';
+                summary = `⏰ ${overdue} objetivos vencidos requieren reprogramación.`;
             }
 
-            // 3. Generate Highlights
-            if (overdue > 0) highlights.push(`${overdue} objetivos requieren reprogramación inmediata.`);
-            if (atRisk > 0) highlights.push(`${atRisk} objetivos están marcados con alto riesgo.`);
-            if (!objectives || objectives.length === 0) highlights.push("No hay objetivos estratégicos activos. ¿Es buen momento para planificar?");
+            // Only show objective-based alerts in highlights
+            if (overdue > 0) highlights.push(`${overdue} objetivos requieren reprogramación`);
+            if (atRisk > 0) highlights.push(`${atRisk} objetivos con alto riesgo`);
 
             // 4. Time-based greeting
             const hour = new Date().getHours();
@@ -52,49 +62,67 @@ export const AIAnalysisService = {
             else if (hour < 20) timeGreeting = "Buenas tardes";
             else timeGreeting = "Buenas noches";
 
+            const greeting = `${timeGreeting}, ${employeeName.split(' ')[0]}`;
+
             return {
-                greeting: `${timeGreeting}, ${employeeName.split(' ')[0]}`,
+                greeting,
                 summary,
                 mood,
-                highlights
+                highlights,
+                allCentersMetrics: allMetrics
             };
         } catch (error) {
             console.error('Error generating briefing:', error);
             return {
                 greeting: `Hola, ${employeeName.split(' ')[0]}`,
-                summary: "No pude conectar con el motor de análisis.",
-                mood: 'neutral',
-                highlights: []
+                summary: "Error conectando con el sistema de datos.",
+                mood: "neutral",
+                highlights: ["No se pudo generar el resumen inteligente."]
             };
         }
     },
 
     /**
-     * Runs a full analysis scan and generates persistence alerts if needed
+     * Run periodic analysis (objectives, alerts, etc.)
      */
-    runFullAnalysis: async () => {
+    runFullAnalysis: async (): Promise<void> => {
         try {
-            // 1. Check for overdue objectives and create alerts
-            const { data: objectives, error: objError } = await supabase
-                .from('objetivos')
-                .select('*')
-                .neq('estado', 'completado')
-                .lt('fecha_limite', new Date().toISOString());
+            console.log('Running AI analysis cycle...');
 
-            if (objError) throw objError;
+            // Check for overdue objectives and create alerts
+            const { data: objectives } = await supabase.from('objetivos')
+                .select('*')
+                .neq('estado', 'completado');
 
             if (objectives && objectives.length > 0) {
-                // Get all existing active alerts for overdue objectives in one go
-                const { data: existingAlerts } = await supabase
+                const now = new Date();
+                const overdueObjectives = objectives.filter(o => {
+                    const deadline = new Date(o.fecha_limite);
+                    return deadline < now;
+                });
+
+                // Only process valid UUIDs
+                const validIds = overdueObjectives
+                    .filter(o => o.id && typeof o.id === 'string' && o.id.length > 10)
+                    .map(o => o.id);
+
+                if (validIds.length === 0) return;
+
+                const { data: existingAlerts, error: checkError } = await supabase
                     .from('alertas_automaticas')
-                    .select('objetivo_relacionado_id')
+                    .select('objetivo_relacionado')
                     .eq('tipo_alerta', 'objetivo_vencido')
                     .eq('estado', 'activa')
-                    .in('objetivo_relacionado_id', objectives.map(o => o.id));
+                    .in('objetivo_relacionado', validIds);
 
-                const existingIds = new Set(existingAlerts?.map(a => a.objetivo_relacionado_id) || []);
+                if (checkError) {
+                    console.error('CRITICAL: Error checking existing alerts. Halting analysis.', checkError);
+                    return;
+                }
 
-                for (const obj of objectives) {
+                const existingIds = new Set(existingAlerts?.map(a => a.objetivo_relacionado) || []);
+
+                for (const obj of overdueObjectives) {
                     if (!existingIds.has(obj.id)) {
                         await supabase.from('alertas_automaticas').insert({
                             tipo_alerta: 'objetivo_vencido',
@@ -102,7 +130,7 @@ export const AIAnalysisService = {
                             descripcion: `Venció el ${new Date(obj.fecha_limite).toLocaleDateString()}.`,
                             nivel_urgencia: 'urgent',
                             departamento_afectado: obj.departamento,
-                            objetivo_relacionado_id: obj.id,
+                            objetivo_relacionado: obj.id,
                             es_automatica: true,
                             accion_recomendada: 'Reprogramar o cerrar'
                         });
