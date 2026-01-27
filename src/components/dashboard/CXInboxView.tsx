@@ -33,82 +33,87 @@ const CENTER_CONFIG: Record<CenterKey, { label: string; color: string; bg: strin
     puerto: { label: 'Puerto', color: '#d97706', bg: '#fffbeb', border: '#fde68a' }     // Orange
 };
 
-// Mock Data
-const MOCK_MESSAGES: Message[] = [
-    {
-        id: '1',
-        center: 'sevilla',
-        from: 'Elena Medina Peñalver',
-        preview: 'Hola, quiero pagar la mensualidad como Socia Fundadora...',
-        timestamp: 'Hoy, 18:03',
-        status: 'pending',
-        agentProposal: {
-            text: "Hola Elena! Muchas gracias por avisarnos. Voy a revisar tu ficha ahora mismo para confirmar tu condición de Socia Fundadora y ajustar la tarifa a los 49,50€ correspondientes. En unos minutos te confirmo. ¡Un saludo!",
-            actions: ['Revisar ficha de cliente', 'Verificar tarifa Fundador'],
-            confidence: 0.95
-        },
-        conversation: [
-            {
-                from: 'user',
-                text: "Hola, quiero pagar la mensualidad como Socia Fundadora pero me sale 55 euros.\nCreo que yo sería 49,50 euros.\nMe podrías informar si estoy equivocada?\nGracias",
-                timestamp: 'Hoy, 18:03'
-            }
-        ]
-    },
-    {
-        id: '2',
-        center: 'jerez',
-        from: 'Alejandra Rodríguez',
-        preview: '¿Cuándo empiezan las clases de yoga?',
-        timestamp: 'Hoy, 11:29',
-        status: 'pending',
-        agentProposal: {
-            text: "Hola Alejandra! Las clases de Yoga empiezan el próximo lunes a las 19:30. ¿Te gustaría que te reserve una plaza para probar? 🧘‍♀️",
-            actions: [],
-            confidence: 0.88
-        },
-        conversation: [
-            {
-                from: 'user',
-                text: "Hola, una pregunta rápida. ¿Cuándo empiezan las clases de yoga?",
-                timestamp: 'Hoy, 11:29'
-            }
-        ]
-    },
-    {
-        id: '3',
-        center: 'puerto',
-        from: 'Jorge de Cristobal',
-        preview: 'Gracias, ya lo he solucionado.',
-        timestamp: 'Ayer, 09:55',
-        status: 'responded',
-        conversation: [
-            { from: 'user', text: "No puedo reservar la clase de mañana.", timestamp: 'Ayer, 09:10' },
-            { from: 'staff', text: "Hola Jorge, prueba a actualizar la app. Ya debería irte bien.", timestamp: 'Ayer, 09:45' },
-            { from: 'user', text: "Gracias, ya lo he solucionado.", timestamp: 'Ayer, 09:55' }
-        ]
-    }
-];
+// Mock Data removed - using Supabase
+
+import { supabase } from '../../lib/supabase';
+
+// ... (imports remain)
 
 export const CXInboxView: React.FC = () => {
-    const [selectedMessageId, setSelectedMessageId] = useState<string | null>(MOCK_MESSAGES[0].id);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending'>('pending');
     const [centerFilter, setCenterFilter] = useState<CenterKey | 'all'>('all');
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const handleSync = () => {
+    const fetchMessages = async () => {
         setIsSyncing(true);
-        // Simulate sync delay
-        setTimeout(() => setIsSyncing(false), 2000);
+        try {
+            const { data, error } = await supabase
+                .from('inbox_messages')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching inbox:', error);
+                return;
+            }
+
+            if (data) {
+                const mappedMessages: Message[] = data.map((item: any) => ({
+                    id: item.id,
+                    center: 'sevilla', // TODO: Infer center from sender or raw_data
+                    from: item.sender,
+                    preview: item.content,
+                    timestamp: new Date(item.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    status: item.status === 'new' ? 'pending' : 'responded',
+                    conversation: [
+                        {
+                            from: 'user',
+                            text: item.content, // Using preview as the main text for now
+                            timestamp: new Date(item.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        }
+                    ]
+                }));
+                setMessages(mappedMessages);
+                if (!selectedMessageId && mappedMessages.length > 0) {
+                    setSelectedMessageId(mappedMessages[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
-    const filteredMessages = MOCK_MESSAGES.filter(m => {
+    useEffect(() => {
+        fetchMessages();
+
+        // Optional: Subscribe to real-time changes
+        const channel = supabase
+            .channel('inbox_updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inbox_messages' }, () => {
+                fetchMessages();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const handleSync = () => {
+        fetchMessages();
+    };
+
+    const filteredMessages = messages.filter(m => {
         const matchStatus = statusFilter === 'all' || m.status === statusFilter;
         const matchCenter = centerFilter === 'all' || m.center === centerFilter;
         return matchStatus && matchCenter;
     });
 
-    const selectedMessage = MOCK_MESSAGES.find(m => m.id === selectedMessageId);
+    const selectedMessage = messages.find(m => m.id === selectedMessageId);
 
     return (
         <div style={{
@@ -183,7 +188,7 @@ export const CXInboxView: React.FC = () => {
                                     cursor: 'pointer'
                                 }}
                             >
-                                Pendientes ({MOCK_MESSAGES.filter(m => m.status === 'pending').length})
+                                Pendientes ({messages.filter(m => m.status === 'pending').length})
                             </button>
                             <button
                                 onClick={() => setStatusFilter('all')}

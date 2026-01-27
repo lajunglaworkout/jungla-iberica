@@ -63,14 +63,16 @@ async function runSync() {
 
             // Filtramos los que parecen tarjetas de mensaje (tienen texto y no son contenedores vacíos)
             const validCards = candidates.filter(c => {
-                const text = c.innerText;
+                const el = c as HTMLElement;
+                const text = el.innerText;
                 return text.length > 10 && text.length < 300 && text.includes('\n'); // Tienen saltos de linea (nombre / fecha)
             });
 
             return validCards.map(c => {
-                const text = c.innerText.split('\n');
+                const el = c as HTMLElement;
+                const text = el.innerText.split('\n');
                 return {
-                    raw: c.innerText,
+                    raw: el.innerText,
                     sender: text[0] ? text[0].trim() : 'Desconocido',
                     date_str: text[1] ? text[1].trim() : '',
                     preview: text.slice(2).join(' ').substring(0, 50) + '...'
@@ -84,18 +86,51 @@ async function runSync() {
         console.log('☁️ Sincronizando con CRM...');
 
         for (const msg of messages) {
-            // Upsert basado en contenido raw para evitar duplicados exactos (chapuza temporal, idealmente ID unico)
-            const { error } = await supabase.from('inbox_messages').upsert({
-                sender: msg.sender,
-                content: msg.preview,
-                raw_data: msg,
-                source: 'wodbuster',
-                status: 'new'
-            }, { onConflict: 'content' }); // Usar content como pseudo-ID por ahora
+            // FILTRO DE ANTIGÜEDAD:
+            // El usuario no quiere importar el historial de 1600+ mensajes.
+            // Filtramos muy agresivamente para solo coger "Hoy", "Ayer", o fechas de 2026.
+            const isRecent = (d: string) => {
+                const lower = d.toLowerCase();
+                // Palabras clave de tiempo relativo
+                if (lower.includes('hoy') || lower.includes('ayer') || lower.includes('min') || lower.includes('hora')) return true;
+                // Año actual
+                if (d.includes('2026') || d.includes('/26 ')) return true;
+                return false;
+            };
 
-            if (error) {
-                // Si falla porque no existe la tabla, avisar pero no crashear
-                console.log(`   ⚠️ Error DB: ${error.message} (¿Ejecutaste la migración?)`);
+            if (!isRecent(msg.date_str)) {
+                // Descomentar si se quiere ver el log, por defecto silencioso para no ensuciar
+                // console.log(`   ⏳ Saltando mensaje antiguo: ${msg.date_str}`);
+                continue;
+            }
+
+            // 3. Verificación manual (Anti-Duplicados)
+            // Como no tenemos constraint UNIQUE en la BD para 'content', hacemos select+insert
+            const { data: existing } = await supabase
+                .from('inbox_messages')
+                .select('id')
+                .eq('sender', msg.sender)
+                .eq('content', msg.preview)
+                .limit(1)
+                .single();
+
+            if (!existing) {
+                const { error } = await supabase.from('inbox_messages').insert({
+                    sender: msg.sender,
+                    content: msg.preview,
+                    raw_data: msg,
+                    source: 'wodbuster',
+                    status: 'new'
+                });
+
+                if (error) {
+                    console.log(`   ⚠️ Error Insert: ${error.message}`);
+                } else {
+                    console.log(`   ✨ Nuevo mensaje guardado: ${msg.sender}`);
+                }
+            } else {
+                // Ya existe, lo ignoramos silenciosamente o logueamos debug
+                // console.log(`   zzz Ya existe: ${msg.sender}`);
             }
         }
 
@@ -111,7 +146,7 @@ async function runSync() {
            1. Buscamos en Supabase mensajes con status = 'APPROVED_TO_SEND'
            2. Solo si existe esa flag explícita, el robot escribe.
         */
-        const pendingReplies = []; // await supabase.from('outbox').select('*').eq('status', 'APPROVED');
+        const pendingReplies: any[] = []; // await supabase.from('outbox').select('*').eq('status', 'APPROVED');
 
         if (pendingReplies.length === 0) {
             console.log('   -> No hay órdenes de envío confirmadas. El Agente permanece en silencio. 🤫');
@@ -123,7 +158,7 @@ async function runSync() {
 
         browser.disconnect();
 
-    } catch (e) {
+    } catch (e: any) {
         console.error('🔥 Error en la ronda:', e.message);
         if (browser) browser.disconnect();
     }
