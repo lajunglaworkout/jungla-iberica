@@ -18,6 +18,7 @@ import { SystemAuditView } from './admin/SystemAuditView';
 import WodbusterMetricsPanel from './dashboard/WodbusterMetricsPanel';
 import { CXInboxView } from './dashboard/CXInboxView';
 import { MultiCenterAnalysis } from './dashboard/MultiCenterAnalysis';
+import { CXAnalyticsModal } from './dashboard/CXAnalyticsModal';
 
 // Interfaces para el sistema inteligente
 interface SmartObjective {
@@ -134,7 +135,16 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   // Estados para modales
   const [showObjectiveModal, setShowObjectiveModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showCXAnalyticsModal, setShowCXAnalyticsModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
+
+  // CX Stats State
+  const [cxStats, setCxStats] = useState<{
+    total: number;
+    pending: number;
+    responded: number;
+    avgResponseHours: number | null;
+  }>({ total: 0, pending: 0, responded: 0, avgResponseHours: null });
 
   // AI Briefing State
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
@@ -154,7 +164,8 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         loadObjectives(),
         loadAlerts(),
         loadMeetings(),
-        loadDepartmentMetrics()
+        loadDepartmentMetrics(),
+        loadCXStats()
       ]);
 
       // Generate Briefing
@@ -198,14 +209,18 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   };
 
   const loadAlerts = async () => {
-    const { data, error } = await supabase
-      .from('alertas_automaticas')
-      .select('*')
-      .eq('estado', 'activa')
-      .order('creado_en', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('alertas_automaticas')
+        .select('*')
+        .eq('estado', 'activa')
+        .order('creado_en', { ascending: false });
 
-    if (!error && data) {
-      setAlerts(data);
+      if (!error && data) {
+        setAlerts(data);
+      }
+    } catch {
+      // Tabla alertas_automaticas no existe, ignorar
     }
   };
 
@@ -217,6 +232,37 @@ const IntelligentExecutiveDashboard: React.FC = () => {
 
     if (!error && data) {
       setMeetings(data);
+    }
+  };
+
+  const loadCXStats = async () => {
+    try {
+      const { data: messages } = await supabase
+        .from('inbox_messages')
+        .select('status, created_at, reply_sent_at');
+
+      if (messages) {
+        const total = messages.length;
+        const pending = messages.filter(m => m.status === 'new').length;
+        const responded = messages.filter(m => m.status === 'responded').length;
+
+        // Calcular tiempo promedio de respuesta
+        const responseTimes = messages
+          .filter(m => m.reply_sent_at && m.created_at)
+          .map(m => {
+            const created = new Date(m.created_at).getTime();
+            const replied = new Date(m.reply_sent_at).getTime();
+            return (replied - created) / (1000 * 60 * 60); // horas
+          });
+
+        const avgResponseHours = responseTimes.length > 0
+          ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+          : null;
+
+        setCxStats({ total, pending, responded, avgResponseHours });
+      }
+    } catch {
+      // Error loading CX stats, ignorar
     }
   };
 
@@ -587,6 +633,94 @@ const IntelligentExecutiveDashboard: React.FC = () => {
           Análisis Predictivo por Departamento
         </h3>
 
+        {/* CX Analytics Card - Atención al Cliente */}
+        <div
+          onClick={() => setShowCXAnalyticsModal(true)}
+          style={{
+            padding: '20px',
+            marginBottom: '20px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '32px' }}>💬</span>
+              <div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: 'white', margin: 0 }}>
+                  Atención al Cliente (CX)
+                </h4>
+                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', margin: '4px 0 0' }}>
+                  Inbox, analytics y agente IA
+                </p>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: 500
+            }}>
+              <BarChart3 size={18} />
+              Ver Analytics
+            </div>
+          </div>
+
+          {/* Inline KPIs */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: cxStats.pending > 0 ? '#fcd34d' : 'white'
+              }}>
+                {cxStats.pending}
+              </div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>⏳ Pendientes</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: 'white' }}>
+                {cxStats.avgResponseHours ? `${cxStats.avgResponseHours.toFixed(1)}h` : '--'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>⚡ Tiempo Resp.</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: '#86efac' }}>
+                {cxStats.responded}
+              </div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>✅ Respondidos</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: 'white' }}>
+                {cxStats.total}
+              </div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>📬 Total</div>
+            </div>
+          </div>
+        </div>
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -862,7 +996,41 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeView === 'cx_inbox' && <CXInboxView />}
+      {activeView === 'cx_inbox' && (
+        <div>
+          {/* Analytics Button Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            padding: '12px 16px',
+            backgroundColor: 'white',
+            borderBottom: '1px solid #e5e7eb',
+            borderRadius: '12px 12px 0 0'
+          }}>
+            <button
+              onClick={() => setShowCXAnalyticsModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+              }}
+            >
+              <BarChart3 size={18} />
+              Analytics CX
+            </button>
+          </div>
+          <CXInboxView />
+        </div>
+      )}
       {activeView === 'analytics' && <MultiCenterAnalysis />}
       {activeView === 'alerts' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Alertas (en desarrollo)</div>}
       {activeView === 'meetings' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Reuniones (en desarrollo)</div>}
@@ -886,6 +1054,12 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       {showMeetingModal && (
         <MeetingModal onClose={() => setShowMeetingModal(false)} />
       )}
+
+      {/* CX Analytics Modal */}
+      <CXAnalyticsModal
+        isOpen={showCXAnalyticsModal}
+        onClose={() => setShowCXAnalyticsModal(false)}
+      />
     </div>
   );
 };

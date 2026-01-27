@@ -17,10 +17,18 @@ export const AIAnalysisService = {
         try {
             // 1. Fetch key stats from internal systems
             const { data: objectives } = await supabase.from('objetivos').select('*').neq('estado', 'completado');
-            const { count: criticalAlerts } = await supabase.from('alertas_automaticas')
-                .select('*', { count: 'exact', head: true })
-                .eq('nivel_urgencia', 'critical')
-                .eq('estado', 'activa');
+
+            // Alertas - puede fallar si la tabla no existe
+            let criticalAlerts = 0;
+            try {
+                const { count } = await supabase.from('alertas_automaticas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('nivel_urgencia', 'critical')
+                    .eq('estado', 'activa');
+                criticalAlerts = count || 0;
+            } catch {
+                // Tabla alertas_automaticas no existe, ignorar
+            }
 
             // 🤖 LIVE GROWTH DATA FROM ALL 3 WODBUSTER CENTERS
             const allMetrics = await wodbusterService.getAllCentersMetrics();
@@ -108,33 +116,33 @@ export const AIAnalysisService = {
 
                 if (validIds.length === 0) return;
 
-                const { data: existingAlerts, error: checkError } = await supabase
-                    .from('alertas_automaticas')
-                    .select('objetivo_relacionado')
-                    .eq('tipo_alerta', 'objetivo_vencido')
-                    .eq('estado', 'activa')
-                    .in('objetivo_relacionado', validIds);
+                // Alertas - puede fallar si la tabla no existe
+                try {
+                    const { data: existingAlerts } = await supabase
+                        .from('alertas_automaticas')
+                        .select('objetivo_relacionado')
+                        .eq('tipo_alerta', 'objetivo_vencido')
+                        .eq('estado', 'activa')
+                        .in('objetivo_relacionado', validIds);
 
-                if (checkError) {
-                    console.error('CRITICAL: Error checking existing alerts. Halting analysis.', checkError);
-                    return;
-                }
+                    const existingIds = new Set(existingAlerts?.map(a => a.objetivo_relacionado) || []);
 
-                const existingIds = new Set(existingAlerts?.map(a => a.objetivo_relacionado) || []);
-
-                for (const obj of overdueObjectives) {
-                    if (!existingIds.has(obj.id)) {
-                        await supabase.from('alertas_automaticas').insert({
-                            tipo_alerta: 'objetivo_vencido',
-                            titulo: `Vencido: ${obj.titulo}`,
-                            descripcion: `Venció el ${new Date(obj.fecha_limite).toLocaleDateString()}.`,
-                            nivel_urgencia: 'urgent',
-                            departamento_afectado: obj.departamento,
-                            objetivo_relacionado: obj.id,
-                            es_automatica: true,
-                            accion_recomendada: 'Reprogramar o cerrar'
-                        });
+                    for (const obj of overdueObjectives) {
+                        if (!existingIds.has(obj.id)) {
+                            await supabase.from('alertas_automaticas').insert({
+                                tipo_alerta: 'objetivo_vencido',
+                                titulo: `Vencido: ${obj.titulo}`,
+                                descripcion: `Venció el ${new Date(obj.fecha_limite).toLocaleDateString()}.`,
+                                nivel_urgencia: 'urgent',
+                                departamento_afectado: obj.departamento,
+                                objetivo_relacionado: obj.id,
+                                es_automatica: true,
+                                accion_recomendada: 'Reprogramar o cerrar'
+                            });
+                        }
                     }
+                } catch {
+                    // Tabla alertas_automaticas no existe, ignorar silenciosamente
                 }
             }
         } catch (err) {

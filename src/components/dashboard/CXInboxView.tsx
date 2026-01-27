@@ -55,36 +55,43 @@ export const CXInboxView: React.FC = () => {
         // 1. Guardar en Dataset de Entrenamiento (Memoria del Agente)
         const originalMsg = messages.find(m => m.id === selectedMessageId);
         if (originalMsg) {
-            const { error: trainingError } = await supabase
-                .from('dataset_attcliente')
-                .insert({
-                    original_message: originalMsg.preview,
-                    final_reply: textToSend,
-                    context: 'crm_manual_reply',
-                    source_message_id: selectedMessageId
-                });
-            if (trainingError) console.error('Error guardando entrenamiento:', trainingError);
+            try {
+                await supabase
+                    .from('dataset_attcliente')
+                    .insert({
+                        original_message: originalMsg.preview,
+                        final_reply: textToSend,
+                        context: 'crm_manual_reply',
+                        source_message_id: selectedMessageId
+                    });
+            } catch (e) {
+                console.warn('No se pudo guardar entrenamiento (RLS)', e);
+            }
         }
 
-        // 2. Marcar como respondido en Inbox
+        // 2. Guardar respuesta para que el AGENTE la envíe a Wodbuster
         const { error } = await supabase
             .from('inbox_messages')
-            .update({ status: 'responded' })
+            .update({
+                reply_to_send: textToSend,
+                reply_sent_at: null, // ← IMPORTANTE: Resetear para que el agente lo detecte
+                // NO marcamos como responded aún - el agente lo hará cuando confirme envío
+            })
             .eq('id', selectedMessageId);
 
         if (error) {
-            console.error('Error updating status:', error);
-            alert('Error al actualizar estado');
+            console.error('Error guardando respuesta:', error);
+            alert('❌ Error al guardar respuesta');
             return;
         }
 
-        // 3. Actualizar UI localmente
+        // 3. Actualizar UI localmente (mostrar que está pendiente de envío)
         setMessages(prev => prev.map(m =>
-            m.id === selectedMessageId ? { ...m, status: 'responded' } : m
+            m.id === selectedMessageId ? { ...m, status: 'pending' as const } : m
         ));
         setReplyText('');
 
-        alert('✅ Mensaje enviado y guardado en memoria.');
+        alert('📤 Respuesta guardada. El agente la enviará a Wodbuster automáticamente.');
     };
 
     const fetchMessages = async () => {
@@ -101,21 +108,44 @@ export const CXInboxView: React.FC = () => {
             }
 
             if (data) {
-                const mappedMessages: Message[] = data.map((item: any) => ({
-                    id: item.id,
-                    center: 'sevilla', // TODO: Infer center from sender or raw_data
-                    from: item.sender,
-                    preview: item.content,
-                    timestamp: new Date(item.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    status: item.status === 'new' ? 'pending' : 'responded',
-                    conversation: [
+                const mappedMessages: Message[] = data.map((item: any) => {
+                    // Crear conversación base con mensaje del usuario
+                    const conversation: { from: 'user' | 'agent' | 'staff'; text: string; timestamp: string }[] = [
                         {
                             from: 'user',
-                            text: item.content, // Using preview as the main text for now
+                            text: item.content,
                             timestamp: new Date(item.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         }
-                    ]
-                }));
+                    ];
+
+                    // Si hay respuesta enviada, agregarla a la conversación
+                    if (item.reply_to_send && item.reply_sent_at) {
+                        conversation.push({
+                            from: 'staff',
+                            text: item.reply_to_send,
+                            timestamp: new Date(item.reply_sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                    }
+                    // Si hay respuesta pendiente de enviar (sin reply_sent_at), mostrarla también
+                    else if (item.reply_to_send) {
+                        conversation.push({
+                            from: 'staff',
+                            text: `⏳ ${item.reply_to_send}`, // Con emoji para indicar pendiente
+                            timestamp: 'Pendiente'
+                        });
+                    }
+
+                    return {
+                        id: item.id,
+                        center: 'sevilla', // TODO: Infer center from sender or raw_data
+                        from: item.sender,
+                        preview: item.content,
+                        timestamp: new Date(item.created_at || Date.now()).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                        status: item.status === 'new' ? 'pending' : 'responded',
+                        agentProposal: item.agent_proposal || undefined,
+                        conversation
+                    };
+                });
                 setMessages(mappedMessages);
                 if (!selectedMessageId && mappedMessages.length > 0) {
                     setSelectedMessageId(mappedMessages[0].id);
