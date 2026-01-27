@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     MessageSquare, CheckCircle, XCircle, Edit3, Send,
     User, Clock, AlertTriangle, Paperclip, MoreVertical, Search,
