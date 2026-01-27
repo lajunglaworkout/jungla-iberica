@@ -46,6 +46,47 @@ export const CXInboxView: React.FC = () => {
     const [centerFilter, setCenterFilter] = useState<CenterKey | 'all'>('all');
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // Estado para el texto de respuesta (manual o editado)
+    const [replyText, setReplyText] = useState('');
+
+    const handleSendResponse = async (textToSend: string) => {
+        if (!selectedMessageId) return;
+
+        // 1. Guardar en Dataset de Entrenamiento (Memoria del Agente)
+        const originalMsg = messages.find(m => m.id === selectedMessageId);
+        if (originalMsg) {
+            const { error: trainingError } = await supabase
+                .from('dataset_attcliente')
+                .insert({
+                    original_message: originalMsg.preview,
+                    final_reply: textToSend,
+                    context: 'crm_manual_reply',
+                    source_message_id: selectedMessageId
+                });
+            if (trainingError) console.error('Error guardando entrenamiento:', trainingError);
+        }
+
+        // 2. Marcar como respondido en Inbox
+        const { error } = await supabase
+            .from('inbox_messages')
+            .update({ status: 'responded' })
+            .eq('id', selectedMessageId);
+
+        if (error) {
+            console.error('Error updating status:', error);
+            alert('Error al actualizar estado');
+            return;
+        }
+
+        // 3. Actualizar UI localmente
+        setMessages(prev => prev.map(m =>
+            m.id === selectedMessageId ? { ...m, status: 'responded' } : m
+        ));
+        setReplyText('');
+
+        alert('✅ Mensaje enviado y guardado en memoria.');
+    };
+
     const fetchMessages = async () => {
         setIsSyncing(true);
         try {
@@ -430,39 +471,43 @@ export const CXInboxView: React.FC = () => {
 
                             {/* Action Buttons */}
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                <button style={{
-                                    flex: 1,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    backgroundColor: '#22c55e',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    cursor: 'pointer'
-                                }}>
+                                <button
+                                    onClick={() => selectedMessage.agentProposal && handleSendResponse(selectedMessage.agentProposal.text)}
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        backgroundColor: '#22c55e',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}>
                                     <CheckCircle size={18} />
                                     Aprobar y Enviar
                                 </button>
-                                <button style={{
-                                    flex: 1,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    backgroundColor: 'white',
-                                    color: '#374151',
-                                    border: '1px solid #d1d5db',
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    cursor: 'pointer'
-                                }}>
+                                <button
+                                    onClick={() => selectedMessage.agentProposal && setReplyText(selectedMessage.agentProposal.text)}
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        backgroundColor: 'white',
+                                        color: '#374151',
+                                        border: '1px solid #d1d5db',
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}>
                                     <Edit3 size={18} />
-                                    Editar
+                                    Copiar para Editar
                                 </button>
                                 <button style={{
                                     display: 'flex',
@@ -481,29 +526,33 @@ export const CXInboxView: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Manual Input (fallback) */}
-                    {(!selectedMessage.agentProposal || selectedMessage.status !== 'pending') && (
-                        <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
-                            <div style={{
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                padding: '8px',
-                                display: 'flex',
-                                gap: '8px',
-                                backgroundColor: '#f9fafb'
-                            }}>
-                                <input
-                                    type="text"
-                                    placeholder="Escribe un mensaje..."
-                                    style={{
-                                        flex: 1,
-                                        border: 'none',
-                                        background: 'transparent',
-                                        outline: 'none',
-                                        fontSize: '14px'
-                                    }}
-                                />
-                                <button style={{
+                    {/* Manual Input (fallback or edit) */}
+                    <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '8px',
+                            display: 'flex',
+                            gap: '8px',
+                            backgroundColor: '#f9fafb'
+                        }}>
+                            <input
+                                type="text"
+                                placeholder="Escribe un mensaje o edita la propuesta..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSendResponse(replyText)}
+                                style={{
+                                    flex: 1,
+                                    border: 'none',
+                                    background: 'transparent',
+                                    outline: 'none',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <button
+                                onClick={() => handleSendResponse(replyText)}
+                                style={{
                                     backgroundColor: '#3b82f6',
                                     color: 'white',
                                     border: 'none',
@@ -511,11 +560,10 @@ export const CXInboxView: React.FC = () => {
                                     padding: '8px',
                                     cursor: 'pointer'
                                 }}>
-                                    <Send size={16} />
-                                </button>
-                            </div>
+                                <Send size={16} />
+                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             ) : (
                 <div style={{
