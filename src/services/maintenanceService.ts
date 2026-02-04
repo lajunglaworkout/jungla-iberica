@@ -786,12 +786,21 @@ Sistema de Mantenimiento La Jungla
     try {
       const { supabase } = await import('../lib/supabase');
 
-      // 1. Tickets activos (no completados)
-      const { count: activeTickets } = await supabase
+      // 1. Tickets activos from maintenance_inspection_items (original)
+      const { count: inspectionActiveTickets } = await supabase
         .from('maintenance_inspection_items')
         .select('*', { count: 'exact', head: true })
         .neq('task_status', 'completada')
         .neq('status', 'bien'); // Solo contar items que no están bien
+
+      // 1b. Also count active incidents from checklist_incidents with department=Mantenimiento
+      const { count: checklistActiveTickets } = await supabase
+        .from('checklist_incidents')
+        .select('*', { count: 'exact', head: true })
+        .or('incident_type.eq.maintenance,department.eq.Mantenimiento')
+        .neq('status', 'resuelta');
+
+      const totalActiveTickets = (inspectionActiveTickets || 0) + (checklistActiveTickets || 0);
 
       // 2. Tiempo medio de resolución (de tickets completados este mes)
       const currentMonthStart = new Date();
@@ -815,12 +824,21 @@ Sistema de Mantenimiento La Jungla
         avgResolutionTime = Math.round((totalDays / completedTickets.length) * 10) / 10;
       }
 
-      // 3. Problemas críticos actuales
-      const { count: criticalIssues } = await supabase
+      // 3. Problemas críticos actuales (from both sources)
+      const { count: criticalFromInspections } = await supabase
         .from('maintenance_inspection_items')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'mal')
         .neq('task_status', 'completada');
+
+      const { count: criticalFromChecklist } = await supabase
+        .from('checklist_incidents')
+        .select('*', { count: 'exact', head: true })
+        .or('incident_type.eq.maintenance,department.eq.Mantenimiento')
+        .in('priority', ['critica', 'alta'])
+        .neq('status', 'resuelta');
+
+      const criticalIssuesCount = (criticalFromInspections || 0) + (criticalFromChecklist || 0);
 
       // 4. Inspecciones este mes
       const currentMonthStr = new Date().toISOString().substring(0, 7);
@@ -830,9 +848,9 @@ Sistema de Mantenimiento La Jungla
         .eq('inspection_month', currentMonthStr);
 
       return {
-        totalActiveTickets: activeTickets || 0,
+        totalActiveTickets,
         avgResolutionTime,
-        criticalIssuesCount: criticalIssues || 0,
+        criticalIssuesCount,
         totalInspectionsThisMonth: inspectionsThisMonth || 0
       };
 
@@ -1266,16 +1284,66 @@ Sistema de Mantenimiento La Jungla
   async getTickets(filters?: any): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
       const { supabase } = await import('../lib/supabase');
-      let query = supabase.from('maintenance_tickets').select('*, centers(name)');
 
-      if (filters?.status) query = query.eq('status', filters.status);
-      if (filters?.priority) query = query.eq('priority', filters.priority);
+      // 1. Query maintenance_tickets table (original source)
+      let ticketsQuery = supabase.from('maintenance_tickets').select('*, centers(name)');
+      if (filters?.status) ticketsQuery = ticketsQuery.eq('status', filters.status);
+      if (filters?.priority) ticketsQuery = ticketsQuery.eq('priority', filters.priority);
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: maintenanceTickets, error: ticketsError } = await ticketsQuery.order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return { success: true, data };
+      // 2. Query checklist_incidents table for maintenance-related incidents
+      let incidentsQuery = supabase
+        .from('checklist_incidents')
+        .select('*, centers(name)')
+        .or('incident_type.eq.maintenance,department.eq.Mantenimiento');
+
+      // Map status filter from tickets format to incidents format
+      if (filters?.status) {
+        const statusMap: Record<string, string> = {
+          'open': 'abierta',
+          'in_progress': 'en_progreso',
+          'resolved': 'resuelta'
+        };
+        const incidentStatus = statusMap[filters.status] || filters.status;
+        incidentsQuery = incidentsQuery.eq('status', incidentStatus);
+      }
+      if (filters?.priority) {
+        // Map priority if needed
+        incidentsQuery = incidentsQuery.eq('priority', filters.priority);
+      }
+
+      const { data: checklistIncidents, error: incidentsError } = await incidentsQuery.order('created_at', { ascending: false });
+
+      // 3. Normalize checklist incidents to match ticket format
+      const normalizedIncidents = (checklistIncidents || []).map(incident => ({
+        id: incident.id,
+        title: incident.title || 'Incidencia de Checklist',
+        description: incident.description,
+        // Map incident status to ticket status
+        status: incident.status === 'abierta' ? 'open' :
+          incident.status === 'en_progreso' ? 'in_progress' :
+            incident.status === 'resuelta' ? 'resolved' : 'open',
+        priority: incident.priority === 'critica' ? 'high' :
+          incident.priority === 'alta' ? 'high' :
+            incident.priority === 'media' ? 'medium' : 'low',
+        created_at: incident.created_at,
+        center_id: incident.center_id,
+        centers: incident.centers,
+        source: 'checklist' // Mark origin
+      }));
+
+      // 4. Combine both sources
+      const allTickets = [
+        ...(maintenanceTickets || []).map(t => ({ ...t, source: 'maintenance' })),
+        ...normalizedIncidents
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log(`📋 Loaded ${maintenanceTickets?.length || 0} maintenance_tickets + ${checklistIncidents?.length || 0} checklist_incidents`);
+
+      return { success: true, data: allTickets };
     } catch (error) {
+      console.error('❌ Error en getTickets:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
