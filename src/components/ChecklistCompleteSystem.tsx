@@ -32,12 +32,12 @@ interface ChecklistCompleteSystemProps {
 
 const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ centerId, centerName, onClose }) => {
   const { employee, userRole } = useSession();
-  
+
   // Estados para QR de firma
   const [showQRFirmaApertura, setShowQRFirmaApertura] = useState(false);
   const [showQRFirmaCierre, setShowQRFirmaCierre] = useState(false);
   const [qrSignatureUrl, setQrSignatureUrl] = useState('');
-  
+
   // ESTRUCTURA CORRECTA DE DATOS CON TIPOS
   const [checklist, setChecklist] = useState<ChecklistData>({
     apertura: [],
@@ -45,7 +45,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     cierre: [],
     incidencias: []
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [selectedTaskForIncident, setSelectedTaskForIncident] = useState<Task | null>(null);
@@ -53,7 +53,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const [incidentDescription, setIncidentDescription] = useState<string>('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  
+
   // Estados para firmas digitales
   const [firmaApertura, setFirmaApertura] = useState({
     empleadoId: null as string | null,
@@ -61,7 +61,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     hora: null as string | null,
     firmado: false
   });
-  
+
   const [firmaCierre, setFirmaCierre] = useState({
     empleadoId: null as string | null,
     empleadoNombre: '',
@@ -271,7 +271,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
   const loadInitialData = async () => {
     console.log('📋 Cargando checklist para centro:', centerName, centerId);
-    
+
     if (!centerId || !centerName) {
       console.error('❌ No se proporcionó centerId o centerName');
       setLoading(false);
@@ -281,10 +281,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     try {
       // 🔄 RESET AUTOMÁTICO: Usar el servicio que crea checklist diario automáticamente
       const todayChecklist = await checklistHistoryService.getTodayChecklist(centerId, centerName);
-      
+
       if (todayChecklist) {
         console.log('✅ Checklist del día cargado:', todayChecklist);
-        
+
         // Cargar tareas
         setChecklist({
           apertura: todayChecklist.apertura_tasks || [],
@@ -292,7 +292,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           cierre: todayChecklist.cierre_tasks || [],
           incidencias: todayChecklist.incidencias || []
         });
-        
+
         // Cargar firmas si existen
         if (todayChecklist.firma_apertura) {
           setFirmaApertura(todayChecklist.firma_apertura);
@@ -300,7 +300,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         if (todayChecklist.firma_cierre) {
           setFirmaCierre(todayChecklist.firma_cierre);
         }
-        
+
         // Verificar si hay checklist de ayer sin completar
         const incompleteYesterday = await checklistHistoryService.checkIncompleteYesterday(centerId);
         if (incompleteYesterday) {
@@ -320,11 +320,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para marcar/desmarcar tarea
   const handleToggleTask = (seccion: keyof ChecklistData, tareaId: string) => {
     console.log('✅ Cambiando estado de tarea:', seccion, tareaId);
-    
+
     setChecklist(prev => ({
       ...prev,
-      [seccion]: (prev[seccion] as Task[]).map(tarea => 
-        tarea.id === tareaId 
+      [seccion]: (prev[seccion] as Task[]).map(tarea =>
+        tarea.id === tareaId
           ? { ...tarea, completado: !tarea.completado, estado: !tarea.completado ? 'completado' : 'pendiente' }
           : tarea
       )
@@ -342,10 +342,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     // Limitar a 3 imágenes máximo
     const maxImages = 3;
     const newFiles = files.slice(0, maxImages - selectedImages.length);
-    
+
     // Crear URLs de preview
     const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
-    
+
     setSelectedImages(prev => [...prev, ...newFiles]);
     setImagePreviewUrls(prev => [...prev, ...newPreviewUrls]);
   };
@@ -354,7 +354,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const removeImage = (index: number) => {
     // Liberar la URL del objeto
     URL.revokeObjectURL(imagePreviewUrls[index]);
-    
+
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
     setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
@@ -375,13 +375,13 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   const handleAssignResponsable = (tareaId: string, responsable: string) => {
     setChecklist(prev => ({
       ...prev,
-      limpieza: prev.limpieza.map(tarea => 
-        tarea.id === tareaId 
+      limpieza: prev.limpieza.map(tarea =>
+        tarea.id === tareaId
           ? { ...tarea, responsable }
           : tarea
       )
     }));
-    
+
     // Auto-guardar en BD
     updateChecklistInDB();
   };
@@ -389,11 +389,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para mostrar QR de firma de apertura
   const handleMostrarQRFirmaApertura = async () => {
     if (!centerId || !centerName) return;
-    
+
     // Generar ID único para firma
     const signatureId = `apertura_${centerId}_${Date.now()}`;
     const signatureUrl = `${window.location.origin}/#/firma/${signatureId}`;
-    
+
     // Crear firma pendiente en BD
     await signatureService.createPendingSignature(
       signatureId,
@@ -401,7 +401,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       centerName,
       'apertura'
     );
-    
+
     setQrSignatureUrl(signatureUrl);
     setShowQRFirmaApertura(true);
   };
@@ -409,11 +409,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para mostrar QR de firma de cierre
   const handleMostrarQRFirmaCierre = async () => {
     if (!centerId || !centerName) return;
-    
+
     // Generar ID único para firma
     const signatureId = `cierre_${centerId}_${Date.now()}`;
     const signatureUrl = `${window.location.origin}/#/firma/${signatureId}`;
-    
+
     // Crear firma pendiente en BD
     await signatureService.createPendingSignature(
       signatureId,
@@ -421,7 +421,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       centerName,
       'cierre'
     );
-    
+
     setQrSignatureUrl(signatureUrl);
     setShowQRFirmaCierre(true);
   };
@@ -431,7 +431,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     // CASO 1: Empleado logueado → Firma directa
     if (employee?.id) {
       console.log('✍️ Firma directa de apertura por empleado:', employee.name);
-      
+
       const nuevaFirma = {
         firmado: true,
         empleado_id: employee.id,
@@ -439,12 +439,12 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         fecha: new Date().toISOString(),
         tipo: 'apertura'
       };
-      
+
       setFirmaApertura(nuevaFirma);
-      
+
       // Guardar en BD
       await guardarEstadoProvisional('en_progreso');
-      
+
       alert(`✅ Apertura firmada por ${employee.name || employee.email}`);
     }
     // CASO 2: Sin empleado logueado → Mostrar QR
@@ -459,7 +459,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     // CASO 1: Empleado logueado → Firma directa
     if (employee?.id) {
       console.log('✍️ Firma directa de cierre por empleado:', employee.name);
-      
+
       const nuevaFirma = {
         firmado: true,
         empleado_id: employee.id,
@@ -467,12 +467,12 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         fecha: new Date().toISOString(),
         tipo: 'cierre'
       };
-      
+
       setFirmaCierre(nuevaFirma);
-      
+
       // Guardar en BD
       await guardarEstadoProvisional('completado');
-      
+
       alert(`✅ Cierre firmado por ${employee.name || employee.email}`);
     }
     // CASO 2: Sin empleado logueado → Mostrar QR
@@ -486,7 +486,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Función para guardar estado provisional
   const guardarEstadoProvisional = async (estado: string) => {
     console.log('💾 Guardando estado provisional:', estado);
-    
+
     if (!centerId) {
       console.error('❌ No se puede guardar sin centerId');
       return;
@@ -494,7 +494,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const checklistData = {
         center_id: centerId,
         date: today,
@@ -517,7 +517,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           onConflict: 'center_id,date'
         })
         .select();
-      
+
       if (error) {
         console.error('❌ Error guardando en Supabase:', error);
         alert('⚠️ Error al guardar en la base de datos. Verifica tu conexión.');
@@ -539,7 +539,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // RENDERIZADO CORRECTO de las tareas
   const renderTasks = (tasks: Task[], section: string) => {
     console.log('🔍 Renderizando tareas:', section, tasks?.length);
-    
+
     if (!tasks || tasks.length === 0) {
       return <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay tareas en esta sección</p>;
     }
@@ -565,9 +565,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             cursor: 'pointer'
           }}
         />
-        
+
         <div style={{ flex: 1 }}>
-          <p style={{ 
+          <p style={{
             fontWeight: '500',
             textDecoration: tarea.completado ? 'line-through' : 'none',
             color: tarea.completado ? '#6b7280' : '#111827',
@@ -576,15 +576,15 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             {index + 1}. {tarea.titulo}
           </p>
           {tarea.descripcion && (
-            <p style={{ 
-              fontSize: '14px', 
+            <p style={{
+              fontSize: '14px',
               color: '#6b7280',
               margin: '0 0 8px 0'
             }}>
               {tarea.descripcion}
             </p>
           )}
-          
+
           {/* Campo de responsable para limpieza */}
           {section === 'limpieza' && (
             <input
@@ -694,20 +694,20 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             marginBottom: window.innerWidth < 768 ? '16px' : '24px'
           }}>
             <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
-            <p style={{ fontSize: '18px', margin: '0', opacity: 0.9 }}>📅 Fecha: {new Date().toLocaleDateString('es-ES', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            <p style={{ fontSize: '18px', margin: '0', opacity: 0.9 }}>📅 Fecha: {new Date().toLocaleDateString('es-ES', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
             })}</p>
             <p style={{ fontSize: '16px', margin: '8px 0 0 0', opacity: 0.8 }}>👤 Empleado: {employee?.name || 'No identificado'}</p>
           </div>
 
           {/* SECCIÓN APERTURA */}
           <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ 
-              color: '#059669', 
-              borderBottom: '2px solid #059669', 
+            <h2 style={{
+              color: '#059669',
+              borderBottom: '2px solid #059669',
               paddingBottom: '8px',
               marginBottom: '16px',
               fontSize: '24px',
@@ -716,10 +716,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               📂 APERTURA
             </h2>
             {renderTasks(checklist.apertura, 'apertura')}
-            
+
             {/* Botón de firma apertura */}
             <div style={{ marginTop: '16px' }}>
-              <button 
+              <button
                 onClick={handleFirmarApertura}
                 disabled={firmaApertura.firmado}
                 style={{
@@ -732,9 +732,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 {firmaApertura.firmado ? '✅ Firmado por ' + firmaApertura.empleadoNombre : '✍️ Firmar Apertura'}
               </button>
               {firmaApertura.firmado && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#059669', 
+                <div style={{
+                  fontSize: '12px',
+                  color: '#059669',
                   marginTop: '4px',
                   fontWeight: '500'
                 }}>
@@ -746,9 +746,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
           {/* SECCIÓN LIMPIEZA */}
           <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ 
-              color: '#059669', 
-              borderBottom: '2px solid #059669', 
+            <h2 style={{
+              color: '#059669',
+              borderBottom: '2px solid #059669',
               paddingBottom: '8px',
               marginBottom: '16px',
               fontSize: '24px',
@@ -761,9 +761,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
           {/* SECCIÓN CIERRE */}
           <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ 
-              color: '#059669', 
-              borderBottom: '2px solid #059669', 
+            <h2 style={{
+              color: '#059669',
+              borderBottom: '2px solid #059669',
               paddingBottom: '8px',
               marginBottom: '16px',
               fontSize: '24px',
@@ -772,25 +772,51 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               🔒 CIERRE
             </h2>
             {renderTasks(checklist.cierre, 'cierre')}
-            
+
             {/* Botón de firma cierre */}
             <div style={{ marginTop: '16px' }}>
-              <button 
-                onClick={handleFirmarCierre}
-                disabled={firmaCierre.firmado}
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: firmaCierre.firmado ? '#10b981' : '#3b82f6',
-                  opacity: firmaCierre.firmado ? 0.8 : 1,
-                  cursor: firmaCierre.firmado ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {firmaCierre.firmado ? '✅ Firmado por ' + firmaCierre.empleadoNombre : '✍️ Firmar Cierre'}
-              </button>
+              {/* Mostrar progreso de tareas */}
+              {(() => {
+                const tareasCompletadas = checklist.cierre.filter(t => t.completado).length;
+                const totalTareas = checklist.cierre.length;
+                const puedeEnviar = tareasCompletadas === totalTareas && totalTareas > 0;
+
+                return (
+                  <>
+                    {!firmaCierre.firmado && (
+                      <div style={{
+                        marginBottom: '12px',
+                        padding: '12px',
+                        backgroundColor: puedeEnviar ? '#ecfdf5' : '#fef3c7',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        color: puedeEnviar ? '#065f46' : '#92400e'
+                      }}>
+                        {puedeEnviar
+                          ? '✅ Todas las tareas completadas. Puedes firmar el cierre.'
+                          : `⚠️ Completa todas las tareas antes de firmar (${tareasCompletadas}/${totalTareas})`
+                        }
+                      </div>
+                    )}
+                    <button
+                      onClick={handleFirmarCierre}
+                      disabled={firmaCierre.firmado || !puedeEnviar}
+                      style={{
+                        ...buttonStyle,
+                        backgroundColor: firmaCierre.firmado ? '#10b981' : (puedeEnviar ? '#3b82f6' : '#9ca3af'),
+                        opacity: (firmaCierre.firmado || !puedeEnviar) ? 0.8 : 1,
+                        cursor: (firmaCierre.firmado || !puedeEnviar) ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {firmaCierre.firmado ? '✅ Firmado por ' + firmaCierre.empleadoNombre : '✍️ Firmar Cierre'}
+                    </button>
+                  </>
+                );
+              })()}
               {firmaCierre.firmado && (
-                <div style={{ 
-                  fontSize: '12px', 
-                  color: '#059669', 
+                <div style={{
+                  fontSize: '12px',
+                  color: '#059669',
                   marginTop: '4px',
                   fontWeight: '500'
                 }}>
@@ -802,9 +828,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
           {/* Sección de incidencias */}
           <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ 
-              fontSize: '20px', 
-              fontWeight: '700', 
+            <h2 style={{
+              fontSize: '20px',
+              fontWeight: '700',
               marginBottom: '16px',
               color: '#374151'
             }}>
@@ -818,7 +844,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               textAlign: 'center'
             }}>
               <p style={{ color: '#6b7280', marginBottom: '12px' }}>
-                {checklist.incidencias.length > 0 
+                {checklist.incidencias.length > 0
                   ? `${checklist.incidencias.length} incidencia(s) reportada(s) hoy`
                   : 'No hay incidencias reportadas hoy'
                 }
@@ -831,7 +857,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
           {/* Botón final para completar todo */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <button 
+            <button
               style={{
                 padding: '16px 32px',
                 backgroundColor: '#059669',
@@ -878,7 +904,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
                 🚨 Reportar Incidencia
               </h2>
-              <button 
+              <button
                 onClick={() => {
                   setShowIncidentModal(false);
                   setSelectedTaskForIncident(null);
@@ -895,7 +921,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 ✕
               </button>
             </div>
-            
+
             <div style={{ marginBottom: '20px' }}>
               <p><strong>Tarea:</strong> {selectedTaskForIncident?.titulo}</p>
               <p><strong>Centro:</strong> {centerName}</p>
@@ -906,11 +932,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 Departamento Responsable:
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button 
+                <button
                   onClick={() => setSelectedIncidentType('mantenimiento')}
-                  style={{ 
-                    padding: '12px', 
-                    backgroundColor: selectedIncidentType === 'mantenimiento' ? '#ef4444' : '#fee2e2', 
+                  style={{
+                    padding: '12px',
+                    backgroundColor: selectedIncidentType === 'mantenimiento' ? '#ef4444' : '#fee2e2',
                     color: selectedIncidentType === 'mantenimiento' ? 'white' : '#dc2626',
                     border: selectedIncidentType === 'mantenimiento' ? 'none' : '2px solid #ef4444',
                     borderRadius: '8px',
@@ -920,11 +946,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 >
                   🔧 Mantenimiento
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedIncidentType('logistica')}
-                  style={{ 
-                    padding: '12px', 
-                    backgroundColor: selectedIncidentType === 'logistica' ? '#059669' : '#dcfce7', 
+                  style={{
+                    padding: '12px',
+                    backgroundColor: selectedIncidentType === 'logistica' ? '#059669' : '#dcfce7',
                     color: selectedIncidentType === 'logistica' ? 'white' : '#059669',
                     border: selectedIncidentType === 'logistica' ? 'none' : '2px solid #059669',
                     borderRadius: '8px',
@@ -934,11 +960,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 >
                   📦 Logística
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedIncidentType('personal')}
-                  style={{ 
-                    padding: '12px', 
-                    backgroundColor: selectedIncidentType === 'personal' ? '#8b5cf6' : '#ede9fe', 
+                  style={{
+                    padding: '12px',
+                    backgroundColor: selectedIncidentType === 'personal' ? '#8b5cf6' : '#ede9fe',
                     color: selectedIncidentType === 'personal' ? 'white' : '#8b5cf6',
                     border: selectedIncidentType === 'personal' ? 'none' : '2px solid #8b5cf6',
                     borderRadius: '8px',
@@ -948,11 +974,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 >
                   👥 Personal
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedIncidentType('clientes')}
-                  style={{ 
-                    padding: '12px', 
-                    backgroundColor: selectedIncidentType === 'clientes' ? '#f59e0b' : '#fef3c7', 
+                  style={{
+                    padding: '12px',
+                    backgroundColor: selectedIncidentType === 'clientes' ? '#f59e0b' : '#fef3c7',
                     color: selectedIncidentType === 'clientes' ? 'white' : '#f59e0b',
                     border: selectedIncidentType === 'clientes' ? 'none' : '2px solid #f59e0b',
                     borderRadius: '8px',
@@ -964,19 +990,19 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 </button>
               </div>
               {selectedIncidentType && (
-                <div style={{ 
-                  marginTop: '12px', 
-                  padding: '12px', 
-                  backgroundColor: '#f8fafc', 
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px',
+                  backgroundColor: '#f8fafc',
                   borderRadius: '8px',
                   fontSize: '14px',
                   color: '#6b7280'
                 }}>
                   <strong>Se notificará a:</strong> {
                     selectedIncidentType === 'mantenimiento' ? 'Departamento de Mantenimiento' :
-                    selectedIncidentType === 'logistica' ? 'Departamento de Logística (incluye seguridad)' :
-                    selectedIncidentType === 'personal' ? 'Recursos Humanos' :
-                    selectedIncidentType === 'clientes' ? 'Dirección y Atención al Cliente' : ''
+                      selectedIncidentType === 'logistica' ? 'Departamento de Logística (incluye seguridad)' :
+                        selectedIncidentType === 'personal' ? 'Recursos Humanos' :
+                          selectedIncidentType === 'clientes' ? 'Dirección y Atención al Cliente' : ''
                   }
                 </div>
               )}
@@ -986,14 +1012,14 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                 Descripción:
               </label>
-              <textarea 
+              <textarea
                 value={incidentDescription}
                 onChange={(e) => setIncidentDescription(e.target.value)}
-                style={{ 
-                  width: '100%', 
-                  minHeight: '100px', 
-                  padding: '12px', 
-                  border: '2px solid #e5e7eb', 
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  padding: '12px',
+                  border: '2px solid #e5e7eb',
                   borderRadius: '8px',
                   fontSize: '14px'
                 }}
@@ -1006,9 +1032,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
                 📸 Imágenes (opcional):
               </label>
-              <div style={{ 
-                border: '2px dashed #d1d5db', 
-                borderRadius: '8px', 
+              <div style={{
+                border: '2px dashed #d1d5db',
+                borderRadius: '8px',
                 padding: '20px',
                 backgroundColor: '#f9fafb'
               }}>
@@ -1018,9 +1044,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                     <p style={{ color: '#6b7280', marginBottom: '12px', fontSize: '14px' }}>
                       Adjunta fotos para ayudar a resolver la incidencia
                     </p>
-                    <label style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
+                    <label style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
                       gap: '8px',
                       padding: '12px 20px',
                       backgroundColor: '#3b82f6',
@@ -1045,11 +1071,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                   </div>
                 ) : (
                   <div>
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
-                      gap: '12px', 
-                      marginBottom: '16px' 
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                      gap: '12px',
+                      marginBottom: '16px'
                     }}>
                       {imagePreviewUrls.map((url, index) => (
                         <div key={index} style={{ position: 'relative' }}>
@@ -1099,9 +1125,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                     </div>
                     {selectedImages.length < 3 && (
                       <div style={{ textAlign: 'center' }}>
-                        <label style={{ 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
+                        <label style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
                           gap: '8px',
                           padding: '8px 16px',
                           backgroundColor: '#f3f4f6',
@@ -1139,7 +1165,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 onClick={() => {
                   setShowIncidentModal(false);
                   setSelectedTaskForIncident(null);
@@ -1161,7 +1187,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   if (!selectedIncidentType) {
                     alert('Por favor selecciona un departamento responsable');
@@ -1171,7 +1197,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                     alert('Por favor describe el problema');
                     return;
                   }
-                  
+
                   const incidentData = {
                     tarea: selectedTaskForIncident?.titulo,
                     centro: centerName,
@@ -1186,9 +1212,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                     })) : null,
                     tieneImagenes: selectedImages.length > 0
                   };
-                  
+
                   console.log('📋 Incidencia reportada:', incidentData);
-                  
+
                   // GUARDAR INCIDENCIA EN SUPABASE
                   try {
                     const { data: incidentResult, error: incidentError } = await supabase
@@ -1199,26 +1225,26 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                         reporter_id: employee?.id,
                         reporter_name: employee?.name || 'Usuario',
                         incident_type: selectedIncidentType === 'mantenimiento' ? 'maintenance' :
-                                      selectedIncidentType === 'logistica' ? 'logistics' :
-                                      selectedIncidentType === 'personal' ? 'hr' :
-                                      selectedIncidentType === 'clientes' ? 'security' : 'maintenance',
+                          selectedIncidentType === 'logistica' ? 'logistics' :
+                            selectedIncidentType === 'personal' ? 'hr' :
+                              selectedIncidentType === 'clientes' ? 'security' : 'maintenance',
                         department: selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
-                                   selectedIncidentType === 'logistica' ? 'Logística' :
-                                   selectedIncidentType === 'personal' ? 'Personal' :
-                                   selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
+                          selectedIncidentType === 'logistica' ? 'Logística' :
+                            selectedIncidentType === 'personal' ? 'Personal' :
+                              selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
                         responsible: selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
-                                    selectedIncidentType === 'logistica' ? 'Logística' :
-                                    selectedIncidentType === 'personal' ? 'Personal' :
-                                    selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
+                          selectedIncidentType === 'logistica' ? 'Logística' :
+                            selectedIncidentType === 'personal' ? 'Personal' :
+                              selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento',
                         title: `Incidencia: ${selectedTaskForIncident?.titulo}`,
                         description: incidentDescription,
                         priority: 'media',
                         status: 'abierta',
                         has_images: selectedImages.length > 0,
                         auto_notify: [selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
-                                     selectedIncidentType === 'logistica' ? 'Logística' :
-                                     selectedIncidentType === 'personal' ? 'Personal' :
-                                     selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento']
+                          selectedIncidentType === 'logistica' ? 'Logística' :
+                            selectedIncidentType === 'personal' ? 'Personal' :
+                              selectedIncidentType === 'clientes' ? 'Atención al Cliente' : 'Mantenimiento']
                       });
 
                     if (incidentError) {
@@ -1226,7 +1252,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                       alert('⚠️ Error al guardar la incidencia. Se reportó localmente.');
                     } else {
                       console.log('✅ Incidencia guardada en BD:', incidentResult);
-                      
+
                       // Agregar a la lista local de incidencias
                       setChecklist(prev => ({
                         ...prev,
@@ -1236,21 +1262,20 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                   } catch (error) {
                     console.error('❌ Error en guardado de incidencia:', error);
                   }
-                  
+
                   if (selectedImages.length > 0) {
                     console.log(`📸 Imágenes adjuntas: ${selectedImages.length}`);
                     selectedImages.forEach((file, index) => {
                       console.log(`  - Imagen ${index + 1}: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
                     });
                   }
-                  
-                  alert(`✅ ¡Incidencia guardada y reportada al departamento de ${
-                    selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
-                    selectedIncidentType === 'logistica' ? 'Logística' :
-                    selectedIncidentType === 'personal' ? 'Personal' :
-                    selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
-                  }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}\n\n📋 Los administradores podrán verla en el sistema de incidencias.`);
-                  
+
+                  alert(`✅ ¡Incidencia guardada y reportada al departamento de ${selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
+                      selectedIncidentType === 'logistica' ? 'Logística' :
+                        selectedIncidentType === 'personal' ? 'Personal' :
+                          selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
+                    }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}\n\n📋 Los administradores podrán verla en el sistema de incidencias.`);
+
                   setShowIncidentModal(false);
                   setSelectedTaskForIncident(null);
                   setSelectedIncidentType('');

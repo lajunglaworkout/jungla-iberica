@@ -1,6 +1,6 @@
-// src/components/hr/EmployeeProfile.tsx - Perfil del Empleado
+// src/components/hr/EmployeeProfile.tsx - Perfil del Empleado con Edición
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, User, Phone, Mail, Edit3, Save } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Edit3, Save, X, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface EmployeeProfileProps {
@@ -12,6 +12,25 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
   const [employee, setEmployee] = useState<any>(currentEmployee || null);
   const [loading, setLoading] = useState(!currentEmployee);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Form state for editing
+  const [formData, setFormData] = useState({
+    nombre: '',
+    telefono: '',
+    dni: ''
+  });
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadEmployeeData();
@@ -23,114 +42,392 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
       return;
     }
 
-    // Evitar peticiones si el ID no es numérico (perfiles simulados desde SessionContext)
+    // Si el ID no es numérico (perfiles simulados desde SessionContext)
     if (isNaN(Number(currentEmployee.id))) {
       setEmployee(currentEmployee);
+      setFormData({
+        nombre: currentEmployee.name || currentEmployee.nombre || '',
+        telefono: currentEmployee.telefono || currentEmployee.phone || '',
+        dni: currentEmployee.dni || ''
+      });
       setLoading(false);
       return;
     }
-    
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('employees')
         .select('*')
         .eq('id', Number(currentEmployee.id))
         .single();
-      
+
+      if (error) throw error;
+
       setEmployee(data);
+      setFormData({
+        nombre: data?.nombre || data?.name || '',
+        telefono: data?.telefono || data?.phone || '',
+        dni: data?.dni || ''
+      });
     } catch (error) {
       console.error('Error:', error);
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleSave = async () => {
+    // Validate employee ID
+    if (!employee?.id || isNaN(Number(employee.id))) {
+      setError('No se puede editar este perfil. ID de empleado no válido.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          nombre: formData.nombre,
+          telefono: formData.telefono,
+          dni: formData.dni,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', Number(employee.id));
+
+      if (error) throw error;
+
+      // Update local state
+      setEmployee({
+        ...employee,
+        nombre: formData.nombre,
+        telefono: formData.telefono,
+        dni: formData.dni
+      });
+
+      setSuccess('¡Perfil actualizado correctamente!');
+      setEditing(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error: any) {
+      console.error('Error guardando perfil:', error);
+      setError(error.message || 'Error al guardar los cambios');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form to current employee data
+    setFormData({
+      nombre: employee?.nombre || employee?.name || '',
+      telefono: employee?.telefono || employee?.phone || '',
+      dni: employee?.dni || ''
+    });
+    setEditing(false);
+    setError(null);
+  };
+
+  // Helper to get display value (handles both nombre/name, etc.)
+  const getDisplayValue = (field: string) => {
+    if (field === 'nombre') return employee?.nombre || employee?.name || 'No disponible';
+    if (field === 'telefono') return employee?.telefono || employee?.phone || 'No especificado';
+    if (field === 'dni') return employee?.dni || 'No disponible';
+    if (field === 'email') return employee?.email || 'No especificado';
+    if (field === 'cargo') return employee?.cargo || employee?.role || 'No especificado';
+    if (field === 'departamento') return employee?.departamento || employee?.department || 'No especificado';
+    return 'No disponible';
+  };
+
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>;
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
+        <p style={{ marginTop: '16px', color: '#6b7280' }}>Cargando perfil...</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-        <button onClick={onBack} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        marginBottom: '24px',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#f3f4f6',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
           <ArrowLeft size={16} /> Volver
         </button>
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>👤 Mi Perfil</h1>
+        <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: 'bold', margin: 0 }}>
+          👤 Mi Perfil
+        </h1>
       </div>
 
+      {/* Success message */}
+      {success && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: '#ecfdf5',
+          color: '#065f46',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '14px'
+        }}>
+          ✅ {success}
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: '#fef2f2',
+          color: '#991b1b',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '14px'
+        }}>
+          ❌ {error}
+        </div>
+      )}
+
       {/* Perfil Card */}
-      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>
-          <User size={20} style={{ display: 'inline', marginRight: '8px' }} />
-          Información Personal
-        </h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: isMobile ? '20px' : '32px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <User size={20} />
+            Información Personal
+          </h2>
+          {editing && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleCancel}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <X size={14} /> Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Responsive grid - 1 column on mobile, 2 on desktop */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: '20px'
+        }}>
+          {/* Nombre - Editable */}
           <div>
             <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Nombre</label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.nombre || 'No disponible'}
-            </div>
+            {editing ? (
+              <input
+                type="text"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                style={{
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  width: '100%',
+                  fontSize: '14px'
+                }}
+              />
+            ) : (
+              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                {getDisplayValue('nombre')}
+              </div>
+            )}
           </div>
-          
+
+          {/* DNI - Editable */}
           <div>
             <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>DNI</label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.dni || 'No disponible'}
-            </div>
+            {editing ? (
+              <input
+                type="text"
+                value={formData.dni}
+                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                style={{
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  width: '100%',
+                  fontSize: '14px'
+                }}
+              />
+            ) : (
+              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                {getDisplayValue('dni')}
+              </div>
+            )}
           </div>
-          
+
+          {/* Teléfono - Editable */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>
-              <Phone size={16} style={{ display: 'inline', marginRight: '4px' }} />
+            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Phone size={16} />
               Teléfono
             </label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.telefono || 'No especificado'}
-            </div>
+            {editing ? (
+              <input
+                type="tel"
+                value={formData.telefono}
+                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                style={{
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  width: '100%',
+                  fontSize: '14px'
+                }}
+              />
+            ) : (
+              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                {getDisplayValue('telefono')}
+              </div>
+            )}
           </div>
-          
+
+          {/* Email - Read only */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>
-              <Mail size={16} style={{ display: 'inline', marginRight: '4px' }} />
+            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Mail size={16} />
               Email
             </label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.email || 'No especificado'}
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              color: editing ? '#9ca3af' : 'inherit'
+            }}>
+              {getDisplayValue('email')}
+              {editing && <span style={{ fontSize: '11px', marginLeft: '8px' }}>(no editable)</span>}
             </div>
           </div>
-          
+
+          {/* Cargo - Read only */}
           <div>
             <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Cargo</label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.cargo || 'No especificado'}
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              color: editing ? '#9ca3af' : 'inherit'
+            }}>
+              {getDisplayValue('cargo')}
             </div>
           </div>
-          
+
+          {/* Departamento - Read only */}
           <div>
             <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Departamento</label>
-            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              {employee?.departamento || 'No especificado'}
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              color: editing ? '#9ca3af' : 'inherit'
+            }}>
+              {getDisplayValue('departamento')}
             </div>
           </div>
         </div>
 
+        {/* Action buttons */}
         <div style={{ marginTop: '32px', textAlign: 'center' }}>
-          <button
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#059669',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            onClick={() => alert('Funcionalidad de edición próximamente')}
-          >
-            <Edit3 size={16} style={{ marginRight: '8px' }} />
-            Editar Información
-          </button>
+          {editing ? (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: saving ? '#9ca3af' : '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Guardar Cambios
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Edit3 size={16} />
+              Editar Información
+            </button>
+          )}
         </div>
       </div>
     </div>
