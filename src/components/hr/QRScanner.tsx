@@ -37,6 +37,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<any>(null);
 
   useEffect(() => {
     // Verificar permisos de cámara
@@ -123,7 +124,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       const selectedDeviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
 
       // 3. Start Decoding
-      await codeReader.current.decodeFromVideoDevice(
+      // Store controls to stop later
+      controlsRef.current = await codeReader.current.decodeFromVideoDevice(
         selectedDeviceId,
         videoRef.current!,
         (result, error) => {
@@ -150,9 +152,28 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const stopScanning = () => {
-    if (codeReader.current) {
-      codeReader.current.reset();
+    // 1. Try stopping via controls
+    if (controlsRef.current) {
+      try {
+        if (typeof controlsRef.current.stop === 'function') {
+          controlsRef.current.stop();
+        }
+      } catch (err) {
+        console.warn('Error stopping controls:', err);
+      }
+      controlsRef.current = null;
     }
+
+    // 2. SAFETY FALLBACK: Manually stop video tracks
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped track:', track.label);
+      });
+      videoRef.current.srcObject = null;
+    }
+
     setIsScanning(false);
   };
 
