@@ -251,13 +251,19 @@ const DownloadableManager = ({
 
         try {
             console.log('🚀 Enviando petición a Supabase...');
+            // Calculate next order
+            const nextOrder = (downloadables.length > 0)
+                ? Math.max(...downloadables.map(d => d.order || 0)) + 1
+                : 1;
+
             const { data, error } = await supabase
                 .from('academy_block_downloadables')
                 .insert({
                     block_id: blockId,
                     name: newName,
                     type: newType,
-                    status: 'pending'
+                    status: 'pending',
+                    order: nextOrder
                 })
                 .select();
 
@@ -358,18 +364,43 @@ const DownloadableManager = ({
                         ) : (
                             <label className="cursor-pointer text-xs font-bold bg-white border border-gray-300 hover:border-emerald-400 hover:text-emerald-800 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm w-full justification-center">
                                 <Upload className="h-3 w-3" /> Subir Archivo Final
-                                <input type="file" className="hidden" onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const fileName = `${d.id}_${file.name}`;
-                                        const { data } = await supabase.storage.from('academy-downloadables').upload(fileName, file);
-                                        if (data) {
-                                            const { data: url } = supabase.storage.from('academy-downloadables').getPublicUrl(fileName);
-                                            await supabase.from('academy_block_downloadables').update({ file_url: url.publicUrl, status: 'uploaded' }).eq('id', d.id);
-                                            onUpdate();
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            try {
+                                                // Sanitize filename: remove accents and special chars
+                                                const sanitizedName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]/g, "_");
+                                                const fileName = `${d.id}_${Date.now()}_${sanitizedName}`;
+
+                                                console.log('Subiendo archivo:', fileName);
+
+                                                const { data, error } = await supabase.storage.from('academy-downloadables').upload(fileName, file);
+
+                                                if (error) throw error;
+
+                                                if (data) {
+                                                    const { data: url } = supabase.storage.from('academy-downloadables').getPublicUrl(fileName);
+
+                                                    const { error: dbError } = await supabase
+                                                        .from('academy_block_downloadables')
+                                                        .update({ file_url: url.publicUrl, status: 'uploaded' })
+                                                        .eq('id', d.id);
+
+                                                    if (dbError) throw dbError;
+
+                                                    onUpdate();
+                                                    alert('✅ Archivo subido y vinculado correctamente');
+                                                }
+                                            } catch (err) {
+                                                console.error('Error uploading file:', err);
+                                                alert('❌ Error al subir el archivo. Intenta con un nombre más simple.');
+                                            }
                                         }
-                                    }
-                                }} />
+                                    }}
+                                />
                             </label>
                         )}
                     </div>

@@ -89,26 +89,39 @@ export const wodbusterService = {
     /**
      * Retrieves all members from a specific center
      */
+    /**
+     * Retrieves all members from a specific center
+     */
     getMembersByCenter: async (center: CenterKey): Promise<WodbusterAtleta[] | null> => {
         try {
-            console.log(`📡 [${center.toUpperCase()}] Calling Wodbuster proxy...`);
-            const { data, error } = await supabase.functions.invoke('wodbuster-proxy', {
-                body: {
-                    endpoint: '/box/Atletas',
-                    method: 'POST',
-                    body: { SoloActivos: false }, // Get ALL for churn analysis
-                    center
-                }
-            });
+            console.log(`📡 [${center.toUpperCase()}] Fetching from Supabase snapshots...`);
+
+            // Buscar el último snapshot disponible
+            const { data, error } = await supabase
+                .from('wodbuster_snapshots')
+                .select('data, created_at')
+                // .eq('center', center) // TODO: Habilitar filtro cuando el agente detecte centros correctamente
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
 
             if (error) {
-                console.error(`[${center}] Wodbuster proxy error:`, error);
+                if (error.code === 'PGRST116') { // No se encontraron filas
+                    console.log(`ℹ️ [${center}] No hay snapshots previos.`);
+                    return null;
+                }
+                console.error(`[${center}] Snapshot error:`, error);
                 throw error;
             }
 
-            // Proxy now returns { center, timestamp, count, data }
-            const atletas = data?.data || data;
-            console.log(`✅ [${center.toUpperCase()}] Received ${Array.isArray(atletas) ? atletas.length : 0} atletas`);
+            // Parsear datos (nuevo formato rico vs lista plana antigua)
+            let atletas = data?.data;
+            if (atletas && !Array.isArray(atletas) && atletas.atletas) {
+                // Formato Nuevo: { prop, atletas: [...] }
+                atletas = atletas.atletas;
+            }
+
+            console.log(`✅ [${center.toUpperCase()}] Loaded snapshot from ${new Date(data.created_at).toLocaleString()} (${Array.isArray(atletas) ? atletas.length : 0} atletas)`);
             return atletas;
         } catch (err) {
             console.error(`Error fetching Wodbuster [${center}]:`, err);

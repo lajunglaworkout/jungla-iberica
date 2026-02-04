@@ -34,7 +34,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
 
@@ -43,7 +43,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     checkCameraPermission();
     // Obtener ubicación
     getCurrentLocation();
-    
+
     return () => {
       stopScanning();
     };
@@ -53,7 +53,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     try {
       const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
       setCameraPermission(result.state);
-      
+
       result.addEventListener('change', () => {
         setCameraPermission(result.state);
       });
@@ -98,20 +98,31 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         codeReader.current = new BrowserMultiFormatReader();
       }
 
-      const videoInputDevices = await codeReader.current.listVideoInputDevices();
-      
+      // Check native camera support first
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        throw new Error('Tu navegador no soporta acceso a cámaras.');
+      }
+
+      // 1. Get List of Devices using Native API (Robust)
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputDevices = devices.filter(device => device.kind === 'videoinput');
+
       if (videoInputDevices.length === 0) {
         throw new Error('No se encontraron cámaras disponibles');
       }
 
-      // Preferir cámara trasera si está disponible
-      const backCamera = videoInputDevices.find(device => 
-        device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear')
+      console.log('Cámaras encontradas:', videoInputDevices.map(d => d.label));
+
+      // 2. Select Back Camera logic
+      const backCamera = videoInputDevices.find(device =>
+        device.label.toLowerCase().includes('back') ||
+        device.label.toLowerCase().includes('rear') ||
+        device.label.toLowerCase().includes('trasera')
       );
-      
+
       const selectedDeviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
 
+      // 3. Start Decoding
       await codeReader.current.decodeFromVideoDevice(
         selectedDeviceId,
         videoRef.current!,
@@ -119,16 +130,20 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           if (result) {
             handleQRResult(result.getText());
           }
-          if (error && !(error instanceof Error)) {
-            console.log('Scanning...', error);
-          }
+          // Ignore "NotFoundException" which just means no QR found in this frame
         }
       );
 
       setCameraPermission('granted');
     } catch (error: any) {
       console.error('Error iniciando escáner:', error);
-      setError(`Error accediendo a la cámara: ${error.message}`);
+
+      // Better error messages
+      let msg = error.message;
+      if (error.name === 'NotAllowedError') msg = 'Permiso de cámara denegado.';
+      if (error.name === 'NotFoundError') msg = 'No se encontró ninguna cámara.';
+
+      setError(`Error: ${msg}`);
       setIsScanning(false);
       setCameraPermission('denied');
     }
@@ -148,7 +163,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
       // Parsear datos del QR
       const qrData: QRData = JSON.parse(qrText);
-      
+
       // Verificar que el QR no haya expirado
       if (Date.now() > qrData.expiresAt) {
         throw new Error('El código QR ha expirado. Solicita uno nuevo.');
@@ -294,7 +309,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     totalHours: number
   ) => {
     const today = new Date().toISOString().split('T')[0];
-    
+
     await supabase
       .from('daily_attendance')
       .upsert({

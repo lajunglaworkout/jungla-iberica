@@ -3,11 +3,77 @@ import 'dotenv/config';
 import puppeteer from 'puppeteer';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // --- CONFIGURACIÓN ---
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://gfnjlmfziczimaohgkct.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE || process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY!);
+
+// Configurar Gemini (usando modelo disponible en la API actual)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+// --- FUNCIÓN PARA GENERAR RESPUESTA CON GEMINI ---
+async function generateGeminiResponse(
+    clientName: string,
+    message: string,
+    conversationContext: string,
+    trainingExamples: { original: string; reply: string }[]
+): Promise<{ text: string; confidence: number }> {
+    try {
+        // Construir ejemplos para few-shot learning
+        const examplesText = trainingExamples.length > 0
+            ? trainingExamples.slice(0, 5).map((ex, i) =>
+                `Ejemplo ${i + 1}:\nCliente: "${ex.original}"\nRespuesta: "${ex.reply}"`
+            ).join('\n\n')
+            : 'No hay ejemplos previos.';
+
+        const prompt = `Eres el asistente de atención al cliente de La Jungla Workout, un box de CrossFit en Sevilla, Jerez y Puerto.
+Tu tono es: amigable, cercano, profesional. Usa emojis moderados (1-2 máximo).
+
+CLIENTE: ${clientName}
+
+MENSAJE RECIBIDO:
+"${message}"
+
+${conversationContext ? `CONTEXTO ADICIONAL:\n${conversationContext}\n` : ''}
+
+EJEMPLOS DE RESPUESTAS ANTERIORES (aprende de ellos):
+${examplesText}
+
+INSTRUCCIONES:
+1. Responde de forma natural y personalizada
+2. USA el nombre del cliente
+3. Si no sabes algo específico, ofrece ayuda o derivar a recepción
+4. Máximo 2-3 frases, sé conciso
+5. No inventes datos (horarios, precios, etc.)
+
+Genera UNA respuesta directa (sin explicaciones ni formato):`;
+
+        const result = await geminiModel.generateContent(prompt);
+        const responseText = result.response.text().trim();
+
+        // Limpiar la respuesta de posibles comillas o formatos
+        const cleanedResponse = responseText
+            .replace(/^["']|["']$/g, '') // Quitar comillas inicio/fin
+            .replace(/^Respuesta:\s*/i, '') // Quitar "Respuesta:" si existe
+            .trim();
+
+        console.log(`   🤖 Gemini generó: "${cleanedResponse.substring(0, 50)}..."`);
+
+        return {
+            text: cleanedResponse,
+            confidence: 0.85 // Alta confianza con Gemini
+        };
+    } catch (error: any) {
+        console.log(`   ⚠️ Error Gemini: ${error.message}`);
+        return {
+            text: `Hola ${clientName.split(' ')[0]}! 👋 He recibido tu mensaje. ¿Podrías darme más detalles para poder ayudarte mejor?`,
+            confidence: 0.5
+        };
+    }
+}
 
 const INTERVAL_MINUTES = 30; // Producción: cada 30 minutos
 
@@ -272,9 +338,10 @@ async function runDeepSync() {
         const pages = await browser.pages();
         let page = pages.find(p => p.url().includes('wodbuster'));
         if (!page) {
-            console.error('❌ No encuentro Wodbuster abierto.');
-            browser.disconnect();
-            return;
+            console.log('   ⚠️ Pestaña Wodbuster no detectada. Abriendo nueva...');
+            page = await browser.newPage();
+            // Ir directo a mensajes para inicializar
+            await page.goto('https://jungla.wodbuster.com/admin/mensajes.aspx', { waitUntil: 'domcontentloaded' });
         }
 
         if (!page.url().includes('mensajes.aspx')) {
@@ -312,12 +379,16 @@ async function runDeepSync() {
                 const match = d.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})/);
                 if (match) {
                     const day = parseInt(match[1], 10);
-                    const month = parseInt(match[2], 10);
-                    const yearStr = match[3];
-                    const year = yearStr.length === 2 ? 2000 + parseInt(yearStr, 10) : parseInt(yearStr, 10);
-                    if (year < 2026) return false;
-                    if (year === 2026 && month === 1) return day >= 23;
-                    return true;
+                    const month = parseInt(match[2], 10); // 1-12
+                    let year = parseInt(match[3], 10);
+                    if (year < 100) year += 2000;
+
+                    const msgDate = new Date(year, month - 1, day);
+                    const twoDaysAgo = new Date();
+                    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                    twoDaysAgo.setHours(0, 0, 0, 0); // Reset time part for comparison
+
+                    return msgDate >= twoDaysAgo;
                 }
                 return false; // Ante la duda, ignorar antiguos
             };
@@ -432,6 +503,17 @@ async function runDeepSync() {
                         }
                     }
 
+                    // --- SANITIZACIÓN DE AUTOR ---
+                    // Si el "autor" detectado es muy largo, probablemente es el texto del mensaje y la regex falló
+                    if (author && author.length > 25) {
+                        // console.log(`   ⚠️ Falso positivo de autor rechazado: "${author}"`);
+                        author = '';
+                    }
+                    // Si contiene palabras prohibidas en un nombre
+                    if (author && /^(hola|buenas|gracias|ok|perfecto)\b/i.test(author)) {
+                        author = '';
+                    }
+
                     if (author) {
                         // Buscar el texto del mensaje (en el padre)
                         let msgText = '';
@@ -449,6 +531,62 @@ async function runDeepSync() {
                         if (isRecent && msgText) {
                             // Para mensajes de solo hora, usamos "hoy" como fecha
                             const dateStr = match ? `${match[2]}/${match[3]}/${match[4]}` : 'hoy';
+
+                            // --- MEJORA V3: Detectar si es STAFF trepando el árbol DOM ---
+                            // Buscamos burbujas verdes/azules o alineación derecha en los padres
+                            let isStaffStyle = false;
+                            let styleReason = '';
+
+                            let currentEl = el as HTMLElement;
+                            // Subir hasta 6 niveles para encontrar el contenedor del mensaje ("burbuja")
+                            for (let k = 0; k < 6 && currentEl; k++) {
+                                const style = window.getComputedStyle(currentEl);
+                                const bg = style.backgroundColor;
+
+                                // Color: Verdes (156,220,dcf8c6) o Azules (220,248) comunes en WhatsApp/Wodbuster
+                                if (bg && (bg.includes('156, 39') || bg.includes('220, 248') || bg.includes('dcf8c6') || bg.includes('21, 128') || bg.includes('34, 197') || bg.includes('21, 101'))) {
+                                    isStaffStyle = true;
+                                    styleReason = `Color detectado (${bg})`;
+                                    break;
+                                }
+
+                                // Alineación
+                                if (style.textAlign === 'right' || style.alignSelf === 'flex-end' || style.justifyContent === 'flex-end') {
+                                    isStaffStyle = true;
+                                    styleReason = 'Alineación CSS Derecha';
+                                    break;
+                                }
+
+                                // Si encontramos un borde a la derecha
+                                if (style.borderRightWidth && parseInt(style.borderRightWidth) > 0) {
+                                    // A veces los mensajes propios tienen border
+                                }
+
+                                if (currentEl.tagName === 'BODY') break;
+                                currentEl = currentEl.parentElement as HTMLElement;
+                            }
+
+                            // Posición física fallback
+                            const rect = el.getBoundingClientRect();
+                            const isRightSide = rect.left > (window.innerWidth * 0.5); // Estricto > 50%
+
+                            // "Falso Autor" check
+                            // Limpiamos el autor de saltos de línea para el check
+                            const cleanAuthor = author.replace(/\n/g, ' ').trim();
+                            const isGreeting = /^(hola|buenas|buenos|estimado|querido|hi|hello)\b/i.test(cleanAuthor);
+
+                            if (isStaffStyle || (isRightSide && !isClient)) {
+                                author = 'Staff (Jungla)';
+                                // console.log(`      🎨 Staff detectado por estilo: ${styleReason || 'Posición Derecha'}`);
+                            } else if (isGreeting) {
+                                // Si parece un saludo y no pudimos confirmar que es staff por color,
+                                // probamos heurística: Si dice "Hola [NombreCliente]", probablemente lo dice el STAFF
+                                const clientFirst = clientName.split(' ')[0];
+                                if (cleanAuthor.toLowerCase().includes(clientFirst.toLowerCase())) {
+                                    author = 'Staff (Jungla)';
+                                }
+                            }
+
                             messages.push({ author, text: msgText, date: dateStr, isRecent });
                         }
 
@@ -573,47 +711,41 @@ async function runDeepSync() {
                     confidence = 0.5;
                 }
 
-                // 🧠 SISTEMA DE APRENDIZAJE: Buscar ejemplos similares en el dataset
+                // 🤖 SISTEMA GEMINI: Generar respuesta inteligente con IA
+                let trainingExamples: { original: string; reply: string }[] = [];
+
+                // Cargar ejemplos de entrenamiento
                 try {
                     const { data: examples } = await supabase
                         .from('dataset_attcliente')
-                        .select('original_message, final_reply, context')
+                        .select('original_message, final_reply')
                         .order('created_at', { ascending: false })
-                        .limit(50); // Más ejemplos para mejor matching
+                        .limit(10);
 
                     if (examples && examples.length > 0) {
-                        // Tokenizar mensaje actual
-                        const currentWords = msgLower.split(/\s+/).filter(w => w.length > 2);
-
-                        // Calcular puntuación de coincidencia para cada ejemplo
-                        const scored = examples.map(ex => {
-                            const exWords = (ex.original_message || '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
-
-                            // Contar palabras en común
-                            const overlap = currentWords.filter(w => exWords.some(ew =>
-                                ew.includes(w) || w.includes(ew)
-                            )).length;
-
-                            // Puntuación basada en overlap / total palabras
-                            const score = overlap / Math.max(currentWords.length, 1);
-
-                            return { ...ex, score };
-                        }).filter(ex => ex.score > 0.2); // Al menos 20% de coincidencia
-
-                        // Ordenar por puntuación
-                        scored.sort((a, b) => b.score - a.score);
-
-                        // Usar el mejor match si existe
-                        if (scored.length > 0 && scored[0].final_reply) {
-                            const bestMatch = scored[0];
-                            proposedText = bestMatch.final_reply.replace(/{{nombre}}/gi, firstName);
-                            confidence = Math.min(0.95, 0.7 + bestMatch.score * 0.3); // 70% + hasta 30% extra
-                            suggestedActions = ['✨ Respuesta aprendida'];
-                            console.log(`   📚 Match encontrado (${(bestMatch.score * 100).toFixed(0)}% similitud)`);
-                        }
+                        trainingExamples = examples
+                            .filter(ex => ex.original_message && ex.final_reply)
+                            .map(ex => ({
+                                original: ex.original_message,
+                                reply: ex.final_reply
+                            }));
+                        console.log(`   📚 Cargados ${trainingExamples.length} ejemplos de entrenamiento`);
                     }
                 } catch (e) {
-                    // Ignorar errores del dataset silenciosamente
+                    console.log('   ⚠️ No se pudo cargar dataset de entrenamiento');
+                }
+
+                // Generar respuesta con Gemini
+                if (process.env.GEMINI_API_KEY) {
+                    const geminiResult = await generateGeminiResponse(
+                        firstName,
+                        chatAnalysis.messageText || '',
+                        chatAnalysis.conversationContext || '',
+                        trainingExamples
+                    );
+                    proposedText = geminiResult.text;
+                    confidence = geminiResult.confidence;
+                    suggestedActions = ['🤖 Respuesta Gemini'];
                 }
 
                 aiProposal = {
@@ -622,7 +754,7 @@ async function runDeepSync() {
                     confidence: confidence,
                     intent: intent
                 };
-                console.log(`   🤖 Intent: ${intent} | Confidence: ${(confidence * 100).toFixed(0)}%`);
+                console.log(`   🤖 Intent: ${intent} | Confidence: ${(confidence * 100).toFixed(0)}% | Gemini: ${process.env.GEMINI_API_KEY ? '✅' : '❌'}`);
             }
 
             // GUARDAR EN BD (SIN UPSERT)
@@ -631,11 +763,12 @@ async function runDeepSync() {
 
             const { data: existing } = await supabase
                 .from('inbox_messages')
-                .select('id')
-                .eq('sender', clientName)
-                .order('created_at', { ascending: false })
+                .select('id, status')
+                // .eq('sender', clientName) // ❌ BUG: Esto impedía guardar nuevos mensajes de usuarios ya existentes
+                // ✅ FIX: Comprobar ID ÚNICO (Firma + Timestamp) dentro del JSONB
+                .eq('raw_data->>messageId', messageId)
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             // Solo insertar si no hay registro previo O si el mensaje es diferente
             const shouldInsert = !existing;
@@ -643,17 +776,47 @@ async function runDeepSync() {
             if (shouldInsert) {
                 const { error } = await supabase.from('inbox_messages').insert({
                     sender: clientName,
-                    content: chatAnalysis.conversationContext || chatAnalysis.messageText, // Guardamos el CONTEXTO completo
-                    status: status === 'pending' ? 'new' : status, // CRM espera 'new' para pendientes
+                    content: chatAnalysis.conversationContext || chatAnalysis.messageText,
+                    status: status === 'pending' ? 'new' : status,
                     agent_proposal: aiProposal,
                     source: 'wodbuster',
-                    wodbuster_chat_id: chatId, // ← GUARDAR EL ID REAL DEL CHAT
+                    wodbuster_chat_id: chatId,
                     raw_data: { summary, chatAnalysis, messageId, chatId }
                 });
                 if (error) console.log(`   ⚠️ Error Insert: ${error.message}`);
                 else console.log(`   ✅ Sincronizado: ${status.toUpperCase()}`);
             } else {
-                console.log(`   ⏭️ Ya existe registro para ${clientName}`);
+                // 🔥 FIX: Actualizar estado si ha cambiado (ej: de PENDING a RESPONDED)
+                // 🔥 FIX: Actualizar estado si ha cambiado (ej: de PENDING a RESPONDED)
+                if (status === 'responded') {
+                    // LIMPIEZA AGRESIVA: Si vemos que ya respondieron, marcamos TODO lo pendiente de este usuario como responded
+                    // Esto arregla el bug de Ismael/Rocío donde se queda atascado en dashboard
+                    const { count } = await supabase
+                        .from('inbox_messages')
+                        .update({
+                            status: 'responded',
+                            reply_sent_at: new Date().toISOString() // Marcar como respondido hoy
+                        })
+                        .eq('sender', clientName)
+                        .eq('status', 'new') // Solo si estaba PENDING
+                        .select('id', { count: 'exact' });
+
+                    if (count && count > 0) {
+                        console.log(`   🧹 Auto-Limpieza: ${count} ticket(s) pendiente(s) de ${clientName} cerrados.`);
+                    } else if (existing && existing.status === 'new') {
+                        // Fallback por si la ID era lo único que coincidía
+                        await supabase
+                            .from('inbox_messages')
+                            .update({ status: 'responded', reply_sent_at: new Date().toISOString() })
+                            .eq('id', existing.id);
+                        console.log(`   🔄 Actualizando estado (ID específico): PENDING -> RESPONDED`);
+                    } else {
+                        // Ya estaba closed
+                        console.log(`   ⏭️ Ya existe (Estado: ${existing ? existing.status : 'responded'})`);
+                    }
+                } else {
+                    console.log(`   ⏭️ Ya existe registro para ${clientName} (Estado: ${existing ? existing.status : 'N/A'})`);
+                }
             }
 
             // VOLVER A LA LISTA DE FORMA SEGURA (Navegación explícita)

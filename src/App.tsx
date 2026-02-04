@@ -73,6 +73,7 @@ import { FranquiciadoDashboard } from './components/franquiciados/FranquiciadoDa
 import { NotificationProvider } from './contexts/NotificationContext';
 import { NotificationPanel, NotificationBell } from './components/notifications/NotificationPanel';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 
 // ============ COMPONENTE DE NAVEGACIÓN PRINCIPAL ============
 const NavigationDashboard: React.FC = () => {
@@ -300,7 +301,7 @@ const NavigationDashboard: React.FC = () => {
         id: 'intelligent',
         title: 'Dashboard Inteligente',
         description: 'Sistema con IA predictiva y KPIs críticos',
-        icon: Brain,
+
         icon: Brain,
         color: '#7c3aed',
         component: IntelligentExecutiveDashboard,
@@ -827,11 +828,14 @@ const NavigationDashboard: React.FC = () => {
     return module ? module.title : 'Dashboard';
   };
 
+
+
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      {/* Sidebar */}
+      {/* Sidebar - FIXED LOGIC */}
       <div style={{
-        width: sidebarOpen ? '280px' : '80px',
+        width: isMobile ? (sidebarOpen ? '280px' : '0px') : (sidebarOpen ? '280px' : '80px'),
         flexShrink: 0,
         backgroundColor: '#047857',
         borderRight: 'none',
@@ -845,16 +849,17 @@ const NavigationDashboard: React.FC = () => {
         zIndex: 1000,
         overflowX: 'hidden',
         height: '100vh',
+        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none'
       }}>
-        {/* Contenido del sidebar */}
-        {/* Logo y toggle */}
+        {/* ... Sidebar Content ... */}
         {/* Logo y toggle */}
         <div style={{
           padding: sidebarOpen ? '20px' : '20px 10px',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: sidebarOpen ? 'space-between' : 'center'
+          justifyContent: sidebarOpen ? 'space-between' : 'center',
+          minWidth: sidebarOpen ? '100%' : '80px' // Fix content width jumping
         }}>
           {sidebarOpen && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -881,34 +886,40 @@ const NavigationDashboard: React.FC = () => {
             </div>
           )}
 
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              padding: '8px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '8px',
-              color: '#059669',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ecfdf5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            title={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
-          >
-            {sidebarOpen ? <ChevronLeft size={20} className="text-slate-400 hover:text-white" /> : <Menu size={24} className="text-emerald-400" />}
-          </button>
+          {/* Toggle Button - Only visible on Desktop or when Open on Mobile */}
+          {(!isMobile || sidebarOpen) && (
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                padding: '8px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                color: '#059669',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ecfdf5'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              title={sidebarOpen ? "Colapsar menú" : "Expandir menú"}
+            >
+              {sidebarOpen ? <ChevronLeft size={20} className="text-slate-400 hover:text-white" /> : <Menu size={24} className="text-emerald-400" />}
+            </button>
+          )}
         </div>
+
+        {/* ... Rest of Sidebar ... */}
 
         {/* Perfil del usuario */}
         {
           employee && (
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid rgba(255,255,255,0.05)'
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              minWidth: sidebarOpen ? '100%' : '80px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <img
@@ -918,15 +929,16 @@ const NavigationDashboard: React.FC = () => {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.1)'
+                    border: '2px solid rgba(255,255,255,0.1)',
+                    flexShrink: 0
                   }}
                 />
                 {sidebarOpen && (
                   <div>
-                    <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', margin: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', margin: 0, whiteSpace: 'nowrap' }}>
                       {employee.first_name} {employee.last_name}
                     </p>
-                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, whiteSpace: 'nowrap' }}>
                       {userRole === 'superadmin' ? 'CEO' :
                         userRole === 'admin' ? 'Director' :
                           userRole === 'center_manager' ? 'Encargado' :
@@ -940,7 +952,7 @@ const NavigationDashboard: React.FC = () => {
         }
 
         {/* Módulos de navegación */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', minWidth: sidebarOpen ? '100%' : '80px' }}>
           {modules.map((module) => {
             const Icon = module.icon;
             const isActive = selectedModule === module.id;
@@ -954,6 +966,8 @@ const NavigationDashboard: React.FC = () => {
                     moduleWithClick.onClick();
                   } else {
                     setSelectedModule(module.id);
+                    // Close sidebar on mobile selection
+                    if (isMobile) setSidebarOpen(false);
                   }
                 }}
                 style={{
@@ -996,14 +1010,16 @@ const NavigationDashboard: React.FC = () => {
                       fontSize: '14px',
                       fontWeight: isActive ? '700' : '500',
                       color: 'inherit',
-                      margin: 0
+                      margin: 0,
+                      whiteSpace: 'nowrap'
                     }}>
                       {module.title}
                     </p>
                     <p style={{
                       fontSize: '11px',
                       color: 'rgba(255,255,255,0.7)',
-                      margin: 0
+                      margin: 0,
+                      whiteSpace: 'nowrap'
                     }}>
                       {module.description}
                     </p>
@@ -1015,7 +1031,7 @@ const NavigationDashboard: React.FC = () => {
         </div>
 
         {/* Botón de cerrar sesión */}
-        <div style={{ padding: '20px', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '20px', borderTop: '1px solid #e5e7eb', minWidth: sidebarOpen ? '100%' : '80px' }}>
           <button
             onClick={signOut}
             style={{
@@ -1034,8 +1050,8 @@ const NavigationDashboard: React.FC = () => {
               gap: '8px'
             }}
           >
-            <LogOut style={{ height: '16px', width: '16px' }} />
-            {sidebarOpen && 'Cerrar Sesión'}
+            <LogOut style={{ height: '16px', width: '16px', flexShrink: 0 }} />
+            {sidebarOpen && <span style={{ whiteSpace: 'nowrap' }}>Cerrar Sesión</span>}
           </button>
         </div>
       </div >
@@ -1065,12 +1081,14 @@ const NavigationDashboard: React.FC = () => {
         position: 'relative',
         width: '100%',
         marginLeft: isMobile ? 0 : (sidebarOpen ? '280px' : '80px'),
+        paddingBottom: isMobile ? '70px' : '0', // Spacer for bottom nav
         transition: 'margin-left 0.3s ease',
       }}>
         {/* Mobile Header Spacer */}
-        <div style={{ display: isMobile ? 'block' : 'none', height: '70px', width: '100%', flexShrink: 0 }} />
+        {/* <div style={{ display: isMobile ? 'block' : 'none', height: '70px', width: '100%', flexShrink: 0 }} /> */}
 
         {/* Dynamic Header */}
+
         <header style={{
           borderBottom: '1px solid #e5e7eb',
           padding: '16px 24px',
@@ -1345,6 +1363,22 @@ const NavigationDashboard: React.FC = () => {
           </div>
         )
       }
+      {/* Mobile Bottom Navigation */}
+      {isMobile && userRole !== 'franquiciado' && (
+        <MobileBottomNav
+          currentModule={selectedModule}
+          userRole={userRole || 'employee'}
+          onNavigate={(id) => {
+            if (id === 'toggle-sidebar') {
+              setSidebarOpen(!sidebarOpen);
+            } else {
+              setSelectedModule(id);
+              // Close sidebar if open when navigating
+              setSidebarOpen(false);
+            }
+          }}
+        />
+      )}
     </div >
   );
 };
