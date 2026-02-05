@@ -231,7 +231,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
     <div className="fixed inset-0 z-[9999] bg-white md:bg-slate-900/80 md:backdrop-blur-xl md:flex md:items-center md:justify-center overflow-y-auto md:overflow-hidden animate-in fade-in duration-300 overscroll-y-auto">
       {/* SUCCESS STATE */}
       {showSuccess ? (
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
+        <div key="success-view" className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
             <CheckCircle className="w-10 h-10 text-emerald-600" />
           </div>
@@ -243,11 +243,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         </div>
       ) : (
         /* MAIN MODAL */
-        /* MAIN MODAL */
-        /* MAIN MODAL */
-        /* MAIN MODAL */
-        /* MAIN MODAL */
-        <div className="w-full min-h-screen relative bg-white md:min-h-0 md:rounded-[2rem] md:max-w-5xl md:h-auto md:max-h-[90vh] md:shadow-[0_0_80px_rgba(0,0,0,0.35)] md:ring-1 md:ring-black/[0.05] md:flex md:flex-col md:transition-all">
+        <div key="form-view" className="w-full min-h-screen relative bg-white md:min-h-0 md:rounded-[2rem] md:max-w-5xl md:h-auto md:max-h-[90vh] md:shadow-[0_0_80px_rgba(0,0,0,0.35)] md:ring-1 md:ring-black/[0.05] md:flex md:flex-col md:transition-all">
           {/* Header */}
           <div className="relative px-5 py-4 md:px-10 md:py-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white shrink-0">
             <div className="pr-12">
@@ -263,7 +259,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
               </div>
               <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
                 {step === 'type' ? '¿Qué ha ocurrido?' : 'Nueva Incidencia'}
-                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.2 PADDED</span>
+                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.3 STABLE</span>
               </h2>
             </div>
 
@@ -276,7 +272,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-4 pb-64 md:p-10 md:pb-10 md:overflow-y-auto scroll-smooth">
+          <div className="flex-1 p-4 pb-32 md:p-10 md:pb-10 md:overflow-y-auto scroll-smooth">
             {step === 'type' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {INCIDENT_TYPES.map((type) => (
