@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSession } from '../../contexts/SessionContext';
-import { ArrowLeft, User, Clock, ClipboardList, CheckCircle, Calendar, Shirt, FileText, MessageCircle, Package, Wrench } from 'lucide-react';
+import { ArrowLeft, User, Clock, ClipboardList, CheckCircle, Calendar, Shirt, FileText, MessageCircle, Package, Wrench, AlertTriangle } from 'lucide-react';
 import MobileTimeClock from '../hr/MobileTimeClock';
 import TimeclockDashboard from '../hr/TimeclockDashboard';
 import DailyOperations from '../hr/DailyOperations';
@@ -21,6 +21,7 @@ import ManagerReviewsPanel from './ManagerReviewsPanel';
 import ManagerQuarterlyReview from './ManagerQuarterlyReview';
 import ManagerQuarterlyMaintenance from './ManagerQuarterlyMaintenance';
 import { LocationType } from '../../types/logistics';
+import SmartIncidentModal from '../incidents/SmartIncidentModal';
 
 interface EmployeeAction {
   id: string;
@@ -33,6 +34,7 @@ const CenterManagement: React.FC = () => {
   const { employee } = useSession();
   const [activeAction, setActiveAction] = useState<string>('summary');
   const [showVacationNotifications, setShowVacationNotifications] = useState(false);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
 
   // Función para obtener el nombre del centro
   const getCenterName = (centerId?: number): string => {
@@ -56,7 +58,8 @@ const CenterManagement: React.FC = () => {
       { id: 'vacations', title: 'Mis Vacaciones', description: 'Estado de solicitudes', icon: <Calendar size={24} /> },
       { id: 'uniform-request', title: 'Solicitar Uniformes', description: 'Vestuario y material', icon: <Shirt size={24} /> },
       { id: 'my-documents', title: 'Mis Documentos', description: 'Contratos y nóminas', icon: <FileText size={24} /> },
-      { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y consultas', icon: <MessageCircle size={24} /> }
+      { id: 'hr-contact', title: 'Contactar RRHH', description: 'Soporte y consultas', icon: <MessageCircle size={24} /> },
+      { id: 'report-incident', title: '⚠️ Reportar Incidencia', description: 'Informar de un problema', icon: <AlertTriangle size={24} /> }
     ];
 
     // Añadir opciones de revisiones para Encargados y center_manager
@@ -143,7 +146,13 @@ const CenterManagement: React.FC = () => {
         {actionCards.map((card) => (
           <button
             key={card.id}
-            onClick={() => setActiveAction(card.id)}
+            onClick={() => {
+              if (card.id === 'report-incident') {
+                setShowIncidentModal(true);
+              } else {
+                setActiveAction(card.id);
+              }
+            }}
             style={{
               position: 'relative',
               display: 'flex',
@@ -323,69 +332,84 @@ const CenterManagement: React.FC = () => {
     }
   };
 
-  return activeAction === 'summary'
-    ? (
-      <div style={{
-        padding: 'clamp(12px, 4vw, 32px)',
-        backgroundColor: '#f9fafb',
-        minHeight: '100vh'
-      }}>
-        {renderSummary()}
-      </div>
-    )
-    : (
-      <div style={{
-        padding: 'clamp(12px, 4vw, 32px)',
-        backgroundColor: '#f9fafb',
-        minHeight: '100vh',
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
-        <button
-          onClick={() => setActiveAction('summary')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '12px 20px',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            backgroundColor: 'white',
-            color: '#059669',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            marginBottom: '24px',
-            fontSize: '15px',
-            fontWeight: 500,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0fdf4';
-            e.currentTarget.style.transform = 'translateX(-4px)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.transform = 'translateX(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-          }}
-        >
-          <ArrowLeft size={20} /> Volver a mis gestiones
-        </button>
-
-        <div
-          style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          {renderActionContent()}
+  return (
+    <>
+      {activeAction === 'summary' ? (
+        <div style={{
+          padding: 'clamp(12px, 4vw, 32px)',
+          backgroundColor: '#f9fafb',
+          minHeight: '100vh'
+        }}>
+          {renderSummary()}
         </div>
-      </div>
-    );
+      ) : (
+        <div style={{
+          padding: 'clamp(12px, 4vw, 32px)',
+          backgroundColor: '#f9fafb',
+          minHeight: '100vh',
+          maxWidth: '1400px',
+          margin: '0 auto'
+        }}>
+          <button
+            onClick={() => setActiveAction('summary')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              backgroundColor: 'white',
+              color: '#059669',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              marginBottom: '24px',
+              fontSize: '15px',
+              fontWeight: 500,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f0fdf4';
+              e.currentTarget.style.transform = 'translateX(-4px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.transform = 'translateX(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            }}
+          >
+            <ArrowLeft size={20} /> Volver a mis gestiones
+          </button>
+
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            {renderActionContent()}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Incidencia */}
+      <SmartIncidentModal
+        isOpen={showIncidentModal}
+        onClose={() => setShowIncidentModal(false)}
+        centerId={employee?.center_id?.toString() || '9'}
+        centerName={getCenterName(Number(employee?.center_id) || 9)}
+        employee={employee as any}
+        onIncidentCreated={(incident) => {
+          console.log('✅ Incidencia creada:', incident);
+          setShowIncidentModal(false);
+        }}
+      />
+    </>
+  );
 };
 
 export default CenterManagement;
