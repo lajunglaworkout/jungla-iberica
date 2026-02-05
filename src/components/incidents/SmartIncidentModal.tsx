@@ -228,7 +228,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-50 animate-in fade-in duration-300 md:p-4 overflow-y-auto md:overflow-hidden">
       {/* SUCCESS STATE */}
       {showSuccess ? (
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
@@ -246,7 +246,8 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         /* MAIN MODAL */
         /* MAIN MODAL */
         /* MAIN MODAL */
-        <div className="bg-white md:rounded-[2rem] w-full max-w-5xl h-full md:h-auto md:max-h-[90vh] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] flex flex-col transition-all">
+        /* MAIN MODAL */
+        <div className="bg-white w-full min-h-full md:min-h-0 md:rounded-[2rem] md:max-w-5xl md:h-auto md:max-h-[90vh] shadow-[0_0_80px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] flex flex-col transition-all relative">
           {/* Header */}
           <div className="relative px-5 py-4 md:px-10 md:py-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white shrink-0">
             <div className="pr-12">
@@ -274,7 +275,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
+          <div className="flex-1 p-4 md:p-10 md:overflow-y-auto scroll-smooth">
             {step === 'type' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {INCIDENT_TYPES.map((type) => (
@@ -446,33 +447,32 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           </div >
 
           {/* Footer */}
-          {
-            step === 'details' && (
-              <div className="p-4 md:p-6 border-t border-gray-100 bg-gray-50 flex gap-3 md:gap-4 shrink-0 pb-safe">
-                <button
-                  onClick={() => setStep('type')}
-                  className="px-4 py-3 md:px-6 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors text-sm md:text-base"
-                >
-                  Atrás
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!description.trim() || isSubmitting}
-                  className={`flex-1 flex items-center justify-center gap-2 md:gap-3 px-6 py-4 md:px-10 md:py-5 rounded-[1rem] md:rounded-[1.5rem] text-white font-black text-lg md:text-xl transition-all shadow-2xl ${!description.trim() ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'hover:-translate-y-1 active:scale-95'
-                    }`}
-                  style={{
-                    background: !description.trim() ? '' : (selectedType ? `linear-gradient(135deg, ${selectedType.color}, #000)` : '#111827'),
-                    boxShadow: !description.trim() ? '' : (selectedType ? `0 20px 40px -10px ${selectedType.color}40` : '0 20px 40px -10px rgba(0,0,0,0.2)')
-                  }}
-                >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 md:w-6 md:h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>Enviar <span className="hidden md:inline">Reporte</span> <Send size={18} className="md:w-5 md:h-5" /></>
-                  )}
-                </button>
-              </div>
-            )
+          {step === 'details' && (
+            <div className="p-4 md:p-6 border-t border-gray-100 bg-gray-50 flex gap-3 md:gap-4 shrink-0 pb-8 md:pb-6">
+              <button
+                onClick={() => setStep('type')}
+                className="px-4 py-3 md:px-6 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors text-sm md:text-base"
+              >
+                Atrás
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!description.trim() || isSubmitting}
+                className={`flex-1 flex items-center justify-center gap-2 md:gap-3 px-6 py-4 md:px-10 md:py-5 rounded-[1rem] md:rounded-[1.5rem] text-white font-black text-lg md:text-xl transition-all shadow-2xl ${!description.trim() ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'hover:-translate-y-1 active:scale-95'
+                  }`}
+                style={{
+                  background: !description.trim() ? '' : (selectedType ? `linear-gradient(135deg, ${selectedType.color}, #000)` : '#111827'),
+                  boxShadow: !description.trim() ? '' : (selectedType ? `0 20px 40px -10px ${selectedType.color}40` : '0 20px 40px -10px rgba(0,0,0,0.2)')
+                }}
+              >
+                {isSubmitting ? (
+                  <div className="w-5 h-5 md:w-6 md:h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>Enviar <span className="hidden md:inline">Reporte</span> <Send size={18} className="md:w-5 md:h-5" /></>
+                )}
+              </button>
+            </div>
+          )
           }
         </div >
       )}
