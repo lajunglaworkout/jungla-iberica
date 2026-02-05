@@ -266,7 +266,7 @@ const TicketManager: React.FC = () => {
             )}
 
             {/* Kanban Columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {columns.map((col) => {
                     const colTickets = tickets.filter(t => {
                         const statusMatch = t.status === col.id;

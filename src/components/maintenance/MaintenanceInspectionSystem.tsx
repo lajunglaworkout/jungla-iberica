@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Camera, 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  User, 
-  MapPin, 
+import {
+  Calendar,
+  Camera,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  User,
+  MapPin,
   Clock,
   Save,
   Send,
@@ -17,9 +17,9 @@ import {
   FileText,
   Settings
 } from 'lucide-react';
-import { 
-  MAINTENANCE_ZONES, 
-  MAINTENANCE_CONCEPTS, 
+import {
+  MAINTENANCE_ZONES,
+  MAINTENANCE_CONCEPTS,
   MAINTENANCE_STATUS,
   TASK_PRIORITY,
   MAINTENANCE_CALENDAR,
@@ -27,8 +27,8 @@ import {
   requiresPhotos,
   canCloseTask
 } from '../../types/maintenance';
-import type { 
-  MaintenanceInspection, 
+import type {
+  MaintenanceInspection,
   MaintenanceInspectionItem,
   MaintenanceZone,
   MaintenanceConcept
@@ -84,7 +84,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   useEffect(() => {
     const initializeItems = () => {
       const items: Record<string, MaintenanceInspectionItem> = {};
-      
+
       MAINTENANCE_ZONES.forEach(zone => {
         const concepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
         concepts.forEach(concept => {
@@ -112,7 +112,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
           };
         });
       });
-      
+
       setInspectionData(prev => ({ ...prev, items }));
     };
 
@@ -149,7 +149,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   const handleStatusChange = (itemId: string, status: 'bien' | 'regular' | 'mal') => {
     const photosRequired = requiresPhotos(status);
     const isCritical = status === 'mal';
-    
+
     updateInspectionItem(itemId, {
       status,
       photos_required: photosRequired,
@@ -162,20 +162,20 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   const handlePhotoUpload = async (itemId: string, type: 'deterioro' | 'reparacion', file: File) => {
     try {
       console.log(`📸 Subiendo foto de ${type} para item ${itemId}`);
-      
+
       const result = await maintenanceService.uploadMaintenancePhoto(file, itemId, type);
-      
+
       if (result.success && result.url) {
         const currentItem = inspectionData.items[itemId];
-        const updatedPhotos = type === 'deterioro' 
+        const updatedPhotos = type === 'deterioro'
           ? [...currentItem.photos_deterioro, result.url]
           : [...(currentItem.photos_reparacion || []), result.url];
-        
+
         updateInspectionItem(itemId, {
           [type === 'deterioro' ? 'photos_deterioro' : 'photos_reparacion']: updatedPhotos,
           can_close_task: type === 'reparacion' ? true : canCloseTask(updatedPhotos.length > 0)
         });
-        
+
         console.log(`✅ Foto subida correctamente: ${result.url}`);
       } else {
         console.error('❌ Error subiendo foto:', result.error);
@@ -201,17 +201,17 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
     const regular = items.filter(item => item.status === 'regular').length;
     const mal = items.filter(item => item.status === 'mal').length;
     const score = total > 0 ? Math.round(((bien * 100 + regular * 60 + mal * 20) / total)) : 0;
-    
+
     return { total, bien, regular, mal, score };
   };
 
   // Enviar inspección
   const handleSubmitInspection = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const stats = getInspectionStats();
-      
+
       const inspection: Omit<MaintenanceInspection, 'id'> = {
         center_id: centerId,
         center_name: centerName,
@@ -232,16 +232,16 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
       };
 
       const items = Object.values(inspectionData.items);
-      
+
       console.log('📊 Enviando inspección a Supabase...', inspection);
       console.log('📋 Items de inspección:', items);
-      
+
       // Enviar a Supabase usando el servicio
       const result = await maintenanceService.createInspection({
         inspection,
         items
       });
-      
+
       if (result.success) {
         alert('✅ Inspección enviada correctamente');
         console.log('✅ Inspección creada con ID:', result.data?.id);
@@ -249,7 +249,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
       } else {
         throw new Error(result.error || 'Error desconocido');
       }
-      
+
     } catch (error) {
       console.error('❌ Error enviando inspección:', error);
       alert('❌ Error al enviar la inspección. Inténtalo de nuevo.');
@@ -263,112 +263,106 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
     <div style={{
       maxWidth: '800px',
       margin: '0 auto',
-      textAlign: 'center'
+      textAlign: 'center',
+      paddingBottom: '80px' // Espacio para botón sticky
     }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        padding: '32px'
-      }}>
-        <div style={{ marginBottom: '24px' }}>
-          <Calendar style={{
-            width: '64px',
-            height: '64px',
-            color: '#059669',
-            margin: '0 auto 16px',
-            display: 'block'
-          }} />
-          <h1 style={{ 
-            fontSize: '28px', 
-            fontWeight: 'bold', 
-            color: '#1f2937',
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <Calendar size={32} style={{ color: '#059669' }} />
-            Inspección Trimestral de Mantenimiento
-          </h1>
-          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
-            Centro {centerName} - {new Date(inspectionData.inspection_date).toLocaleDateString('es-ES', { 
-              month: 'long', 
-              year: 'numeric' 
-            })}
-          </p>
-        </div>
+      <div className="bg-white rounded-xl shadow-sm md:shadow-md overflow-hidden">
+        {/* Header */}
+        <div className="p-6 md:p-8 border-b border-gray-100">
+          <div style={{ marginBottom: '24px' }}>
+            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+              Inspección Trimestral
+            </h1>
+            <p className="text-gray-500 text-sm md:text-base">
+              {centerName} • {new Date(inspectionData.inspection_date).toLocaleDateString('es-ES', {
+                month: 'long',
+                year: 'numeric'
+              })}
+            </p>
+          </div>
 
-        <div className="space-y-4 mb-8">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <User className="w-5 h-5 text-gray-500 mr-3" />
-              <span className="text-gray-700">Inspector</span>
+          {/* Info Cards */}
+          <div className="grid grid-cols-1 gap-3 mb-6">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center">
+                <User className="w-4 h-4 text-gray-400 mr-3" />
+                <span className="text-sm text-gray-600">Inspector</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">{inspectionData.inspector_name}</span>
             </div>
-            <span className="font-medium">{inspectionData.inspector_name}</span>
-          </div>
-          
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <MapPin className="w-5 h-5 text-gray-500 mr-3" />
-              <span className="text-gray-700">Centro</span>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center">
+                <MapPin className="w-4 h-4 text-gray-400 mr-3" />
+                <span className="text-sm text-gray-600">Centro</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">{centerName}</span>
             </div>
-            <span className="font-medium">{centerName}</span>
-          </div>
-          
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <Clock className="w-5 h-5 text-gray-500 mr-3" />
-              <span className="text-gray-700">Fecha</span>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center">
+                <Clock className="w-4 h-4 text-gray-400 mr-3" />
+                <span className="text-sm text-gray-600">Fecha</span>
+              </div>
+              <input
+                type="date"
+                value={inspectionData.inspection_date}
+                onChange={(e) => setInspectionData(prev => ({
+                  ...prev,
+                  inspection_date: e.target.value
+                }))}
+                className="bg-transparent text-sm font-medium text-right focus:outline-none"
+              />
             </div>
-            <input
-              type="date"
-              value={inspectionData.inspection_date}
-              onChange={(e) => setInspectionData(prev => ({ 
-                ...prev, 
-                inspection_date: e.target.value 
-              }))}
-              className="border border-gray-300 rounded px-3 py-1"
-            />
           </div>
         </div>
 
-        <div className="bg-blue-50 rounded-lg p-6 mb-8">
-          <h3 className="font-semibold text-blue-900 mb-3">Zonas a inspeccionar:</h3>
-          <div className="grid grid-cols-3 gap-3">
+        {/* Zones Grid */}
+        <div className="p-6 md:p-8 bg-blue-50/50">
+          <h3 className="font-semibold text-blue-900 mb-4 text-left text-sm uppercase tracking-wide">Zonas a revisar</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {MAINTENANCE_ZONES.map((zone, index) => (
-              <div key={zone.id} className="flex items-center text-sm text-blue-800">
-                <span className="mr-2">{zone.icon}</span>
-                <span>{zone.name}</span>
+              <div key={zone.id} className="flex items-center p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
+                <span className="mr-3 text-lg">{zone.icon}</span>
+                <span className="text-sm font-medium text-gray-700">{zone.name}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        <button
-          onClick={() => setCurrentStep(1)}
-          className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-        >
-          Comenzar Inspección
-          <ArrowRight className="w-5 h-5 ml-2" />
-        </button>
+      {/* Sticky Mobile Button */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 md:relative md:bg-transparent md:border-0 md:p-0 md:mt-8 z-20">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={() => setCurrentStep(1)}
+            className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center"
+          >
+            Comenzar Inspección
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </button>
+        </div>
       </div>
     </div>
+
   );
 
   // Renderizar paso de zona
   const renderZoneStep = () => {
     if (!currentZone) return null;
-    
+
     const concepts = getCurrentZoneConcepts();
-    
+
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg p-6">
           {/* Header de zona */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <div 
+              <div
                 className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl mr-4"
                 style={{ backgroundColor: currentZone.color }}
               >
@@ -392,7 +386,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
             {concepts.map((concept) => {
               const itemId = `${currentZone.id}_${concept.id}`;
               const item = inspectionData.items[itemId];
-              
+
               return (
                 <div key={concept.id} className="border border-gray-200 rounded-lg p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -405,11 +399,10 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                         <button
                           key={status}
                           onClick={() => handleStatusChange(itemId, status as any)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            item.status === status
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${item.status === status
                               ? 'text-white'
                               : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
-                          }`}
+                            }`}
                           style={{
                             backgroundColor: item.status === status ? config.color : undefined
                           }}
@@ -459,7 +452,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                           Fotos obligatorias para estado {MAINTENANCE_STATUS[item.status].label}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4">
                         <button
                           onClick={() => {
@@ -472,7 +465,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                           <Upload className="w-4 h-4 mr-2" />
                           Subir Foto ({item.photos_deterioro.length})
                         </button>
-                        
+
                         {item.photos_deterioro.length > 0 && (
                           <span className="text-sm text-green-600 flex items-center">
                             <CheckCircle className="w-4 h-4 mr-1" />
@@ -508,7 +501,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
               <ArrowLeft className="w-5 h-5 mr-2" />
               Anterior
             </button>
-            
+
             <button
               onClick={() => setCurrentStep(currentStep + 1)}
               className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -526,12 +519,12 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   const renderSummaryStep = () => {
     const stats = getInspectionStats();
     const criticalItems = Object.values(inspectionData.items).filter(item => item.status === 'mal');
-    
+
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Resumen de Inspección</h2>
-          
+
           {/* Estadísticas */}
           <div className="grid grid-cols-4 gap-6 mb-8">
             <div className="text-center">
@@ -560,8 +553,8 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                 <p className="text-gray-600">Basada en el estado de todos los elementos</p>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold" style={{ 
-                  color: stats.score >= 80 ? '#10b981' : stats.score >= 60 ? '#f59e0b' : '#ef4444' 
+                <div className="text-4xl font-bold" style={{
+                  color: stats.score >= 80 ? '#10b981' : stats.score >= 60 ? '#f59e0b' : '#ef4444'
                 }}>
                   {stats.score}
                 </div>
@@ -616,7 +609,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
               <ArrowLeft className="w-5 h-5 mr-2" />
               Revisar Zonas
             </button>
-            
+
             <button
               onClick={handleSubmitInspection}
               disabled={isSubmitting}
@@ -643,7 +636,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   // Modal de fotos (simplificado)
   const renderPhotoModal = () => {
     if (!showPhotoModal || !currentItemForPhoto) return null;
-    
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
@@ -710,7 +703,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
           <Settings size={32} style={{ color: '#059669' }} />
           Sistema de Mantenimiento
         </h1>
-        
+
         {/* Pestañas */}
         <div style={{
           display: 'flex',
