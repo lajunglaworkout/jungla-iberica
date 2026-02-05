@@ -246,7 +246,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .from('time_records')
       .select('*')
       .eq('employee_id', employeeData.id)
-      .eq('clock_type', 'entrada')
+      .eq('type', 'entrada')
       .gte('clock_time', `${today}T00:00:00`)
       .lte('clock_time', `${today}T23:59:59`)
       .order('clock_time', { ascending: false })
@@ -262,7 +262,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .from('time_records')
       .select('*')
       .eq('employee_id', employeeData.id)
-      .eq('clock_type', 'salida')
+      .eq('type', 'salida')
       .gte('clock_time', `${today}T00:00:00`)
       .lte('clock_time', `${today}T23:59:59`)
       .order('clock_time', { ascending: false })
@@ -284,7 +284,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           employee_email: employee.email,
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
-          clock_type: 'salida',
+          type: 'salida',
           clock_time: now,
           location_lat: location?.lat,
           location_lng: location?.lng,
@@ -310,7 +310,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           employee_email: employee.email,
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
-          clock_type: 'entrada',
+          type: 'entrada',
           clock_time: now,
           location_lat: location?.lat,
           location_lng: location?.lng,
