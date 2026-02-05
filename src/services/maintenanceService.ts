@@ -1342,7 +1342,7 @@ Sistema de Mantenimiento La Jungla
 
       const { data: inspectionItems, error: inspectionError } = await inspectionItemsQuery.order('created_at', { ascending: false });
 
-      // 4. Normalize checklist incidents to ticket format
+      // 4. Normalize checklist incidents to ticket format - PRESERVE ALL FIELDS
       const normalizedIncidents = (checklistIncidents || []).map(incident => ({
         id: incident.id,
         title: incident.title || 'Incidencia de Checklist',
@@ -1355,11 +1355,23 @@ Sistema de Mantenimiento La Jungla
             incident.priority === 'media' ? 'medium' : 'low',
         created_at: incident.created_at,
         center_id: incident.center_id,
-        centers: incident.centers,
-        source: 'checklist'
+        centers: incident.centers || { name: incident.center_name },
+        source: 'checklist',
+        // Additional fields for detail view
+        reporter_name: incident.reporter_name,
+        reporter_id: incident.reporter_id,
+        incident_type: incident.incident_type,
+        department: incident.department,
+        responsible: incident.responsible,
+        has_images: incident.has_images,
+        inventory_item: incident.inventory_item,
+        inventory_quantity: incident.inventory_quantity,
+        resolution_notes: incident.resolution_notes,
+        resolved_by: incident.resolved_by,
+        resolved_at: incident.resolved_at
       }));
 
-      // 5. Normalize inspection items to ticket format
+      // 5. Normalize inspection items to ticket format - PRESERVE ALL FIELDS
       const normalizedInspectionItems = (inspectionItems || []).map(item => ({
         id: item.id,
         title: `${item.zone_name} - ${item.concept_name}`,
@@ -1367,11 +1379,17 @@ Sistema de Mantenimiento La Jungla
         status: item.task_status === 'pendiente' ? 'open' :
           item.task_status === 'en_progreso' ? 'in_progress' :
             item.task_status === 'completada' ? 'resolved' : 'open',
-        priority: item.status === 'mal' ? 'high' : 'medium', // 'mal' = critical
+        priority: item.status === 'mal' ? 'high' : 'medium',
         created_at: item.created_at,
         center_id: item.maintenance_inspections?.center_id,
         centers: { name: item.maintenance_inspections?.center_name || 'Centro' },
-        source: 'inspection'
+        source: 'inspection',
+        // Additional fields for detail view
+        zone_name: item.zone_name,
+        concept_name: item.concept_name,
+        observations: item.observations,
+        task_to_perform: item.task_to_perform,
+        completed_date: item.completed_date
       }));
 
       // 6. Combine all sources
