@@ -263,6 +263,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
               </div>
               <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
                 {step === 'type' ? '¿Qué ha ocurrido?' : 'Nueva Incidencia'}
+                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.1 NATIVE</span>
               </h2>
             </div>
 
