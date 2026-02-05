@@ -1,40 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import {
-    AlertCircle, CheckCircle, Clock, Filter, MoreHorizontal, X,
-    User, MapPin, Calendar, Image, MessageSquare, ArrowRight, Wrench, ChevronDown
+    AlertCircle, CheckCircle, Clock, Filter, X,
+    User, MapPin, Calendar, Image as ImageIcon, Wrench, ChevronDown, Building2, FileText, ExternalLink
 } from 'lucide-react';
 import maintenanceService from '../../services/maintenanceService';
+import { useData } from '../../contexts/DataContext';
+import { useSession } from '../../contexts/SessionContext';
 
 interface Ticket {
-    id: string;
+    id: string | number;
     title: string;
     description: string;
     status: 'open' | 'in_progress' | 'resolved';
     priority: 'high' | 'medium' | 'low';
     created_at: string;
-    center_id?: string;
+    center_id?: string | number;
     centers?: { name: string };
+    center_name?: string;
     source: 'maintenance' | 'checklist' | 'inspection';
-    // Checklist incident specific fields
     reporter_name?: string;
     reporter_id?: string;
     incident_type?: string;
     department?: string;
     responsible?: string;
     has_images?: boolean;
+    image_urls?: string[];
     inventory_item?: string;
     inventory_quantity?: number;
     resolution_notes?: string;
     resolved_by?: string;
     resolved_at?: string;
-    // Inspection item specific fields
-    zone_name?: string;
-    concept_name?: string;
-    observations?: string;
-    task_to_perform?: string;
+    started_by?: string;
+    started_at?: string;
+    action_plan?: string;
+    estimated_time?: string;
 }
 
 const TicketManager: React.FC = () => {
+    const { employees } = useData();
+    const { employee } = useSession();
+    const [showStartWorkModal, setShowStartWorkModal] = useState(false);
+    const [actionPlan, setActionPlan] = useState('');
+    const [estimatedTime, setEstimatedTime] = useState('1 hora');
+    const [isSubmittingStart, setIsSubmittingStart] = useState(false);
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -55,21 +63,79 @@ const TicketManager: React.FC = () => {
         setLoading(false);
     };
 
-    const handleStatusChange = async (ticketId: string, newStatus: string, source: string) => {
-        // For checklist incidents, use the incident service
-        if (source === 'checklist') {
-            // Update in checklist_incidents table
+    const getReporterName = (ticket: Ticket) => {
+        // 1. Try generic reporter_name from ticket
+        if (ticket.reporter_name && ticket.reporter_name !== 'Usuario') return ticket.reporter_name;
+
+        // 2. Try to find by reporter_id in employees context
+        if (ticket.reporter_id && employees.length > 0) {
+            const emp = employees.find(e => e.id.toString() === ticket.reporter_id || e.user_id === ticket.reporter_id);
+            if (emp) return emp.name;
+        }
+
+        // 3. Fallback
+        return ticket.reporter_name || 'Usuario';
+    };
+
+
+
+    const handleStartWorkConfirm = async () => {
+        if (!selectedTicket || !actionPlan) return;
+        setIsSubmittingStart(true);
+
+        try {
             const { supabase } = await import('../../lib/supabase');
+
+            // Only for checklist_incidents for now (maintenance tickets have different schema usually, but assuming unified)
+            if (selectedTicket.source === 'checklist') {
+                const updateData = {
+                    status: 'en_proceso', // Using confirmed enum
+                    started_by: employee?.name || 'Mantenimiento',
+                    started_at: new Date().toISOString(),
+                    action_plan: actionPlan,
+                    estimated_time: estimatedTime,
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error } = await supabase
+                    .from('checklist_incidents')
+                    .update(updateData)
+                    .eq('id', selectedTicket.id);
+
+                if (error) throw error;
+            } else {
+                // Generico fallback
+                await maintenanceService.updateTicketStatus(String(selectedTicket.id), 'in_progress');
+            }
+
+            setShowStartWorkModal(false);
+            loadTickets();
+            setSelectedTicket(null); // Close main modal too? Or keep open? Maybe keep open to see changes?
+            // Actually, keep main modal open but refresh data?
+            // For now close to force refresh list
+        } catch (error) {
+            console.error('Error starting work:', error);
+            alert('Error al iniciar trabajo. Verifica que la base de datos esté actualizada.');
+        } finally {
+            setIsSubmittingStart(false);
+        }
+    };
+
+    const handleStatusChange = async (ticketId: string | number, newStatus: string, source: string) => {
+        if (source === 'checklist') {
+            const { supabase } = await import('../../lib/supabase');
+            // FIX: Correct enum values based on check constraint
+            const dbStatus = newStatus === 'open' ? 'abierta' :
+                newStatus === 'in_progress' ? 'en_proceso' : 'resuelta';
+
             await supabase
                 .from('checklist_incidents')
                 .update({
-                    status: newStatus === 'open' ? 'abierta' :
-                        newStatus === 'in_progress' ? 'en_progreso' : 'resuelta',
+                    status: dbStatus,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', ticketId);
         } else if (source === 'inspection') {
-            // Update in maintenance_inspection_items table
             const { supabase } = await import('../../lib/supabase');
             await supabase
                 .from('maintenance_inspection_items')
@@ -80,87 +146,127 @@ const TicketManager: React.FC = () => {
                 })
                 .eq('id', ticketId);
         } else {
-            // Original maintenance_tickets
-            await maintenanceService.updateTicketStatus(ticketId, newStatus);
+            await maintenanceService.updateTicketStatus(String(ticketId), newStatus);
         }
         loadTickets();
         setSelectedTicket(null);
     };
 
-    const getSourceBadge = (source: string) => {
-        switch (source) {
-            case 'checklist':
-                return <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">CHECKLIST</span>;
-            case 'inspection':
-                return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">INSPECCIÓN</span>;
-            default:
-                return <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-[10px] font-bold">TICKET</span>;
+    const columns = [
+        { id: 'open', title: 'Abierto', bgColor: '#fef2f2', borderColor: '#fecaca', textColor: '#dc2626', icon: AlertCircle },
+        { id: 'in_progress', title: 'En Progreso', bgColor: '#eff6ff', borderColor: '#bfdbfe', textColor: '#2563eb', icon: Clock },
+        { id: 'resolved', title: 'Resuelto', bgColor: '#f0fdf4', borderColor: '#bbf7d0', textColor: '#16a34a', icon: CheckCircle }
+    ];
+
+    const priorityConfig = {
+        high: {
+            bg: '#fee2e2', // Red 100
+            border: '#fca5a5', // Red 300
+            text: '#991b1b', // Red 800
+            badgeBg: '#fecaca',
+            badgeText: '#7f1d1d',
+            label: 'ALTA'
+        },
+        medium: {
+            bg: '#fef3c7', // Amber 100
+            border: '#fcd34d', // Amber 300
+            text: '#92400e', // Amber 800
+            badgeBg: '#fde68a',
+            badgeText: '#78350f',
+            label: 'MEDIA'
+        },
+        low: {
+            bg: '#f3f4f6', // Gray 100
+            border: '#d1d5db', // Gray 300
+            text: '#1f2937', // Gray 800
+            badgeBg: '#e5e7eb',
+            badgeText: '#374151',
+            label: 'BAJA'
         }
     };
 
-    const columns = [
-        { id: 'open', title: 'Abierto', color: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: AlertCircle },
-        { id: 'in_progress', title: 'En Progreso', color: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', icon: Clock },
-        { id: 'resolved', title: 'Resuelto', color: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', icon: CheckCircle }
-    ];
+    const sourceConfig = {
+        checklist: { bg: '#f3e8ff', text: '#6b21a8', label: 'CHECKLIST' },
+        inspection: { bg: '#e0f2fe', text: '#0369a1', label: 'INSPECCIÓN' },
+        maintenance: { bg: '#f3f4f6', text: '#374151', label: 'TICKET' }
+    };
 
     if (loading) {
         return (
-            <div className="p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-500">Cargando incidencias...</p>
+            <div style={{ padding: '48px', textAlign: 'center' }}>
+                <div style={{
+                    width: '32px', height: '32px',
+                    border: '3px solid #10b981', borderTopColor: 'transparent',
+                    borderRadius: '50%', margin: '0 auto 16px',
+                    animation: 'spin 1s linear infinite'
+                }}></div>
+                <p style={{ color: '#6b7280' }}>Cargando incidencias...</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 h-full">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h3 className="text-xl font-bold text-gray-900">Tablero de Incidencias</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Tablero de Incidencias</h3>
+                    <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
                         {tickets.length} incidencias totales • {tickets.filter(t => t.status === 'open').length} pendientes
                     </p>
                 </div>
-                <div className="flex space-x-2">
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center"
-                    >
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filtrar
-                        <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-                    </button>
-                </div>
+                <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    style={{
+                        padding: '10px 16px',
+                        backgroundColor: '#111827',
+                        color: 'white',
+                        borderRadius: '10px',
+                        border: 'none',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                >
+                    <Filter style={{ width: '16px', height: '16px' }} />
+                    Filtrar
+                    <ChevronDown style={{ width: '16px', height: '16px', transform: showFilters ? 'rotate(180deg)' : 'none' }} />
+                </button>
             </div>
 
-            {/* Filters Panel */}
+            {/* Filters */}
             {showFilters && (
-                <div className="bg-gray-50 rounded-lg p-4 flex gap-2 flex-wrap">
-                    <button
-                        onClick={() => setFilter('all')}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
-                    >
-                        Todos
-                    </button>
-                    <button
-                        onClick={() => setFilter('checklist')}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === 'checklist' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
-                    >
-                        Checklist
-                    </button>
-                    <button
-                        onClick={() => setFilter('inspection')}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === 'inspection' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
-                    >
-                        Inspecciones
-                    </button>
+                <div style={{ display: 'flex', gap: '8px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                    {[
+                        { key: 'all', label: 'Todos' },
+                        { key: 'checklist', label: 'Checklist' },
+                        { key: 'inspection', label: 'Inspecciones' }
+                    ].map(f => (
+                        <button
+                            key={f.key}
+                            onClick={() => setFilter(f.key)}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                border: filter === f.key ? 'none' : '1px solid #e5e7eb',
+                                backgroundColor: filter === f.key ? '#111827' : 'white',
+                                color: filter === f.key ? 'white' : '#374151',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
             )}
 
             {/* Kanban Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px] overflow-hidden">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                 {columns.map((col) => {
                     const colTickets = tickets.filter(t => {
                         const statusMatch = t.status === col.id;
@@ -169,93 +275,172 @@ const TicketManager: React.FC = () => {
                     });
 
                     return (
-                        <div key={col.id} className={`flex flex-col h-full rounded-xl border ${col.border} bg-gray-50/50`}>
+                        <div
+                            key={col.id}
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '16px',
+                                border: `1px solid ${col.borderColor}`,
+                                overflow: 'hidden'
+                            }}
+                        >
                             {/* Column Header */}
-                            <div className={`p-4 border-b ${col.border} ${col.color} rounded-t-xl flex items-center justify-between`}>
-                                <div className="flex items-center font-bold text-gray-900">
-                                    <col.icon className={`w-5 h-5 mr-2 ${col.text}`} />
-                                    {col.title}
+                            <div style={{
+                                padding: '16px',
+                                backgroundColor: col.bgColor,
+                                borderBottom: `1px solid ${col.borderColor}`,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <col.icon style={{ width: '18px', height: '18px', color: col.textColor }} />
+                                    <span style={{ fontWeight: '600', color: '#111827' }}>{col.title}</span>
                                 </div>
-                                <span className="bg-white px-2 py-1 rounded-md text-xs font-bold text-gray-600 shadow-sm">
+                                <span style={{
+                                    padding: '4px 10px',
+                                    backgroundColor: 'white',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: 'bold',
+                                    color: col.textColor
+                                }}>
                                     {colTickets.length}
                                 </span>
                             </div>
 
                             {/* Column Content */}
-                            <div className="p-4 overflow-y-auto space-y-4 flex-1">
-                                {colTickets.map((ticket) => (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => setSelectedTicket(ticket)}
-                                        className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200 group cursor-pointer relative"
-                                    >
-                                        {/* Priority Stripe */}
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${ticket.priority === 'high' ? 'bg-red-500' :
-                                                ticket.priority === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
-                                            }`}></div>
+                            <div style={{
+                                padding: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                maxHeight: 'calc(100vh - 380px)',
+                                overflowY: 'auto'
+                            }}>
+                                {colTickets.map((ticket) => {
+                                    const pConfig = priorityConfig[ticket.priority] || priorityConfig.low;
+                                    const sConfig = sourceConfig[ticket.source] || sourceConfig.maintenance;
 
-                                        <div className="pl-3">
-                                            {/* Header: Source + Priority */}
-                                            <div className="flex justify-between items-start mb-2">
-                                                {getSourceBadge(ticket.source)}
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${ticket.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                                        ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
-                                                    }`}>
-                                                    {ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja'}
-                                                </span>
-                                            </div>
-
-                                            {/* Title & Description */}
-                                            <h4 className="font-bold text-gray-900 mb-1 line-clamp-2 text-sm">{ticket.title}</h4>
-                                            <p className="text-xs text-gray-500 mb-3 line-clamp-2">{ticket.description}</p>
-
-                                            {/* Reporter (if from checklist) */}
-                                            {ticket.reporter_name && (
-                                                <div className="flex items-center text-xs text-gray-500 mb-2">
-                                                    <User className="w-3 h-3 mr-1" />
-                                                    <span className="truncate">{ticket.reporter_name}</span>
-                                                </div>
-                                            )}
-
-                                            {/* Indicator icons */}
-                                            <div className="flex items-center gap-2 mb-3">
-                                                {ticket.has_images && (
-                                                    <span className="text-purple-500" title="Tiene imágenes">
-                                                        <Image className="w-3.5 h-3.5" />
+                                    return (
+                                        <div
+                                            key={ticket.id}
+                                            onClick={() => setSelectedTicket(ticket)}
+                                            style={{
+                                                backgroundColor: pConfig.bg,
+                                                borderRadius: '12px',
+                                                padding: '14px',
+                                                border: `1px solid ${pConfig.border}`,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                position: 'relative'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.currentTarget.style.transform = 'none';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            <div style={{ paddingLeft: '4px' }}>
+                                                {/* Badges row */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                    <span style={{
+                                                        padding: '3px 8px',
+                                                        backgroundColor: 'white',
+                                                        color: sConfig.text,
+                                                        borderRadius: '6px',
+                                                        fontSize: '10px',
+                                                        fontWeight: '700',
+                                                        letterSpacing: '0.5px',
+                                                        border: '1px solid rgba(0,0,0,0.05)'
+                                                    }}>
+                                                        {sConfig.label}
                                                     </span>
+                                                    <span style={{
+                                                        padding: '3px 8px',
+                                                        backgroundColor: pConfig.badgeBg,
+                                                        color: pConfig.badgeText,
+                                                        borderRadius: '6px',
+                                                        fontSize: '10px',
+                                                        fontWeight: '700'
+                                                    }}>
+                                                        {pConfig.label}
+                                                    </span>
+                                                </div>
+
+                                                {/* Title */}
+                                                <h4 style={{
+                                                    fontSize: '14px',
+                                                    fontWeight: '700',
+                                                    color: pConfig.text,
+                                                    margin: '0 0 6px 0',
+                                                    lineHeight: '1.3',
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden'
+                                                }}>
+                                                    {ticket.title}
+                                                </h4>
+
+                                                {/* Description */}
+                                                {ticket.description && (
+                                                    <p style={{
+                                                        fontSize: '12px',
+                                                        color: '#4b5563', // Gray 600
+                                                        margin: '0 0 10px 0',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        {ticket.description}
+                                                    </p>
                                                 )}
-                                                {ticket.inventory_item && (
-                                                    <span className="text-amber-500" title="Material requerido">
-                                                        <Wrench className="w-3.5 h-3.5" />
-                                                    </span>
-                                                )}
-                                            </div>
 
-                                            {/* Footer: Center + Date */}
-                                            <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
-                                                <div className="flex items-center">
-                                                    <MapPin className="w-3 h-3 mr-1" />
-                                                    <span className="font-medium text-gray-600 truncate max-w-[100px]">
-                                                        {ticket.centers?.name || 'Centro'}
-                                                    </span>
+                                                {/* Footer */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    paddingTop: '10px',
+                                                    borderTop: `1px solid ${pConfig.border}`,
+                                                    fontSize: '11px',
+                                                    color: '#6b7280'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <User style={{ width: '12px', height: '12px' }} />
+                                                        <span style={{ fontWeight: '500' }}>{getReporterName(ticket).split(' ')[0]}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <Calendar style={{ width: '12px', height: '12px' }} />
+                                                        <span>{new Date(ticket.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                        {(ticket.has_images || (ticket.image_urls && ticket.image_urls.length > 0)) && (
+                                                            <ImageIcon style={{ width: '12px', height: '12px', color: '#a855f7' }} />
+                                                        )}
+                                                        {ticket.inventory_item && (
+                                                            <Wrench style={{ width: '12px', height: '12px', color: '#f59e0b' }} />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center">
-                                                    <Calendar className="w-3 h-3 mr-1" />
-                                                    {new Date(ticket.created_at).toLocaleDateString()}
-                                                </div>
-                                            </div>
-
-                                            {/* Click hint */}
-                                            <div className="mt-2 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-[10px] text-emerald-600 font-medium">Click para ver detalles →</span>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
 
                                 {colTickets.length === 0 && (
-                                    <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                                        <p className="text-sm text-gray-400">No hay tickets</p>
+                                    <div style={{
+                                        padding: '32px',
+                                        textAlign: 'center',
+                                        border: '2px dashed #e5e7eb',
+                                        borderRadius: '12px'
+                                    }}>
+                                        <p style={{ color: '#9ca3af', fontSize: '14px' }}>No hay tickets</p>
                                     </div>
                                 )}
                             </div>
@@ -264,165 +449,426 @@ const TicketManager: React.FC = () => {
                 })}
             </div>
 
-            {/* Detail Modal */}
+            {/* Modal */}
             {selectedTicket && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-                        {/* Modal Header */}
-                        <div className={`p-6 border-b ${selectedTicket.priority === 'high' ? 'bg-gradient-to-r from-red-500 to-orange-500' :
-                                selectedTicket.priority === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-amber-500' :
-                                    'bg-gradient-to-r from-blue-500 to-cyan-500'
-                            }`}>
-                            <div className="flex justify-between items-start">
-                                <div className="text-white">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        {getSourceBadge(selectedTicket.source)}
-                                        <span className="px-2 py-0.5 bg-white/20 text-white rounded text-xs font-medium">
-                                            {selectedTicket.priority === 'high' ? '🔴 Prioridad Alta' :
-                                                selectedTicket.priority === 'medium' ? '🟡 Prioridad Media' : '🔵 Prioridad Baja'}
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000,
+                        padding: '24px'
+                    }}
+                    onClick={() => setSelectedTicket(null)}
+                >
+                    <div
+                        style={{
+                            backgroundColor: 'white',
+                            borderRadius: '24px',
+                            width: '100%',
+                            maxWidth: '640px',
+                            maxHeight: '90vh',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div style={{
+                            padding: '28px 28px 24px',
+                            background: selectedTicket.priority === 'high'
+                                ? 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)'
+                                : selectedTicket.priority === 'medium'
+                                    ? 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)'
+                                    : 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1, paddingRight: '16px' }}>
+                                    {/* Badges */}
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                                        <span style={{
+                                            padding: '6px 12px',
+                                            backgroundColor: 'rgba(255,255,255,0.2)',
+                                            color: 'white',
+                                            borderRadius: '8px',
+                                            fontSize: '11px',
+                                            fontWeight: '700'
+                                        }}>
+                                            {sourceConfig[selectedTicket.source]?.label || 'TICKET'}
+                                        </span>
+                                        <span style={{
+                                            padding: '6px 12px',
+                                            backgroundColor: 'rgba(255,255,255,0.2)',
+                                            color: 'white',
+                                            borderRadius: '8px',
+                                            fontSize: '11px',
+                                            fontWeight: '700'
+                                        }}>
+                                            PRIORIDAD {priorityConfig[selectedTicket.priority]?.label || 'BAJA'}
                                         </span>
                                     </div>
-                                    <h2 className="text-xl font-bold">{selectedTicket.title}</h2>
-                                    <p className="text-white/80 text-sm mt-1">
-                                        {selectedTicket.centers?.name || 'Centro'} • {new Date(selectedTicket.created_at).toLocaleString()}
-                                    </p>
+
+                                    {/* Title */}
+                                    <h2 style={{
+                                        fontSize: '22px',
+                                        fontWeight: 'bold',
+                                        color: 'white',
+                                        margin: '0 0 12px 0',
+                                        lineHeight: '1.3'
+                                    }}>
+                                        {selectedTicket.title}
+                                    </h2>
+
+                                    {/* Meta */}
+                                    <div style={{ display: 'flex', gap: '16px', color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Building2 style={{ width: '16px', height: '16px' }} />
+                                            {selectedTicket.centers?.name || selectedTicket.center_name || 'Centro'}
+                                        </span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Calendar style={{ width: '16px', height: '16px' }} />
+                                            {new Date(selectedTicket.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
                                 </div>
                                 <button
                                     onClick={() => setSelectedTicket(null)}
-                                    className="text-white/80 hover:text-white transition-colors"
+                                    style={{
+                                        padding: '8px',
+                                        backgroundColor: 'rgba(255,255,255,0.2)',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        cursor: 'pointer',
+                                        display: 'flex'
+                                    }}
                                 >
-                                    <X className="w-6 h-6" />
+                                    <X style={{ width: '20px', height: '20px', color: 'white' }} />
                                 </button>
                             </div>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
+                        {/* Body */}
+                        <div style={{ padding: '24px 28px', maxHeight: 'calc(90vh - 280px)', overflowY: 'auto' }}>
                             {/* Description */}
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Descripción</h3>
-                                <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{selectedTicket.description}</p>
+                            <div style={{ marginBottom: '24px' }}>
+                                <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <FileText style={{ width: '14px', height: '14px' }} />
+                                    Descripción
+                                </h3>
+                                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '12px' }}>
+                                    <p style={{ color: '#374151', lineHeight: '1.6', margin: 0 }}>
+                                        {selectedTicket.description || 'Sin descripción'}
+                                    </p>
+                                </div>
                             </div>
 
-                            {/* Reporter Info */}
-                            {selectedTicket.reporter_name && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Reportado Por</h3>
-                                        <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg">
-                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                                                <User className="w-5 h-5 text-emerald-600" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{selectedTicket.reporter_name}</p>
-                                                <p className="text-xs text-gray-500">{selectedTicket.department || 'Empleado'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Responsable</h3>
-                                        <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <Wrench className="w-5 h-5 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{selectedTicket.responsible || 'Mantenimiento'}</p>
-                                                <p className="text-xs text-gray-500">{selectedTicket.incident_type || 'maintenance'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Inspection Item Details */}
-                            {selectedTicket.source === 'inspection' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Zona</h3>
-                                        <p className="bg-gray-50 p-4 rounded-lg font-medium">{selectedTicket.zone_name || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Concepto</h3>
-                                        <p className="bg-gray-50 p-4 rounded-lg font-medium">{selectedTicket.concept_name || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Materials needed */}
-                            {selectedTicket.inventory_item && (
+                            {/* Reporter & Responsible */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div>
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Material Requerido</h3>
-                                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3">
-                                        <Wrench className="w-5 h-5 text-amber-600" />
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                        Reportado por
+                                    </h3>
+                                    <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <User style={{ width: '20px', height: '20px', color: 'white' }} />
+                                        </div>
                                         <div>
-                                            <p className="font-medium text-amber-900">{selectedTicket.inventory_item}</p>
+                                            <p style={{ fontWeight: '600', color: '#111827', margin: 0 }}>
+                                                {getReporterName(selectedTicket)}
+                                            </p>
+                                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                                                {selectedTicket.department || 'Empleado del centro'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                        Asignado a
+                                    </h3>
+                                    <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Wrench style={{ width: '20px', height: '20px', color: 'white' }} />
+                                        </div>
+                                        <div>
+                                            <p style={{ fontWeight: '600', color: '#111827', margin: 0 }}>
+                                                {selectedTicket.responsible || 'Mantenimiento'}
+                                            </p>
+                                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, textTransform: 'capitalize' }}>
+                                                {selectedTicket.incident_type || 'Departamento responsable'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Work In Progress Details */}
+                            {(selectedTicket.action_plan || selectedTicket.started_by) && (
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Wrench style={{ width: '14px', height: '14px' }} />
+                                        Trabajo en Curso
+                                    </h3>
+                                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #dbeafe', padding: '16px', borderRadius: '12px' }}>
+                                        {selectedTicket.started_by && (
+                                            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1e40af' }}>
+                                                <User style={{ width: '14px', height: '14px' }} />
+                                                <span style={{ fontWeight: '600' }}>Iniciado por:</span> {selectedTicket.started_by}
+                                                <span style={{ color: '#93c5fd' }}>•</span>
+                                                <Clock style={{ width: '14px', height: '14px' }} />
+                                                <span>{new Date(selectedTicket.started_at || '').toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {selectedTicket.estimated_time && (
+                                            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1e40af' }}>
+                                                <Clock style={{ width: '14px', height: '14px' }} />
+                                                <span style={{ fontWeight: '600' }}>Tiempo Estimado:</span> {selectedTicket.estimated_time}
+                                            </div>
+                                        )}
+                                        {selectedTicket.action_plan && (
+                                            <div>
+                                                <p style={{ fontSize: '12px', fontWeight: '700', color: '#1e40af', marginBottom: '4px', textTransform: 'uppercase' }}>PLAN DE ACCIÓN</p>
+                                                <p style={{ color: '#1e3a8a', fontSize: '14px', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                                    {selectedTicket.action_plan}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Images */}
+                            {(selectedTicket.image_urls && selectedTicket.image_urls.length > 0) && (
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <ImageIcon style={{ width: '14px', height: '14px' }} />
+                                        Imágenes Adjuntas ({selectedTicket.image_urls.length})
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                                        {selectedTicket.image_urls.map((url, idx) => (
+                                            <a
+                                                key={idx}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    display: 'block',
+                                                    borderRadius: '12px',
+                                                    overflow: 'hidden',
+                                                    border: '1px solid #e5e7eb',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                <img
+                                                    src={url}
+                                                    alt={`Imagen ${idx + 1}`}
+                                                    style={{ width: '100%', height: '120px', objectFit: 'cover' }}
+                                                />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    backgroundColor: 'rgba(0,0,0,0)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.3)'}
+                                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0)'}
+                                                >
+                                                    <ExternalLink style={{ width: '24px', height: '24px', color: 'white', opacity: 0 }} />
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* No images message */}
+                            {selectedTicket.has_images && (!selectedTicket.image_urls || selectedTicket.image_urls.length === 0) && (
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                        Imágenes
+                                    </h3>
+                                    <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <ImageIcon style={{ width: '20px', height: '20px', color: '#a855f7' }} />
+                                        <p style={{ color: '#7c3aed', margin: 0, fontSize: '14px' }}>
+                                            Esta incidencia tiene imágenes adjuntas
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Material */}
+                            {selectedTicket.inventory_item && (
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                        Material Requerido
+                                    </h3>
+                                    <div style={{ backgroundColor: '#fefce8', border: '1px solid #fde047', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Wrench style={{ width: '20px', height: '20px', color: 'white' }} />
+                                        </div>
+                                        <div>
+                                            <p style={{ fontWeight: '600', color: '#92400e', margin: 0 }}>{selectedTicket.inventory_item}</p>
                                             {selectedTicket.inventory_quantity && (
-                                                <p className="text-sm text-amber-700">Cantidad: {selectedTicket.inventory_quantity}</p>
+                                                <p style={{ fontSize: '13px', color: '#a16207', margin: 0 }}>Cantidad: {selectedTicket.inventory_quantity}</p>
                                             )}
                                         </div>
                                     </div>
                                 </div>
                             )}
-
-                            {/* Images indicator */}
-                            {selectedTicket.has_images && (
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Imágenes Adjuntas</h3>
-                                    <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg flex items-center gap-3">
-                                        <Image className="w-5 h-5 text-purple-600" />
-                                        <p className="text-purple-900">Esta incidencia tiene imágenes adjuntas</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Task to perform (for inspection items) */}
-                            {selectedTicket.task_to_perform && (
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Tarea a Realizar</h3>
-                                    <p className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-blue-900">{selectedTicket.task_to_perform}</p>
-                                </div>
-                            )}
-
-                            {/* Observations */}
-                            {selectedTicket.observations && (
-                                <div>
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Observaciones</h3>
-                                    <p className="bg-gray-50 p-4 rounded-lg text-gray-700">{selectedTicket.observations}</p>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Modal Footer - Actions */}
-                        <div className="p-6 border-t bg-gray-50 flex justify-between items-center">
-                            <div className="text-sm text-gray-500">
-                                ID: {selectedTicket.id}
-                            </div>
-                            <div className="flex gap-3">
+                        {/* Footer */}
+                        <div style={{
+                            padding: '20px 28px',
+                            borderTop: '1px solid #f3f4f6',
+                            backgroundColor: '#f9fafb',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <span style={{ fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' }}>
+                                ID: {String(selectedTicket.id).slice(0, 12)}
+                            </span>
+                            <div style={{ display: 'flex', gap: '12px' }}>
                                 {selectedTicket.status === 'open' && (
                                     <button
-                                        onClick={() => handleStatusChange(selectedTicket.id, 'in_progress', selectedTicket.source)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                        onClick={() => setShowStartWorkModal(true)}
+                                        style={{
+                                            padding: '12px 20px',
+                                            backgroundColor: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            fontWeight: '600',
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                                        }}
                                     >
-                                        <Clock className="w-4 h-4" />
+                                        <Clock style={{ width: '16px', height: '16px' }} />
                                         Empezar a Trabajar
                                     </button>
                                 )}
                                 {selectedTicket.status === 'in_progress' && (
                                     <button
                                         onClick={() => handleStatusChange(selectedTicket.id, 'resolved', selectedTicket.source)}
-                                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                                        style={{
+                                            padding: '12px 20px',
+                                            backgroundColor: '#22c55e',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            fontWeight: '600',
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
+                                        }}
                                     >
-                                        <CheckCircle className="w-4 h-4" />
+                                        <CheckCircle style={{ width: '16px', height: '16px' }} />
                                         Marcar como Resuelto
                                     </button>
                                 )}
                                 <button
                                     onClick={() => setSelectedTicket(null)}
-                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                                    style={{
+                                        padding: '12px 20px',
+                                        backgroundColor: '#e5e7eb',
+                                        color: '#374151',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontWeight: '600',
+                                        fontSize: '14px',
+                                        cursor: 'pointer'
+                                    }}
                                 >
                                     Cerrar
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Start Work Modal */}
+            {showStartWorkModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100
+                }}>
+                    <div style={{
+                        backgroundColor: 'white', borderRadius: '20px', width: '90%', maxWidth: '500px',
+                        padding: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                    }}>
+                        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#111827' }}>
+                            👷‍♂️ Empezar a Trabajar
+                        </h3>
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+                                Plan de Acción
+                            </label>
+                            <textarea
+                                value={actionPlan}
+                                onChange={(e) => setActionPlan(e.target.value)}
+                                placeholder="Describe brevemente qué vas a hacer..."
+                                style={{
+                                    width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #d1d5db',
+                                    minHeight: '100px', fontSize: '14px'
+                                }}
+                            />
+                        </div>
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+                                Tiempo Estimado
+                            </label>
+                            <select
+                                value={estimatedTime}
+                                onChange={(e) => setEstimatedTime(e.target.value)}
+                                style={{
+                                    width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #d1d5db',
+                                    backgroundColor: 'white', fontSize: '14px'
+                                }}
+                            >
+                                <option value="30 mins">30 mins</option>
+                                <option value="1 hora">1 hora</option>
+                                <option value="2 horas">2 horas</option>
+                                <option value="4 horas">4 horas</option>
+                                <option value="1 día">1 día</option>
+                                <option value="Más de 1 día">Más de 1 día</option>
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setShowStartWorkModal(false)}
+                                style={{
+                                    padding: '10px 20px', borderRadius: '10px', border: 'none',
+                                    backgroundColor: '#f3f4f6', color: '#374151', fontWeight: '600', cursor: 'pointer'
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleStartWorkConfirm}
+                                disabled={!actionPlan || isSubmittingStart}
+                                style={{
+                                    padding: '10px 20px', borderRadius: '10px', border: 'none',
+                                    backgroundColor: '#3b82f6', color: 'white', fontWeight: '600', cursor: 'pointer',
+                                    opacity: (!actionPlan || isSubmittingStart) ? 0.7 : 1
+                                }}
+                            >
+                                {isSubmittingStart ? 'Guardando...' : 'Confirmar Inicio'}
+                            </button>
                         </div>
                     </div>
                 </div>

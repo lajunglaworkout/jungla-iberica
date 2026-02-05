@@ -133,6 +133,40 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      let uploadedImageUrls: string[] = [];
+
+      // 1. Upload images if selected
+      if (selectedImages.length > 0) {
+        setIsSubmitting(true); // Ensure loading state
+
+        const uploadPromises = selectedImages.map(async (file) => {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `incidents/${centerId}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('maintenance-photos')
+              .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('maintenance-photos')
+              .getPublicUrl(filePath);
+
+            return publicUrl;
+          } catch (error) {
+            console.error('Error uploading image:', error);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(uploadPromises);
+        uploadedImageUrls = results.filter((url): url is string => url !== null);
+        console.log('📸 Imágenes subidas:', uploadedImageUrls);
+      }
+
       const incidentData = {
         center_id: centerId,
         center_name: centerName,
@@ -147,16 +181,21 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         status: 'abierta' as const,
         inventory_item: selectedType.requiresInventory ? inventoryItem || undefined : undefined,
         inventory_quantity: selectedType.requiresInventory ? inventoryQuantity : undefined,
-        has_images: selectedImages.length > 0,
+        has_images: uploadedImageUrls.length > 0,
+        image_urls: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
         auto_notify: selectedType.autoNotify,
         notified_at: new Date().toISOString()
       };
+
+      console.log('💾 Guardando: image_urls=', incidentData.image_urls);
 
       const { data: savedIncident, error } = await supabase
         .from('checklist_incidents')
         .insert([incidentData])
         .select()
         .single();
+
+      console.log('✅ Incidencia guardada respuesta:', savedIncident, 'Error:', error);
 
       if (error) throw error;
 

@@ -369,22 +369,38 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                         gap: '24px',
                         marginBottom: '32px'
                     }}>
-                        {/* Card 1 */}
-                        <div style={{
-                            backgroundColor: 'white',
-                            borderRadius: '12px',
-                            padding: '24px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                            border: '1px solid #f3f4f6'
-                        }}>
+                        {/* Card 1 - Clickable to Incidencias */}
+                        <div
+                            onClick={() => setActiveTab('incidencias')}
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '12px',
+                                padding: '24px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                border: '1px solid #f3f4f6',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)';
+                                e.currentTarget.style.borderColor = '#2563eb';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                                e.currentTarget.style.borderColor = '#f3f4f6';
+                            }}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                 <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '8px' }}>
                                     <Wrench style={{ width: '24px', height: '24px', color: '#2563eb' }} />
                                 </div>
                                 <span style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280' }}>Tickets Activos</span>
                             </div>
-                            <div style={{ fontSize: '30px', fontWeight: 'bold', color: '#111827' }}>{stats.totalActiveTickets}</div>
-                            <div style={{ fontSize: '14px', color: '#4b5563', marginTop: '4px' }}>reparaciones pendientes</div>
+                            <div style={{ fontSize: '30px', fontWeight: 'bold', color: '#2563eb' }}>{stats.totalActiveTickets}</div>
+                            <div style={{ fontSize: '14px', color: '#4b5563', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                reparaciones pendientes
+                                <ArrowRight style={{ width: '14px', height: '14px', color: '#2563eb' }} />
+                            </div>
                         </div>
 
                         {/* Card 2 */}

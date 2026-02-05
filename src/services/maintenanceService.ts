@@ -878,40 +878,77 @@ Sistema de Mantenimiento La Jungla
     try {
       const { supabase } = await import('../lib/supabase');
 
-      // Obtener última inspección de cada centro
+      // 1. Get all centers first
+      const centers = await this.getCenters();
+
+      // 2. Get ALL pending incidents from checklist_incidents (open or in_progress)
+      const { data: incidents, error: incError } = await supabase
+        .from('checklist_incidents')
+        .select('center_id, center_name, status')
+        .in('status', ['abierta', 'en_progreso']);
+
+      console.log('📊 getCenterComparison - Incidencias encontradas:', incidents?.length, 'Error:', incError);
+      console.log('📊 Incidencias raw:', incidents);
+
+      // Count incidents per center_name (since center_id may not match centers table)
+      const incidentCountByName = new Map<string, number>();
+      incidents?.forEach(inc => {
+        const name = inc.center_name;
+        if (name) {
+          incidentCountByName.set(name, (incidentCountByName.get(name) || 0) + 1);
+        }
+      });
+
+      console.log('📊 Incidents por nombre de centro:', Object.fromEntries(incidentCountByName));
+      console.log('📊 Centros en tabla:', centers.map(c => c.name));
+
+      // 3. Get last inspection per center
       const { data: inspections } = await supabase
         .from('maintenance_inspections')
-        .select('center_id, center_name, overall_score, inspection_date, items_regular, items_bad')
+        .select('center_id, center_name, overall_score, inspection_date')
         .order('inspection_date', { ascending: false });
 
-      // Agrupar por centro (tomando la más reciente)
-      const centerMap = new Map();
-
-      inspections?.forEach(inspection => {
-        if (!centerMap.has(inspection.center_id)) {
-          centerMap.set(inspection.center_id, {
-            centerId: inspection.center_id,
-            centerName: inspection.center_name,
-            healthScore: inspection.overall_score,
-            pendingTickets: inspection.items_regular + inspection.items_bad, // Aproximación
-            lastInspectionDate: inspection.inspection_date
+      const lastInspectionByName = new Map<string, { score: number; date: string }>();
+      inspections?.forEach(insp => {
+        if (insp.center_name && !lastInspectionByName.has(insp.center_name)) {
+          lastInspectionByName.set(insp.center_name, {
+            score: insp.overall_score,
+            date: insp.inspection_date
           });
         }
       });
 
-      // Si no hay inspecciones, obtener lista base de centros de la BD
-      if (centerMap.size === 0) {
-        const centers = await this.getCenters();
-        return centers.map(c => ({
+      // 4. Build result by combining all data
+      // Use flexible matching: check if incident center_name contains center name or vice versa
+      const result = centers.map(c => {
+        const lastInsp = lastInspectionByName.get(c.name);
+
+        // Try exact match first, then partial matching
+        let ticketCount = incidentCountByName.get(c.name) || 0;
+
+        if (ticketCount === 0) {
+          // Try flexible matching - incident name might contain center name or vice versa
+          for (const [incName, count] of incidentCountByName.entries()) {
+            const normalizedCenterName = c.name.toLowerCase().replace(/\s+/g, '');
+            const normalizedIncName = incName.toLowerCase().replace(/\s+/g, '');
+            if (normalizedIncName.includes(normalizedCenterName) || normalizedCenterName.includes(normalizedIncName)) {
+              ticketCount += count;
+            }
+          }
+        }
+
+        return {
           centerId: c.id.toString(),
           centerName: c.name,
-          healthScore: 0,
-          pendingTickets: 0,
-          lastInspectionDate: null
-        }));
-      }
+          healthScore: lastInsp?.score || 0,
+          pendingTickets: ticketCount,
+          lastInspectionDate: lastInsp?.date || null
+        };
+      });
 
-      return Array.from(centerMap.values());
+      console.log('📊 Resultado final getCenterComparison:', result);
+
+      return result;
 
     } catch (error) {
       console.error('❌ Error en getCenterComparison:', error);
@@ -1295,14 +1332,14 @@ Sistema de Mantenimiento La Jungla
       // 2. Query checklist_incidents table for maintenance-related incidents
       let incidentsQuery = supabase
         .from('checklist_incidents')
-        .select('*, centers(name)')
+        .select('*')  // No FK to centers, center_name is stored directly
         .or('incident_type.eq.maintenance,department.eq.Mantenimiento');
 
       // Map status filter from tickets format to incidents format
       if (filters?.status) {
         const statusMap: Record<string, string> = {
           'open': 'abierta',
-          'in_progress': 'en_progreso',
+          'in_progress': 'en_proceso',
           'resolved': 'resuelta'
         };
         const incidentStatus = statusMap[filters.status] || filters.status;
@@ -1313,6 +1350,10 @@ Sistema de Mantenimiento La Jungla
       }
 
       const { data: checklistIncidents, error: incidentsError } = await incidentsQuery.order('created_at', { ascending: false });
+
+      if (checklistIncidents) {
+        console.log('🐞 Incidencias Raw:', checklistIncidents.map(i => ({ id: i.id, status: i.status, has_images: i.has_images, image_urls_len: i.image_urls?.length, image_urls: i.image_urls })));
+      }
 
       // 3. Query maintenance_inspection_items (quarterly inspection issues) - THIS IS WHERE THE 8 ITEMS COME FROM
       let inspectionItemsQuery = supabase
@@ -1348,7 +1389,7 @@ Sistema de Mantenimiento La Jungla
         title: incident.title || 'Incidencia de Checklist',
         description: incident.description,
         status: incident.status === 'abierta' ? 'open' :
-          incident.status === 'en_progreso' ? 'in_progress' :
+          (incident.status === 'en_proceso' || incident.status === 'en_progreso') ? 'in_progress' :
             incident.status === 'resuelta' ? 'resolved' : 'open',
         priority: incident.priority === 'critica' ? 'high' :
           incident.priority === 'alta' ? 'high' :
@@ -1356,6 +1397,7 @@ Sistema de Mantenimiento La Jungla
         created_at: incident.created_at,
         center_id: incident.center_id,
         centers: incident.centers || { name: incident.center_name },
+        center_name: incident.center_name,
         source: 'checklist',
         // Additional fields for detail view
         reporter_name: incident.reporter_name,
@@ -1364,6 +1406,7 @@ Sistema de Mantenimiento La Jungla
         department: incident.department,
         responsible: incident.responsible,
         has_images: incident.has_images,
+        image_urls: incident.image_urls || [],
         inventory_item: incident.inventory_item,
         inventory_quantity: incident.inventory_quantity,
         resolution_notes: incident.resolution_notes,
