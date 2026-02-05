@@ -245,9 +245,10 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         /* MAIN MODAL */
         /* MAIN MODAL */
         /* MAIN MODAL */
-        <div className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] flex flex-col transition-all">
+        /* MAIN MODAL */
+        <div className="bg-white md:rounded-[2rem] w-full max-w-5xl h-full md:h-auto md:max-h-[90vh] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] flex flex-col transition-all">
           {/* Header */}
-          <div className="relative px-10 py-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="relative px-5 py-4 md:px-10 md:py-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white shrink-0">
             <div className="pr-12">
               <div className="flex items-center gap-2 mb-2">
                 <div className="px-3 py-1 bg-gray-900 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-sm whitespace-nowrap">
@@ -259,21 +260,21 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                   </span>
                 )}
               </div>
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
-                {step === 'type' ? '¿Qué ha ocurrido?' : 'Detalles de la incidencia'}
+              <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
+                {step === 'type' ? '¿Qué ha ocurrido?' : 'Nueva Incidencia'}
               </h2>
             </div>
 
             <button
               onClick={onClose}
-              className="absolute top-8 right-8 p-3 hover:bg-gray-100 rounded-full transition-colors group z-10"
+              className="absolute top-4 right-4 md:top-8 md:right-8 p-2 md:p-3 hover:bg-gray-100 rounded-full transition-colors group z-10"
             >
               <X className="w-6 h-6 text-gray-400 group-hover:text-gray-900" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-10">
+          <div className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
             {step === 'type' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {INCIDENT_TYPES.map((type) => (
@@ -283,21 +284,25 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                       setSelectedType(type);
                       setStep('details');
                     }}
-                    className="group relative p-12 h-full rounded-[2rem] border-none bg-white text-left transition-all duration-300 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-2 overflow-hidden flex flex-col"
+                    onClick={() => {
+                      setSelectedType(type);
+                      setStep('details');
+                    }}
+                    className="group relative p-6 md:p-12 h-full rounded-3xl md:rounded-[2rem] border-none bg-white text-left transition-all duration-300 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-2 overflow-hidden flex flex-col shrink-0"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${type.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
                     <div className="relative z-10 flex-1 flex flex-col">
-                      <div className="flex items-start justify-between mb-6">
-                        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${type.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                      <div className="flex items-start justify-between mb-4 md:mb-6">
+                        <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br ${type.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
                           {type.icon}
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all duration-300 border border-transparent group-hover:border-gray-100">
-                          <ArrowRight className="w-6 h-6 text-gray-300 group-hover:text-gray-900" />
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all duration-300 border border-transparent group-hover:border-gray-100">
+                          <ArrowRight className="w-5 h-5 md:w-6 md:h-6 text-gray-300 group-hover:text-gray-900" />
                         </div>
                       </div>
                       <div className="mt-auto">
-                        <h3 className="text-2xl font-black text-gray-900 mb-2 group-hover:translate-x-1 transition-transform">{type.name}</h3>
-                        <p className="text-base font-medium text-gray-500 leading-relaxed group-hover:text-gray-600">
+                        <h3 className="text-lg md:text-2xl font-black text-gray-900 mb-1 md:mb-2 group-hover:translate-x-1 transition-transform">{type.name}</h3>
+                        <p className="text-sm md:text-base font-medium text-gray-500 leading-relaxed group-hover:text-gray-600">
                           {type.description}
                         </p>
                       </div>
@@ -308,21 +313,21 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
             ) : (
               <div className="space-y-8 animate-in slide-in-from-right-8 duration-300">
                 {/* Type Selection Summary (Full Width) */}
-                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-6">
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${selectedType?.gradient} flex items-center justify-center shadow-md`}>
+                <div className="flex items-center justify-between p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4 md:gap-6">
+                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br ${selectedType?.gradient} flex items-center justify-center shadow-md`}>
                       {selectedType?.icon}
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-gray-900">{selectedType?.name}</div>
-                      <div className="text-sm text-gray-500 font-bold uppercase tracking-wide">
+                      <div className="text-lg md:text-2xl font-bold text-gray-900">{selectedType?.name}</div>
+                      <div className="text-xs md:text-sm text-gray-500 font-bold uppercase tracking-wide">
                         {selectedType?.department}
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => setStep('type')}
-                    className="text-base font-bold text-blue-600 hover:text-blue-700 px-6 py-3 hover:bg-blue-50 rounded-2xl transition-colors"
+                    className="text-sm md:text-base font-bold text-blue-600 hover:text-blue-700 px-4 py-2 md:px-6 md:py-3 hover:bg-blue-50 rounded-xl md:rounded-2xl transition-colors"
                   >
                     Cambiar
                   </button>
@@ -345,24 +350,24 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                     {/* Images moved to left column for better flow */}
                     <div>
                       <label className="block text-xl font-extrabold text-gray-900 mb-4">Fotografías (Opcional)</label>
-                      <div className="flex gap-4 overflow-x-auto pb-4">
+                      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 scrollbar-hide">
                         {imagePreviewUrls.map((url, idx) => (
-                          <div key={idx} className="relative w-40 h-40 flex-shrink-0 animate-in fade-in zoom-in duration-200 group">
-                            <img src={url} alt="Preview" className="w-full h-full object-cover rounded-3xl border border-gray-100 shadow-sm" />
+                          <div key={idx} className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0 animate-in fade-in zoom-in duration-200 group">
+                            <img src={url} alt="Preview" className="w-full h-full object-cover rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm" />
                             <button
                               onClick={() => removeImage(idx)}
-                              className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors scale-0 group-hover:scale-100"
+                              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors scale-100 md:scale-0 md:group-hover:scale-100"
                             >
-                              <X size={16} strokeWidth={3} />
+                              <X size={14} strokeWidth={3} />
                             </button>
                           </div>
                         ))}
                         {selectedImages.length < 3 && (
-                          <label className="flex flex-col items-center justify-center w-40 h-40 rounded-3xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group">
-                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
-                              <Camera className="w-6 h-6 text-gray-400 group-hover:text-blue-500" />
+                          <label className="flex flex-col items-center justify-center w-28 h-28 md:w-40 md:h-40 rounded-2xl md:rounded-3xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group shrink-0">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 rounded-full flex items-center justify-center mb-1 md:mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                              <Camera className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-blue-500" />
                             </div>
-                            <span className="text-xs font-bold text-gray-400 group-hover:text-blue-500 uppercase tracking-wide">Añadir Foto</span>
+                            <span className="text-[10px] md:text-xs font-bold text-gray-400 group-hover:text-blue-500 uppercase tracking-wide">Añadir Foto</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -443,17 +448,17 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           {/* Footer */}
           {
             step === 'details' && (
-              <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-4">
+              <div className="p-4 md:p-6 border-t border-gray-100 bg-gray-50 flex gap-3 md:gap-4 shrink-0 pb-safe">
                 <button
                   onClick={() => setStep('type')}
-                  className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                  className="px-4 py-3 md:px-6 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors text-sm md:text-base"
                 >
                   Atrás
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={!description.trim() || isSubmitting}
-                  className={`flex-1 flex items-center justify-center gap-3 px-10 py-5 rounded-[1.5rem] text-white font-black text-xl transition-all shadow-2xl ${!description.trim() ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'hover:-translate-y-1 active:scale-95'
+                  className={`flex-1 flex items-center justify-center gap-2 md:gap-3 px-6 py-4 md:px-10 md:py-5 rounded-[1rem] md:rounded-[1.5rem] text-white font-black text-lg md:text-xl transition-all shadow-2xl ${!description.trim() ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'hover:-translate-y-1 active:scale-95'
                     }`}
                   style={{
                     background: !description.trim() ? '' : (selectedType ? `linear-gradient(135deg, ${selectedType.color}, #000)` : '#111827'),
@@ -461,9 +466,9 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                   }}
                 >
                   {isSubmitting ? (
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 md:w-6 md:h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <>Enviar Reporte <Send size={20} /></>
+                    <>Enviar <span className="hidden md:inline">Reporte</span> <Send size={18} className="md:w-5 md:h-5" /></>
                   )}
                 </button>
               </div>
