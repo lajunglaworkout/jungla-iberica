@@ -228,7 +228,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-50 animate-in fade-in duration-300 md:p-4 overflow-y-auto md:overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-white md:bg-slate-900/80 md:backdrop-blur-xl md:flex md:items-center md:justify-center overflow-y-auto md:overflow-hidden animate-in fade-in duration-300">
       {/* SUCCESS STATE */}
       {showSuccess ? (
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
@@ -247,7 +247,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         /* MAIN MODAL */
         /* MAIN MODAL */
         /* MAIN MODAL */
-        <div className="bg-white w-full min-h-full md:min-h-0 md:rounded-[2rem] md:max-w-5xl md:h-auto md:max-h-[90vh] shadow-[0_0_80px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] flex flex-col transition-all relative">
+        <div className="w-full min-h-screen relative bg-white md:min-h-0 md:rounded-[2rem] md:max-w-5xl md:h-auto md:max-h-[90vh] md:shadow-[0_0_80px_rgba(0,0,0,0.35)] md:ring-1 md:ring-black/[0.05] md:flex md:flex-col md:transition-all">
           {/* Header */}
           <div className="relative px-5 py-4 md:px-10 md:py-8 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white shrink-0">
             <div className="pr-12">
