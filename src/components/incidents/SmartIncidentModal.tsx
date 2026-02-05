@@ -228,7 +228,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-white md:bg-slate-900/80 md:backdrop-blur-xl md:flex md:items-center md:justify-center overflow-y-auto md:overflow-hidden animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[9999] bg-white md:bg-slate-900/80 md:backdrop-blur-xl md:flex md:items-center md:justify-center overflow-y-auto md:overflow-hidden animate-in fade-in duration-300 overscroll-y-auto">
       {/* SUCCESS STATE */}
       {showSuccess ? (
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-300">
@@ -263,7 +263,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
               </div>
               <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
                 {step === 'type' ? '¿Qué ha ocurrido?' : 'Nueva Incidencia'}
-                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.1 NATIVE</span>
+                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.2 PADDED</span>
               </h2>
             </div>
 
@@ -276,7 +276,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-4 md:p-10 md:overflow-y-auto scroll-smooth">
+          <div className="flex-1 p-4 pb-64 md:p-10 md:pb-10 md:overflow-y-auto scroll-smooth">
             {step === 'type' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {INCIDENT_TYPES.map((type) => (
