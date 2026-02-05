@@ -1285,7 +1285,7 @@ Sistema de Mantenimiento La Jungla
     try {
       const { supabase } = await import('../lib/supabase');
 
-      // 1. Query maintenance_tickets table (original source)
+      // 1. Query maintenance_tickets table (direct tickets)
       let ticketsQuery = supabase.from('maintenance_tickets').select('*, centers(name)');
       if (filters?.status) ticketsQuery = ticketsQuery.eq('status', filters.status);
       if (filters?.priority) ticketsQuery = ticketsQuery.eq('priority', filters.priority);
@@ -1309,18 +1309,44 @@ Sistema de Mantenimiento La Jungla
         incidentsQuery = incidentsQuery.eq('status', incidentStatus);
       }
       if (filters?.priority) {
-        // Map priority if needed
         incidentsQuery = incidentsQuery.eq('priority', filters.priority);
       }
 
       const { data: checklistIncidents, error: incidentsError } = await incidentsQuery.order('created_at', { ascending: false });
 
-      // 3. Normalize checklist incidents to match ticket format
+      // 3. Query maintenance_inspection_items (quarterly inspection issues) - THIS IS WHERE THE 8 ITEMS COME FROM
+      let inspectionItemsQuery = supabase
+        .from('maintenance_inspection_items')
+        .select(`
+          *,
+          maintenance_inspections (
+            center_id,
+            center_name
+          )
+        `)
+        .neq('status', 'bien'); // Only items that need attention
+
+      // Map status filter for inspection items
+      if (filters?.status) {
+        if (filters.status === 'open') {
+          inspectionItemsQuery = inspectionItemsQuery.eq('task_status', 'pendiente');
+        } else if (filters.status === 'in_progress') {
+          inspectionItemsQuery = inspectionItemsQuery.eq('task_status', 'en_progreso');
+        } else if (filters.status === 'resolved') {
+          inspectionItemsQuery = inspectionItemsQuery.eq('task_status', 'completada');
+        }
+      } else {
+        // By default, only show non-completed items
+        inspectionItemsQuery = inspectionItemsQuery.neq('task_status', 'completada');
+      }
+
+      const { data: inspectionItems, error: inspectionError } = await inspectionItemsQuery.order('created_at', { ascending: false });
+
+      // 4. Normalize checklist incidents to ticket format
       const normalizedIncidents = (checklistIncidents || []).map(incident => ({
         id: incident.id,
         title: incident.title || 'Incidencia de Checklist',
         description: incident.description,
-        // Map incident status to ticket status
         status: incident.status === 'abierta' ? 'open' :
           incident.status === 'en_progreso' ? 'in_progress' :
             incident.status === 'resuelta' ? 'resolved' : 'open',
@@ -1330,16 +1356,32 @@ Sistema de Mantenimiento La Jungla
         created_at: incident.created_at,
         center_id: incident.center_id,
         centers: incident.centers,
-        source: 'checklist' // Mark origin
+        source: 'checklist'
       }));
 
-      // 4. Combine both sources
+      // 5. Normalize inspection items to ticket format
+      const normalizedInspectionItems = (inspectionItems || []).map(item => ({
+        id: item.id,
+        title: `${item.zone_name} - ${item.concept_name}`,
+        description: item.observations || item.task_to_perform || 'Requiere atención',
+        status: item.task_status === 'pendiente' ? 'open' :
+          item.task_status === 'en_progreso' ? 'in_progress' :
+            item.task_status === 'completada' ? 'resolved' : 'open',
+        priority: item.status === 'mal' ? 'high' : 'medium', // 'mal' = critical
+        created_at: item.created_at,
+        center_id: item.maintenance_inspections?.center_id,
+        centers: { name: item.maintenance_inspections?.center_name || 'Centro' },
+        source: 'inspection'
+      }));
+
+      // 6. Combine all sources
       const allTickets = [
         ...(maintenanceTickets || []).map(t => ({ ...t, source: 'maintenance' })),
-        ...normalizedIncidents
+        ...normalizedIncidents,
+        ...normalizedInspectionItems
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      console.log(`📋 Loaded ${maintenanceTickets?.length || 0} maintenance_tickets + ${checklistIncidents?.length || 0} checklist_incidents`);
+      console.log(`📋 Loaded: ${maintenanceTickets?.length || 0} maintenance_tickets + ${checklistIncidents?.length || 0} checklist_incidents + ${inspectionItems?.length || 0} inspection_items = ${allTickets.length} total`);
 
       return { success: true, data: allTickets };
     } catch (error) {
