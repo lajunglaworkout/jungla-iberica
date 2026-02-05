@@ -149,7 +149,10 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
               .from('maintenance-photos')
               .upload(filePath, file);
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+              console.error('Upload error details:', uploadError);
+              throw new Error(`Error subiendo imagen: ${uploadError.message}`);
+            }
 
             const { data: { publicUrl } } = supabase.storage
               .from('maintenance-photos')
@@ -217,9 +220,9 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
         onClose();
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error:', error);
-      alert('Error al guardar la incidencia.');
+      alert(error.message || 'Error al guardar la incidencia.');
     } finally {
       setIsSubmitting(false);
     }
@@ -258,8 +261,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                 )}
               </div>
               <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
-                {step === 'type' ? '¿Qué ha ocurrido?' : 'Nueva Incidencia'}
-                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.3 STABLE</span>
+                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.4 IMAGE-FIX</span>
               </h2>
             </div>
 
