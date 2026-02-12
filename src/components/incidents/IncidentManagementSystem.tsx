@@ -392,14 +392,16 @@ const IncidentManagementSystem: React.FC = () => {
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '32px'
+        alignItems: 'flex-start',
+        marginBottom: '32px',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0, marginBottom: '8px' }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0, marginBottom: '8px' }}>
             📋 Incidencias y Peticiones
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+          <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
             Gestión de ausencias, vacaciones y solicitudes de vestuario
           </p>
         </div>
@@ -418,7 +420,9 @@ const IncidentManagementSystem: React.FC = () => {
             fontWeight: '600',
             cursor: 'pointer',
             boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.backgroundColor = '#047857';
@@ -436,7 +440,7 @@ const IncidentManagementSystem: React.FC = () => {
 
       {/* Pestañas de navegación estilo CRM */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
           <button
             onClick={() => setActiveTab('my-incidents')}
             style={{
@@ -508,13 +512,13 @@ const IncidentManagementSystem: React.FC = () => {
 
       {/* Barra de herramientas estilo CRM */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto auto',
-        gap: '16px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
         marginBottom: '24px',
         alignItems: 'center'
       }}>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '200px' }}>
           <Search style={{
             position: 'absolute',
             left: '12px',
@@ -594,7 +598,7 @@ const IncidentManagementSystem: React.FC = () => {
       </div>
 
       {/* Grid de incidencias estilo CRM */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
         {filteredIncidents.map(incident => (
           <div
             key={incident.id}

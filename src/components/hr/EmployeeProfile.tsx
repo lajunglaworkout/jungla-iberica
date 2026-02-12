@@ -18,8 +18,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
   // Form state for editing
   const [formData, setFormData] = useState({
-    nombre: '',
-    telefono: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
     dni: ''
   });
 
@@ -46,8 +47,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
     if (isNaN(Number(currentEmployee.id))) {
       setEmployee(currentEmployee);
       setFormData({
-        nombre: currentEmployee.name || currentEmployee.nombre || '',
-        telefono: currentEmployee.telefono || currentEmployee.phone || '',
+        first_name: currentEmployee.first_name || currentEmployee.name || '',
+        last_name: currentEmployee.last_name || '',
+        phone: currentEmployee.phone || '',
         dni: currentEmployee.dni || ''
       });
       setLoading(false);
@@ -65,8 +67,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
       setEmployee(data);
       setFormData({
-        nombre: data?.nombre || data?.name || '',
-        telefono: data?.telefono || data?.phone || '',
+        first_name: data?.first_name || data?.name || '',
+        last_name: data?.last_name || '',
+        phone: data?.phone || '',
         dni: data?.dni || ''
       });
     } catch (error) {
@@ -91,8 +94,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
       const { error } = await supabase
         .from('employees')
         .update({
-          nombre: formData.nombre,
-          telefono: formData.telefono,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
           dni: formData.dni,
           updated_at: new Date().toISOString()
         })
@@ -103,8 +107,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
       // Update local state
       setEmployee({
         ...employee,
-        nombre: formData.nombre,
-        telefono: formData.telefono,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
         dni: formData.dni
       });
 
@@ -124,21 +129,22 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
   const handleCancel = () => {
     // Reset form to current employee data
     setFormData({
-      nombre: employee?.nombre || employee?.name || '',
-      telefono: employee?.telefono || employee?.phone || '',
+      first_name: employee?.first_name || employee?.name || '',
+      last_name: employee?.last_name || '',
+      phone: employee?.phone || '',
       dni: employee?.dni || ''
     });
     setEditing(false);
     setError(null);
   };
 
-  // Helper to get display value (handles both nombre/name, etc.)
+  // Helper to get display value
   const getDisplayValue = (field: string) => {
-    if (field === 'nombre') return employee?.nombre || employee?.name || 'No disponible';
-    if (field === 'telefono') return employee?.telefono || employee?.phone || 'No especificado';
+    if (field === 'nombre') return `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || employee?.name || 'No disponible';
+    if (field === 'telefono') return employee?.phone || 'No especificado';
     if (field === 'dni') return employee?.dni || 'No disponible';
     if (field === 'email') return employee?.email || 'No especificado';
-    if (field === 'cargo') return employee?.cargo || employee?.role || 'No especificado';
+    if (field === 'cargo') return employee?.position || employee?.role || 'No especificado';
     if (field === 'departamento') return employee?.departamento || employee?.department || 'No especificado';
     return 'No disponible';
   };
@@ -264,8 +270,8 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
             {editing ? (
               <input
                 type="text"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 style={{
                   padding: '12px',
                   backgroundColor: 'white',
@@ -278,6 +284,30 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
             ) : (
               <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
                 {getDisplayValue('nombre')}
+              </div>
+            )}
+          </div>
+
+          {/* Apellidos - Editable */}
+          <div>
+            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Apellidos</label>
+            {editing ? (
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                style={{
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  border: '2px solid #059669',
+                  borderRadius: '8px',
+                  width: '100%',
+                  fontSize: '14px'
+                }}
+              />
+            ) : (
+              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                {employee?.last_name || 'No disponible'}
               </div>
             )}
           </div>
@@ -315,8 +345,8 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
             {editing ? (
               <input
                 type="tel"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 style={{
                   padding: '12px',
                   backgroundColor: 'white',
@@ -335,7 +365,7 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
           {/* Email - Read only */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Mail size={16} />
               Email
             </label>

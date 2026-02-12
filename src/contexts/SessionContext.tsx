@@ -7,11 +7,13 @@ import { supabase } from '../lib/supabase';
 interface Employee {
   id?: string;
   user_id?: string;
+  name: string;
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
   dni?: string;
+  birth_name?: string;
   birth_date?: string;
   address?: string;
   city?: string;
@@ -150,9 +152,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.log('🏢 Departamentos asignados:', departmentsList);
         roleToUse = employeeData.role || 'employee';
 
+        const computedName = `${employeeData.first_name || ''} ${employeeData.last_name || ''}`.trim() || employeeData.name || email.split('@')[0];
+
         basicEmployee = {
           id: employeeData.id?.toString() || userId,
           user_id: userId,
+          name: computedName,
           first_name: employeeData.first_name || email.split('@')[0],
           last_name: employeeData.last_name || '',
           email: email,
@@ -165,7 +170,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           center_id: employeeData.center_id?.toString(),
           is_active: true,
           workType: employeeData.center_id ? 'centro' : 'marca',
-          profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(employeeData.first_name || email.split('@')[0])}&background=059669&color=fff`,
+          profile_image: employeeData.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(computedName)}&background=059669&color=fff`,
           role: roleToUse as string,
           departments: departmentsList,
           address: employeeData.address,

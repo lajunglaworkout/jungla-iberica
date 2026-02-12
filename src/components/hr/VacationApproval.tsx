@@ -135,22 +135,22 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
   return (
     <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
       <div style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <button onClick={onBack} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
             <ArrowLeft size={16} /> Volver
           </button>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>✅ Aprobar Vacaciones</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>✅ Aprobar Vacaciones</h1>
         </div>
 
         {/* Filtros */}
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', backgroundColor: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Filter size={20} style={{ color: '#6b7280' }} />
             <span style={{ fontWeight: '600', color: '#374151' }}>Filtros:</span>
           </div>
 
           {/* Selector de Centro */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 140px', minWidth: '140px' }}>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
               <MapPin size={14} style={{ display: 'inline', marginRight: '4px' }} />
               Centro
@@ -177,7 +177,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
           </div>
 
           {/* Selector de Estado */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 140px', minWidth: '140px' }}>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
               Estado
             </label>
@@ -201,7 +201,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
           </div>
 
           {/* Resumen */}
-          <div style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+          <div style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', borderRadius: '8px', flexShrink: 0, minWidth: '80px', textAlign: 'center' }}>
             <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Total filtrado</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#059669' }}>{filteredRequests.length}</div>
           </div>
@@ -216,9 +216,10 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
         {pending.map(request => (
           <div key={request.id} style={{
             padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px',
-            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            flexWrap: 'wrap', gap: '12px'
           }}>
-            <div>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                 {request.employee_name}
                 {request.center_id && (
@@ -233,16 +234,16 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
               </div>
               <div style={{ fontSize: '14px', marginTop: '4px' }}>{request.reason}</div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <button
                 onClick={() => handleAction(request.id, 'approved')}
-                style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px' }}
+                style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
               >
                 <Check size={14} /> Aprobar
               </button>
               <button
                 onClick={() => handleAction(request.id, 'rejected')}
-                style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px' }}
+                style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
               >
                 <X size={14} /> Rechazar
               </button>

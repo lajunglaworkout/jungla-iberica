@@ -57,14 +57,14 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   // Estados para firmas digitales
   const [firmaApertura, setFirmaApertura] = useState({
     empleadoId: null as string | null,
-    empleadoNombre: '',
+    empleado_nombre: '',
     hora: null as string | null,
     firmado: false
   });
 
   const [firmaCierre, setFirmaCierre] = useState({
     empleadoId: null as string | null,
-    empleadoNombre: '',
+    empleado_nombre: '',
     hora: null as string | null,
     firmado: false
   });
@@ -434,10 +434,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
       const nuevaFirma = {
         firmado: true,
-        empleado_id: employee.id,
+        empleadoId: employee.id,
         empleado_nombre: employee.name || employee.email,
-        fecha: new Date().toISOString(),
-        tipo: 'apertura'
+        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
       };
 
       setFirmaApertura(nuevaFirma);
@@ -462,10 +461,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
       const nuevaFirma = {
         firmado: true,
-        empleado_id: employee.id,
+        empleadoId: employee.id,
         empleado_nombre: employee.name || employee.email,
-        fecha: new Date().toISOString(),
-        tipo: 'cierre'
+        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
       };
 
       setFirmaCierre(nuevaFirma);
@@ -552,7 +550,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         backgroundColor: tarea.completado ? '#f0fdf4' : 'white',
         border: '1px solid #e5e7eb',
         borderRadius: '8px',
-        marginBottom: '8px'
+        marginBottom: '8px',
+        flexWrap: 'wrap',
+        gap: '8px'
       }}>
         <input
           type="checkbox"
@@ -561,17 +561,19 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           style={{
             width: '20px',
             height: '20px',
-            marginRight: '12px',
-            cursor: 'pointer'
+            marginRight: '4px',
+            cursor: 'pointer',
+            flexShrink: 0
           }}
         />
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
             fontWeight: '500',
             textDecoration: tarea.completado ? 'line-through' : 'none',
             color: tarea.completado ? '#6b7280' : '#111827',
-            margin: '0 0 4px 0'
+            margin: '0 0 4px 0',
+            wordBreak: 'break-word'
           }}>
             {index + 1}. {tarea.titulo}
           </p>
@@ -597,7 +599,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                 padding: '4px 8px',
                 border: '1px solid #e5e7eb',
                 borderRadius: '4px',
-                width: '200px'
+                width: '100%',
+                maxWidth: '200px',
+                boxSizing: 'border-box'
               }}
             />
           )}
@@ -613,8 +617,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
-            fontSize: '14px',
-            marginLeft: '8px'
+            fontSize: '13px',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+            minHeight: '32px'
           }}
         >
           ⚠️ Reportar
@@ -729,7 +735,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                   cursor: firmaApertura.firmado ? 'not-allowed' : 'pointer'
                 }}
               >
-                {firmaApertura.firmado ? '✅ Firmado por ' + firmaApertura.empleadoNombre : '✍️ Firmar Apertura'}
+                {firmaApertura.firmado ? '✅ Firmado por ' + firmaApertura.empleado_nombre : '✍️ Firmar Apertura'}
               </button>
               {firmaApertura.firmado && (
                 <div style={{
@@ -759,72 +765,95 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             {renderTasks(checklist.limpieza, 'limpieza')}
           </div>
 
-          {/* SECCIÓN CIERRE */}
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{
-              color: '#059669',
-              borderBottom: '2px solid #059669',
-              paddingBottom: '8px',
-              marginBottom: '16px',
-              fontSize: '24px',
-              fontWeight: '700'
+          {/* SECCIÓN CIERRE — Bloqueada si no se ha firmado apertura */}
+          {!firmaApertura.firmado ? (
+            <div style={{
+              marginBottom: '32px',
+              padding: '24px',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '12px',
+              border: '2px dashed #d1d5db',
+              textAlign: 'center'
             }}>
-              🔒 CIERRE
-            </h2>
-            {renderTasks(checklist.cierre, 'cierre')}
-
-            {/* Botón de firma cierre */}
-            <div style={{ marginTop: '16px' }}>
-              {/* Mostrar progreso de tareas */}
-              {(() => {
-                const tareasCompletadas = checklist.cierre.filter(t => t.completado).length;
-                const totalTareas = checklist.cierre.length;
-                const puedeEnviar = tareasCompletadas === totalTareas && totalTareas > 0;
-
-                return (
-                  <>
-                    {!firmaCierre.firmado && (
-                      <div style={{
-                        marginBottom: '12px',
-                        padding: '12px',
-                        backgroundColor: puedeEnviar ? '#ecfdf5' : '#fef3c7',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        color: puedeEnviar ? '#065f46' : '#92400e'
-                      }}>
-                        {puedeEnviar
-                          ? '✅ Todas las tareas completadas. Puedes firmar el cierre.'
-                          : `⚠️ Completa todas las tareas antes de firmar (${tareasCompletadas}/${totalTareas})`
-                        }
-                      </div>
-                    )}
-                    <button
-                      onClick={handleFirmarCierre}
-                      disabled={firmaCierre.firmado || !puedeEnviar}
-                      style={{
-                        ...buttonStyle,
-                        backgroundColor: firmaCierre.firmado ? '#10b981' : (puedeEnviar ? '#3b82f6' : '#9ca3af'),
-                        opacity: (firmaCierre.firmado || !puedeEnviar) ? 0.8 : 1,
-                        cursor: (firmaCierre.firmado || !puedeEnviar) ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {firmaCierre.firmado ? '✅ Firmado por ' + firmaCierre.empleadoNombre : '✍️ Firmar Cierre'}
-                    </button>
-                  </>
-                );
-              })()}
-              {firmaCierre.firmado && (
-                <div style={{
-                  fontSize: '12px',
-                  color: '#059669',
-                  marginTop: '4px',
-                  fontWeight: '500'
-                }}>
-                  Firmado a las {firmaCierre.hora}
-                </div>
-              )}
+              <h2 style={{
+                color: '#9ca3af',
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '12px'
+              }}>
+                🔒 CIERRE
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '15px' }}>
+                ⚠️ Debes firmar la <strong>apertura</strong> antes de acceder a las tareas de cierre.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{
+                color: '#059669',
+                borderBottom: '2px solid #059669',
+                paddingBottom: '8px',
+                marginBottom: '16px',
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                🔒 CIERRE
+              </h2>
+              {renderTasks(checklist.cierre, 'cierre')}
+
+              {/* Botón de firma cierre */}
+              <div style={{ marginTop: '16px' }}>
+                {/* Mostrar progreso de tareas */}
+                {(() => {
+                  const tareasCompletadas = checklist.cierre.filter(t => t.completado).length;
+                  const totalTareas = checklist.cierre.length;
+                  const puedeEnviar = tareasCompletadas === totalTareas && totalTareas > 0;
+
+                  return (
+                    <>
+                      {!firmaCierre.firmado && (
+                        <div style={{
+                          marginBottom: '12px',
+                          padding: '12px',
+                          backgroundColor: puedeEnviar ? '#ecfdf5' : '#fef3c7',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          color: puedeEnviar ? '#065f46' : '#92400e'
+                        }}>
+                          {puedeEnviar
+                            ? '✅ Todas las tareas completadas. Puedes firmar el cierre.'
+                            : `⚠️ Completa todas las tareas antes de firmar (${tareasCompletadas}/${totalTareas})`
+                          }
+                        </div>
+                      )}
+                      <button
+                        onClick={handleFirmarCierre}
+                        disabled={firmaCierre.firmado || !puedeEnviar}
+                        style={{
+                          ...buttonStyle,
+                          backgroundColor: firmaCierre.firmado ? '#10b981' : (puedeEnviar ? '#3b82f6' : '#9ca3af'),
+                          opacity: (firmaCierre.firmado || !puedeEnviar) ? 0.8 : 1,
+                          cursor: (firmaCierre.firmado || !puedeEnviar) ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {firmaCierre.firmado ? '✅ Firmado por ' + firmaCierre.empleado_nombre : '✍️ Firmar Cierre'}
+                      </button>
+                    </>
+                  );
+                })()}
+                {firmaCierre.firmado && (
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#059669',
+                    marginTop: '4px',
+                    fontWeight: '500'
+                  }}>
+                    Firmado a las {firmaCierre.hora}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Sección de incidencias */}
           <div style={{ marginBottom: '32px' }}>
@@ -855,25 +884,53 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             </div>
           </div>
 
-          {/* Botón final para completar todo */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <button
-              style={{
-                padding: '16px 32px',
-                backgroundColor: '#059669',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                width: '100%',
-                maxWidth: '400px'
-              }}
-            >
-              ✅ COMPLETAR Y ENVIAR CHECKLIST DEL DÍA
-            </button>
-          </div>
+          {/* Botón final para completar todo — con validación */}
+          {(() => {
+            const allApertura = checklist.apertura.every(t => t.completado);
+            const allCierre = checklist.cierre.every(t => t.completado);
+            const canComplete = firmaApertura.firmado && firmaCierre.firmado && allApertura && allCierre;
+            const missingItems: string[] = [];
+            if (!firmaApertura.firmado) missingItems.push('firma de apertura');
+            if (!allApertura) missingItems.push('tareas de apertura');
+            if (!allCierre) missingItems.push('tareas de cierre');
+            if (!firmaCierre.firmado) missingItems.push('firma de cierre');
+
+            return (
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                {!canComplete && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#fef3c7',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    fontSize: '14px',
+                    color: '#92400e'
+                  }}>
+                    ⚠️ Falta: {missingItems.join(', ')}
+                  </div>
+                )}
+                <button
+                  disabled={!canComplete}
+                  onClick={canComplete ? () => guardarEstadoProvisional('completado') : undefined}
+                  style={{
+                    padding: '16px 32px',
+                    backgroundColor: canComplete ? '#059669' : '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    cursor: canComplete ? 'pointer' : 'not-allowed',
+                    width: '100%',
+                    maxWidth: '400px',
+                    opacity: canComplete ? 1 : 0.7
+                  }}
+                >
+                  ✅ COMPLETAR Y ENVIAR CHECKLIST DEL DÍA
+                </button>
+              </div>
+            );
+          })()}
         </>
       )}
 
@@ -1271,9 +1328,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
                   }
 
                   alert(`✅ ¡Incidencia guardada y reportada al departamento de ${selectedIncidentType === 'mantenimiento' ? 'Mantenimiento' :
-                      selectedIncidentType === 'logistica' ? 'Logística' :
-                        selectedIncidentType === 'personal' ? 'Personal' :
-                          selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
+                    selectedIncidentType === 'logistica' ? 'Logística' :
+                      selectedIncidentType === 'personal' ? 'Personal' :
+                        selectedIncidentType === 'clientes' ? 'Atención al Cliente' : selectedIncidentType
                     }!${selectedImages.length > 0 ? ` (${selectedImages.length} imagen${selectedImages.length > 1 ? 'es' : ''} adjunta${selectedImages.length > 1 ? 's' : ''})` : ''}\n\n📋 Los administradores podrán verla en el sistema de incidencias.`);
 
                   setShowIncidentModal(false);
@@ -1313,9 +1370,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         onSignatureCompleted={(employeeName) => {
           const nuevaFirma = {
             firmado: true,
+            empleadoId: null as string | null,
             empleado_nombre: employeeName,
-            fecha: new Date().toISOString(),
-            tipo: 'apertura'
+            hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
           };
           setFirmaApertura(nuevaFirma);
           guardarEstadoProvisional('en_progreso');
@@ -1333,9 +1390,9 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         onSignatureCompleted={(employeeName) => {
           const nuevaFirma = {
             firmado: true,
+            empleadoId: null as string | null,
             empleado_nombre: employeeName,
-            fecha: new Date().toISOString(),
-            tipo: 'cierre'
+            hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
           };
           setFirmaCierre(nuevaFirma);
           guardarEstadoProvisional('completado');

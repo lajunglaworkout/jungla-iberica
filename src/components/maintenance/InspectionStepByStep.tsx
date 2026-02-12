@@ -429,46 +429,52 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          border: '1px solid #f3f4f6'
+          border: '1px solid #f3f4f6',
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 auto', minWidth: 0 }}>
             <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '16px',
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
               backgroundColor: zone.color + '15',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: '24px',
-              fontSize: '28px',
+              marginRight: '16px',
+              fontSize: '24px',
+              flexShrink: 0,
               boxShadow: `0 4px 12px ${zone.color}20`
             }}>
               {zone.icon}
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h2 style={{
-                fontSize: '24px',
+                fontSize: '20px',
                 fontWeight: '800',
                 color: '#111827',
                 margin: '0 0 4px 0',
-                letterSpacing: '-0.02em'
+                letterSpacing: '-0.02em',
+                wordBreak: 'break-word'
               }}>{zone.name}</h2>
               <p style={{
                 color: '#6b7280',
                 margin: 0,
-                fontSize: '15px'
+                fontSize: '14px'
               }}>{zone.description}</p>
             </div>
           </div>
           <div style={{
             backgroundColor: '#f3f4f6',
-            padding: '8px 16px',
+            padding: '6px 12px',
             borderRadius: '100px',
-            fontSize: '14px',
+            fontSize: '13px',
             color: '#4b5563',
             fontWeight: '600',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #e5e7eb',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
           }}>
             Zona {zoneIndex + 1} / {MAINTENANCE_ZONES.length}
           </div>
@@ -514,7 +520,8 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                     backgroundColor: '#f3f4f6',
                     padding: '4px',
                     borderRadius: '12px',
-                    gap: '4px'
+                    gap: '4px',
+                    flexWrap: 'wrap'
                   }}>
                     {Object.entries(MAINTENANCE_STATUS).map(([statusKey, statusValue]) => {
                       const isActive = item?.status === statusKey;
@@ -523,16 +530,18 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                           key={statusKey}
                           onClick={() => handleStatusChange(itemId, statusKey)}
                           style={{
-                            padding: '8px 20px',
+                            padding: '8px 14px',
                             borderRadius: '8px',
                             border: 'none',
                             cursor: 'pointer',
-                            fontSize: '14px',
+                            fontSize: '13px',
                             fontWeight: '600',
                             backgroundColor: isActive ? statusValue.color : 'transparent',
                             color: isActive ? 'white' : '#6b7280',
                             transition: 'all 0.2s',
-                            boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                            boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                            whiteSpace: 'nowrap',
+                            minHeight: '36px'
                           }}
                         >
                           {statusValue.label}

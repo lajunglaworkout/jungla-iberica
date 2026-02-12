@@ -178,19 +178,43 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
+    // Prevent double-processing
+    if (loading) return;
+
     try {
       setLoading(true);
+      setError(null);
+      setSuccess(null);
       stopScanning();
 
-      // Parsear datos del QR
-      const qrData: QRData = JSON.parse(qrText);
-
-      // Verificar que el QR no haya expirado
-      if (Date.now() > qrData.expiresAt) {
-        throw new Error('El código QR ha expirado. Solicita uno nuevo.');
+      // 1. Try to parse QR data
+      let qrData: QRData;
+      try {
+        qrData = JSON.parse(qrText);
+      } catch (parseError) {
+        throw new Error(
+          'El código QR escaneado no es un código de fichaje válido. ' +
+          'Asegúrate de escanear el QR dinámico que aparece en la pantalla del centro.'
+        );
       }
 
-      // Verificar token en la base de datos
+      // 2. Validate required fields
+      if (!qrData.token || !qrData.centerId) {
+        throw new Error(
+          'El código QR no contiene los datos necesarios para fichar. ' +
+          'Pide al encargado que regenere el QR desde la pantalla del centro.'
+        );
+      }
+
+      // 3. Check expiration
+      if (qrData.expiresAt && Date.now() > qrData.expiresAt) {
+        throw new Error(
+          '⏱️ El código QR ha expirado. Los códigos se renuevan cada 30 segundos. ' +
+          'Espera al siguiente código y vuelve a escanear.'
+        );
+      }
+
+      // 4. Validate token against database
       const { data: tokenData, error: tokenError } = await supabase
         .from('qr_tokens')
         .select('*')
@@ -199,24 +223,37 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         .single();
 
       if (tokenError || !tokenData) {
-        throw new Error('Código QR inválido o ya utilizado');
+        // Check if the token exists but is already used
+        const { data: usedToken } = await supabase
+          .from('qr_tokens')
+          .select('is_used')
+          .eq('token', qrData.token)
+          .single();
+
+        if (usedToken?.is_used) {
+          throw new Error(
+            'Este código QR ya fue utilizado. Espera al siguiente código QR en la pantalla del centro.'
+          );
+        }
+        throw new Error(
+          'Código QR no válido. Asegúrate de escanear el QR que aparece en la pantalla del centro.'
+        );
       }
 
-      // Marcar token como usado
+      // 5. Mark token as used
       await supabase
         .from('qr_tokens')
         .update({ is_used: true })
         .eq('id', tokenData.id);
 
-      // Registrar fichaje
+      // 6. Register timeclock entry
       await registerTimeclock(qrData, tokenData);
 
       setScanResult(qrText);
-      setSuccess(`¡Fichaje registrado correctamente en ${qrData.centerName}!`);
 
     } catch (error: any) {
       console.error('Error procesando QR:', error);
-      setError(error.message || 'Error procesando el código QR');
+      setError(error.message || 'Error procesando el código QR. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
