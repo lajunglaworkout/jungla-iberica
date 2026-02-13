@@ -6,13 +6,16 @@ import { deleteTaskNotifications } from './notificationService';
  */
 
 // Marcar tarea como completada
+// Marcar tarea como completada
 export const completeTask = async (
   taskId: string | number,
   completedBy: string,
-  completionNotes: string
+  completionNotes: string,
+  attachments: any[] = [],
+  links: string[] = []
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔄 Marcando tarea como completada:', { taskId, completedBy, completionNotes });
+    console.log('🔄 Marcando tarea como completada:', { taskId, completedBy, completionNotes, attachments, links });
 
     const { error } = await supabase
       .from('tareas')
@@ -20,7 +23,9 @@ export const completeTask = async (
         estado: 'completada',
         completada_por: completedBy,
         notas_cierre: completionNotes,
-        fecha_completada: new Date().toISOString()
+        fecha_completada: new Date().toISOString(),
+        attachments: attachments,
+        links: links
       })
       .eq('id', taskId);
 
@@ -32,7 +37,9 @@ export const completeTask = async (
     console.log('✅ Tarea marcada como completada con datos:', {
       estado: 'completada',
       completada_por: completedBy,
-      fecha_completada: new Date().toISOString()
+      fecha_completada: new Date().toISOString(),
+      attachments_count: attachments.length,
+      links_count: links.length
     });
 
     // Eliminar notificaciones de esta tarea

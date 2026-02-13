@@ -118,3 +118,15 @@ export const notifyIncident = async (data: any) => {
   // return createNotification({ ... });
   return { success: true };
 };
+
+export const notifyVacationRequest = async (data: any) => {
+  // Placeholder/Adapter for vacation request notifications
+  console.log('Faking notifyVacationRequest', data);
+  return { success: true };
+};
+
+export const notifyVacationResponse = async (data: any) => {
+  // Placeholder/Adapter for vacation response notifications
+  console.log('Faking notifyVacationResponse', data);
+  return { success: true };
+};
