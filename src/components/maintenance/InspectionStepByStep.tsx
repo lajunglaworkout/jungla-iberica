@@ -505,17 +505,20 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
               }}>
                 <div style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: window.innerWidth < 768 ? 'column' : 'row', // FIX BUG 2: Column on mobile
+                  alignItems: window.innerWidth < 768 ? 'stretch' : 'center',
                   justifyContent: 'space-between',
                   marginBottom: isProblem ? '24px' : '0',
-                  flexWrap: 'wrap',
-                  gap: '16px'
+                  gap: window.innerWidth < 768 ? '12px' : '16px'
                 }}>
                   <h3 style={{
                     fontSize: '18px',
                     fontWeight: '600',
                     color: '#111827',
-                    margin: 0
+                    margin: 0,
+                    wordBreak: 'break-word', // FIX BUG 1: Prevent title truncation
+                    whiteSpace: 'normal',
+                    lineHeight: '1.4'
                   }}>{concept.name}</h3>
 
                   <div style={{
@@ -524,7 +527,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                     padding: '4px',
                     borderRadius: '12px',
                     gap: '4px',
-                    flexWrap: 'wrap'
+                    width: window.innerWidth < 768 ? '100%' : 'auto' // Full width on mobile
                   }}>
                     {Object.entries(MAINTENANCE_STATUS).map(([statusKey, statusValue]) => {
                       const isActive = item?.status === statusKey;
@@ -533,18 +536,22 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                           key={statusKey}
                           onClick={() => handleStatusChange(itemId, statusKey)}
                           style={{
+                            flex: window.innerWidth < 768 ? 1 : 'none', // Equal width buttons on mobile
                             padding: '8px 14px',
                             borderRadius: '8px',
                             border: 'none',
                             cursor: 'pointer',
-                            fontSize: '13px',
+                            fontSize: window.innerWidth < 768 ? '12px' : '13px', // Smaller font on mobile
                             fontWeight: '600',
                             backgroundColor: isActive ? statusValue.color : 'transparent',
                             color: isActive ? 'white' : '#6b7280',
                             transition: 'all 0.2s',
                             boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                             whiteSpace: 'nowrap',
-                            minHeight: '36px'
+                            minHeight: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}
                         >
                           {statusValue.label}

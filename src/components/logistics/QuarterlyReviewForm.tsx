@@ -209,61 +209,70 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
           </table>
         </div>
 
-        {/* Vista Móvil (Tarjetas) */}
-        <div className="md:hidden flex flex-col gap-4 p-4 bg-gray-50">
+        {/* Vista Móvil (Tarjetas Mejoradas) */}
+        <div className="md:hidden flex flex-col gap-4 p-2 bg-gray-50">
           {items.map((item: any) => {
             const discrepancy = (item.counted || 0) !== item.system;
             return (
               <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                  <span className="font-bold text-gray-800 text-lg">{item.name}</span>
-                  <span className="text-xs font-semibold px-2 py-1 bg-gray-200 text-gray-600 rounded">
-                    Sistema: {item.system}
-                  </span>
+                <div className="p-3 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
+                  <div>
+                    <span className="font-bold text-gray-900 text-base block">{item.name}</span>
+                    <span className="text-xs text-gray-500 block mt-1">Sistema: {item.system}</span>
+                  </div>
+                  {discrepancy && (
+                    <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                      Revisar
+                    </span>
+                  )}
                 </div>
 
-                <div className="p-4 grid grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Contado</label>
-                    <input
-                      type="number"
-                      value={item.counted || ''}
-                      onChange={(e) => updateItem(item.id, 'counted', Number(e.target.value))}
-                      className={`w-full p-3 text-center text-lg font-bold border rounded-lg focus:ring-2 outline-none ${discrepancy ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 focus:ring-blue-500'
-                        }`}
-                      placeholder="0"
-                    />
+                <div className="p-3">
+                  {/* Fila de contadores - Grid más espaciado */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase font-bold text-gray-500 text-center">Contado</label>
+                      <input
+                        type="number"
+                        value={item.counted || ''}
+                        onChange={(e) => updateItem(item.id, 'counted', Number(e.target.value))}
+                        className={`w-full p-2 text-center text-lg font-bold border rounded-lg outline-none ${discrepancy ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-gray-200'
+                          }`}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase font-bold text-gray-500 text-center">Regular</label>
+                      <input
+                        type="number"
+                        value={item.regular || ''}
+                        onChange={(e) => updateItem(item.id, 'regular', Number(e.target.value))}
+                        className="w-full p-2 text-center text-lg font-bold border border-gray-200 rounded-lg outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase font-bold text-gray-500 text-center">Roto</label>
+                      <input
+                        type="number"
+                        value={item.deteriorated || ''}
+                        onChange={(e) => updateItem(item.id, 'deteriorated', Number(e.target.value))}
+                        className="w-full p-2 text-center text-lg font-bold border border-gray-200 rounded-lg text-red-600 outline-none"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Regular</label>
-                    <input
-                      type="number"
-                      value={item.regular || ''}
-                      onChange={(e) => updateItem(item.id, 'regular', Number(e.target.value))}
-                      className="w-full p-3 text-center text-lg font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Roto</label>
-                    <input
-                      type="number"
-                      value={item.deteriorated || ''}
-                      onChange={(e) => updateItem(item.id, 'deteriorated', Number(e.target.value))}
-                      className="w-full p-3 text-center text-lg font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
 
-                <div className="px-4 pb-4">
-                  <input
-                    type="text"
-                    value={item.obs}
-                    onChange={(e) => updateItem(item.id, 'obs', e.target.value)}
-                    placeholder="Observaciones..."
-                    className="w-full p-3 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
-                  />
+                  {/* Observaciones full width */}
+                  <div>
+                    <input
+                      type="text"
+                      value={item.obs}
+                      onChange={(e) => updateItem(item.id, 'obs', e.target.value)}
+                      placeholder="Añadir observaciones..."
+                      className="w-full p-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             );
