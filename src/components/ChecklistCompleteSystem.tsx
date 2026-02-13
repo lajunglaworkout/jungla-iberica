@@ -542,79 +542,85 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       return <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay tareas en esta sección</p>;
     }
 
+    const isMobile = window.innerWidth < 768;
+
     return tasks.map((tarea: Task, index: number) => (
       <div key={tarea.id || index} style={{
         display: 'flex',
-        alignItems: 'flex-start',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'flex-start',
         padding: '12px',
         backgroundColor: tarea.completado ? '#f0fdf4' : 'white',
         border: '1px solid #e5e7eb',
         borderRadius: '8px',
         marginBottom: '8px',
-        flexWrap: 'wrap',
         gap: '8px'
       }}>
-        <input
-          type="checkbox"
-          checked={tarea.completado || false}
-          onChange={() => handleToggleTask(section as keyof ChecklistData, tarea.id)}
-          style={{
-            width: '20px',
-            height: '20px',
-            marginRight: '4px',
-            cursor: 'pointer',
-            flexShrink: 0
-          }}
-        />
+        {/* Contenedor Checkbox + Texto */}
+        <div style={{ display: 'flex', flex: 1, gap: '8px', width: '100%' }}>
+          <input
+            type="checkbox"
+            checked={tarea.completado || false}
+            onChange={() => handleToggleTask(section as keyof ChecklistData, tarea.id)}
+            style={{
+              width: '24px',
+              height: '24px',
+              marginTop: '2px',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          />
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            fontWeight: '500',
-            textDecoration: tarea.completado ? 'line-through' : 'none',
-            color: tarea.completado ? '#6b7280' : '#111827',
-            margin: '0 0 4px 0',
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
-            whiteSpace: 'normal'
-          }}>
-            {index + 1}. {tarea.titulo}
-          </p>
-          {tarea.descripcion && (
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              margin: '0 0 8px 0',
-              whiteSpace: 'normal'
+              fontWeight: '500',
+              textDecoration: tarea.completado ? 'line-through' : 'none',
+              color: tarea.completado ? '#6b7280' : '#111827',
+              margin: '0 0 4px 0',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              whiteSpace: 'normal',
+              lineHeight: '1.4'
             }}>
-              {tarea.descripcion}
+              {index + 1}. {tarea.titulo}
             </p>
-          )}
+            {tarea.descripcion && (
+              <p style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: '0 0 8px 0',
+                whiteSpace: 'normal'
+              }}>
+                {tarea.descripcion}
+              </p>
+            )}
 
-          {/* Campo de responsable para limpieza */}
-          {section === 'limpieza' && (
-            <input
-              type="text"
-              placeholder="Nombre del responsable"
-              value={tarea.responsable || ''}
-              onChange={(e) => handleAssignResponsable(tarea.id, e.target.value)}
-              style={{
-                marginTop: '8px',
-                padding: '4px 8px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '4px',
-                width: '100%',
-                maxWidth: '200px',
-                boxSizing: 'border-box'
-              }}
-            />
-          )}
+            {/* Campo de responsable para limpieza */}
+            {section === 'limpieza' && (
+              <input
+                type="text"
+                placeholder="Nombre del responsable"
+                value={tarea.responsable || ''}
+                onChange={(e) => handleAssignResponsable(tarea.id, e.target.value)}
+                style={{
+                  marginTop: '8px',
+                  padding: '4px 8px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  width: '100%',
+                  maxWidth: '200px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            )}
+          </div>
         </div>
 
         {/* Botón de reportar incidencia */}
         <button
           onClick={() => handleReportIncident(tarea)}
           style={{
-            padding: '6px 12px',
+            padding: '8px 12px',
             backgroundColor: '#ef4444',
             color: 'white',
             border: 'none',
@@ -623,7 +629,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             fontSize: '13px',
             flexShrink: 0,
             whiteSpace: 'nowrap',
-            minHeight: '32px'
+            minHeight: '32px',
+            width: isMobile ? '100%' : 'auto',
+            marginTop: isMobile ? '4px' : '0',
+            alignSelf: isMobile ? 'stretch' : 'flex-start'
           }}
         >
           ⚠️ Reportar
