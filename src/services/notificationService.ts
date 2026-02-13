@@ -130,3 +130,28 @@ export const notifyVacationResponse = async (data: any) => {
   console.log('Faking notifyVacationResponse', data);
   return { success: true };
 };
+
+export const notifyIncidentStatusChange = async (data: any) => {
+  console.log('Faking notifyIncidentStatusChange', data);
+  return { success: true };
+};
+
+export const notifyTaskAssigned = async (data: any) => {
+  console.log('Faking notifyTaskAssigned', data);
+  return { success: true };
+};
+
+export const notifyEvent = async (data: any) => {
+  console.log('Faking notifyEvent', data);
+  return { success: true };
+};
+
+export const createTaskNotification = async (data: any) => {
+  console.log('Faking createTaskNotification', data);
+  return { success: true };
+};
+
+export const notifyFranchiseeMessage = async (data: any) => {
+  console.log('Faking notifyFranchiseeMessage', data);
+  return { success: true };
+};
