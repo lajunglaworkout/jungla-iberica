@@ -3,6 +3,7 @@ import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, Dumbbell } from 'luc
 import { supabase } from '../lib/supabase';
 import { useSession } from '../contexts/SessionContext';
 import { runFullDiagnostic } from '../utils/supabaseTest';
+import { APP_VERSION, BUILD_DATE } from '../version';
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -17,8 +18,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
-  
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+
   // Animación de entrada
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
@@ -26,20 +27,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   }, []);
 
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     if (!formData.email) {
       errors.email = 'El email es obligatorio';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email inválido';
     }
-    
+
     if (!formData.password) {
       errors.password = 'La contraseña es obligatoria';
     } else if (formData.password.length < 6) {
       errors.password = 'La contraseña debe tener al menos 6 caracteres';
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -50,7 +51,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       ...prev,
       [name]: value
     }));
-    
+
     // Limpiar errores cuando el usuario empiece a escribir
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
@@ -63,7 +64,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -73,7 +74,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
     try {
       console.log('🔐 Intentando login con email:', formData.email);
-      
+
       // AUTENTICACIÓN REAL CON SUPABASE
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -85,17 +86,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         console.error('❌ Tipo de error:', authError.name);
         console.error('❌ Código de error:', authError.status);
         console.log('❌ Error de autenticación:', authError.message);
-        
+
         // Si es un error de red, ejecutar diagnóstico
         if (authError.name === 'AuthRetryableFetchError' || authError.message.includes('fetch')) {
           console.log('🔍 Error de red detectado, ejecutando diagnóstico...');
           runFullDiagnostic();
         }
-        
+
         // Si falla la autenticación, verificar si es un email actualizado
         if (authError.message === 'Invalid login credentials') {
           console.log('🔍 Verificando si el email fue actualizado en gestión de usuarios...');
-          
+
           // Buscar el email en la tabla employees
           const { data: employeeData, error: employeeError } = await supabase
             .from('employees')
@@ -103,7 +104,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             .eq('email', formData.email)
             .eq('is_active', true)
             .single();
-          
+
           if (employeeData && !employeeError) {
             console.log('✅ Email encontrado en tabla employees:', employeeData);
             setError(`El email ${formData.email} fue actualizado recientemente. 
@@ -129,12 +130,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         console.log('✅ Login exitoso para:', data.user.email);
         // Login exitoso
         setSuccess(true);
-        
+
         // Callback opcional
         if (onLoginSuccess) {
           onLoginSuccess();
         }
-        
+
         // Redirigir después de un breve delay
         setTimeout(() => {
           console.log('Redirigiendo al dashboard...');
@@ -174,7 +175,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     <div className="jungla-container">
       {/* Background Pattern */}
       <div className="jungla-background-pattern"></div>
-      
+
       <div className={`jungla-main-card ${isVisible ? 'jungla-visible' : ''}`}>
         <div className="jungla-card-container">
           {/* Panel Izquierdo - Solo visible en desktop */}
@@ -185,7 +186,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               <div className="jungla-circle-2"></div>
               <div className="jungla-circle-3"></div>
             </div>
-            
+
             <div className="jungla-branding-content">
               {/* Logo */}
               <div className="jungla-logo-container">
@@ -197,15 +198,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   <p className="jungla-logo-subtitle">WORKOUT</p>
                 </div>
               </div>
-              
+
               <h2 className="jungla-welcome-title">
                 Bienvenido de vuelta
               </h2>
               <p className="jungla-welcome-text">
-                Accede a tu panel de control para gestionar tu centro fitness. 
+                Accede a tu panel de control para gestionar tu centro fitness.
                 Controla todo desde un solo lugar.
               </p>
-              
+
               <div className="jungla-features-list">
                 <div className="jungla-feature-item">
                   <CheckCircle size={20} style={{ marginRight: '12px' }} />
@@ -226,7 +227,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           {/* Panel del Formulario - Responsive */}
           <div className="jungla-right-panel">
             <div className="jungla-form-container">
-              
+
               {/* Logo móvil - Solo visible en móvil */}
               <div className="jungla-mobile-logo-container">
                 <div className="jungla-mobile-logo-icon">
@@ -237,7 +238,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   <p className="jungla-mobile-logo-subtitle">WORKOUT</p>
                 </div>
               </div>
-              
+
               <div className="jungla-form-header">
                 <h3 className="jungla-form-title">Iniciar Sesión</h3>
                 <p className="jungla-form-subtitle">
@@ -357,7 +358,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               <div className="jungla-form-footer">
                 <p className="jungla-footer-text">
                   ¿Problemas para acceder?{' '}
-                  <button 
+                  <button
                     className="jungla-support-link"
                     onClick={() => {
                       alert('Contacta con soporte: soporte@lajungla.com');
@@ -365,6 +366,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   >
                     Contacta con soporte
                   </button>
+                </p>
+
+                {/* VERSION DISPLAY */}
+                <p style={{ marginTop: '24px', fontSize: '11px', color: '#9ca3af' }}>
+                  v{APP_VERSION} · {BUILD_DATE}
                 </p>
               </div>
             </div>

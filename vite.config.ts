@@ -6,6 +6,20 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    '__BUILD_DATE__': JSON.stringify(new Date().toISOString().split('T')[0]),
+    '__COMMIT_HASH__': JSON.stringify(
+      (() => {
+        try {
+          // Intentar obtener de netlify o git
+          return process.env.COMMIT_REF ||
+            require('child_process').execSync('git rev-parse --short HEAD').toString().trim();
+        } catch (e) {
+          return 'dev';
+        }
+      })()
+    ),
+  },
   server: {
     host: true,
     port: 5173,

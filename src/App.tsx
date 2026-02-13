@@ -1,5 +1,6 @@
 // src/App.tsx - VERSIÓN COMPLETA INTEGRADA
 import React, { useState, useEffect } from 'react';
+import { APP_VERSION, BUILD_DATE } from './version';
 import { CreateCenterModal } from './components/CreateCenterModal';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { DataProvider } from './contexts/DataContext';
@@ -1053,6 +1054,14 @@ const NavigationDashboard: React.FC = () => {
             <LogOut style={{ height: '16px', width: '16px', flexShrink: 0 }} />
             {sidebarOpen && <span style={{ whiteSpace: 'nowrap' }}>Cerrar Sesión</span>}
           </button>
+
+          {sidebarOpen && (
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                v{APP_VERSION} · {BUILD_DATE}
+              </p>
+            </div>
+          )}
         </div>
       </div >
 
