@@ -391,26 +391,25 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
 
               return (
                 <div key={concept.id} className="border border-gray-200 rounded-lg p-6">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 mb-1 break-words">{concept.name}</h3>
-                      <p className="text-sm text-gray-600 break-words">{concept.description}</p>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{concept.name}</h3>
+                      <p className="text-sm text-gray-600">{concept.description}</p>
                     </div>
-                    <div className="flex items-center space-x-2 w-full md:w-auto bg-gray-50 p-1 rounded-xl">
+                    <div className="flex items-center space-x-2 ml-4">
                       {Object.entries(MAINTENANCE_STATUS).map(([status, config]) => (
                         <button
                           key={status}
                           onClick={() => handleStatusChange(itemId, status as any)}
-                          className={`flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors text-center ${item.status === status
-                            ? 'text-white shadow-sm'
-                            : 'text-gray-600 hover:bg-gray-200'
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${item.status === status
+                            ? 'text-white'
+                            : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
                             }`}
                           style={{
                             backgroundColor: item.status === status ? config.color : undefined
                           }}
                         >
-                          {/* Icono solo en desktop o si cabe, texto en todos */}
-                          <span>{config.label}</span>
+                          {config.icon} {config.label}
                         </button>
                       ))}
                     </div>
