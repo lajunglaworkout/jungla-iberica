@@ -34,7 +34,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
     const filtered = inventoryItems.filter(item => {
       const category = item.category?.toLowerCase() || '';
       const name = item.name?.toLowerCase() || '';
-      
+
       return (
         category.includes('vestuario') ||
         category.includes('ropa') ||
@@ -51,16 +51,16 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
         name.includes('sudadera')
       );
     });
-    
+
     console.log('📦 Artículos de vestuario encontrados:', filtered.length);
     console.log('📋 Categorías disponibles:', [...new Set(inventoryItems.map(item => item.category))]);
-    console.log('👕 Items de vestuario:', filtered.map(item => ({ 
-      name: item.name, 
-      category: item.category, 
+    console.log('👕 Items de vestuario:', filtered.map(item => ({
+      name: item.name,
+      category: item.category,
       center: item.center,
-      quantity: item.quantity 
+      quantity: item.quantity
     })));
-    
+
     return filtered;
   }, [inventoryItems]);
 
@@ -68,7 +68,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
   const getStockForLocation = (itemId: number, location: LocationType) => {
     const item = inventoryItems.find(i => i.id === itemId);
     if (!item) return 0;
-    
+
     // El vestuario SIEMPRE se muestra desde la central, independientemente del centro del usuario
     // Todos los empleados pueden solicitar vestuario de la central
     return item.quantity || 0;
@@ -102,7 +102,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
 
     try {
       setSubmitting(true);
-      
+
       // Guardar solicitud en Supabase
       const { data: requestData, error: requestError } = await supabase
         .from('uniform_requests')
@@ -124,13 +124,13 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       }
 
       console.log('✅ Solicitud guardada:', requestData);
-      
+
       // Llamar al callback si existe
       onSubmit?.({ reason, location: userLocation, items: selection });
-      
+
       // Limpiar selección
       setSelection([]);
-      
+
     } catch (error) {
       console.error('Error en handleSubmit:', error);
       alert('Error inesperado al enviar la solicitud.');
@@ -141,11 +141,11 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center', 
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: '60px 20px',
         backgroundColor: 'white',
         borderRadius: '16px'
@@ -155,12 +155,12 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       </div>
     );
   }
-  
+
   if (error) {
     return (
-      <div style={{ 
-        padding: '24px', 
-        backgroundColor: '#fef2f2', 
+      <div style={{
+        padding: '24px',
+        backgroundColor: '#fef2f2',
         borderRadius: '12px',
         border: '1px solid #fecaca'
       }}>
@@ -170,43 +170,26 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
   }
 
   return (
-    <div style={{ display: 'grid', gap: '20px' }}>
-      <header style={{ 
-        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
-        padding: '28px', 
-        borderRadius: '16px', 
-        boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
-        color: 'white'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-          <Shirt size={32} />
-          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700 }}>
+    <div className="grid gap-4 md:gap-5 pb-24 md:pb-0 relative">
+      <header className="bg-gradient-to-br from-emerald-600 to-emerald-500 text-white p-5 md:p-7 rounded-2xl shadow-xl shadow-emerald-600/20">
+        <div className="flex items-center gap-3 mb-3">
+          <Shirt size={28} className="md:w-8 md:h-8" />
+          <h1 className="text-xl md:text-2xl font-bold leading-tight">
             {employeeName ? `Vestuario para ${employeeName}` : 'Solicitud de Vestuario'}
           </h1>
         </div>
-        <p style={{ margin: 0, fontSize: '15px', opacity: 0.95 }}>
-          Selecciona las prendas que necesitas y el motivo de tu solicitud.
+        <p className="text-sm md:text-base opacity-95 leading-relaxed">
+          Selecciona las prendas y el motivo.
         </p>
-        <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="mt-4 flex flex-wrap gap-2 md:gap-3">
           {REASONS.map(option => (
             <button
               key={option.id}
-              onClick={() => {
-                console.log('Clic en motivo:', option.id);
-                setReason(option.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: `2px solid ${reason === option.id ? '#059669' : '#d1d5db'}`,
-                backgroundColor: reason === option.id ? '#ecfdf5' : 'white',
-                color: reason === option.id ? '#059669' : '#374151',
-                cursor: 'pointer',
-                pointerEvents: 'auto'
-              }}
+              onClick={() => setReason(option.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${reason === option.id
+                  ? 'bg-white text-emerald-600 shadow-sm ring-2 ring-white/20'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
             >
               {option.icon}
               {option.label}
@@ -215,10 +198,10 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
         </div>
       </header>
 
-      <div style={{ display: 'grid', gap: '16px' }}>
+      <div className="grid gap-3 md:gap-4">
         {uniformItems.length === 0 ? (
-          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-            <p>No hay artículos de vestuario disponibles en el inventario.</p>
+          <div className="bg-white p-8 rounded-xl text-center shadow-sm">
+            <p className="text-gray-500">No hay artículos disponibles.</p>
           </div>
         ) : (
           uniformItems.map(item => {
@@ -228,95 +211,59 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
             const isOutOfStock = availableStock === 0;
 
             return (
-              <div key={item.id} style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '20px',
-                border: `2px solid ${quantity > 0 ? '#10b981' : '#e5e7eb'}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s ease',
-                opacity: isOutOfStock ? 0.6 : 1
-              }}>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600, color: '#111827' }}>
-                    {item.name}
-                  </h3>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '6px', alignItems: 'center' }}>
-                    <span style={{ 
-                      fontSize: '13px',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      backgroundColor: '#f0fdf4',
-                      color: '#059669',
-                      fontWeight: 500
-                    }}>
-                      {item.category}
-                    </span>
-                    {item.size && (
-                      <span style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Talla: {item.size}
+              <div key={item.id} className={`bg-white rounded-xl p-4 border transition-all ${quantity > 0 ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-md' : 'border-gray-200'
+                } ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}>
+
+                <div className="flex justify-between items-start gap-3 mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 text-base md:text-lg leading-tight mb-1">
+                      {item.name}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 uppercase tracking-wide">
+                        {item.category}
                       </span>
-                    )}
+                      {item.size && (
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                          Talla: {item.size}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p style={{ 
-                    margin: '8px 0 0', 
-                    color: isOutOfStock ? '#dc2626' : '#059669', 
-                    fontSize: '14px',
-                    fontWeight: 500
-                  }}>
-                    {isOutOfStock ? '❌ Sin stock' : `✅ Stock: ${availableStock} unidades`}
-                  </p>
+                  <div className="text-right shrink-0">
+                    <p className={`text-xs font-bold ${isOutOfStock ? 'text-red-500' : 'text-emerald-600'}`}>
+                      {isOutOfStock ? 'AGOTADO' : `${availableStock} disp.`}
+                    </p>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button
-                    onClick={() => updateQuantity(item.id.toString(), item.name, -1)}
-                    disabled={quantity === 0 || isOutOfStock}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      border: '2px solid #e5e7eb',
-                      background: (quantity === 0 || isOutOfStock) ? '#f9fafb' : 'white',
-                      color: (quantity === 0 || isOutOfStock) ? '#9ca3af' : '#374151',
-                      cursor: (quantity === 0 || isOutOfStock) ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span style={{ 
-                    minWidth: '32px', 
-                    textAlign: 'center', 
-                    fontSize: '20px', 
-                    fontWeight: 700,
-                    color: '#059669'
-                  }}>
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => updateQuantity(item.id.toString(), item.name, 1)}
-                    disabled={isOutOfStock || quantity >= availableStock}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      border: '2px solid #059669',
-                      background: (isOutOfStock || quantity >= availableStock) ? '#f9fafb' : '#059669',
-                      color: (isOutOfStock || quantity >= availableStock) ? '#9ca3af' : 'white',
-                      cursor: (isOutOfStock || quantity >= availableStock) ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Plus size={18} />
-                  </button>
+
+                <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                  <div className="text-sm text-gray-400 font-medium">
+                    Cantidad
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => updateQuantity(item.id.toString(), item.name, -1)}
+                      disabled={quantity === 0 || isOutOfStock}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${quantity === 0 ? 'bg-gray-100 text-gray-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                        }`}
+                    >
+                      <Minus size={20} />
+                    </button>
+                    <span className="w-8 text-center text-xl font-bold text-emerald-600">
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.id.toString(), item.name, 1)}
+                      disabled={isOutOfStock || quantity >= availableStock}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isOutOfStock || quantity >= availableStock
+                          ? 'bg-gray-100 text-gray-300'
+                          : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-95'
+                        }`}
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -325,37 +272,21 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       </div>
 
       {totalItems > 0 && (
-        <footer style={{ background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>
-              Total de prendas: {totalItems}
-            </span>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>
-              Motivo: {REASONS.find(r => r.id === reason)?.label}
-            </span>
-          </div>
+        <footer className="fixed bottom-4 left-4 right-4 md:static md:p-4 md:bg-white md:border md:border-gray-200 md:rounded-xl shadow-2xl md:shadow-none z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: submitting ? '#9ca3af' : '#059669',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease'
-            }}
+            className={`w-full py-4 px-6 rounded-xl font-bold text-white shadow-xl flex items-center justify-center gap-3 transition-all ${submitting ? 'bg-gray-400' : 'bg-gray-900 hover:bg-black active:scale-[0.98]'
+              }`}
           >
-            <CheckCircle size={20} />
-            {submitting ? 'Enviando solicitud...' : 'Enviar solicitud a Logística'}
+            {submitting ? (
+              'Enviando...'
+            ) : (
+              <>
+                <CheckCircle size={20} className="text-emerald-400" />
+                <span className="text-lg">Pedir {totalItems} prendas</span>
+              </>
+            )}
           </button>
         </footer>
       )}

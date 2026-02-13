@@ -13,11 +13,11 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
     { id: 1, name: 'Mancuerna 4KG', system: 8, counted: 0, regular: 0, deteriorated: 0, obs: '' },
     { id: 2, name: 'Mancuerna 5KG', system: 6, counted: 0, regular: 0, deteriorated: 0, obs: '' }
   ];
-  
+
   const [items, setItems] = useState(initialItems);
 
   const updateItem = (id: number, field: string, value: any) => {
-    setItems((prev: any) => prev.map((item: any) => 
+    setItems((prev: any) => prev.map((item: any) =>
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
@@ -41,7 +41,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
 
   const handleSave = async () => {
     console.log('💾 Guardando progreso...', items);
-    
+
     try {
       // Transformar items al formato esperado por el servicio
       const reviewItems = items.map((item: any) => ({
@@ -58,7 +58,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
 
       // Guardar en la base de datos
       const result = await quarterlyInventoryService.saveReviewItems(reviewData.id, reviewItems);
-      
+
       if (result.success) {
         alert('✅ Progreso guardado correctamente. Puedes continuar más tarde.');
         console.log('✅ Items guardados:', result.items);
@@ -74,7 +74,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
 
   const handleSend = async () => {
     console.log('📤 Enviando a Beni...', items);
-    
+
     // Validar que todos los items estén completados
     const incompleteItems = items.filter(item => {
       const total = (item.counted || 0) + (item.regular || 0) + (item.deteriorated || 0);
@@ -90,10 +90,10 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
     try {
       // Primero guardar todo
       await handleSave();
-      
+
       // Luego marcar como completada
       const result = await quarterlyInventoryService.completeAssignment(reviewData.id, 'franciscogiraldezmorales@gmail.com');
-      
+
       if (result.success) {
         alert('✅ Revisión enviada a Beni para autorización de eliminación de items.');
         onBack(); // Volver al panel principal
@@ -129,91 +129,155 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
             <p style={{ margin: '4px 0 0 0', opacity: 0.9 }}>Centro: {reviewData.center}</p>
           </div>
         </div>
-        
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f9fafb' }}>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>PRODUCTO</th>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>SISTEMA</th>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>CONTADO</th>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>REGULAR</th>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>DETERIORADO</th>
-              <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>OBSERVACIONES</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item: any) => (
-              <tr key={item.id}>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>{item.name}</td>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb', textAlign: 'center', backgroundColor: '#f3f4f6' }}>
-                  {item.system}
+
+        {/* Vista Escritorio (Tabla) */}
+        <div className="hidden md:block overflow-x-auto">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f9fafb' }}>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>PRODUCTO</th>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>SISTEMA</th>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>CONTADO</th>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>REGULAR</th>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>DETERIORADO</th>
+                <th style={{ padding: '12px', border: '1px solid #e5e7eb' }}>OBSERVACIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item: any) => (
+                <tr key={item.id}>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>{item.name}</td>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb', textAlign: 'center', backgroundColor: '#f3f4f6' }}>
+                    {item.system}
+                  </td>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
+                    <input
+                      type="number"
+                      value={item.counted || ''}
+                      onChange={(e) => updateItem(item.id, 'counted', Number(e.target.value))}
+                      style={{ width: '60px', padding: '4px', textAlign: 'center' }}
+                    />
+                  </td>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
+                    <input
+                      type="number"
+                      value={item.regular || ''}
+                      onChange={(e) => updateItem(item.id, 'regular', Number(e.target.value))}
+                      style={{ width: '60px', padding: '4px', textAlign: 'center' }}
+                    />
+                  </td>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
+                    <input
+                      type="number"
+                      value={item.deteriorated || ''}
+                      onChange={(e) => updateItem(item.id, 'deteriorated', Number(e.target.value))}
+                      style={{ width: '60px', padding: '4px', textAlign: 'center' }}
+                    />
+                  </td>
+                  <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
+                    <input
+                      type="text"
+                      value={item.obs}
+                      onChange={(e) => updateItem(item.id, 'obs', e.target.value)}
+                      style={{ width: '150px', padding: '4px' }}
+                    />
+                  </td>
+                </tr>
+              ))}
+              {/* Fila de totales */}
+              <tr style={{ backgroundColor: '#059669', color: 'white', fontWeight: '600' }}>
+                <td style={{ padding: '12px', border: '1px solid #047857' }}>
+                  📊 TOTALES ({totals.totalProducts} productos)
                 </td>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
-                  <input
-                    type="number"
-                    value={item.counted || ''}
-                    onChange={(e) => updateItem(item.id, 'counted', Number(e.target.value))}
-                    style={{ width: '60px', padding: '4px', textAlign: 'center' }}
-                  />
+                <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
+                  {totals.totalSystem}
                 </td>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
-                  <input
-                    type="number"
-                    value={item.regular || ''}
-                    onChange={(e) => updateItem(item.id, 'regular', Number(e.target.value))}
-                    style={{ width: '60px', padding: '4px', textAlign: 'center' }}
-                  />
+                <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
+                  {totals.totalCounted}
                 </td>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
-                  <input
-                    type="number"
-                    value={item.deteriorated || ''}
-                    onChange={(e) => updateItem(item.id, 'deteriorated', Number(e.target.value))}
-                    style={{ width: '60px', padding: '4px', textAlign: 'center' }}
-                  />
+                <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
+                  {totals.totalRegular}
                 </td>
-                <td style={{ padding: '12px', border: '1px solid #e5e7eb' }}>
+                <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
+                  {totals.totalDeteriorated}
+                </td>
+                <td style={{ padding: '12px', border: '1px solid #047857' }}>
+                  {totals.discrepancies > 0 ? `⚠️ ${totals.discrepancies} discrepancias` : '✅ Sin discrepancias'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Vista Móvil (Tarjetas) */}
+        <div className="md:hidden flex flex-col gap-4 p-4 bg-gray-50">
+          {items.map((item: any) => {
+            const discrepancy = (item.counted || 0) !== item.system;
+            return (
+              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                  <span className="font-bold text-gray-800 text-lg">{item.name}</span>
+                  <span className="text-xs font-semibold px-2 py-1 bg-gray-200 text-gray-600 rounded">
+                    Sistema: {item.system}
+                  </span>
+                </div>
+
+                <div className="p-4 grid grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Contado</label>
+                    <input
+                      type="number"
+                      value={item.counted || ''}
+                      onChange={(e) => updateItem(item.id, 'counted', Number(e.target.value))}
+                      className={`w-full p-3 text-center text-lg font-bold border rounded-lg focus:ring-2 outline-none ${discrepancy ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 focus:ring-blue-500'
+                        }`}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Regular</label>
+                    <input
+                      type="number"
+                      value={item.regular || ''}
+                      onChange={(e) => updateItem(item.id, 'regular', Number(e.target.value))}
+                      className="w-full p-3 text-center text-lg font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Roto</label>
+                    <input
+                      type="number"
+                      value={item.deteriorated || ''}
+                      onChange={(e) => updateItem(item.id, 'deteriorated', Number(e.target.value))}
+                      className="w-full p-3 text-center text-lg font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4">
                   <input
                     type="text"
                     value={item.obs}
                     onChange={(e) => updateItem(item.id, 'obs', e.target.value)}
-                    style={{ width: '150px', padding: '4px' }}
+                    placeholder="Observaciones..."
+                    className="w-full p-3 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                   />
-                </td>
-              </tr>
-            ))}
-            {/* Fila de totales */}
-            <tr style={{ backgroundColor: '#059669', color: 'white', fontWeight: '600' }}>
-              <td style={{ padding: '12px', border: '1px solid #047857' }}>
-                📊 TOTALES ({totals.totalProducts} productos)
-              </td>
-              <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
-                {totals.totalSystem}
-              </td>
-              <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
-                {totals.totalCounted}
-              </td>
-              <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
-                {totals.totalRegular}
-              </td>
-              <td style={{ padding: '12px', border: '1px solid #047857', textAlign: 'center' }}>
-                {totals.totalDeteriorated}
-              </td>
-              <td style={{ padding: '12px', border: '1px solid #047857' }}>
-                {totals.discrepancies > 0 ? `⚠️ ${totals.discrepancies} discrepancias` : '✅ Sin discrepancias'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         <div style={{ padding: '1rem', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button 
+          <button
             onClick={handleSave}
-            style={{ 
-              padding: '10px 16px', 
-              backgroundColor: '#6b7280', 
-              color: 'white', 
-              border: 'none', 
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
@@ -223,13 +287,13 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
           >
             <Save size={16} /> Guardar
           </button>
-          <button 
+          <button
             onClick={handleSend}
-            style={{ 
-              padding: '10px 16px', 
-              backgroundColor: '#059669', 
-              color: 'white', 
-              border: 'none', 
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#059669',
+              color: 'white',
+              border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',

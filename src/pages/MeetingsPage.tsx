@@ -66,7 +66,7 @@ export const MeetingsPage: React.FC<MeetingsPageProps> = ({
 
   const filteredMeetings = meetings.filter(meeting => {
     const matchesSearch = meeting.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         meeting.department.toLowerCase().includes(searchTerm.toLowerCase());
+      meeting.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || meeting.status === filterStatus;
     const matchesDepartment = filterDepartment === 'all' || meeting.department === filterDepartment;
     return matchesSearch && matchesStatus && matchesDepartment;
@@ -142,6 +142,7 @@ export const MeetingsPage: React.FC<MeetingsPageProps> = ({
           meetingId={selectedMeeting.id}
           meetingTitle={selectedMeeting.title}
           participants={selectedMeeting.participants}
+          departmentId={selectedMeeting.department}
           onRecordingComplete={(data) => {
             console.log('Grabación completada:', data);
             // Actualizar reunión con los datos

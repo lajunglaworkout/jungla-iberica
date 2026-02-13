@@ -4,11 +4,7 @@ import {
   AudioRecorder,
   saveMeetingRecording
 } from '../services/meetingRecordingService';
-import {
-  transcribeAudioViaBackend,
-  generateMeetingMinutesViaBackend,
-  saveRecordingToStorage
-} from '../services/transcriptionBackendService';
+import { transcribeAudio } from '../services/aiService';
 import MeetingResultsPanel from './meetings/MeetingResultsPanel';
 import { supabase } from '../lib/supabase';
 
@@ -83,18 +79,18 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
       setIsRecording(true);
       setRecordingTime(0);
       setShowTimerConfig(false);
-      
+
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 1;
-          
+
           // Si hay límite de tiempo y se alcanzó, detener automáticamente
           if (maxRecordingTime && newTime >= maxRecordingTime * 60) {
             console.log('⏱️ Límite de tiempo alcanzado, deteniendo grabación...');
             handleStopRecording();
             return newTime;
           }
-          
+
           return newTime;
         });
       }, 1000);
@@ -116,7 +112,7 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
     setIsProcessing(true);
 
     try {
-      // Obtener blob de audio
+      // Get audio blob from recorder
       const audioBlob = await recorderRef.current.stopRecording();
       if (!audioBlob) {
         throw new Error('No se pudo obtener la grabación');
@@ -124,29 +120,25 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
 
       audioChunksRef.current = audioBlob;
 
-      // Transcribir audio usando backend proxy
-      console.log('📝 Transcribiendo audio...');
-      const transcriptResult = await transcribeAudioViaBackend(audioBlob);
-      
-      if (!transcriptResult.success || !transcriptResult.transcript) {
-        throw new Error(transcriptResult.error || 'Error en transcripción');
-      }
+      // Transcribe audio using Supabase Edge Function → Gemini
+      console.log('📝 Transcribiendo audio via Edge Function...');
+      const transcriptText = await transcribeAudio(audioBlob);
 
-      setTranscript(transcriptResult.transcript);
+      setTranscript(transcriptText);
 
-      // Solo devolver la transcripción, NO generar acta ni guardar
+      // Return only the transcription, NOT auto-generate minutes
       console.log('✅ Transcripción completada, devolviendo al modal...');
 
-      // Callback con solo la transcripción
       if (onRecordingComplete) {
         onRecordingComplete({
-          transcript: transcriptResult.transcript,
+          transcript: transcriptText,
           minutes: '',
           tasks: []
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setError(`Error al transcribir: ${errorMessage}. Puedes pegar la transcripción manualmente.`);
       console.error('Error:', err);
     } finally {
       setIsProcessing(false);

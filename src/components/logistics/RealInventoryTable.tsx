@@ -476,8 +476,8 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
               </div>
               <div>
                 <span className={`px-2 py-1 rounded-md text-xs font-medium ${item.center === 'central' ? 'bg-purple-100 text-purple-600' :
-                    item.center === 'sevilla' ? 'bg-amber-100 text-amber-600' :
-                      item.center === 'jerez' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                  item.center === 'sevilla' ? 'bg-amber-100 text-amber-600' :
+                    item.center === 'jerez' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
                   }`}>
                   {item.center === 'sevilla' ? '🏪 Sevilla' :
                     item.center === 'jerez' ? '🏪 Jerez' :
@@ -551,7 +551,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
               </div>
               <div>
                 <span className={`px-2 py-1 rounded-md text-xs font-medium ${item.status === 'in_stock' ? 'bg-green-100 text-green-700' :
-                    item.status === 'low_stock' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                  item.status === 'low_stock' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                   }`}>
                   {item.status === 'in_stock' ? '✅ Stock' :
                     item.status === 'low_stock' ? '⚠️ Bajo' : '❌ Agotado'}
@@ -584,7 +584,7 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${item.status === 'in_stock' ? 'bg-green-100 text-green-800' :
-                    item.status === 'low_stock' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                  item.status === 'low_stock' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
                   }`}>
                   {item.status === 'in_stock' ? 'Stock OK' :
                     item.status === 'low_stock' ? 'Bajo' : 'Agotado'}
@@ -676,34 +676,35 @@ const RealInventoryTable: React.FC<RealInventoryTableProps> = ({
               </div>
             </div>
           </React.Fragment>
+        );
+      })}
 
-
-      {/* Footer con resumen */ }
-        <div style={{
-          backgroundColor: '#f9fafb',
-          padding: '1rem',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '14px',
-          fontWeight: '500'
-        }}>
-          <div style={{ color: '#059669' }}>
-            📦 Total: {filteredItems.length} items
-          </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <span style={{ color: '#059669' }}>
-              ✅ En stock: {filteredItems.filter(i => i.status === 'in_stock').length}
-            </span>
-            <span style={{ color: '#f59e0b' }}>
-              ⚠️ Stock bajo: {filteredItems.filter(i => i.status === 'low_stock').length}
-            </span>
-            <span style={{ color: '#dc2626' }}>
-              ❌ Agotado: {filteredItems.filter(i => i.status === 'out_of_stock').length}
-            </span>
-          </div>
+      {/* Footer con resumen */}
+      <div style={{
+        backgroundColor: '#f9fafb',
+        padding: '1rem',
+        borderTop: '1px solid #e5e7eb',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: '14px',
+        fontWeight: '500'
+      }}>
+        <div style={{ color: '#059669' }}>
+          📦 Total: {filteredItems.length} items
         </div>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <span style={{ color: '#059669' }}>
+            ✅ En stock: {filteredItems.filter(i => i.status === 'in_stock').length}
+          </span>
+          <span style={{ color: '#f59e0b' }}>
+            ⚠️ Stock bajo: {filteredItems.filter(i => i.status === 'low_stock').length}
+          </span>
+          <span style={{ color: '#dc2626' }}>
+            ❌ Agotado: {filteredItems.filter(i => i.status === 'out_of_stock').length}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };

@@ -276,7 +276,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
           {/* Content */}
           <div className="flex-1 p-4 pb-32 md:p-10 md:pb-10 md:overflow-y-auto scroll-smooth">
             {step === 'type' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 h-full pb-20 md:pb-0">
                 {INCIDENT_TYPES.map((type) => (
                   <button
                     key={type.id}
@@ -284,11 +284,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                       setSelectedType(type);
                       setStep('details');
                     }}
-                    onClick={() => {
-                      setSelectedType(type);
-                      setStep('details');
-                    }}
-                    className="group relative p-6 md:p-12 h-full rounded-3xl md:rounded-[2rem] border-none bg-white text-left transition-all duration-300 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] hover:shadow-[0_30px_60px_-12px_rgba(0,0,0,0.12)] hover:-translate-y-2 overflow-hidden flex flex-col shrink-0"
+                    className="group relative p-6 md:p-12 h-auto min-h-[160px] md:h-full rounded-3xl md:rounded-[2rem] border-none bg-white text-left transition-all duration-300 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.1)] hover:-translate-y-1 overflow-hidden flex flex-col shrink-0"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${type.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
                     <div className="relative z-10 flex-1 flex flex-col">
@@ -311,15 +307,15 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="space-y-8 animate-in slide-in-from-right-8 duration-300">
+              <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-8 duration-300 pb-20 md:pb-0">
                 {/* Type Selection Summary (Full Width) */}
                 <div className="flex items-center justify-between p-4 md:p-6 bg-gray-50 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-4 md:gap-6">
-                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br ${selectedType?.gradient} flex items-center justify-center shadow-md`}>
+                  <div className="flex items-center gap-3 md:gap-6">
+                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br ${selectedType?.gradient} flex items-center justify-center shadow-md shrink-0`}>
                       {selectedType?.icon}
                     </div>
                     <div>
-                      <div className="text-lg md:text-2xl font-bold text-gray-900">{selectedType?.name}</div>
+                      <div className="text-lg md:text-2xl font-bold text-gray-900 leading-tight">{selectedType?.name}</div>
                       <div className="text-xs md:text-sm text-gray-500 font-bold uppercase tracking-wide">
                         {selectedType?.department}
                       </div>
@@ -327,13 +323,13 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                   </div>
                   <button
                     onClick={() => setStep('type')}
-                    className="text-sm md:text-base font-bold text-blue-600 hover:text-blue-700 px-4 py-2 md:px-6 md:py-3 hover:bg-blue-50 rounded-xl md:rounded-2xl transition-colors"
+                    className="text-sm md:text-base font-bold text-blue-600 hover:text-blue-700 px-3 py-2 md:px-6 md:py-3 hover:bg-blue-50 rounded-xl md:rounded-2xl transition-colors"
                   >
                     Cambiar
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
                   {/* Left Column: Description (8/12) */}
                   <div className="md:col-span-8 space-y-6">
                     <div>
@@ -342,29 +338,29 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Describe el problema detalladamente..."
-                        className="w-full p-5 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl transition-all outline-none resize-none font-medium placeholder-gray-400 text-lg leading-relaxed shadow-sm min-h-[200px]"
+                        className="w-full p-5 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl transition-all outline-none resize-none font-medium placeholder-gray-400 text-base md:text-lg leading-relaxed shadow-sm min-h-[160px] md:min-h-[200px]"
                         autoFocus
                       />
                     </div>
 
                     {/* Images moved to left column for better flow */}
                     <div>
-                      <label className="block text-xl font-extrabold text-gray-900 mb-4">Fotografías (Opcional)</label>
-                      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                      <label className="block text-lg md:text-xl font-extrabold text-gray-900 mb-4">Fotografías (Opcional)</label>
+                      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
                         {imagePreviewUrls.map((url, idx) => (
                           <div key={idx} className="relative w-28 h-28 md:w-40 md:h-40 flex-shrink-0 animate-in fade-in zoom-in duration-200 group">
                             <img src={url} alt="Preview" className="w-full h-full object-cover rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm" />
                             <button
                               onClick={() => removeImage(idx)}
-                              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors scale-100 md:scale-0 md:group-hover:scale-100"
+                              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors scale-100 active:scale-90"
                             >
-                              <X size={14} strokeWidth={3} />
+                              <X size={16} strokeWidth={3} />
                             </button>
                           </div>
                         ))}
                         {selectedImages.length < 3 && (
-                          <label className="flex flex-col items-center justify-center w-28 h-28 md:w-40 md:h-40 rounded-2xl md:rounded-3xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group shrink-0">
-                            <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 rounded-full flex items-center justify-center mb-1 md:mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                          <label className="flex flex-col items-center justify-center w-28 h-28 md:w-40 md:h-40 rounded-2xl md:rounded-3xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group shrink-0 bg-gray-50/50">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center mb-1 md:mb-2 group-hover:scale-110 transition-transform shadow-sm">
                               <Camera className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-blue-500" />
                             </div>
                             <span className="text-[10px] md:text-xs font-bold text-gray-400 group-hover:text-blue-500 uppercase tracking-wide">Añadir Foto</span>
@@ -384,7 +380,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                   <div className="md:col-span-4 space-y-6">
                     <div>
                       <label className="block text-lg font-extrabold text-gray-900 mb-3">Nivel de Urgencia</label>
-                      <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-2 md:flex md:flex-col gap-2 md:gap-3">
                         {[
                           { value: 'baja', label: 'Baja', color: 'bg-green-100 text-green-700 border-green-200' },
                           { value: 'media', label: 'Media', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -394,13 +390,13 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                           <button
                             key={p.value}
                             onClick={() => setPriority(p.value as any)}
-                            className={`w-full py-3 px-5 rounded-xl text-base font-bold transition-all border-2 flex items-center justify-between ${priority === p.value
+                            className={`w-full py-3 px-4 md:px-5 rounded-xl text-sm md:text-base font-bold transition-all border-2 flex items-center justify-center md:justify-between ${priority === p.value
                               ? `${p.color} border-current shadow-sm ring-2 ring-offset-2 ring-${p.color.split('-')[1]}-200 transform scale-[1.02]`
                               : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:bg-gray-50'
                               }`}
                           >
                             <span>{p.label}</span>
-                            {priority === p.value && <div className="w-2.5 h-2.5 rounded-full bg-current shadow-sm"></div>}
+                            {priority === p.value && <div className="hidden md:block w-2.5 h-2.5 rounded-full bg-current shadow-sm"></div>}
                           </button>
                         ))}
                       </div>
@@ -408,7 +404,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
 
                     {/* Inventory moved to sidebar */}
                     {selectedType?.requiresInventory && (
-                      <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
+                      <div className="p-5 md:p-6 bg-blue-50/50 rounded-3xl border border-blue-100 animate-in fade-in slide-in-from-bottom-4">
                         <h4 className="text-base font-bold text-blue-900 mb-4 flex items-center gap-2">
                           <Package className="w-5 h-5" /> Inventario
                         </h4>
@@ -420,26 +416,38 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                               value={inventoryItem}
                               onChange={(e) => setInventoryItem(e.target.value)}
                               placeholder="Nombre..."
-                              className="w-full p-4 bg-white border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium"
+                              className="w-full p-4 bg-white border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-blue-900 placeholder-blue-300"
                             />
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-blue-700 mb-2 uppercase tracking-wide">Cantidad</label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={inventoryQuantity}
-                              onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 1)}
-                              className="w-full p-4 bg-white border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none text-center font-bold"
-                            />
+                            <div className="flex items-center gap-3 bg-white border border-blue-200 rounded-2xl p-2">
+                              <button
+                                onClick={() => setInventoryQuantity(Math.max(1, inventoryQuantity - 1))}
+                                className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100"
+                              >
+                                <Minus size={18} />
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={inventoryQuantity}
+                                onChange={(e) => setInventoryQuantity(parseInt(e.target.value) || 1)}
+                                className="flex-1 w-full bg-transparent text-center font-bold text-lg outline-none text-blue-900"
+                              />
+                              <button
+                                onClick={() => setInventoryQuantity(inventoryQuantity + 1)}
+                                className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100"
+                              >
+                                <Plus size={18} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-
-
               </div>
             )
             }

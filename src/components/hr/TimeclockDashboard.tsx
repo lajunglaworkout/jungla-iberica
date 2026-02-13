@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useData } from '../../contexts/DataContext';
 import QRGenerator from './QRGenerator';
-import { 
-  Clock, 
-  Users, 
-  Calendar, 
-  Download, 
+import {
+  Clock,
+  Users,
+  Calendar,
+  Download,
   Filter,
   CheckCircle,
   XCircle,
@@ -95,7 +95,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
       const centerEmployees = employees.filter(emp => emp.center_id === selectedCenter && emp.is_active);
       const presentEmployees = mappedRecords.filter(r => r.clock_in);
       const totalHours = mappedRecords.reduce((sum, r) => sum + (r.total_hours || 0), 0);
-      
+
       // Calcular llegadas tarde (después de las 9:15 AM)
       const lateArrivals = mappedRecords.filter(r => {
         if (!r.clock_in) return false;
@@ -121,7 +121,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
 
   const getFilteredRecords = () => {
     const centerEmployees = employees.filter(emp => emp.center_id === selectedCenter && emp.is_active);
-    
+
     switch (filterStatus) {
       case 'present':
         return records.filter(r => r.clock_in);
@@ -431,8 +431,8 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
       {/* QR Generator */}
       {showQRGenerator && (
         <div style={{ marginBottom: '24px' }}>
-          <QRGenerator 
-            centerId={selectedCenter} 
+          <QRGenerator
+            centerId={selectedCenter}
             centerName={selectedCenterName}
           />
         </div>
@@ -481,7 +481,8 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           </button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f9fafb' }}>
@@ -523,7 +524,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
                 </tr>
               ) : (
                 filteredRecords.map((record, index) => (
-                  <tr 
+                  <tr
                     key={`${record.employee_id}-${index}`}
                     style={{
                       borderBottom: '1px solid #e5e7eb',
@@ -577,6 +578,70 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden flex flex-col gap-3 p-3 bg-gray-50">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Cargando registros...</div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No hay registros para mostrar</div>
+          ) : (
+            filteredRecords.map((record, index) => (
+              <div
+                key={`${record.employee_id}-${index}`}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+              >
+                {/* Card Header */}
+                <div
+                  className="p-3 border-b border-gray-100 flex justify-between items-center"
+                  style={{ backgroundColor: getStatusColor(record) }}
+                >
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(record)}
+                    <span className="font-bold text-gray-800 text-sm">
+                      {record.employee_name}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold px-2 py-1 bg-white/50 rounded-lg text-gray-700">
+                    {getStatusText(record)}
+                  </span>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-3 grid grid-cols-3 gap-2">
+                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">Entrada</span>
+                    <span className="text-sm font-bold text-gray-800">
+                      {record.clock_in ? new Date(record.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">Salida</span>
+                    <span className="text-sm font-bold text-gray-800">
+                      {record.clock_out ? new Date(record.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">Total</span>
+                    <span className="text-sm font-bold text-emerald-600">
+                      {record.total_hours ? `${record.total_hours.toFixed(1)}h` : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                {record.location_lat && record.location_lng && (
+                  <div className="px-3 pb-3 pt-0 flex justify-end">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                      <MapPin size={12} />
+                      Ubicación Verificada
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

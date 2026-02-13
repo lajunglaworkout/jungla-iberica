@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronDown, Plus, Trash2, Loader, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabase';
 import { completeTask } from '../../services/taskService';
 import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingRecorderComponent } from '../MeetingRecorderComponent';
-import { generateMeetingMinutes } from '../../services/meetingRecordingService'; // 🔧 Usar Claude API directamente
+import { generateMeetingMinutes } from '../../services/aiService';
 import { saveMeetingToSupabase, updateMeetingInSupabase, deleteMeetingFromSupabase } from '../../services/meetingService';
 import {
   saveMeetingMetrics,
@@ -36,6 +37,7 @@ interface PreviousTask {
 }
 
 interface RecurringTask {
+  id?: number;
   titulo: string;
   notas: string;
   tipo?: 'simple' | 'expandible_centros' | 'expandible_departamentos' | 'incidencias' | 'incidencias_personal' | 'checklist_incidencias' | 'propuestas_sanciones' | 'pedidos_logistica' | 'roturas_perdidas' | 'stock_minimo' | 'envios_pendientes' | 'incidencias_mantenimiento' | 'reparaciones_pendientes' | 'coste_reparaciones' | 'datos_centros_contabilidad' | 'pagos_pendientes' | 'transferencias_autorizar' | 'gastos_extra' | 'incidencias_checklist_operaciones' | 'tendencias_clientes' | 'eventos_actividades' | 'sugerencias_peticiones' | 'comunicados_franquiciados';
@@ -108,6 +110,7 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
   // Estados para programar siguiente reunión
   const [showNextMeetingScheduler, setShowNextMeetingScheduler] = useState(false);
+  const [isEditingActa, setIsEditingActa] = useState(false);
   const [nextMeetingDate, setNextMeetingDate] = useState('');
   const [nextMeetingTime, setNextMeetingTime] = useState('');
 
@@ -736,27 +739,28 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
       console.log(`📊 Cumplimiento de tareas recurrentes: ${completedRecurringTasks}/${totalRecurringTasks} (${completionPercentage}%)`);
 
-      // 🔧 VERIFICACIÓN EXPLÍCITA DE API KEY
-      // Trigger deploy to pick up new env vars
-      const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-      if (!apiKey) {
-        console.warn('⚠️ VITE_GOOGLE_API_KEY no encontrada en variables de entorno');
-        alert('⚠️ AVISO: No se detectó la clave de Google (API Key).\n\nEl sistema generará un acta básica en "Modo Offline" sin usar Inteligencia Artificial.\n\nPara arreglar esto, verifica el archivo .env');
-      }
+      // Formatear tareas pendientes para contexto
+      const pendingTasksText = previousTasks
+        .filter(t => !previousTasksCompleted[t.id])
+        .map(t => `- ${t.titulo} (asignada a: ${t.asignado_a})`)
+        .join('\n') || 'No hay tareas pendientes';
 
-      // 🔧 NUEVO: Generar acta usando Claude API directamente (funciona en producción)
-      const result = await generateMeetingMinutes(
+      // Generar acta via Supabase Edge Function → Gemini
+      const result = await generateMeetingMinutes({
         transcription,
-        meeting?.title || 'Nueva Reunión',
-        participants || []
-      );
+        departmentName: departmentId || 'General',
+        date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        participants: participants || [],
+        pendingTasks: pendingTasksText,
+        objectives: departmentObjectives.map(o => o.nombre).join(', '),
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || 'Error generando acta');
+      console.log('✅ Acta generada:', result.minutes?.substring(0, 100));
+      console.log('📋 Tareas extraídas:', result.tasks?.length);
+
+      if (result.parseWarning) {
+        console.warn('⚠️', result.parseWarning);
       }
-
-      console.log('✅ Acta generada:', result.minutes);
-      console.log('📋 Tareas extraídas:', result.tasks);
 
       // Guardar en estado para preview
       setGeneratedMinutes(result.minutes || '');
@@ -789,7 +793,10 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
       // Calcular métricas
       const totalRecurringTasks = recurringTasks.length;
-      const completedRecurringTasks = recurringTasks.filter(task => recurringTasksCompleted[task.id]).length;
+      const completedRecurringTasks = recurringTasks.filter((task, idx) => {
+        const key = task.id !== undefined ? task.id : idx;
+        return recurringTasksCompleted[key];
+      }).length;
       const completionPercentage = totalRecurringTasks > 0
         ? Math.round((completedRecurringTasks / totalRecurringTasks) * 100)
         : 0;
@@ -2803,28 +2810,66 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
                   borderRadius: '8px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <h3 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    marginBottom: '12px'
-                  }}>
-                    📄 Acta de la Reunión
-                  </h3>
-                  <textarea
-                    value={generatedMinutes}
-                    onChange={(e) => setGeneratedMinutes(e.target.value)}
-                    style={{
-                      width: '100%',
-                      minHeight: '300px',
-                      padding: '12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontFamily: 'monospace',
-                      resize: 'vertical'
-                    }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      margin: 0
+                    }}>
+                      📄 Acta de la Reunión
+                    </h3>
+                    <button
+                      onClick={() => setIsEditingActa(!isEditingActa)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: isEditingActa ? '#059669' : '#f3f4f6',
+                        border: '1px solid',
+                        borderColor: isEditingActa ? '#059669' : '#d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        color: isEditingActa ? 'white' : '#374151'
+                      }}
+                    >
+                      {isEditingActa ? '👁 Ver acta' : '✏️ Editar acta'}
+                    </button>
+                  </div>
+                  {isEditingActa ? (
+                    <textarea
+                      value={generatedMinutes}
+                      onChange={(e) => setGeneratedMinutes(e.target.value)}
+                      placeholder="Edita el acta aquí..."
+                      style={{
+                        width: '100%',
+                        minHeight: '300px',
+                        padding: '12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        backgroundColor: 'white',
+                        padding: '16px',
+                        borderRadius: '6px',
+                        border: '1px solid #d1d5db',
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        color: '#1f2937'
+                      }}
+                    >
+                      <ReactMarkdown>{generatedMinutes}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tareas */}

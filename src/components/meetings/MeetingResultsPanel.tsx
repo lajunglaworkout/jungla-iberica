@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Download, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { createTaskNotification } from '../../services/notificationService';
@@ -116,46 +117,46 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
     try {
       // Guardar tareas en la tabla tareas
       const tasksToSave: any[] = [];
-      
+
       editingTasks.forEach(task => {
-        const assignedPeople = Array.isArray(task.assignedTo) 
-          ? task.assignedTo 
+        const assignedPeople = Array.isArray(task.assignedTo)
+          ? task.assignedTo
           : task.assignedTo ? [task.assignedTo] : [];
-        
+
         // Si no hay personas asignadas, no guardar la tarea
         if (assignedPeople.length === 0) {
           console.warn('⚠️ Tarea sin asignar:', task.title);
           return;
         }
-        
+
         // Crear una tarea para cada persona asignada
         assignedPeople.forEach(person => {
           if (person && person.trim()) {
             // 🔧 NUEVO: Buscar email del empleado por nombre
             // Esto permite que las tareas se asignen correctamente por email
             const personTrimmed = person.trim();
-            
+
             // Buscar empleado por nombre o email
             const employee = employees.find(emp => {
               const empName = emp.name?.toLowerCase() || '';
               const empEmail = emp.email?.toLowerCase() || '';
               const searchTerm = personTrimmed.toLowerCase();
-              
+
               // Buscar por coincidencia de nombre o email
-              return empName.includes(searchTerm) || 
-                     searchTerm.includes(empName) ||
-                     empEmail === searchTerm;
+              return empName.includes(searchTerm) ||
+                searchTerm.includes(empName) ||
+                empEmail === searchTerm;
             });
 
             // Usar email si se encuentra, nombre si no
             const assignedEmail = employee?.email || personTrimmed;
-            
+
             // Log para debug
             console.log(`📧 Asignando tarea "${task.title}" a: ${personTrimmed} → ${assignedEmail}`, {
               encontrado: !!employee,
               empleado: employee ? { name: employee.name, email: employee.email } : null
             });
-            
+
             tasksToSave.push({
               titulo: task.title,
               descripcion: `Acta: ${minutes.substring(0, 200)}...`,
@@ -192,7 +193,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
           minutes,
           editingTasks
         );
-        
+
         if (!meetingResult.success) {
           console.error('❌ Error al guardar reunión:', meetingResult.error);
         } else {
@@ -213,7 +214,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
           alert('Error al guardar las tareas: ' + error.message);
           return;
         }
-        
+
         console.log('✅ Tareas guardadas correctamente');
 
         // Enviar notificaciones a los usuarios asignados (solo si tienen email válido)
@@ -351,17 +352,18 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         padding: '16px'
       }}>
         <h3 style={{ margin: '0 0 12px 0', color: '#1f2937' }}>📋 Acta de Reunión</h3>
-        <pre style={{
+        <div style={{
           backgroundColor: 'white',
-          padding: '12px',
+          padding: '16px',
           borderRadius: '6px',
           overflow: 'auto',
           maxHeight: '300px',
-          fontSize: '12px',
+          fontSize: '14px',
+          lineHeight: '1.6',
           color: '#374151'
         }}>
-          {minutes}
-        </pre>
+          <ReactMarkdown>{minutes}</ReactMarkdown>
+        </div>
       </div>
 
       {/* Transcripción */}
@@ -541,8 +543,8 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
                       color: '#6b7280'
                     }}>
                       <div>
-                        👤 {Array.isArray(task.assignedTo) 
-                          ? task.assignedTo.join(', ') 
+                        👤 {Array.isArray(task.assignedTo)
+                          ? task.assignedTo.join(', ')
                           : task.assignedTo}
                       </div>
                       <div>📅 {task.deadline}</div>
