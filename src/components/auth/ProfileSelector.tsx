@@ -42,8 +42,8 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       backgroundColor: '#f9fafb',
       display: 'flex',
       alignItems: 'center',
@@ -63,7 +63,12 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
         </div>
 
         {/* Profile Type Selection */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+          gap: '24px',
+          marginBottom: '32px'
+        }}>
           {/* Employee Profile */}
           <button
             onClick={() => {
@@ -91,10 +96,10 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
             <p style={{ fontSize: '16px', margin: '0 0 16px 0', opacity: 0.8 }}>
               Acceso personal para empleados
             </p>
-            <ul style={{ 
-              textAlign: 'left', 
-              fontSize: '14px', 
-              margin: 0, 
+            <ul style={{
+              textAlign: 'left',
+              fontSize: '14px',
+              margin: 0,
               paddingLeft: '20px',
               opacity: 0.9
             }}>
@@ -133,10 +138,10 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
             <p style={{ fontSize: '16px', margin: '0 0 16px 0', opacity: 0.8 }}>
               Pantalla de fichaje para centros
             </p>
-            <ul style={{ 
-              textAlign: 'left', 
-              fontSize: '14px', 
-              margin: 0, 
+            <ul style={{
+              textAlign: 'left',
+              fontSize: '14px',
+              margin: 0,
               paddingLeft: '20px',
               opacity: 0.9
             }}>
@@ -174,15 +179,15 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
             {selectedType === 'center' ? 'Iniciar Sesión' : 'Continuar'}
             <ArrowRight size={20} />
           </button>
-          
+
           {selectedType && (
-            <p style={{ 
-              margin: '16px 0 0 0', 
-              fontSize: '14px', 
-              color: '#6b7280' 
+            <p style={{
+              margin: '16px 0 0 0',
+              fontSize: '14px',
+              color: '#6b7280'
             }}>
-              {selectedType === 'employee' 
-                ? '📱 Accederás al panel de empleado' 
+              {selectedType === 'employee'
+                ? '📱 Accederás al panel de empleado'
                 : '🏢 Te pediremos las credenciales del centro'
               }
             </p>
@@ -202,7 +207,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
             💡 ¿Cuál elegir?
           </h4>
           <p style={{ margin: 0, fontSize: '14px', color: '#1e40af', lineHeight: '1.5' }}>
-            <strong>Empleado:</strong> Si eres un trabajador que necesita fichar, ver nóminas, solicitar vacaciones, etc.<br/>
+            <strong>Empleado:</strong> Si eres un trabajador que necesita fichar, ver nóminas, solicitar vacaciones, etc.<br />
             <strong>Centro:</strong> Si vas a configurar una tablet/pantalla fija en la entrada del centro para que los empleados fichen.
           </p>
         </div>

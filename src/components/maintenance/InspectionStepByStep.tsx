@@ -456,7 +456,10 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                 color: '#111827',
                 margin: '0 0 4px 0',
                 letterSpacing: '-0.02em',
-                wordBreak: 'break-word'
+                wordBreak: 'normal',
+                overflowWrap: 'anywhere',
+                whiteSpace: 'normal',
+                hyphens: 'auto'
               }}>{zone.name}</h2>
               <p style={{
                 color: '#6b7280',
@@ -699,10 +702,12 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
         <div style={{
           display: 'flex',
+          flexDirection: window.innerWidth < 768 ? 'column-reverse' : 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
           paddingTop: '20px',
-          borderTop: '1px solid #e5e7eb'
+          borderTop: '1px solid #e5e7eb',
+          gap: '16px'
         }}>
           <button
             onClick={() => setCurrentStep(currentStep - 1)}
@@ -715,8 +720,10 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               fontWeight: '600',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              width: window.innerWidth < 768 ? '100%' : 'auto'
             }}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
@@ -736,9 +743,11 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               fontWeight: '600',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              width: window.innerWidth < 768 ? '100%' : 'auto'
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = '#059669';

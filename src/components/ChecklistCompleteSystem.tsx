@@ -573,7 +573,10 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             textDecoration: tarea.completado ? 'line-through' : 'none',
             color: tarea.completado ? '#6b7280' : '#111827',
             margin: '0 0 4px 0',
-            wordBreak: 'break-word'
+            wordBreak: 'normal',
+            overflowWrap: 'anywhere',
+            whiteSpace: 'normal',
+            hyphens: 'auto'
           }}>
             {index + 1}. {tarea.titulo}
           </p>
@@ -581,7 +584,8 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             <p style={{
               fontSize: '14px',
               color: '#6b7280',
-              margin: '0 0 8px 0'
+              margin: '0 0 8px 0',
+              whiteSpace: 'normal'
             }}>
               {tarea.descripcion}
             </p>

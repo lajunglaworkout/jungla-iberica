@@ -86,7 +86,8 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
           employeeName: currentEmployee.nombre || 'Empleado',
           startDate: formData.start_date,
           endDate: formData.end_date,
-          days: daysRequested
+          days: daysRequested,
+          centerId: currentEmployee.center_id || 0
         });
       } catch (notifyErr) {
         console.error('Error sending vacation notification:', notifyErr);
@@ -141,10 +142,10 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
         fontSize: '12px',
         zIndex: 10000
       }}>
-        Modal: {showModal ? 'ABIERTO' : 'CERRADO'}
+        {/* Modal: {showModal ? 'ABIERTO' : 'CERRADO'}  -- DEBUG ELIMINADO PARA PRODUCCIÓN */}
       </div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={onBack} style={{ padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px' }}>
             <ArrowLeft size={16} /> Volver
@@ -174,7 +175,12 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
       </div>
 
       {/* Balance */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(3, 1fr)',
+        gap: '16px',
+        marginBottom: '32px'
+      }}>
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#059669' }}>{balance.total}</div>
           <div style={{ color: '#6b7280' }}>Días Anuales</div>
