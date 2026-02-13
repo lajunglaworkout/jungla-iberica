@@ -7,6 +7,8 @@ import { checklistHistoryService } from '../services/checklistHistoryService';
 import { signatureService } from '../services/signatureService';
 import QRSignatureModal from './QRSignatureModal';
 
+import { useIsMobile } from '../hooks/useIsMobile';
+
 // Interfaces para tipos de datos
 interface Task {
   id: string;
@@ -32,6 +34,7 @@ interface ChecklistCompleteSystemProps {
 
 const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ centerId, centerName, onClose }) => {
   const { employee, userRole } = useSession();
+  const isMobile = useIsMobile();
 
   // Estados para QR de firma
   const [showQRFirmaApertura, setShowQRFirmaApertura] = useState(false);
@@ -659,7 +662,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
   console.log('Tareas cierre:', checklist.cierre?.length);
 
   return (
-    <div style={{ padding: window.innerWidth < 768 ? '16px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
       {/* Botón de cerrar (si se proporciona onClose) */}
       {onClose && (
         <button

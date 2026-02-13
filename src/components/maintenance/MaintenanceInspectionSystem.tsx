@@ -52,6 +52,8 @@ interface InspectionFormData {
   items: Record<string, MaintenanceInspectionItem>;
 }
 
+import { useIsMobile } from '../../hooks/useIsMobile';
+
 const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = ({
   userEmail,
   userName,
@@ -59,6 +61,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   centerId,
   onClose
 }) => {
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('monthly'); // 'monthly' | 'quarterly'
   const [currentStep, setCurrentStep] = useState(0);
   const [currentZone, setCurrentZone] = useState<MaintenanceZone | null>(null);
@@ -261,7 +264,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   // Renderizar paso de inicio
   const renderStartStep = () => (
     <div style={{
-      maxWidth: window.innerWidth < 768 ? '100%' : '800px',
+      maxWidth: isMobile ? '100%' : '800px',
       margin: '0 auto',
       textAlign: 'center',
       paddingBottom: '80px' // Espacio para botón sticky
@@ -360,7 +363,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
 
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className={`bg-white rounded-xl shadow-lg ${isMobile ? 'p-4' : 'p-6'}`}>
           {/* Header de zona */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -390,7 +393,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
               const item = inspectionData.items[itemId];
 
               return (
-                <div key={concept.id} className="border border-gray-200 rounded-lg p-6">
+                <div key={concept.id} className={`border border-gray-200 rounded-lg ${isMobile ? 'p-4' : 'p-6'}`}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">{concept.name}</h3>

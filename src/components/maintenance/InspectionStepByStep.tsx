@@ -22,6 +22,8 @@ interface InspectionStepByStepProps {
   onBack: () => void;
 }
 
+import { useIsMobile } from '../../hooks/useIsMobile';
+
 const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   userEmail,
   userName,
@@ -30,6 +32,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   availableCenters: providedCenters,
   onBack
 }) => {
+  const isMobile = useIsMobile();
   // Centros disponibles (usar prop o solo el actual)
   const availableCenters = providedCenters || [{ id: centerId, name: centerName }];
 
@@ -188,13 +191,13 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   // Renderizar paso de inicio
   const renderStartStep = () => (
-    <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto', padding: window.innerWidth < 768 ? '0' : '0' }}>
+    <div style={{ maxWidth: isMobile ? '100%' : '1000px', margin: '0 auto', padding: 0 }}>
       {/* Header Card */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '16px',
+        borderRadius: isMobile ? '12px' : '16px',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
-        padding: '40px',
+        padding: isMobile ? '20px' : '40px',
         marginBottom: '32px',
         textAlign: 'center',
         border: '1px solid #f3f4f6'
@@ -418,13 +421,13 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
     const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
 
     return (
-      <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto' }}>
+      <div style={{ maxWidth: isMobile ? '100%' : '1000px', margin: '0 auto' }}>
         {/* Zone Header */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '16px',
+          borderRadius: isMobile ? '12px' : '16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
-          padding: '32px',
+          padding: isMobile ? '16px' : '32px',
           marginBottom: '32px',
           display: 'flex',
           alignItems: 'center',
@@ -500,7 +503,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
                 borderRadius: '16px',
                 border: isProblem ? '1px solid #fecaca' : '1px solid #f3f4f6',
                 boxShadow: isProblem ? '0 4px 12px rgba(220, 38, 38, 0.05)' : '0 2px 4px rgba(0, 0, 0, 0.02)',
-                padding: '24px',
+                padding: isMobile ? '16px' : '24px',
                 transition: 'all 0.3s'
               }}>
                 <div style={{
