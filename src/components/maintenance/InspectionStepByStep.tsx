@@ -188,7 +188,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   // Renderizar paso de inicio
   const renderStartStep = () => (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto', padding: window.innerWidth < 768 ? '0' : '0' }}>
       {/* Header Card */}
       <div style={{
         backgroundColor: 'white',
@@ -418,7 +418,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
     const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
 
     return (
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto' }}>
         {/* Zone Header */}
         <div style={{
           backgroundColor: 'white',
@@ -782,7 +782,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
     };
 
     return (
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto' }}>
         <div style={{
           backgroundColor: 'white',
           borderRadius: '16px',

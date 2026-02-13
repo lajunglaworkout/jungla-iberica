@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, Package, Wrench, Users, Building, Send, CheckCircle, Camera, Upload, Image, Plus, ArrowRight, ChevronRight } from 'lucide-react';
+import { X, AlertTriangle, Package, Wrench, Users, Building, Send, CheckCircle, Camera, Upload, Image, Plus, Minus, ArrowRight, ChevronRight } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
 import { supabase } from '../../lib/supabase';
 import { notifyIncident } from '../../services/notificationService';
+import { APP_VERSION } from '../../version';
 
 interface SmartIncidentModalProps {
   isOpen: boolean;
@@ -261,7 +262,7 @@ const SmartIncidentModal: React.FC<SmartIncidentModalProps> = ({
                 )}
               </div>
               <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight leading-tight pl-2">
-                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v3.4 IMAGE-FIX</span>
+                <span className="text-xs text-blue-500 font-mono bg-blue-50 px-2 py-1 rounded ml-2">v{APP_VERSION}</span>
               </h2>
             </div>
 

@@ -261,7 +261,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
   // Renderizar paso de inicio
   const renderStartStep = () => (
     <div style={{
-      maxWidth: '800px',
+      maxWidth: window.innerWidth < 768 ? '100%' : '800px',
       margin: '0 auto',
       textAlign: 'center',
       paddingBottom: '80px' // Espacio para botón sticky
@@ -336,7 +336,9 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
 
       {/* Sticky Mobile Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 md:relative md:bg-transparent md:border-0 md:p-0 md:mt-8 z-20">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto" style={{
+          width: window.innerWidth < 768 ? '100%' : 'auto'
+        }}>
           <button
             onClick={() => setCurrentStep(1)}
             className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center"
@@ -400,8 +402,8 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                           key={status}
                           onClick={() => handleStatusChange(itemId, status as any)}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${item.status === status
-                              ? 'text-white'
-                              : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                            ? 'text-white'
+                            : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
                             }`}
                           style={{
                             backgroundColor: item.status === status ? config.color : undefined
