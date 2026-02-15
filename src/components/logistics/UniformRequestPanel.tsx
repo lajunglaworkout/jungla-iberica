@@ -1,15 +1,18 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Minus, Plus, Shirt, ShoppingBag, CheckCircle, Package } from 'lucide-react';
+import { Minus, Plus, Shirt, ShoppingBag, CheckCircle, Package, AlertTriangle, Truck, Clock } from 'lucide-react';
 import { LocationType } from '../../types/logistics';
 import { useInventory } from '../../hooks/useInventory';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '../../contexts/SessionContext';
 
 type ReasonType = 'reposicion' | 'compra';
+type RequestStatus = 'pending' | 'approved' | 'shipped' | 'awaiting_confirmation' | 'confirmed' | 'disputed' | 'rejected';
 
 interface RequestLine {
   itemId: string;
   itemName: string;
   quantity: number;
+  size?: string;
 }
 
 interface UniformRequestPanelProps {
@@ -23,272 +26,441 @@ const REASONS: { id: ReasonType; label: string; icon: React.ReactNode }[] = [
   { id: 'compra', label: 'Compra puntual', icon: <ShoppingBag size={16} /> }
 ];
 
+const PRENDAS_FIJAS = [
+  { key: 'vestuario_chandal', label: 'Chándal Completo', icon: '🧥', inventoryName: 'CHÁNDAL', category: 'Vestuario' },
+  { key: 'vestuario_sudadera_frio', label: 'Sudadera Frío', icon: '🧥', inventoryName: 'SUDADERA FRÍO', category: 'Vestuario' },
+  { key: 'vestuario_chaleco_frio', label: 'Chaleco Frío', icon: '🦺', inventoryName: 'CHALECO FRÍO', category: 'Vestuario' },
+  { key: 'vestuario_pantalon_corto', label: 'Pantalón Corto', icon: '🩳', inventoryName: 'PANTALÓN CORTO', category: 'Vestuario' },
+  { key: 'vestuario_polo_verde', label: 'Polo Verde', icon: '👕', inventoryName: 'POLO VERDE', category: 'Vestuario' },
+  { key: 'vestuario_camiseta_entrenamiento', label: 'Camiseta Entreno', icon: '💪', inventoryName: 'CAMISETA ENTRENAMIENTO PERSONAL', category: 'Vestuario' },
+];
+
 const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation, employeeName, onSubmit }) => {
-  const { inventoryItems, loading, error } = useInventory();
+  const { employee } = useSession();
+  const { inventoryItems } = useInventory();
+  const [activeTab, setActiveTab] = useState<'my-uniform' | 'requests'>('my-uniform');
+  const [assignedItems, setAssignedItems] = useState<any>({});
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Request Form State
+  const [showRequestForm, setShowRequestForm] = useState<string | null>(null); // 'itemKey' or null
   const [reason, setReason] = useState<ReasonType>('reposicion');
-  const [selection, setSelection] = useState<RequestLine[]>([]);
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Filtrar artículos de vestuario y merchandising
-  const uniformItems = useMemo(() => {
-    const filtered = inventoryItems.filter(item => {
-      const category = item.category?.toLowerCase() || '';
-      const name = item.name?.toLowerCase() || '';
-
-      return (
-        category.includes('vestuario') ||
-        category.includes('ropa') ||
-        category.includes('merchandising') ||
-        category.includes('textil') ||
-        name.includes('camiseta') ||
-        name.includes('pantalón') ||
-        name.includes('pantalon') ||
-        name.includes('zapato') ||
-        name.includes('uniforme') ||
-        name.includes('toalla') ||
-        name.includes('botella') ||
-        name.includes('polo') ||
-        name.includes('sudadera')
-      );
-    });
-
-    console.log('📦 Artículos de vestuario encontrados:', filtered.length);
-    console.log('📋 Categorías disponibles:', [...new Set(inventoryItems.map(item => item.category))]);
-    console.log('👕 Items de vestuario:', filtered.map(item => ({
-      name: item.name,
-      category: item.category,
-      center: item.center,
-      quantity: item.quantity
-    })));
-
-    return filtered;
-  }, [inventoryItems]);
-
-  // Obtener stock real por ubicación
-  const getStockForLocation = (itemId: number, location: LocationType) => {
-    const item = inventoryItems.find(i => i.id === itemId);
-    if (!item) return 0;
-
-    // El vestuario SIEMPRE se muestra desde la central, independientemente del centro del usuario
-    // Todos los empleados pueden solicitar vestuario de la central
-    return item.quantity || 0;
-  };
-
-  const updateQuantity = (itemId: string, itemName: string, delta: number) => {
-    console.log('Updating quantity:', itemId, itemName, delta);
-    setSelection(prev => {
-      const existing = prev.find(line => line.itemId === itemId);
-      if (!existing) {
-        return delta > 0 ? [...prev, { itemId, itemName, quantity: 1 }] : prev;
-      }
-
-      const newQty = existing.quantity + delta;
-      if (newQty <= 0) {
-        return prev.filter(line => line.itemId !== itemId);
-      }
-
-      return prev.map(line => (line.itemId === itemId ? { ...line, quantity: newQty } : line));
-    });
-  };
-
-  const totalItems = selection.reduce((acc, line) => acc + line.quantity, 0);
-  console.log('Total items:', totalItems, 'Selection:', selection);
-
-  const handleSubmit = async () => {
-    if (!totalItems) {
-      alert('Selecciona al menos una prenda.');
-      return;
+  // Status Badge Helper
+  const getStatusBadge = (status: RequestStatus) => {
+    switch (status) {
+      case 'pending': return { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente', icon: <Clock size={14} /> };
+      case 'approved': return { color: 'bg-blue-100 text-blue-800', label: 'Aprobado', icon: <CheckCircle size={14} /> };
+      case 'shipped': return { color: 'bg-purple-100 text-purple-800', label: 'Enviado', icon: <Truck size={14} /> };
+      case 'awaiting_confirmation': return { color: 'bg-orange-100 text-orange-800', label: 'Confirmar Recepción', icon: <AlertTriangle size={14} /> };
+      case 'confirmed': return { color: 'bg-emerald-100 text-emerald-800', label: 'Entregado', icon: <CheckCircle size={14} /> };
+      case 'disputed': return { color: 'bg-red-100 text-red-800', label: 'Incidencia', icon: <AlertTriangle size={14} /> };
+      case 'rejected': return { color: 'bg-gray-100 text-gray-800', label: 'Rechazado', icon: <AlertTriangle size={14} /> };
+      default: return { color: 'bg-gray-100 text-gray-800', label: status, icon: <Clock size={14} /> };
     }
+  };
 
+  useEffect(() => {
+    loadData();
+  }, [employee?.id]);
+
+  const loadData = async () => {
+    if (!employee?.id) return;
+    setLoading(true);
     try {
-      setSubmitting(true);
-
-      // Guardar solicitud en Supabase
-      const { data: requestData, error: requestError } = await supabase
-        .from('uniform_requests')
-        .insert({
-          employee_name: employeeName || 'Empleado',
-          location: userLocation,
-          reason: reason,
-          status: 'pending',
-          requested_at: new Date().toISOString(),
-          items: selection
-        })
-        .select()
+      // 1. Fetch assigned items
+      const { data: empData, error: empError } = await supabase
+        .from('employees')
+        .select('vestuario_chandal, vestuario_sudadera_frio, vestuario_chaleco_frio, vestuario_pantalon_corto, vestuario_polo_verde, vestuario_camiseta_entrenamiento, vestuario_observaciones')
+        .eq('id', employee.id)
         .single();
 
-      if (requestError) {
-        console.error('Error guardando solicitud:', requestError);
-        alert('Error al enviar la solicitud. Por favor, inténtalo de nuevo.');
-        return;
+      if (empError) throw empError;
+      setAssignedItems(empData);
+
+      // 2. Fetch requests history
+      const { data: reqData, error: reqError } = await supabase
+        .from('uniform_requests')
+        .select('*')
+        .eq('employee_name', employeeName) // Using name as linker based on current DB structure
+        .order('created_at', { ascending: false });
+
+      if (reqError) throw reqError;
+
+      // Check for auto-transitions (shipped -> awaiting_confirmation)
+      const now = new Date();
+      const needsUpdate = reqData?.filter(r =>
+        r.status === 'shipped' &&
+        r.shipped_at &&
+        (now.getTime() - new Date(r.shipped_at).getTime() > 3 * 24 * 60 * 60 * 1000)
+      ) || [];
+
+      // Optimistically update local state for better UX, actual DB update can happen in background? 
+      // ideally we update DB. Let's do it if we find any.
+      if (needsUpdate.length > 0) {
+        for (const req of needsUpdate) {
+          await supabase.from('uniform_requests')
+            .update({ status: 'awaiting_confirmation' })
+            .eq('id', req.id);
+        }
+        // Reload requests
+        const { data: reloaded } = await supabase
+          .from('uniform_requests')
+          .select('*')
+          .eq('employee_name', employeeName)
+          .order('created_at', { ascending: false });
+        setRequests(reloaded || []);
+      } else {
+        setRequests(reqData || []);
       }
 
-      console.log('✅ Solicitud guardada:', requestData);
+    } catch (err) {
+      console.error('Error loading uniform data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Llamar al callback si existe
-      onSubmit?.({ reason, location: userLocation, items: selection });
+  const handleRequestSubmit = async (prendaKey: string, inventoryName: string) => {
+    if (!selectedSize) {
+      alert('Por favor selecciona una talla');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        employee_name: employeeName,
+        location: userLocation,
+        reason: reason,
+        status: 'pending',
+        items: [{
+          itemId: prendaKey, // We use the key to track which item type it is easily
+          itemName: inventoryName,
+          quantity: 1,
+          size: selectedSize
+        }],
+        notes: notes,
+        requested_at: new Date().toISOString()
+      };
 
-      // Limpiar selección
-      setSelection([]);
+      const { error } = await supabase
+        .from('uniform_requests')
+        .insert(payload);
 
-    } catch (error) {
-      console.error('Error en handleSubmit:', error);
-      alert('Error inesperado al enviar la solicitud.');
+      if (error) throw error;
+
+      alert('Solicitud enviada correctamente');
+      setShowRequestForm(null);
+      setNotes('');
+      setSelectedSize('');
+      loadData(); // Refresh
+      setActiveTab('requests'); // Switch to requests tab
+    } catch (err) {
+      console.error('Error submitting request:', err);
+      alert('Error al enviar la solicitud');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '60px 20px',
-        backgroundColor: 'white',
-        borderRadius: '16px'
-      }}>
-        <Package size={48} color="#059669" style={{ marginBottom: '16px' }} />
-        <p style={{ color: '#6b7280', fontSize: '16px' }}>Cargando inventario de vestuario...</p>
-      </div>
-    );
-  }
+  const handleConfirmReceipt = async (requestId: number, items: any[]) => {
+    if (!confirm('¿Confirmas que has recibido las prendas correctamente?')) return;
 
-  if (error) {
-    return (
-      <div style={{
-        padding: '24px',
-        backgroundColor: '#fef2f2',
-        borderRadius: '12px',
-        border: '1px solid #fecaca'
-      }}>
-        <p style={{ color: '#dc2626', margin: 0 }}>❌ Error: {error}</p>
-      </div>
-    );
-  }
+    try {
+      // 1. Update request status
+      const { error: reqError } = await supabase
+        .from('uniform_requests')
+        .update({
+          status: 'confirmed',
+          confirmed_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (reqError) throw reqError;
+
+      // 2. Update employee assigned items
+      // Map inventory names back to DB columns if possible, or just update based on what we know
+      // In this specific flow, we know the item from the request.
+      // Ideally requests should store the 'prendaKey' or we map it back.
+      // Since we stored 'itemId' as 'prendaKey' in handleRequestSubmit (e.g., 'vestuario_chandal'), we can use it.
+
+      const updateData: any = {};
+      items.forEach((item: any) => {
+        // item.itemId holds the key like 'vestuario_chandal'
+        if (item.itemId && item.itemId.startsWith('vestuario_')) {
+          updateData[item.itemId] = item.size;
+        }
+      });
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: empError } = await supabase
+          .from('employees')
+          .update(updateData)
+          .eq('id', employee?.id);
+
+        if (empError) console.error('Error updating employee profile:', empError);
+      }
+
+      alert('¡Gracias! Tu vestuario ha sido actualizado.');
+      loadData();
+    } catch (err) {
+      console.error('Error confirming receipt:', err);
+      alert('Error al confirmar recepción');
+    }
+  };
+
+  const handleDispute = async (requestId: number) => {
+    const reason = prompt('Por favor indica el problema (talla incorrecta, dañado, etc):');
+    if (!reason) return;
+
+    try {
+      const { error } = await supabase
+        .from('uniform_requests')
+        .update({
+          status: 'disputed',
+          dispute_reason: reason
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+      alert('Incidencia reportada. Logística revisará tu caso.');
+      loadData();
+    } catch (err) {
+      console.error('Error reporting dispute:', err);
+      alert('Error al reportar incidencia');
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Cargando vestuario...</div>;
 
   return (
-    <div className="grid gap-4 md:gap-5 pb-24 md:pb-0 relative">
-      <header className="bg-gradient-to-br from-emerald-600 to-emerald-500 text-white p-5 md:p-7 rounded-2xl shadow-xl shadow-emerald-600/20">
-        <div className="flex items-center gap-3 mb-3">
-          <Shirt size={28} className="md:w-8 md:h-8" />
-          <h1 className="text-xl md:text-2xl font-bold leading-tight">
-            {employeeName ? `Vestuario para ${employeeName}` : 'Solicitud de Vestuario'}
+    <div className="space-y-6">
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #059669, #047857)',
+        borderRadius: window.innerWidth < 768 ? '12px' : '16px',
+        padding: window.innerWidth < 768 ? '16px' : '24px',
+        color: 'white',
+        marginBottom: '20px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '28px' }}>👕</span>
+          <h1 style={{ margin: 0, fontSize: window.innerWidth < 768 ? '20px' : '24px', fontWeight: '700' }}>
+            Mi Vestuario
           </h1>
         </div>
-        <p className="text-sm md:text-base opacity-95 leading-relaxed">
-          Selecciona las prendas y el motivo.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2 md:gap-3">
-          {REASONS.map(option => (
+        <div className="flex justify-between items-end">
+          <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>
+            {employeeName} · {userLocation.charAt(0).toUpperCase() + userLocation.slice(1)}
+          </p>
+          <div className="flex bg-white/10 rounded-lg p-1 gap-1">
             <button
-              key={option.id}
-              onClick={() => setReason(option.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${reason === option.id
-                  ? 'bg-white text-emerald-600 shadow-sm ring-2 ring-white/20'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
+              onClick={() => setActiveTab('my-uniform')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${activeTab === 'my-uniform' ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
             >
-              {option.icon}
-              {option.label}
+              Mis Prendas
             </button>
-          ))}
-        </div>
-      </header>
-
-      <div className="grid gap-3 md:gap-4">
-        {uniformItems.length === 0 ? (
-          <div className="bg-white p-8 rounded-xl text-center shadow-sm">
-            <p className="text-gray-500">No hay artículos disponibles.</p>
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${activeTab === 'requests' ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
+            >
+              Solicitudes {requests.filter(r => r.status === 'pending' || r.status === 'awaiting_confirmation').length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{requests.filter(r => r.status === 'pending' || r.status === 'awaiting_confirmation').length}</span>}
+            </button>
           </div>
-        ) : (
-          uniformItems.map(item => {
-            const currentSelection = selection.find(line => line.itemId === item.id.toString());
-            const quantity = currentSelection?.quantity || 0;
-            const availableStock = getStockForLocation(item.id, userLocation);
-            const isOutOfStock = availableStock === 0;
+        </div>
+      </div>
+
+      {activeTab === 'my-uniform' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {PRENDAS_FIJAS.map(prenda => {
+            const assignedSize = assignedItems[prenda.key];
+            const isAssigned = assignedSize && assignedSize !== '';
+            const isRequesting = showRequestForm === prenda.key;
 
             return (
-              <div key={item.id} className={`bg-white rounded-xl p-4 border transition-all ${quantity > 0 ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-md' : 'border-gray-200'
-                } ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}>
-
-                <div className="flex justify-between items-start gap-3 mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-base md:text-lg leading-tight mb-1">
-                      {item.name}
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 uppercase tracking-wide">
-                        {item.category}
-                      </span>
-                      {item.size && (
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                          Talla: {item.size}
-                        </span>
+              <div key={prenda.key} className={`bg-white rounded-xl border ${isAssigned ? 'border-emerald-200' : 'border-gray-200'} shadow-sm overflow-hidden transition-all hover:shadow-md`}>
+                <div className="p-4 flex justify-between items-start">
+                  <div className="flex gap-3">
+                    <div className="text-2xl pt-1">{prenda.icon}</div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">{prenda.label}</h3>
+                      {isAssigned ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm text-gray-600">Talla:</span>
+                          <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">{assignedSize}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400 mt-1 italic">No asignado</div>
                       )}
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-xs font-bold ${isOutOfStock ? 'text-red-500' : 'text-emerald-600'}`}>
-                      {isOutOfStock ? 'AGOTADO' : `${availableStock} disp.`}
-                    </p>
+                  <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${isAssigned ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {isAssigned ? '✅ Asignado' : '⬜ Pendiente'}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                  <div className="text-sm text-gray-400 font-medium">
-                    Cantidad
-                  </div>
-                  <div className="flex items-center gap-3">
+                {/* Request Area */}
+                <div className="bg-gray-50 p-3 border-t border-gray-100">
+                  {isRequesting ? (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex gap-2">
+                        {REASONS.map(r => (
+                          <button
+                            key={r.id}
+                            onClick={() => setReason(r.id)}
+                            className={`flex-1 py-1.5 px-2 rounded text-xs font-medium border ${reason === r.id ? 'bg-white border-emerald-500 text-emerald-700 shadow-sm' : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-200'}`}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <select
+                          value={selectedSize}
+                          onChange={(e) => setSelectedSize(e.target.value)}
+                          className="flex-1 rounded-lg border-gray-300 text-sm py-1.5"
+                        >
+                          <option value="">Seleccionar Talla</option>
+                          {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Notas (opcional)..."
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          className="flex-[2] rounded-lg border-gray-300 text-sm py-1.5"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => setShowRequestForm(null)}
+                          className="flex-1 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => handleRequestSubmit(prenda.key, prenda.inventoryName)}
+                          disabled={submitting || !selectedSize}
+                          className="flex-1 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 shadow-sm"
+                        >
+                          {submitting ? 'Enviando...' : 'Confirmar Solicitud'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <button
-                      onClick={() => updateQuantity(item.id.toString(), item.name, -1)}
-                      disabled={quantity === 0 || isOutOfStock}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${quantity === 0 ? 'bg-gray-100 text-gray-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                      onClick={() => {
+                        setShowRequestForm(prenda.key);
+                        setReason(isAssigned ? 'reposicion' : 'reposicion'); // Default logic?
+                        setSelectedSize(isAssigned ? assignedSize : '');
+                      }}
+                      className={`w-full py-2 rounded-lg text-sm font-medium border flex items-center justify-center gap-2 transition-colors ${isAssigned
+                          ? 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                         }`}
                     >
-                      <Minus size={20} />
+                      {isAssigned ? (
+                        <>🔄 Solicitar Reposición</>
+                      ) : (
+                        <>✨ Solicitar Prenda</>
+                      )}
                     </button>
-                    <span className="w-8 text-center text-xl font-bold text-emerald-600">
-                      {quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.id.toString(), item.name, 1)}
-                      disabled={isOutOfStock || quantity >= availableStock}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isOutOfStock || quantity >= availableStock
-                          ? 'bg-gray-100 text-gray-300'
-                          : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-95'
-                        }`}
-                    >
-                      <Plus size={20} />
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      {totalItems > 0 && (
-        <footer className="fixed bottom-4 left-4 right-4 md:static md:p-4 md:bg-white md:border md:border-gray-200 md:rounded-xl shadow-2xl md:shadow-none z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className={`w-full py-4 px-6 rounded-xl font-bold text-white shadow-xl flex items-center justify-center gap-3 transition-all ${submitting ? 'bg-gray-400' : 'bg-gray-900 hover:bg-black active:scale-[0.98]'
-              }`}
-          >
-            {submitting ? (
-              'Enviando...'
-            ) : (
-              <>
-                <CheckCircle size={20} className="text-emerald-400" />
-                <span className="text-lg">Pedir {totalItems} prendas</span>
-              </>
-            )}
-          </button>
-        </footer>
+      {activeTab === 'requests' && (
+        <div className="space-y-4">
+          {requests.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+              <Package size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">No has realizado ninguna solicitud aún.</p>
+              <button onClick={() => setActiveTab('my-uniform')} className="mt-4 text-emerald-600 font-medium hover:underline">
+                Ir a Mi Vestuario
+              </button>
+            </div>
+          ) : (
+            requests.map(req => {
+              const statusInfo = getStatusBadge(req.status);
+              const isActionable = req.status === 'shipped' || req.status === 'awaiting_confirmation';
+
+              return (
+                <div key={req.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${statusInfo.color}`}>
+                      {statusInfo.icon} {statusInfo.label}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(req.requested_at).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {req.items?.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-gray-100 p-1.5 rounded-md text-xl">🧥</div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{item.itemName}</p>
+                              <p className="text-xs text-gray-500">Talla: {item.size} · Cantidad: {item.quantity}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Banner */}
+                    {isActionable && (
+                      <div className="mt-4 bg-orange-50 border border-orange-100 rounded-lg p-3 animate-in zoom-in-95 duration-300">
+                        <div className="flex gap-3 items-start">
+                          <AlertTriangle className="text-orange-600 shrink-0 mt-0.5" size={18} />
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-orange-800">Confirmación Necesaria</h4>
+                            <p className="text-xs text-orange-700 mt-1 mb-2">
+                              ¿Has recibido este pedido correctamente? Tu confirmación actualizará tu inventario personal.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleConfirmReceipt(req.id, req.items)}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition-colors shadow-sm"
+                              >
+                                ✅ Sí, todo correcto
+                              </button>
+                              <button
+                                onClick={() => handleDispute(req.id)}
+                                className="px-3 bg-white border border-orange-200 text-orange-700 hover:bg-orange-100 text-xs font-medium py-2 rounded-lg transition-colors"
+                              >
+                                ❌ Reportar problema
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timeline / Details */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
+                      <span>Solicitado: {new Date(req.requested_at).toLocaleDateString()}</span>
+                      {req.shipped_at && <span>Enviado: {new Date(req.shipped_at).toLocaleDateString()}</span>}
+                      {req.confirmed_at && <span className="text-emerald-600 font-medium">Entregado: {new Date(req.confirmed_at).toLocaleDateString()}</span>}
+                      {req.dispute_reason && <span className="text-red-500 font-medium block w-full mt-1">Motivo incidencia: {req.dispute_reason}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       )}
     </div>
   );

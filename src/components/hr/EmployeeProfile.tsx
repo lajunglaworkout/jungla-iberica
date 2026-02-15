@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Phone, Mail, Edit3, Save, X, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface EmployeeProfileProps {
   onBack: () => void;
@@ -24,14 +25,8 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
     dni: ''
   });
 
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Mobile detection hook
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadEmployeeData();
@@ -138,15 +133,15 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
     setError(null);
   };
 
-  // Helper to get display value
+  // Helper to get display value - Simplified placeholders
   const getDisplayValue = (field: string) => {
-    if (field === 'nombre') return `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || employee?.name || 'No disponible';
-    if (field === 'telefono') return employee?.phone || 'No especificado';
-    if (field === 'dni') return employee?.dni || 'No disponible';
-    if (field === 'email') return employee?.email || 'No especificado';
-    if (field === 'cargo') return employee?.position || employee?.role || 'No especificado';
-    if (field === 'departamento') return employee?.departamento || employee?.department || 'No especificado';
-    return 'No disponible';
+    if (field === 'nombre') return `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || employee?.name || '-';
+    if (field === 'telefono') return employee?.phone || '-';
+    if (field === 'dni') return employee?.dni || '-';
+    if (field === 'email') return employee?.email || '-';
+    if (field === 'cargo') return employee?.position || employee?.role || '-';
+    if (field === 'departamento') return employee?.departamento || employee?.department || '-';
+    return '-';
   };
 
   if (loading) {
@@ -159,13 +154,13 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
   }
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
-        marginBottom: '24px',
+        gap: '12px',
+        marginBottom: '20px',
         flexWrap: 'wrap'
       }}>
         <button
@@ -178,12 +173,13 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            fontSize: isMobile ? '14px' : '16px'
           }}
         >
           <ArrowLeft size={16} /> Volver
         </button>
-        <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: 'bold', margin: 0 }}>
+        <h1 style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', margin: 0 }}>
           👤 Mi Perfil
         </h1>
       </div>
@@ -220,18 +216,18 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
-        padding: isMobile ? '20px' : '32px',
+        padding: isMobile ? '16px' : '32px',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '20px',
+          marginBottom: isMobile ? '16px' : '20px',
           flexWrap: 'wrap',
           gap: '12px'
         }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <User size={20} />
             Información Personal
           </h2>
@@ -240,13 +236,13 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
               <button
                 onClick={handleCancel}
                 style={{
-                  padding: '8px 16px',
+                  padding: '8px 12px',
                   backgroundColor: '#f3f4f6',
                   color: '#374151',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -262,27 +258,30 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: '20px'
+          gap: isMobile ? '16px' : '24px'
         }}>
           {/* Nombre - Editable */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Nombre</label>
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'block' }}>Nombre</label>
             {editing ? (
               <input
                 type="text"
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                placeholder="Nombre"
                 style={{
-                  padding: '12px',
+                  padding: '10px 12px',
                   backgroundColor: 'white',
-                  border: '2px solid #059669',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   width: '100%',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               />
             ) : (
-              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div style={{ padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '15px', color: '#111827', width: '100%', boxSizing: 'border-box' }}>
                 {getDisplayValue('nombre')}
               </div>
             )}
@@ -290,47 +289,53 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
           {/* Apellidos - Editable */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Apellidos</label>
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'block' }}>Apellidos</label>
             {editing ? (
               <input
                 type="text"
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                placeholder="Apellidos"
                 style={{
-                  padding: '12px',
+                  padding: '10px 12px',
                   backgroundColor: 'white',
-                  border: '2px solid #059669',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   width: '100%',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               />
             ) : (
-              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                {employee?.last_name || 'No disponible'}
+              <div style={{ padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '15px', color: '#111827', width: '100%', boxSizing: 'border-box' }}>
+                {employee?.last_name || '-'}
               </div>
             )}
           </div>
 
           {/* DNI - Editable */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>DNI</label>
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'block' }}>DNI</label>
             {editing ? (
               <input
                 type="text"
                 value={formData.dni}
                 onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                placeholder="DNI / NIE"
                 style={{
-                  padding: '12px',
+                  padding: '10px 12px',
                   backgroundColor: 'white',
-                  border: '2px solid #059669',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   width: '100%',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               />
             ) : (
-              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div style={{ padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '15px', color: '#111827', width: '100%', boxSizing: 'border-box' }}>
                 {getDisplayValue('dni')}
               </div>
             )}
@@ -338,8 +343,8 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
           {/* Teléfono - Editable */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Phone size={16} />
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Phone size={14} />
               Teléfono
             </label>
             {editing ? (
@@ -347,17 +352,20 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="Teléfono"
                 style={{
-                  padding: '12px',
+                  padding: '10px 12px',
                   backgroundColor: 'white',
-                  border: '2px solid #059669',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   width: '100%',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               />
             ) : (
-              <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div style={{ padding: '10px 12px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '15px', color: '#111827', width: '100%', boxSizing: 'border-box' }}>
                 {getDisplayValue('telefono')}
               </div>
             )}
@@ -365,46 +373,57 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
           {/* Email - Read only */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Mail size={16} />
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Mail size={14} />
               Email
             </label>
             <div style={{
-              padding: '12px',
+              padding: '10px 12px',
               backgroundColor: '#f9fafb',
               borderRadius: '8px',
-              color: editing ? '#9ca3af' : 'inherit'
+              color: editing ? '#6b7280' : '#111827',
+              fontSize: '15px',
+              width: '100%',
+              boxSizing: 'border-box'
             }}>
               {getDisplayValue('email')}
-              {editing && <span style={{ fontSize: '11px', marginLeft: '8px' }}>(no editable)</span>}
+              {editing && <span style={{ fontSize: '11px', marginLeft: '8px', color: '#9ca3af' }}>(no editable)</span>}
             </div>
           </div>
 
           {/* Cargo - Read only */}
           <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Cargo</label>
+            <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'block' }}>Cargo</label>
             <div style={{
-              padding: '12px',
+              padding: '10px 12px',
               backgroundColor: '#f9fafb',
               borderRadius: '8px',
-              color: editing ? '#9ca3af' : 'inherit'
+              color: editing ? '#6b7280' : '#111827',
+              fontSize: '15px',
+              width: '100%',
+              boxSizing: 'border-box'
             }}>
               {getDisplayValue('cargo')}
             </div>
           </div>
 
-          {/* Departamento - Read only */}
-          <div>
-            <label style={{ fontWeight: '500', marginBottom: '8px', display: 'block' }}>Departamento</label>
-            <div style={{
-              padding: '12px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px',
-              color: editing ? '#9ca3af' : 'inherit'
-            }}>
-              {getDisplayValue('departamento')}
+          {/* Departamento - Read only - Hide if empty unless editing */}
+          {(editing || getDisplayValue('departamento') !== '-') && (
+            <div>
+              <label style={{ fontWeight: '500', marginBottom: '6px', fontSize: '14px', color: '#374151', display: 'block' }}>Departamento</label>
+              <div style={{
+                padding: '10px 12px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                color: editing ? '#6b7280' : '#111827',
+                fontSize: '15px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}>
+                {getDisplayValue('departamento')}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -423,7 +442,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
                 fontSize: '14px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                width: isMobile ? '100%' : 'auto',
+                justifyContent: 'center'
               }}
             >
               {saving ? (
@@ -451,7 +472,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
                 fontSize: '14px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                width: isMobile ? '100%' : 'auto',
+                justifyContent: 'center'
               }}
             >
               <Edit3 size={16} />

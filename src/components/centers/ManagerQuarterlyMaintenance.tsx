@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  User, 
-  MapPin, 
-  Camera, 
+import {
+  Calendar,
+  User,
+  MapPin,
+  Camera,
   ArrowLeft,
   ArrowRight,
   CheckCircle,
@@ -14,6 +14,7 @@ import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS, MAINTENANCE_STATUS, TASK_PRIOR
 import maintenanceService from '../../services/maintenanceService';
 import quarterlyMaintenanceService from '../../services/quarterlyMaintenanceService';
 import { useSession } from '../../contexts/SessionContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface ManagerQuarterlyMaintenanceProps {
   onBack: () => void;
@@ -25,15 +26,17 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   centerId: propCenterId
 }) => {
   const { employee } = useSession();
+  const isMobile = useIsMobile();
   const userEmail = employee?.email || '';
   const userName = employee?.name || '';
-  const centerName = employee?.center_id === '9' ? 'Centro Sevilla' : 
-                     employee?.center_id === '10' ? 'Centro Jerez' : 
-                     employee?.center_id === '11' ? 'Centro Puerto' : 'Centro';
+  const centerName = employee?.center_id === '9' ? 'Centro Sevilla' :
+    employee?.center_id === '10' ? 'Centro Jerez' :
+      employee?.center_id === '11' ? 'Centro Puerto' : 'Centro';
   const centerId = propCenterId?.toString() || employee?.center_id || '9';
   const [currentStep, setCurrentStep] = useState(0); // 0 = inicio, 1-9 = zonas, 10 = resumen
   const [selectedCenter, setSelectedCenter] = useState({ id: centerId, name: centerName });
   const [inspectionData, setInspectionData] = useState<any>({});
+
 
   // Centros disponibles
   const availableCenters = [
@@ -45,10 +48,10 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   // Inicializar datos de inspección
   useEffect(() => {
     const items: any = {};
-    
+
     MAINTENANCE_ZONES.forEach(zone => {
       const zoneConcepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
-      
+
       zoneConcepts.forEach(concept => {
         const itemId = `${zone.id}_${concept.id}`;
         items[itemId] = {
@@ -67,7 +70,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
         };
       });
     });
-    
+
     setInspectionData((prev: any) => ({ ...prev, ...items }));
   }, []);
 
@@ -91,29 +94,29 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   const handleSubmitInspection = async () => {
     try {
       console.log('🔧 Enviando revisión trimestral...');
-      
+
       // VALIDAR FOTOS OBLIGATORIAS
       const allItems = Object.values(inspectionData) as any[];
-      const itemsWithPhotosRequired = allItems.filter((item: any) => 
+      const itemsWithPhotosRequired = allItems.filter((item: any) =>
         item.status === 'regular' || item.status === 'mal'
       );
-      
-      const itemsWithoutPhotos = itemsWithPhotosRequired.filter((item: any) => 
+
+      const itemsWithoutPhotos = itemsWithPhotosRequired.filter((item: any) =>
         !item.photos_deterioro || item.photos_deterioro.length === 0
       );
-      
+
       if (itemsWithoutPhotos.length > 0) {
         alert(`❌ No se puede enviar la revisión.\n\n` +
-              `${itemsWithoutPhotos.length} items requieren fotos obligatorias:\n` +
-              itemsWithoutPhotos.map((item: any) => `• ${item.zone_name}: ${item.concept_name}`).join('\n') +
-              `\n\nPor favor, sube las fotos de deterioro para todos los items marcados como REGULAR o MAL.`);
+          `${itemsWithoutPhotos.length} items requieren fotos obligatorias:\n` +
+          itemsWithoutPhotos.map((item: any) => `• ${item.zone_name}: ${item.concept_name}`).join('\n') +
+          `\n\nPor favor, sube las fotos de deterioro para todos los items marcados como REGULAR o MAL.`);
         return;
       }
-      
+
       // Preparar datos de la inspección
       const inspectionDate = new Date();
       const inspectionMonth = inspectionDate.toISOString().substring(0, 7); // "2025-09"
-      
+
       // Calcular estadísticas
       const itemsOk = allItems.filter((item: any) => item.status === 'bien').length;
       const itemsRegular = allItems.filter((item: any) => item.status === 'regular').length;
@@ -147,7 +150,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
         const zone = MAINTENANCE_ZONES.find(z => z.id === zoneId);
         const concept = MAINTENANCE_CONCEPTS.find(c => c.id === conceptId);
         const itemData = item as any;
-        
+
         return {
           zone_id: zoneId,
           zone_name: zone?.name || 'Zona desconocida',
@@ -164,12 +167,12 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
       });
 
       // Buscar la asignación activa para este centro
-      const centerNumId = selectedCenter.id === 'sevilla' ? 9 : 
-                          selectedCenter.id === 'jerez' ? 10 : 
-                          selectedCenter.id === 'puerto' ? 11 : 9;
+      const centerNumId = selectedCenter.id === 'sevilla' ? 9 :
+        selectedCenter.id === 'jerez' ? 10 :
+          selectedCenter.id === 'puerto' ? 11 : 9;
 
       const assignmentResult = await quarterlyMaintenanceService.getAssignments(centerNumId);
-      
+
       if (!assignmentResult.success || !assignmentResult.assignments || assignmentResult.assignments.length === 0) {
         alert('❌ No se encontró una asignación activa para este centro');
         return;
@@ -179,11 +182,11 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
 
       // Guardar los items de la revisión
       const result = await quarterlyMaintenanceService.saveReviewItems(assignment.id, items);
-      
+
       if (result.success) {
         // Marcar la asignación como completada
         const completeResult = await quarterlyMaintenanceService.completeAssignment(assignment.id, userEmail);
-        
+
         if (completeResult.success) {
           alert('✅ Revisión trimestral completada y enviada a Beni');
           onBack(); // Volver al dashboard
@@ -204,7 +207,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   // Manejar cambio de estado
   const handleStatusChange = (itemId: string, status: string) => {
     const photosRequired = status !== 'bien';
-    
+
     updateInspectionItem(itemId, {
       status,
       photos_required: photosRequired
@@ -261,7 +264,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           </div>
           <span style={{ fontWeight: '500' }}>{userName}</span>
         </div>
-        
+
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -299,7 +302,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
             ))}
           </select>
         </div>
-        
+
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -315,9 +318,9 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           <input
             type="date"
             value={inspectionData.inspection_date}
-            onChange={(e) => setInspectionData((prev: any) => ({ 
-              ...prev, 
-              inspection_date: e.target.value 
+            onChange={(e) => setInspectionData((prev: any) => ({
+              ...prev,
+              inspection_date: e.target.value
             }))}
             style={{
               border: '1px solid #d1d5db',
@@ -405,7 +408,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   const renderZoneStep = (zoneIndex: number) => {
     const zone = MAINTENANCE_ZONES[zoneIndex];
     const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
-    
+
     return (
       <div style={{
         backgroundColor: 'white',
@@ -467,7 +470,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           {zoneConcepts.map((concept: any) => {
             const itemId = `${zone.id}_${concept.id}`;
             const item = inspectionData[itemId];
-            
+
             return (
               <div key={itemId} style={{
                 border: '1px solid #e5e7eb',
@@ -526,7 +529,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
                         fontFamily: 'inherit'
                       }}
                     />
-                    
+
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: '1fr 1fr',
@@ -555,7 +558,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
                           }}
                         />
                       </div>
-                      
+
                       <div>
                         <label style={{
                           display: 'block',
@@ -603,7 +606,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
                             color: '#92400e'
                           }}>📸 Fotos obligatorias para este estado</span>
                         </div>
-                        
+
                         <div style={{
                           display: 'grid',
                           gridTemplateColumns: '1fr 1fr',
@@ -629,7 +632,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
                               }}
                             />
                           </div>
-                          
+
                           <div>
                             <label style={{
                               display: 'block',
@@ -725,7 +728,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
     const mal = items.filter((item: any) => item.status === 'mal').length;
     const total = items.length;
     const score = total > 0 ? Math.round(((bien * 100 + regular * 50) / total)) : 0;
-    
+
     return (
       <div style={{
         backgroundColor: 'white',
@@ -766,7 +769,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
               color: '#166534'
             }}>BIEN</div>
           </div>
-          
+
           <div style={{
             textAlign: 'center',
             padding: '20px',
@@ -784,7 +787,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
               color: '#c2410c'
             }}>REGULAR</div>
           </div>
-          
+
           <div style={{
             textAlign: 'center',
             padding: '20px',
@@ -802,7 +805,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
               color: '#b91c1c'
             }}>CRÍTICO</div>
           </div>
-          
+
           <div style={{
             textAlign: 'center',
             padding: '20px',

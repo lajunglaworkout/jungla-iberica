@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
+import {
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
   TrendingUp,
   Users,
   User,
@@ -15,8 +15,8 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { 
-  getNextInspectionDate, 
+import {
+  getNextInspectionDate,
   shouldSendReminder,
   MAINTENANCE_CALENDAR,
   MAINTENANCE_STATUS,
@@ -66,7 +66,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
 
   const loadDashboardData = async () => {
     setLoading(true);
-    
+
     try {
       // Cargar estadísticas
       const statsData = await maintenanceService.getMaintenanceStats(centerId);
@@ -95,7 +95,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     const nextDate = getNextInspectionDate();
     const shouldRemind = shouldSendReminder();
     const daysUntil = Math.ceil((nextDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return {
       date: nextDate,
       daysUntil,
@@ -161,18 +161,18 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     const isOverdue = nextInspection.isOverdue;
     const alertColor = isOverdue ? '#ef4444' : nextInspection.shouldRemind ? '#f59e0b' : '#10b981';
     const alertIcon = isOverdue ? <AlertTriangle /> : nextInspection.shouldRemind ? <Bell /> : <Calendar />;
-    
+
     return (
-      <div 
+      <div
         className="rounded-xl p-6 border-l-4 mb-6"
-        style={{ 
+        style={{
           backgroundColor: `${alertColor}10`,
           borderLeftColor: alertColor
         }}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start">
-            <div 
+            <div
               className="w-10 h-10 rounded-lg flex items-center justify-center mr-4"
               style={{ backgroundColor: `${alertColor}20` }}
             >
@@ -182,17 +182,17 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 mb-1">
-                {isOverdue 
-                  ? '🚨 Inspección Atrasada' 
-                  : needsInspection 
-                    ? '📅 Inspección Pendiente' 
+                {isOverdue
+                  ? '🚨 Inspección Atrasada'
+                  : needsInspection
+                    ? '📅 Inspección Pendiente'
                     : '⏰ Recordatorio de Inspección'
                 }
               </h3>
               <p className="text-gray-600 mb-3">
-                {isOverdue 
+                {isOverdue
                   ? `La inspección mensual está atrasada ${Math.abs(nextInspection.daysUntil)} días`
-                  : needsInspection 
+                  : needsInspection
                     ? `Es necesario realizar la inspección mensual de ${centerName}`
                     : `Recuerda que la próxima inspección es en ${nextInspection.daysUntil} días`
                 }
@@ -218,9 +218,9 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
 
   // Renderizar inspección reciente
   const renderInspectionCard = (inspection: MaintenanceInspection) => {
-    const scoreColor = inspection.overall_score >= 80 ? '#10b981' : 
-                     inspection.overall_score >= 60 ? '#f59e0b' : '#ef4444';
-    
+    const scoreColor = inspection.overall_score >= 80 ? '#10b981' :
+      inspection.overall_score >= 60 ? '#f59e0b' : '#ef4444';
+
     return (
       <div key={inspection.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between mb-3">
@@ -235,7 +235,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             </p>
           </div>
           <div className="text-right">
-            <div 
+            <div
               className="text-2xl font-bold"
               style={{ color: scoreColor }}
             >
@@ -390,7 +390,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         {/* Estadísticas principales */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '24px',
           marginBottom: '32px'
         }}>
@@ -555,7 +555,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             <div>
               <h3 className="font-semibold text-blue-900 mb-2">Sistema de Fotos Obligatorias</h3>
               <p className="text-blue-800 text-sm mb-3">
-                Para estados MAL y REGULAR es obligatorio subir fotos del deterioro. 
+                Para estados MAL y REGULAR es obligatorio subir fotos del deterioro.
                 Las tareas no se pueden cerrar sin foto de reparación.
               </p>
               <div className="flex items-center text-sm text-blue-700">

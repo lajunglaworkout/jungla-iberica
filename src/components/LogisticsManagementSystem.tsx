@@ -5,6 +5,7 @@ import InventoryKPIDashboard from './logistics/InventoryKPIDashboard';
 import RealInventoryTable from './logistics/RealInventoryTable';
 import QuarterlyReviewSystem from './logistics/QuarterlyReviewSystemWithSupabase';
 import UniformRequestsPanel from './logistics/UniformRequestsPanel';
+import UniformMetricsWidget from './logistics/UniformMetricsWidget';
 import MovementsHistoryPanel from './logistics/MovementsHistoryPanel';
 import SmartOrderGenerator from './logistics/SmartOrderGenerator';
 
@@ -2313,7 +2314,12 @@ const LogisticsManagementSystem: React.FC = () => {
 
         {/* Pestaña KPIs Real Time */}
         {activeTab === 'kpis' && (
-          <InventoryKPIDashboard />
+          <div className="space-y-6">
+            <InventoryKPIDashboard />
+            <div className="mt-6">
+              <UniformMetricsWidget />
+            </div>
+          </div>
         )}
 
         {activeTab === 'inventory' && (

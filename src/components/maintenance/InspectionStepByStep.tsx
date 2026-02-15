@@ -235,7 +235,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
         {/* Info Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '20px',
           textAlign: 'left'
         }}>

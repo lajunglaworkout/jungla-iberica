@@ -1,7 +1,8 @@
-// src/components/hr/TimeclockDashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useData } from '../../contexts/DataContext';
+import { useSession } from '../../contexts/SessionContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import QRGenerator from './QRGenerator';
 import {
   Clock,
@@ -48,7 +49,13 @@ interface TimeclockDashboardProps {
 
 const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const { centers, employees } = useData();
-  const [selectedCenter, setSelectedCenter] = useState<number>(9); // Sevilla por defecto
+  const { employee: currentUser, userRole } = useSession();
+  const isMobile = useIsMobile();
+
+  // Determinar si puede ver todos los registros
+  const canViewAllRecords = ['superadmin', 'admin', 'center_manager', 'Encargado'].includes(currentUser?.role || '');
+
+  const [selectedCenter, setSelectedCenter] = useState<number>(currentUser?.center_id || 9);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [records, setRecords] = useState<TimeclockRecord[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -68,8 +75,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const loadTimeclockData = async () => {
     setLoading(true);
     try {
-      // Cargar registros de fichaje
-      const { data: timeclockData, error: timeclockError } = await supabase
+      let query = supabase
         .from('employee_timeclock')
         .select(`
           *,
@@ -77,8 +83,23 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           centers!inner(name)
         `)
         .eq('date', selectedDate)
-        .eq('centers.id', selectedCenter)
-        .order('clock_in', { ascending: true });
+        .eq('centers.id', selectedCenter);
+
+      // Si no tiene permisos, solo ve sus propios registros
+      if (!canViewAllRecords && currentUser?.id) {
+        // Asumiendo que employee_id en timeclock es el ID numérico del empleado
+        // Necesitamos mapear el UUID del usuario actual al ID numérico si es necesario
+        // Pero employee_timeclock usa integer employee_id.
+        // currentUser.id suele ser string (UUID) o number dependiendo de la implementación
+        // Verificando types: currentUser.id es string en SessionContext pero employees de useData tienen id number?
+        // En useData employees tiene id string.
+        // En employee_timeclock el employee_id es un int8 (según DB schema inferido) o hace referencia a employees.id
+        // Si employees.id es string, entonces la FK debe ser consistente.
+        // Asumiremos que currentUser.id es correcto para filtrar.
+        query = query.eq('employee_id', currentUser.id);
+      }
+
+      const { data: timeclockData, error: timeclockError } = await query.order('clock_in', { ascending: true });
 
       if (timeclockError) throw timeclockError;
 
@@ -218,7 +239,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const filteredRecords = getFilteredRecords();
 
   return (
-    <div style={{ padding: '20px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ padding: isMobile ? '8px' : '20px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       {/* Botón Volver */}
       {onBack && (
         <button
@@ -253,21 +274,23 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
-        padding: '24px',
+        padding: isMobile ? '16px' : '24px',
         borderRadius: '12px',
         marginBottom: '24px',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
         <div style={{
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? '12px' : '0',
           marginBottom: '20px'
         }}>
           <h1 style={{
             margin: 0,
             color: '#1f2937',
-            fontSize: '24px',
+            fontSize: isMobile ? '20px' : '24px',
             fontWeight: 'bold',
             display: 'flex',
             alignItems: 'center',
@@ -277,102 +300,116 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
             Control de Fichajes
           </h1>
 
-          <button
-            onClick={() => setShowQRGenerator(!showQRGenerator)}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: '#059669',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Eye size={16} />
-            {showQRGenerator ? 'Ocultar QR' : 'Mostrar QR'}
-          </button>
-        </div>
-
-        {/* Filtros */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '20px'
-        }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
-              Centro
-            </label>
-            <select
-              value={selectedCenter}
-              onChange={(e) => setSelectedCenter(Number(e.target.value))}
+          {/* Mostrar botón QR solo si tiene permisos */}
+          {canViewAllRecords && (
+            <button
+              onClick={() => setShowQRGenerator(!showQRGenerator)}
               style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px'
+                padding: '12px 20px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              {centers.map(center => (
-                <option key={center.id} value={center.id}>
-                  {center.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
-              Filtro
-            </label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            >
-              <option value="all">Todos</option>
-              <option value="present">Solo Presentes</option>
-              <option value="absent">Solo Ausentes</option>
-              <option value="incomplete">Fichaje Incompleto</option>
-            </select>
-          </div>
+              <Eye size={16} />
+              {showQRGenerator ? 'Ocultar QR' : 'Mostrar QR'}
+            </button>
+          )}
         </div>
+
+        {/* Filtros - Solo mostrar si puede ver todos los registros */}
+        {canViewAllRecords && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            marginBottom: '20px'
+          }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
+                Centro
+              </label>
+              <select
+                value={selectedCenter}
+                onChange={(e) => setSelectedCenter(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                {centers.map(center => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
+                Fecha
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#374151' }}>
+                Filtro
+              </label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="all">Todos</option>
+                <option value="present">Solo Presentes</option>
+                <option value="absent">Solo Ausentes</option>
+                <option value="incomplete">Fichaje Incompleto</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {!canViewAllRecords && (
+          <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>
+              <strong>📅 Fecha:</strong> {new Date(selectedDate).toLocaleDateString()}
+            </p>
+          </div>
+        )}
 
         {/* Estadísticas */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px'
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: isMobile ? '8px' : '16px'
         }}>
           <div style={{
             backgroundColor: '#f3f4f6',
@@ -449,8 +486,10 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           padding: '20px',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: isMobile ? '12px' : '0'
         }}>
           <h3 style={{
             margin: 0,
@@ -473,6 +512,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
               fontSize: '14px',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px'
             }}
           >

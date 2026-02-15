@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
+import {
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
   TrendingUp,
   Users,
   User,
@@ -15,8 +15,8 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { 
-  getNextInspectionDate, 
+import {
+  getNextInspectionDate,
   shouldSendReminder,
   MAINTENANCE_CALENDAR,
   MAINTENANCE_STATUS,
@@ -67,7 +67,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
 
   const loadDashboardData = async () => {
     setLoading(true);
-    
+
     try {
       // Cargar estadísticas
       const statsData = await maintenanceService.getMaintenanceStats(centerId);
@@ -96,7 +96,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     const nextDate = getNextInspectionDate();
     const shouldRemind = shouldSendReminder();
     const daysUntil = Math.ceil((nextDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return {
       date: nextDate,
       daysUntil,
@@ -162,7 +162,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     const isOverdue = nextInspection.isOverdue;
     const alertColor = isOverdue ? '#ef4444' : nextInspection.shouldRemind ? '#f59e0b' : '#10b981';
     const alertIcon = isOverdue ? <AlertTriangle /> : nextInspection.shouldRemind ? <Bell /> : <Calendar />;
-    
+
     return (
       <div style={{
         borderRadius: '12px',
@@ -198,10 +198,10 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
                 marginBottom: '4px',
                 margin: '0 0 4px 0'
               }}>
-                {isOverdue 
-                  ? '🚨 Inspección Atrasada' 
-                  : needsInspection 
-                    ? '📅 Inspección Pendiente' 
+                {isOverdue
+                  ? '🚨 Inspección Atrasada'
+                  : needsInspection
+                    ? '📅 Inspección Pendiente'
                     : '⏰ Recordatorio de Inspección'
                 }
               </h3>
@@ -210,9 +210,9 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                {isOverdue 
+                {isOverdue
                   ? `La inspección mensual está atrasada ${Math.abs(nextInspection.daysUntil)} días`
-                  : needsInspection 
+                  : needsInspection
                     ? `Es necesario realizar la inspección mensual de ${centerName}`
                     : `Recuerda que la próxima inspección es en ${nextInspection.daysUntil} días`
                 }
@@ -257,9 +257,9 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
 
   // Renderizar inspección reciente
   const renderInspectionCard = (inspection: MaintenanceInspection) => {
-    const scoreColor = inspection.overall_score >= 80 ? '#10b981' : 
-                     inspection.overall_score >= 60 ? '#f59e0b' : '#ef4444';
-    
+    const scoreColor = inspection.overall_score >= 80 ? '#10b981' :
+      inspection.overall_score >= 60 ? '#f59e0b' : '#ef4444';
+
     return (
       <div key={inspection.id} style={{
         backgroundColor: 'white',
@@ -269,12 +269,12 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         transition: 'box-shadow 0.2s',
         cursor: 'pointer'
       }}
-      onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-      }}>
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = 'none';
+        }}>
         <div style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -378,12 +378,12 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             display: 'flex',
             alignItems: 'center'
           }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = '#047857';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = '#059669';
-          }}>
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = '#047857';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = '#059669';
+            }}>
             <Eye style={{ width: '16px', height: '16px', marginRight: '4px' }} />
             Ver detalles
           </button>
@@ -523,7 +523,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         {/* Estadísticas principales */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '24px',
           marginBottom: '32px'
         }}>
@@ -661,7 +661,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
                 marginBottom: '12px',
                 margin: '0 0 12px 0'
               }}>
-                Para estados MAL y REGULAR es obligatorio subir fotos del deterioro. 
+                Para estados MAL y REGULAR es obligatorio subir fotos del deterioro.
                 Las tareas no se pueden cerrar sin foto de reparación.
               </p>
               <div style={{

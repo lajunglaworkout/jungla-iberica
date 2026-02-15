@@ -289,24 +289,24 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
 
           {/* Info Cards */}
           <div className="grid grid-cols-1 gap-3 mb-6">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center">
+            <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center justify-between'} p-3 bg-gray-50 rounded-lg border border-gray-100`}>
+              <div className="flex items-center mb-1 md:mb-0">
                 <User className="w-4 h-4 text-gray-400 mr-3" />
                 <span className="text-sm text-gray-600">Inspector</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{inspectionData.inspector_name}</span>
+              <span className="text-sm font-medium text-gray-900 w-full md:w-auto text-left md:text-right">{inspectionData.inspector_name}</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center">
+            <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center justify-between'} p-3 bg-gray-50 rounded-lg border border-gray-100`}>
+              <div className="flex items-center mb-1 md:mb-0">
                 <MapPin className="w-4 h-4 text-gray-400 mr-3" />
                 <span className="text-sm text-gray-600">Centro</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{centerName}</span>
+              <span className="text-sm font-medium text-gray-900 w-full md:w-auto text-left md:text-right">{centerName}</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center">
+            <div className={`flex ${isMobile ? 'flex-col items-start gap-1' : 'items-center justify-between'} p-3 bg-gray-50 rounded-lg border border-gray-100`}>
+              <div className="flex items-center mb-1 md:mb-0">
                 <Clock className="w-4 h-4 text-gray-400 mr-3" />
                 <span className="text-sm text-gray-600">Fecha</span>
               </div>
@@ -317,7 +317,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                   ...prev,
                   inspection_date: e.target.value
                 }))}
-                className="bg-transparent text-sm font-medium text-right focus:outline-none"
+                className={`bg-transparent text-sm font-medium focus:outline-none w-full md:w-auto ${isMobile ? 'text-left mt-1' : 'text-right'}`}
               />
             </div>
           </div>

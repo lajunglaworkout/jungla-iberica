@@ -30,8 +30,11 @@ interface EmployeeAction {
   icon: React.ReactNode;
 }
 
+import { useIsMobile } from '../../hooks/useIsMobile';
+
 const CenterManagement: React.FC = () => {
   const { employee } = useSession();
+  const isMobile = useIsMobile();
   const [activeAction, setActiveAction] = useState<string>('summary');
   const [showVacationNotifications, setShowVacationNotifications] = useState(false);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
@@ -51,7 +54,7 @@ const CenterManagement: React.FC = () => {
     const baseCards = [
       { id: 'my-profile', title: 'Mi Perfil', description: 'Ver y editar datos personales', icon: <User size={24} /> },
       { id: 'qr-scanner', title: 'Fichar (Escanear QR)', description: 'Escanear QR del centro', icon: <Clock size={24} /> },
-      { id: 'mobile-timeclock', title: 'Mi QR Personal', description: 'Generar mi QR único', icon: <Clock size={24} /> },
+      // { id: 'mobile-timeclock', title: 'Mi QR Personal', description: 'Generar mi QR único', icon: <Clock size={24} /> }, // REMOVED v4
       { id: 'timeclock', title: 'Historial de Fichajes', description: 'Ver entradas y salidas', icon: <ClipboardList size={24} /> },
       { id: 'daily-operations', title: 'Checklist Diaria', description: 'Tareas y operaciones del día', icon: <CheckCircle size={24} /> },
       { id: 'vacation-request', title: 'Solicitar Vacaciones', description: 'Nueva solicitud de vacaciones', icon: <Calendar size={24} /> },
@@ -101,7 +104,7 @@ const CenterManagement: React.FC = () => {
         style={{
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           borderRadius: '12px',
-          padding: 'clamp(16px, 4vw, 32px)',
+          padding: isMobile ? '16px' : '32px',
           marginBottom: '24px',
           boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
           color: 'white'
@@ -117,10 +120,10 @@ const CenterManagement: React.FC = () => {
             🏪
           </div>
           <div>
-            <h1 style={{ fontSize: 'clamp(20px, 5vw, 32px)', fontWeight: 700, margin: 0 }}>
+            <h1 style={{ fontSize: isMobile ? '20px' : '32px', fontWeight: 700, margin: 0 }}>
               Gestión del Centro
             </h1>
-            <p style={{ margin: '8px 0 0 0', fontSize: 'clamp(13px, 3vw, 16px)', opacity: 0.95 }}>
+            <p style={{ margin: '8px 0 0 0', fontSize: isMobile ? '13px' : '16px', opacity: 0.95 }}>
               Hola {employee.name?.split(' ')[0] || 'Empleado'}, bienvenido a tu panel de gestión
             </p>
           </div>
@@ -141,7 +144,7 @@ const CenterManagement: React.FC = () => {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-        gap: 'clamp(12px, 3vw, 20px)'
+        gap: isMobile ? '12px' : '20px'
       }}>
         {actionCards.map((card) => (
           <button
@@ -159,7 +162,7 @@ const CenterManagement: React.FC = () => {
               flexDirection: 'column',
               alignItems: 'flex-start',
               gap: '12px',
-              padding: 'clamp(16px, 4vw, 24px)',
+              padding: isMobile ? '16px' : '24px',
               borderRadius: '12px',
               border: '1px solid #e5e7eb',
               backgroundColor: 'white',
@@ -192,7 +195,8 @@ const CenterManagement: React.FC = () => {
               backgroundColor: '#f0fdf4',
               color: '#059669',
               transition: 'all 0.3s ease'
-            }}>
+            }}
+            >
               {card.icon}
             </div>
 
@@ -336,7 +340,7 @@ const CenterManagement: React.FC = () => {
     <>
       {activeAction === 'summary' ? (
         <div style={{
-          padding: 'clamp(12px, 4vw, 32px)',
+          padding: isMobile ? '8px' : '32px',
           backgroundColor: '#f9fafb',
           minHeight: '100vh'
         }}>
@@ -344,7 +348,7 @@ const CenterManagement: React.FC = () => {
         </div>
       ) : (
         <div style={{
-          padding: 'clamp(12px, 4vw, 32px)',
+          padding: isMobile ? '8px' : '32px',
           backgroundColor: '#f9fafb',
           minHeight: '100vh',
           maxWidth: '1400px',
@@ -386,7 +390,7 @@ const CenterManagement: React.FC = () => {
             style={{
               backgroundColor: 'white',
               borderRadius: '16px',
-              padding: '32px',
+              padding: isMobile ? '12px' : '32px',
               boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
               border: '1px solid #e5e7eb'
             }}
