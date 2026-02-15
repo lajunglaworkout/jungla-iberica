@@ -284,9 +284,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .select('*')
       .eq('employee_id', employeeData.id)
       .eq('type', 'entrada')
-      .gte('clock_time', `${today}T00:00:00`)
-      .lte('clock_time', `${today}T23:59:59`)
-      .order('clock_time', { ascending: false })
+      .gte('clock_in_time', `${today}T00:00:00`)
+      .lte('clock_in_time', `${today}T23:59:59`)
+      .order('clock_in_time', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -300,16 +300,16 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .select('*')
       .eq('employee_id', employeeData.id)
       .eq('type', 'salida')
-      .gte('clock_time', `${today}T00:00:00`)
-      .lte('clock_time', `${today}T23:59:59`)
-      .order('clock_time', { ascending: false })
+      .gte('clock_out_time', `${today}T00:00:00`)
+      .lte('clock_out_time', `${today}T23:59:59`)
+      .order('clock_out_time', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     // Determinar si es entrada o salida
     if (lastEntry && !lastExit) {
       // Ya hay entrada sin salida → Registrar SALIDA
-      const clockIn = new Date(lastEntry.clock_time);
+      const clockIn = new Date(lastEntry.clock_in_time);
       const clockOut = new Date(now);
       const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
@@ -322,7 +322,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
           type: 'salida',
-          clock_time: now,
+          clock_out_time: now,
           location_lat: location?.lat,
           location_lng: location?.lng,
           location_accuracy: location?.accuracy,
@@ -331,7 +331,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         });
 
       // Actualizar resumen diario
-      await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_time, now, totalHours);
+      await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_in_time, now, totalHours);
 
       setSuccess(`✅ Salida registrada! Tiempo trabajado: ${Math.round(totalHours * 100) / 100} horas`);
     } else if (lastExit) {
@@ -348,7 +348,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
           type: 'entrada',
-          clock_time: now,
+          clock_in_time: now,
           location_lat: location?.lat,
           location_lng: location?.lng,
           location_accuracy: location?.accuracy,
