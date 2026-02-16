@@ -292,7 +292,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       const clockOut = new Date(now);
       const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
@@ -309,6 +309,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           notes: `Tiempo trabajado: ${Math.round(totalHours * 100) / 100}h`
         });
 
+      if (insertError) {
+        console.error('ERROR INSERT SALIDA:', insertError);
+        alert('❌ ERROR AL GUARDAR SALIDA: ' + JSON.stringify(insertError));
+        throw new Error('Error al guardar el fichaje en base de datos: ' + insertError.message);
+      }
+
       await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_in_time, now, totalHours);
 
       resultData = {
@@ -323,7 +329,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       throw new Error('Ya tienes entrada y salida registradas hoy.');
     } else {
       // ENTRADA
-      await supabase
+      // ENTRADA
+      const { error: insertError } = await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
@@ -338,6 +345,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           location_accuracy: location?.accuracy,
           qr_token_id: tokenData.id
         });
+
+      if (insertError) {
+        console.error('ERROR INSERT ENTRADA:', insertError);
+        alert('❌ ERROR AL GUARDAR ENTRADA: ' + JSON.stringify(insertError));
+        throw new Error('Error al guardar el fichaje en base de datos: ' + insertError.message);
+      }
 
       resultData = {
         type: 'entrada',
@@ -374,6 +387,11 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       }, {
         onConflict: 'employee_id,center_id,date'
       });
+
+    //   if (error) {
+    //      console.error('Error updating daily attendance:', error);
+    //      // Non-blocking error, but good to know
+    //   }
   };
 
   // --- RENDER SUCCES SCREEN ---
