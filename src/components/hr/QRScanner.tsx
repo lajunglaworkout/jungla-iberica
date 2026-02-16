@@ -248,7 +248,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const registerTimeclock = async (qrData: QRData, tokenData: any) => {
     if (!employee?.email) throw new Error('Usuario no identificado');
 
-    // Obtener ID del empleado
+    // 1. Obtener ID del empleado
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
       .select('id, name')
@@ -261,94 +261,100 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     const now = new Date().toISOString();
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Verificar último fichaje del día para determinar estado
-    // Buscamos el último registro de hoy
-    const { data: lastRecord } = await supabase
+    // 2. Buscar si hay un fichaje ABIERTO hoy (status='entrada' y clock_out_time es null)
+    const { data: openRecord } = await supabase
       .from('time_records')
       .select('*')
       .eq('employee_id', employeeData.id)
       .eq('date', today)
-      .order('clock_in_time', { ascending: false })
-      .limit(1)
+      .is('clock_out_time', null)
+      .eq('status', 'entrada') // Aseguramos que sea una entrada pendiente
       .maybeSingle();
 
-    let type: 'entrada' | 'salida' = 'entrada';
+    let resultData: ScanResultData;
+    let type: 'entrada' | 'salida';
     let totalHours: number | undefined;
 
-    // Lógica para alternar entrada/salida
-    if (lastRecord && lastRecord.status === 'entrada') {
+    if (openRecord) {
+      // --- ES SALIDA (UPDATE) ---
       type = 'salida';
-      // Calcular horas
-      const clockIn = new Date(lastRecord.clock_in_time);
+
+      const clockIn = new Date(openRecord.clock_in_time);
       const clockOut = new Date(now);
-      totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
-    } else if (lastRecord && lastRecord.status === 'salida') {
-      // Si el último fue salida, este es nueva entrada
-      type = 'entrada';
-    }
+      const diffMs = clockOut.getTime() - clockIn.getTime();
+      totalHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
 
+      // Actualizamos el registro existente
+      const { error: updateError } = await supabase
+        .from('time_records')
+        .update({
+          clock_out_time: now,
+          // clock_out_method: 'QRCode', // Si la columna existe en tu schema real, descomenta
+          // clock_out_location: locationString // Si quisieras guardar ubicación de salida
+          status: 'completado', // Marcamos como cerrado/completado
+          notes: `Jornada finalizada: ${totalHours}h`
+        })
+        .eq('id', openRecord.id);
 
-    // Preparar payload para time_records (Log Table)
-    // Columnas válidas: employee_id, center_id, date, clock_in_time, clock_in_method, clock_in_location, clock_in_qr_token, status, notes
-    const locationString = location ? JSON.stringify({
-      lat: location.lat,
-      lng: location.lng,
-      accuracy: location.accuracy
-    }) : null;
+      if (updateError) {
+        console.error('ERROR UPDATE SALIDA:', updateError);
+        alert('❌ ERROR AL CERRAR FICHAJE: ' + JSON.stringify(updateError));
+        throw new Error('Error al actualizar la salida: ' + updateError.message);
+      }
 
-    const notes = type === 'salida' && totalHours
-      ? `Horas sesión: ${Math.round(totalHours * 100) / 100}h`
-      : null;
-
-    const payload = {
-      employee_id: employeeData.id,
-      center_id: Number(qrData.centerId), // Asegurar numérico
-      date: today,
-      clock_in_time: now, // Timestamp del evento
-      clock_in_method: 'QRCode',
-      clock_in_location: locationString,
-      clock_in_qr_token: qrData.token,
-      status: type, // 'entrada' o 'salida'
-      notes: notes
-    };
-
-    const { error: insertError } = await supabase
-      .from('time_records')
-      .insert(payload);
-
-    if (insertError) {
-      console.error('ERROR INSERT TIME_RECORDS:', insertError);
-      alert('❌ ERROR BASE DE DATOS: ' + JSON.stringify(insertError));
-      throw new Error('Error guardando fichaje: ' + insertError.message);
-    }
-
-    // Actualizar daily_attendance (Resumen)
-    if (type === 'salida' && totalHours) {
-      // Si es salida, actualizamos/sumamos horas al día
-      // Primero obtener el acumulado si existe
-      const { data: daily } = await supabase
-        .from('daily_attendance')
-        .select('total_hours')
-        .eq('employee_id', employeeData.id)
-        .eq('date', today)
-        .single();
-
-      const currentTotal = daily?.total_hours || 0;
-      const newTotal = currentTotal + totalHours;
-
+      // Actualizar resumen diario (daily_attendance)
+      // Nota: Si ya existe una entrada en daily, la actualizamos con la salida
       await supabase.from('daily_attendance').upsert({
         employee_id: employeeData.id,
         employee_name: employeeData.name,
-        center_id: qrData.centerId.toString(), // daily_attendance usa string o int? Usualmente string en interfaces viejas, pero int en nuevas. Lo mantengo toString por compatibilidad con código previo.
+        center_id: qrData.centerId.toString(),
         center_name: qrData.centerName,
         date: today,
         clock_out_time: now,
-        total_hours: Math.round(newTotal * 100) / 100,
+        total_hours: totalHours,
         status: 'presente',
         updated_at: now
-      }, { onConflict: 'employee_id,date' }); // Quité center_id del conflict por si fichan en varios centros, pero daily suele ser por empleado/dia. Ajustar según PK.
+      }, { onConflict: 'employee_id,date' });
+
+      resultData = {
+        type: 'salida',
+        time: nowTime,
+        totalHours: totalHours,
+        centerName: qrData.centerName,
+        employeeName: employeeData.name
+      };
+
     } else {
-      // Entrada
+      // --- ES ENTRADA (INSERT NUEVO) ---
+      type = 'entrada';
+
+      const locationString = location ? JSON.stringify({
+        lat: location.lat,
+        lng: location.lng,
+        accuracy: location.accuracy
+      }) : null;
+
+      const { error: insertError } = await supabase
+        .from('time_records')
+        .insert({
+          employee_id: employeeData.id,
+          center_id: Number(qrData.centerId),
+          date: today,
+          clock_in_time: now,
+          clock_in_method: 'QRCode',
+          clock_in_location: locationString,
+          clock_in_qr_token: qrData.token,
+          status: 'entrada', // Estado inicial
+          notes: 'Inicio de jornada'
+        });
+
+      if (insertError) {
+        console.error('ERROR INSERT ENTRADA:', insertError);
+        alert('❌ ERROR AL CREAR ENTRADA: ' + JSON.stringify(insertError));
+        throw new Error('Error al crear la entrada: ' + insertError.message);
+      }
+
+      // Crear resumen diario
       await supabase.from('daily_attendance').upsert({
         employee_id: employeeData.id,
         employee_name: employeeData.name,
@@ -359,15 +365,16 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         status: 'presente',
         updated_at: now
       }, { onConflict: 'employee_id,date' });
+
+      resultData = {
+        type: 'entrada',
+        time: nowTime,
+        centerName: qrData.centerName,
+        employeeName: employeeData.name
+      };
     }
 
-    setScanSuccessData({
-      type: type,
-      time: nowTime,
-      totalHours: totalHours ? Math.round(totalHours * 100) / 100 : undefined,
-      centerName: qrData.centerName,
-      employeeName: employeeData.name
-    });
+    setScanSuccessData(resultData);
   };
 
   // --- RENDER SUCCES SCREEN ---
