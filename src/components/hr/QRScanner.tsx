@@ -178,6 +178,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
+    console.log('QR DETECTED:', qrText);
+    alert('1. QR DETECTED: ' + qrText.substring(0, 50));
     // Prevent double-processing
     if (loading) return;
 
@@ -199,6 +201,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       }
 
       // 2. Validate required fields
+      if (qrData) {
+        console.log('TOKEN:', qrData.token);
+        alert('2. TOKEN: ' + qrData.token.substring(0, 10));
+      }
       if (!qrData.token || !qrData.centerId) {
         throw new Error(
           'El código QR no contiene los datos necesarios para fichar. ' +
@@ -253,6 +259,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
     } catch (error: any) {
       console.error('Error procesando QR:', error);
+      alert('ERROR CATCH: ' + error.message);
       setError(error.message || 'Error procesando el código QR. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
@@ -260,6 +267,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const registerTimeclock = async (qrData: QRData, tokenData: any) => {
+    console.log('EMPLOYEE:', employee?.email);
+    alert('3. EMPLOYEE: ' + employee?.email);
     if (!employee?.email) {
       throw new Error('No se pudo identificar al empleado');
     }
@@ -313,7 +322,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       const clockOut = new Date(now);
       const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
-      await supabase
+      const { data, error } = await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
@@ -328,7 +337,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           location_accuracy: location?.accuracy,
           qr_token_id: tokenData.id,
           notes: `Tiempo trabajado: ${Math.round(totalHours * 100) / 100}h`
-        });
+        })
+        .select();
+
+      console.log('INSERT RESULT (SALIDA):', data, error);
+      alert('4. INSERT SALIDA: ' + JSON.stringify(data || error));
+      if (error) throw error;
 
       // Actualizar resumen diario
       await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_in_time, now, totalHours);
@@ -339,7 +353,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       throw new Error('Ya tienes fichajes completos para hoy (entrada y salida registradas)');
     } else {
       // No hay entrada → Registrar ENTRADA
-      await supabase
+      const { data, error } = await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
@@ -353,7 +367,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           location_lng: location?.lng,
           location_accuracy: location?.accuracy,
           qr_token_id: tokenData.id
-        });
+        })
+        .select();
+
+      console.log('INSERT RESULT (ENTRADA):', data, error);
+      alert('4. INSERT ENTRADA: ' + JSON.stringify(data || error));
+      if (error) throw error;
 
       setSuccess('✅ Entrada registrada correctamente!');
     }
