@@ -1,7 +1,7 @@
 // src/components/hr/QRScanner.tsx - Escáner QR para empleados
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-import { Camera, CameraOff, CheckCircle, XCircle, MapPin, Clock, User } from 'lucide-react';
+import { Camera, CameraOff, CheckCircle, XCircle, MapPin, Clock, User, ArrowLeft } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
 import { supabase } from '../../lib/supabase';
 
@@ -25,15 +25,22 @@ interface LocationData {
   accuracy: number;
 }
 
+interface ScanResultData {
+  type: 'entrada' | 'salida';
+  time: string;
+  totalHours?: number;
+  centerName: string;
+  employeeName: string;
+}
+
 const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const { employee } = useSession();
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [scanSuccessData, setScanSuccessData] = useState<ScanResultData | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
@@ -92,7 +99,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const startScanning = async () => {
     try {
       setError(null);
-      setSuccess(null);
+      setScanSuccessData(null);
       setIsScanning(true);
 
       if (!codeReader.current) {
@@ -112,8 +119,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         throw new Error('No se encontraron cámaras disponibles');
       }
 
-      console.log('Cámaras encontradas:', videoInputDevices.map(d => d.label));
-
       // 2. Select Back Camera logic
       const backCamera = videoInputDevices.find(device =>
         device.label.toLowerCase().includes('back') ||
@@ -124,7 +129,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       const selectedDeviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
 
       // 3. Start Decoding
-      // Store controls to stop later
       controlsRef.current = await codeReader.current.decodeFromVideoDevice(
         selectedDeviceId,
         videoRef.current!,
@@ -132,15 +136,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           if (result) {
             handleQRResult(result.getText());
           }
-          // Ignore "NotFoundException" which just means no QR found in this frame
         }
       );
 
       setCameraPermission('granted');
     } catch (error: any) {
       console.error('Error iniciando escáner:', error);
-
-      // Better error messages
       let msg = error.message;
       if (error.name === 'NotAllowedError') msg = 'Permiso de cámara denegado.';
       if (error.name === 'NotFoundError') msg = 'No se encontró ninguna cámara.';
@@ -152,7 +153,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const stopScanning = () => {
-    // 1. Try stopping via controls
     if (controlsRef.current) {
       try {
         if (typeof controlsRef.current.stop === 'function') {
@@ -164,12 +164,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       controlsRef.current = null;
     }
 
-    // 2. SAFETY FALLBACK: Manually stop video tracks
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => {
         track.stop();
-        console.log('Stopped track:', track.label);
       });
       videoRef.current.srcObject = null;
     }
@@ -178,46 +176,35 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
-    console.log('QR DETECTED:', qrText);
-    alert('1. QR DETECTED: ' + qrText.substring(0, 50));
-    // Prevent double-processing
     if (loading) return;
+
+    // VIBRACIÓN AL DETECTAR
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
 
     try {
       setLoading(true);
       setError(null);
-      setSuccess(null);
-      stopScanning();
+      stopScanning(); // Stop immediately on detection
 
       // 1. Try to parse QR data
       let qrData: QRData;
       try {
         qrData = JSON.parse(qrText);
       } catch (parseError) {
-        throw new Error(
-          'El código QR escaneado no es un código de fichaje válido. ' +
-          'Asegúrate de escanear el QR dinámico que aparece en la pantalla del centro.'
-        );
+        throw new Error('El código QR no es válido.');
       }
 
       // 2. Validate required fields
-      if (qrData) {
-        console.log('TOKEN:', qrData.token);
-        alert('2. TOKEN: ' + qrData.token.substring(0, 10));
-      }
       if (!qrData.token || !qrData.centerId) {
-        throw new Error(
-          'El código QR no contiene los datos necesarios para fichar. ' +
-          'Pide al encargado que regenere el QR desde la pantalla del centro.'
-        );
+        throw new Error('QR incompleto.');
       }
 
-      // 3. Check expiration
-      if (qrData.expiresAt && Date.now() > qrData.expiresAt) {
-        throw new Error(
-          '⏱️ El código QR ha expirado. Los códigos se renuevan cada 30 segundos. ' +
-          'Espera al siguiente código y vuelve a escanear.'
-        );
+      // 3. Check expiration (Grace period of 10s for network latency)
+      const GRACE_PERIOD_MS = 10000;
+      if (qrData.expiresAt && Date.now() > (qrData.expiresAt + GRACE_PERIOD_MS)) {
+        throw new Error('⏱️ El código QR ha expirado. Espera un nuevo código.');
       }
 
       // 4. Validate token against database
@@ -229,7 +216,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         .single();
 
       if (tokenError || !tokenData) {
-        // Check if the token exists but is already used
         const { data: usedToken } = await supabase
           .from('qr_tokens')
           .select('is_used')
@@ -237,13 +223,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           .single();
 
         if (usedToken?.is_used) {
-          throw new Error(
-            'Este código QR ya fue utilizado. Espera al siguiente código QR en la pantalla del centro.'
-          );
+          throw new Error('Este código QR ya fue utilizado.');
         }
-        throw new Error(
-          'Código QR no válido. Asegúrate de escanear el QR que aparece en la pantalla del centro.'
-        );
+        throw new Error('Código QR no válido o expirado.');
       }
 
       // 5. Mark token as used
@@ -255,40 +237,32 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       // 6. Register timeclock entry
       await registerTimeclock(qrData, tokenData);
 
-      setScanResult(qrText);
-
     } catch (error: any) {
       console.error('Error procesando QR:', error);
-      alert('ERROR CATCH: ' + error.message);
-      setError(error.message || 'Error procesando el código QR. Inténtalo de nuevo.');
+      setError(error.message || 'Error procesando el código QR.');
     } finally {
       setLoading(false);
     }
   };
 
   const registerTimeclock = async (qrData: QRData, tokenData: any) => {
-    console.log('EMPLOYEE:', employee?.email);
-    alert('3. EMPLOYEE: ' + employee?.email);
-    if (!employee?.email) {
-      throw new Error('No se pudo identificar al empleado');
-    }
+    if (!employee?.email) throw new Error('Usuario no identificado');
 
     // Obtener ID del empleado
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
-      .select('id')
+      .select('id, name')
       .eq('email', employee.email)
       .single();
 
-    if (employeeError || !employeeData) {
-      throw new Error('Empleado no encontrado en la base de datos');
-    }
+    if (employeeError || !employeeData) throw new Error('Empleado no encontrado');
 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Verificar último fichaje del día (entrada sin salida)
-    const { data: lastEntry, error: recordError } = await supabase
+    // Verificar último fichaje del día
+    const { data: lastEntry } = await supabase
       .from('time_records')
       .select('*')
       .eq('employee_id', employeeData.id)
@@ -299,11 +273,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .limit(1)
       .maybeSingle();
 
-    if (recordError && recordError.code !== 'PGRST116') {
-      throw recordError;
-    }
-
-    // Verificar si ya hay salida registrada hoy
     const { data: lastExit } = await supabase
       .from('time_records')
       .select('*')
@@ -315,18 +284,19 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       .limit(1)
       .maybeSingle();
 
-    // Determinar si es entrada o salida
+    let resultData: ScanResultData;
+
     if (lastEntry && !lastExit) {
-      // Ya hay entrada sin salida → Registrar SALIDA
+      // SALIDA
       const clockIn = new Date(lastEntry.clock_in_time);
       const clockOut = new Date(now);
       const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
 
-      const { data, error } = await supabase
+      await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
-          employee_name: employee.name || employee.email,
+          employee_name: employeeData.name,
           employee_email: employee.email,
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
@@ -337,27 +307,27 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           location_accuracy: location?.accuracy,
           qr_token_id: tokenData.id,
           notes: `Tiempo trabajado: ${Math.round(totalHours * 100) / 100}h`
-        })
-        .select();
+        });
 
-      console.log('INSERT RESULT (SALIDA):', data, error);
-      alert('4. INSERT SALIDA: ' + JSON.stringify(data || error));
-      if (error) throw error;
-
-      // Actualizar resumen diario
       await updateDailyAttendance(employeeData.id, qrData, lastEntry.clock_in_time, now, totalHours);
 
-      setSuccess(`✅ Salida registrada! Tiempo trabajado: ${Math.round(totalHours * 100) / 100} horas`);
+      resultData = {
+        type: 'salida',
+        time: nowTime,
+        totalHours: Math.round(totalHours * 100) / 100,
+        centerName: qrData.centerName,
+        employeeName: employeeData.name
+      };
+
     } else if (lastExit) {
-      // Ya hay entrada Y salida → No permitir más fichajes hoy
-      throw new Error('Ya tienes fichajes completos para hoy (entrada y salida registradas)');
+      throw new Error('Ya tienes entrada y salida registradas hoy.');
     } else {
-      // No hay entrada → Registrar ENTRADA
-      const { data, error } = await supabase
+      // ENTRADA
+      await supabase
         .from('time_records')
         .insert({
           employee_id: employeeData.id,
-          employee_name: employee.name || employee.email,
+          employee_name: employeeData.name,
           employee_email: employee.email,
           center_id: qrData.centerId.toString(),
           center_name: qrData.centerName,
@@ -367,15 +337,17 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
           location_lng: location?.lng,
           location_accuracy: location?.accuracy,
           qr_token_id: tokenData.id
-        })
-        .select();
+        });
 
-      console.log('INSERT RESULT (ENTRADA):', data, error);
-      alert('4. INSERT ENTRADA: ' + JSON.stringify(data || error));
-      if (error) throw error;
-
-      setSuccess('✅ Entrada registrada correctamente!');
+      resultData = {
+        type: 'entrada',
+        time: nowTime,
+        centerName: qrData.centerName,
+        employeeName: employeeData.name
+      };
     }
+
+    setScanSuccessData(resultData);
   };
 
   const updateDailyAttendance = async (
@@ -386,12 +358,11 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     totalHours: number
   ) => {
     const today = new Date().toISOString().split('T')[0];
-
     await supabase
       .from('daily_attendance')
       .upsert({
         employee_id: employeeId,
-        employee_name: employee?.name || employee?.email || '',
+        employee_name: employee?.name || '',
         center_id: qrData.centerId.toString(),
         center_name: qrData.centerName,
         date: today,
@@ -405,207 +376,183 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       });
   };
 
-  return (
-    <div style={{ padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-            📱 Fichar Entrada/Salida
-          </h1>
-          <p style={{ color: '#6b7280', margin: 0 }}>
-            Escanea el código QR del centro para fichar
+  // --- RENDER SUCCES SCREEN ---
+  if (scanSuccessData) {
+    return (
+      <div style={{ padding: '24px', backgroundColor: '#f0fdf4', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+          <div style={{ margin: '0 auto 16px', backgroundColor: '#dcfce7', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle size={48} color="#16a34a" />
+          </div>
+
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534', marginBottom: '8px' }}>
+            {scanSuccessData.type === 'entrada' ? '✅ Entrada Registrada' : '✅ Salida Registrada'}
+          </h2>
+
+          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
+            {new Date().toLocaleDateString()}
           </p>
-        </div>
 
-        {/* Employee Info */}
-        {employee && (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <User size={20} color="#059669" />
-            <div>
-              <div style={{ fontWeight: '600' }}>{employee.name}</div>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>{employee.email}</div>
+          <div style={{ textAlign: 'left', backgroundColor: '#f9fafb', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Empleado</span>
+              <span style={{ fontWeight: '600', color: '#111827' }}>{scanSuccessData.employeeName}</span>
             </div>
-          </div>
-        )}
-
-        {/* Camera View */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          textAlign: 'center'
-        }}>
-          {!isScanning ? (
-            <div>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>📷</div>
-              <h3 style={{ margin: '0 0 16px 0' }}>Cámara lista para escanear</h3>
-              <button
-                onClick={startScanning}
-                disabled={cameraPermission === 'denied'}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: cameraPermission === 'denied' ? '#9ca3af' : '#059669',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: cameraPermission === 'denied' ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  margin: '0 auto'
-                }}
-              >
-                <Camera size={20} />
-                {cameraPermission === 'denied' ? 'Cámara no disponible' : 'Iniciar Escáner'}
-              </button>
-            </div>
-          ) : (
-            <div>
-              <video
-                ref={videoRef}
-                style={{
-                  width: '100%',
-                  maxWidth: '400px',
-                  height: '300px',
-                  borderRadius: '8px',
-                  backgroundColor: '#000'
-                }}
-                autoPlay
-                muted
-                playsInline
-              />
-              <div style={{ marginTop: '16px' }}>
-                <button
-                  onClick={stopScanning}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    margin: '0 auto'
-                  }}
-                >
-                  <CameraOff size={16} />
-                  Detener
-                </button>
+            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Hora</span>
+                <span style={{ fontWeight: '600', color: '#111827', fontSize: '18px' }}>{scanSuccessData.time}</span>
               </div>
+              {scanSuccessData.totalHours !== undefined && (
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Total Hoy</span>
+                  <span style={{ fontWeight: '600', color: '#111827' }}>{scanSuccessData.totalHours}h</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+            <div>
+              <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Centro</span>
+              <span style={{ fontWeight: '600', color: '#111827' }}>{scanSuccessData.centerName}</span>
+            </div>
+          </div>
 
-        {/* Status Messages */}
-        {loading && (
-          <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fbbf24',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            textAlign: 'center'
-          }}>
-            <Clock size={20} style={{ marginBottom: '8px' }} />
-            <p style={{ margin: 0, color: '#92400e' }}>Procesando fichaje...</p>
+          <button
+            onClick={onBack}
+            style={{
+              width: '100%',
+              padding: '14px',
+              backgroundColor: '#16a34a',
+              color: 'white',
+              fontWeight: 'bold',
+              borderRadius: '12px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            Volver al Inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '0', backgroundColor: '#000', minHeight: '100vh', color: 'white' }}>
+      {/* Header Overlay */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '16px', zIndex: 10, background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <ArrowLeft size={24} />
+          <span style={{ fontWeight: '500' }}>Volver</span>
+        </button>
+      </div>
+
+      {/* Camera Area */}
+      <div style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {isScanning ? (
+          <>
+            <video
+              ref={videoRef}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              autoPlay
+              muted
+              playsInline
+            />
+
+            {/* Scanner Overlay Frame */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '280px',
+              height: '280px',
+              border: '2px solid rgba(255, 255, 255, 0.5)',
+              borderRadius: '24px',
+              boxShadow: '0 0 0 4000px rgba(0, 0, 0, 0.5)', // Dim outside
+              zIndex: 5
+            }}>
+              {/* Corners */}
+              <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '40px', height: '40px', borderTop: '4px solid #10b981', borderLeft: '4px solid #10b981', borderTopLeftRadius: '24px' }}></div>
+              <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '40px', height: '40px', borderTop: '4px solid #10b981', borderRight: '4px solid #10b981', borderTopRightRadius: '24px' }}></div>
+              <div style={{ position: 'absolute', bottom: '-2px', left: '-2px', width: '40px', height: '40px', borderBottom: '4px solid #10b981', borderLeft: '4px solid #10b981', borderBottomLeftRadius: '24px' }}></div>
+              <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '40px', height: '40px', borderBottom: '4px solid #10b981', borderRight: '4px solid #10b981', borderBottomRightRadius: '24px' }}></div>
+
+              {/* Scanning animation line */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '2px',
+                backgroundColor: '#10b981',
+                boxShadow: '0 0 10px #10b981',
+                animation: 'scan 2s linear infinite'
+              }}></div>
+            </div>
+
+            <div style={{ position: 'absolute', bottom: '100px', width: '100%', textAlign: 'center', zIndex: 10 }}>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: '500', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Encadra el código QR</p>
+            </div>
+
+            <style>{`
+                    @keyframes scan {
+                        0% { top: 0; opacity: 0; }
+                        10% { opacity: 1; }
+                        90% { opacity: 1; }
+                        100% { top: 100%; opacity: 0; }
+                    }
+                `}</style>
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' }}>
+            <Camera size={64} color="#374151" style={{ marginBottom: '24px' }} />
+            <button
+              onClick={startScanning}
+              style={{
+                padding: '16px 32px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}
+            >
+              <Camera size={24} />
+              Escanear QR
+            </button>
+            {cameraPermission === 'denied' && (
+              <p style={{ color: '#ef4444', marginTop: '16px', padding: '0 20px', textAlign: 'center' }}>Permiso de cámara denegado. <br /> Habilítalo en la configuración del navegador.</p>
+            )}
           </div>
         )}
 
-        {success && (
-          <div style={{
-            backgroundColor: '#dcfce7',
-            border: '1px solid #bbf7d0',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            textAlign: 'center'
-          }}>
-            <CheckCircle size={20} color="#10b981" style={{ marginBottom: '8px' }} />
-            <p style={{ margin: 0, color: '#065f46', fontWeight: '600' }}>{success}</p>
+        {loading && (
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+            <div style={{ width: '50px', height: '50px', border: '4px solid #374151', borderTop: '4px solid #10b981', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            <p style={{ marginTop: '16px', fontWeight: 'bold' }}>Procesando fichaje...</p>
           </div>
         )}
 
         {error && (
-          <div style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px',
-            textAlign: 'center'
-          }}>
-            <XCircle size={20} color="#ef4444" style={{ marginBottom: '8px' }} />
-            <p style={{ margin: 0, color: '#dc2626' }}>{error}</p>
-            <button
-              onClick={() => {
-                setError(null);
-                getCurrentLocation();
-              }}
-              style={{
-                marginTop: '8px',
-                padding: '6px 12px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Reintentar
-            </button>
+          <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '24px', backgroundColor: '#ef4444', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', zIndex: 30, animation: 'slideUp 0.3s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+              <XCircle size={24} style={{ flexShrink: 0 }} />
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 'bold' }}>Error</h3>
+                <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>{error}</p>
+              </div>
+              <button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'white', fontSize: '24px' }}>×</button>
+            </div>
+            <button onClick={startScanning} style={{ width: '100%', marginTop: '16px', padding: '12px', backgroundColor: 'white', color: '#dc2626', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>Reintentar</button>
           </div>
         )}
-
-        {/* Location Status */}
-        {location && (
-          <div style={{
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '8px',
-            padding: '12px',
-            fontSize: '14px',
-            color: '#065f46',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <MapPin size={16} />
-            Ubicación obtenida (precisión: {Math.round(location.accuracy)}m)
-          </div>
-        )}
-
-        {/* Back Button */}
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <button
-            onClick={onBack}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            ← Volver al menú
-          </button>
-        </div>
       </div>
     </div>
   );

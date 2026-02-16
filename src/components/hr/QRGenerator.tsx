@@ -27,11 +27,11 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
 
   useEffect(() => {
     generateNewQR();
-    
-    // Generar nuevo QR cada 30 segundos
+
+    // Generar nuevo QR cada 60 segundos
     intervalRef.current = setInterval(() => {
       generateNewQR();
-    }, 30 * 1000); // 30 segundos
+    }, 60 * 1000); // 60 segundos
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -53,7 +53,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
       // Generar nuevo token único por empleado
       const employeePrefix = employeeId ? `emp_${employeeId}` : `center_${centerId}`;
       const token = `qr_${employeePrefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const expiresAt = new Date(Date.now() + 30 * 1000); // 30 segundos desde ahora
+      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 segundos desde ahora
 
       // Guardar token en la base de datos
       const { error: insertError } = await supabase
@@ -93,7 +93,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
       setCurrentToken({
         token: token,
         expiresAt: expiresAt.toISOString(),
-        timeRemaining: 30 // 30 segundos
+        timeRemaining: 60 // 60 segundos
       });
 
       // Iniciar countdown
@@ -113,14 +113,14 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
     countdownRef.current = setInterval(() => {
       setCurrentToken(prev => {
         if (!prev) return null;
-        
+
         const newTimeRemaining = prev.timeRemaining - 1;
-        
+
         if (newTimeRemaining <= 0) {
           if (countdownRef.current) clearInterval(countdownRef.current);
           return { ...prev, timeRemaining: 0 };
         }
-        
+
         return { ...prev, timeRemaining: newTimeRemaining };
       });
     }, 1000);
@@ -150,16 +150,16 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
     }}>
       {/* Header */}
       <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ 
-          margin: '0 0 8px 0', 
+        <h3 style={{
+          margin: '0 0 8px 0',
           color: '#059669',
           fontSize: '20px',
           fontWeight: 'bold'
         }}>
           {employeeName ? `👤 ${employeeName}` : `🏢 ${centerName}`}
         </h3>
-        <p style={{ 
-          margin: 0, 
+        <p style={{
+          margin: 0,
           color: '#6b7280',
           fontSize: '14px'
         }}>
@@ -176,19 +176,19 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
         marginBottom: '20px'
       }}>
         {loading ? (
-          <div style={{ 
-            display: 'flex', 
+          <div style={{
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             height: '300px'
           }}>
-            <RefreshCw size={48} style={{ 
-              color: '#059669', 
-              animation: 'spin 1s linear infinite' 
+            <RefreshCw size={48} style={{
+              color: '#059669',
+              animation: 'spin 1s linear infinite'
             }} />
-            <p style={{ 
-              marginTop: '16px', 
+            <p style={{
+              marginTop: '16px',
               color: '#6b7280',
               fontSize: '14px'
             }}>
@@ -196,7 +196,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
             </p>
           </div>
         ) : error ? (
-          <div style={{ 
+          <div style={{
             color: '#ef4444',
             padding: '40px',
             fontSize: '14px'
@@ -219,10 +219,10 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
             </button>
           </div>
         ) : (
-          <img 
-            src={qrDataUrl} 
+          <img
+            src={qrDataUrl}
             alt="Código QR para fichaje"
-            style={{ 
+            style={{
               maxWidth: '100%',
               height: 'auto'
             }}
@@ -244,7 +244,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
             justifyContent: 'center',
             marginBottom: '12px'
           }}>
-            <Clock size={20} style={{ 
+            <Clock size={20} style={{
               color: getStatusColor(currentToken.timeRemaining),
               marginRight: '8px'
             }} />
@@ -256,7 +256,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
               {formatTime(currentToken.timeRemaining)}
             </span>
           </div>
-          
+
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
             <div>Token: {currentToken.token.substring(0, 8)}...</div>
             <div>Expira: {new Date(currentToken.expiresAt).toLocaleTimeString()}</div>
@@ -272,7 +272,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
         padding: '16px',
         textAlign: 'left'
       }}>
-        <h4 style={{ 
+        <h4 style={{
           margin: '0 0 12px 0',
           color: '#065f46',
           fontSize: '14px',
@@ -280,7 +280,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
         }}>
           📱 Instrucciones para empleados:
         </h4>
-        <ul style={{ 
+        <ul style={{
           margin: 0,
           paddingLeft: '20px',
           fontSize: '13px',
