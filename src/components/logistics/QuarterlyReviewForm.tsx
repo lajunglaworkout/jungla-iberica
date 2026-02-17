@@ -75,14 +75,20 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
   const handleSend = async () => {
     console.log('📤 Enviando a Beni...', items);
 
-    // Validar que todos los items estén completados
+    // Validar que todos los items estén completados (Coincidan con sistema)
+    // NOTA: Esta validación asume que el inventario debe cuadrar perfecto. 
+    // Si queremos permitir pérdidas, deberíamos cambiar esto a un aviso/confirmación.
+    // Por ahora, mejoramos el mensaje de error para que el usuario sepa qué falla.
+
     const incompleteItems = items.filter(item => {
       const total = (item.counted || 0) + (item.regular || 0) + (item.deteriorated || 0);
-      return total !== item.system;
+      return total !== Number(item.system); // Aseguramos comparación numérica
     });
 
     if (incompleteItems.length > 0) {
-      alert(`❌ No se puede enviar. ${incompleteItems.length} productos no están completamente contabilizados.`);
+      const itemList = incompleteItems.map(i => `• ${i.name} (Sistema: ${i.system} | Contado: ${(i.counted || 0) + (i.regular || 0) + (i.deteriorated || 0)})`).join('\n');
+
+      alert(`❌ No se puede enviar. ${incompleteItems.length} productos no coinciden con el sistema:\n\n${itemList}\n\nPor favor, verifica el stock o ajusta las cantidades para que coincidan (si es un ajuste de inventario).`);
       console.log('❌ Items incompletos:', incompleteItems);
       return;
     }
