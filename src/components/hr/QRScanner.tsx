@@ -134,7 +134,13 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         videoRef.current!,
         (result, error) => {
           if (result) {
+            console.log('QR DETECTADO RAW:', result.getText());
             handleQRResult(result.getText());
+          }
+          if (error) {
+            // ZXing throws errors continuously when no QR is found, which is normal.
+            // But we'll log it just in case it's a different error.
+            // console.debug('Scanning error:', error); 
           }
         }
       );
@@ -176,6 +182,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
+    alert('🔍 DEBUG: QR DETECTADO\n' + qrText.substring(0, 50) + '...'); // TEST ALERT
+    console.log('Procesando QR:', qrText);
+
     if (loading) return;
 
     // VIBRACIÓN AL DETECTAR
