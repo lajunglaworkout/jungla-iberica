@@ -182,7 +182,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
-    alert('🔍 DEBUG: QR DETECTADO\n' + qrText.substring(0, 50) + '...'); // TEST ALERT
+    // alert('🔍 DEBUG: QR DETECTADO\n' + qrText.substring(0, 50) + '...'); // TEST ALERT REMOVED
     console.log('Procesando QR:', qrText);
 
     if (loading) return;
@@ -248,6 +248,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
     } catch (error: any) {
       console.error('Error procesando QR:', error);
+      // Falla visiblemente
+      alert('❌ ERROR: ' + (error.message || 'Error desconocido procesando QR'));
       setError(error.message || 'Error procesando el código QR.');
     } finally {
       setLoading(false);
