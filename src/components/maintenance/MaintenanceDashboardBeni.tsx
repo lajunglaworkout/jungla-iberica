@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Play, 
-  CheckCircle, 
-  Clock, 
+import {
+  Plus,
+  Eye,
+  Play,
+  CheckCircle,
+  Clock,
   AlertCircle,
   Building,
   Wrench
@@ -39,7 +39,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
     setLoading(true);
     try {
       console.log('📋 Cargando revisiones de mantenimiento...');
-      
+
       // Obtener todas las revisiones
       const { data: reviews, error } = await supabase
         .from('quarterly_maintenance_reviews')
@@ -84,13 +84,13 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
-    
+
     let quarter = '';
     if (month >= 1 && month <= 3) quarter = 'Q1';
     else if (month >= 4 && month <= 6) quarter = 'Q2';
     else if (month >= 7 && month <= 9) quarter = 'Q3';
     else quarter = 'Q4';
-    
+
     return { quarter: `${quarter}-${year}`, year };
   };
 
@@ -110,7 +110,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
     ];
 
     const { quarter, year } = getCurrentQuarter();
-    
+
     const result = await quarterlyMaintenanceService.createReview({
       quarter,
       year,
@@ -128,11 +128,11 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       };
 
       console.log('📋 Creando asignaciones para revisión:', result.review.id);
-      
+
       // Crear asignaciones sin activar aún
       for (const center of centers) {
         const encargadoEmail = encargadosEmails[center.id];
-        
+
         const { error } = await supabase
           .from('quarterly_maintenance_assignments')
           .insert({
@@ -151,10 +151,10 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       }
 
       alert(`✅ Revisión Trimestral de Mantenimiento ${quarter} convocada\n\n` +
-            `Se han creado revisiones para:\n` +
-            centers.map(c => `🏪 ${c.name}: Mantenimiento completo`).join('\n') +
-            `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
-            `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
+        `Se han creado revisiones para:\n` +
+        centers.map(c => `🏪 ${c.name}: Mantenimiento completo`).join('\n') +
+        `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
+        `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
       setShowCreateModal(false);
       setDeadlineDate('');
       loadReviews();
@@ -176,7 +176,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       // 1. Actualizar status de la revisión a 'active'
       const { error: reviewError } = await supabase
         .from('quarterly_maintenance_reviews')
-        .update({ 
+        .update({
           status: 'active',
           activated_at: new Date().toISOString()
         })
@@ -204,13 +204,15 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
         // Enviar notificación
         if (assignment.assigned_to) {
           await supabase
-            .from('maintenance_review_notifications')
+            .from('notifications') // Corregido: tabla unificada
             .insert({
-              review_id: reviewId,
-              user_email: assignment.assigned_to,
-              notification_type: 'review_assigned',
+              recipient_email: assignment.assigned_to,
+              type: 'review_assigned',
+              title: 'Gestión de Mantenimiento',
               message: `Nueva revisión trimestral de mantenimiento asignada: ${assignment.center_name}. Fecha límite: ${new Date().toLocaleDateString('es-ES')}`,
-              status: 'pending'
+              reference_type: 'quarterly_maintenance_review',
+              reference_id: reviewId.toString(),
+              is_read: false
             });
           console.log(`📧 Notificación enviada a ${assignment.assigned_to}`);
         }
@@ -231,7 +233,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
     setLoadingKpis(true);
     try {
       console.log('📊 Cargando KPIs de mantenimiento...');
-      
+
       // Obtener todas las revisiones completadas con sus items
       const { data: reviews, error: reviewsError } = await supabase
         .from('quarterly_maintenance_reviews')
@@ -247,7 +249,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
         return;
       }
 
-      const completedReviews = reviews?.filter(review => 
+      const completedReviews = reviews?.filter(review =>
         review.assignments?.some((assignment: any) => assignment.status === 'completed')
       ) || [];
 
@@ -283,7 +285,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       for (const review of completedReviews) {
         const completedAssignments = review.assignments.filter((a: any) => a.status === 'completed');
         kpiSummary.overallStats.completedCenters += completedAssignments.length;
-        
+
         for (const assignment of completedAssignments) {
           // Obtener items de la revisión
           const { data: items, error } = await supabase
@@ -310,7 +312,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
           // Calcular score del centro
           const totalItems = centerStats.totalItems;
-          centerStats.score = totalItems > 0 ? 
+          centerStats.score = totalItems > 0 ?
             Math.round(((centerStats.itemsOk * 100) + (centerStats.itemsRegular * 60) + (centerStats.itemsBad * 20)) / totalItems) : 0;
 
           kpiSummary.centers.push(centerStats);
@@ -337,10 +339,10 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
       // Calcular score general
       const totalItems = kpiSummary.overallStats.totalItems;
-      kpiSummary.overallScore = totalItems > 0 ? 
-        Math.round(((kpiSummary.overallStats.itemsOk * 100) + 
-                   (kpiSummary.overallStats.itemsRegular * 60) + 
-                   (kpiSummary.overallStats.itemsBad * 20)) / totalItems) : 0;
+      kpiSummary.overallScore = totalItems > 0 ?
+        Math.round(((kpiSummary.overallStats.itemsOk * 100) +
+          (kpiSummary.overallStats.itemsRegular * 60) +
+          (kpiSummary.overallStats.itemsBad * 20)) / totalItems) : 0;
 
       // Calcular tendencias (simulado por ahora)
       kpiSummary.trends.improvement = kpiSummary.overallScore > 75 ? 5 : -2;
@@ -362,7 +364,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
   const handleViewDetails = async (reviewId: number) => {
     try {
       console.log('👁️ Cargando detalles de revisión:', reviewId);
-      
+
       // Obtener los items de la revisión
       const { data: items, error } = await supabase
         .from('quarterly_maintenance_items')
@@ -377,13 +379,13 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
       // Encontrar la revisión completa
       const review = reviews.find(r => r.id === reviewId);
-      
+
       setSelectedReviewDetails({
         ...review,
         items: items || []
       });
       setShowDetailsModal(true);
-      
+
       console.log('✅ Detalles cargados:', items?.length || 0, 'items');
     } catch (error) {
       console.error('❌ Error cargando detalles:', error);
@@ -398,7 +400,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       setLoading(true);
 
       // Obtener todas las revisiones completadas con sus items
-      const completedReviews = reviews.filter(review => 
+      const completedReviews = reviews.filter(review =>
         review.assignments?.some((assignment: any) => assignment.status === 'completed')
       );
 
@@ -426,7 +428,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
       // Procesar cada revisión completada
       for (const review of completedReviews) {
         const completedAssignments = review.assignments.filter((a: any) => a.status === 'completed');
-        
+
         for (const assignment of completedAssignments) {
           // Obtener items de la revisión
           const { data: items, error } = await supabase
@@ -455,7 +457,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
           // Calcular score del centro
           const totalItems = centerStats.totalItems;
-          centerStats.score = totalItems > 0 ? 
+          centerStats.score = totalItems > 0 ?
             Math.round(((centerStats.itemsOk * 100) + (centerStats.itemsRegular * 60) + (centerStats.itemsBad * 20)) / totalItems) : 0;
 
           reportSummary.centers.push(centerStats);
@@ -485,10 +487,10 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
       // Generar recomendaciones automáticas
       const totalItems = reportSummary.overallStats.totalItems;
-      const overallScore = totalItems > 0 ? 
-        Math.round(((reportSummary.overallStats.itemsOk * 100) + 
-                   (reportSummary.overallStats.itemsRegular * 60) + 
-                   (reportSummary.overallStats.itemsBad * 20)) / totalItems) : 0;
+      const overallScore = totalItems > 0 ?
+        Math.round(((reportSummary.overallStats.itemsOk * 100) +
+          (reportSummary.overallStats.itemsRegular * 60) +
+          (reportSummary.overallStats.itemsBad * 20)) / totalItems) : 0;
 
       reportSummary.overallScore = overallScore;
 
@@ -504,10 +506,10 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
       // Identificar mejor y peor centro
       if (reportSummary.centers.length > 1) {
-        const bestCenter = reportSummary.centers.reduce((best: any, center: any) => 
+        const bestCenter = reportSummary.centers.reduce((best: any, center: any) =>
           center.score > best.score ? center : best
         );
-        const worstCenter = reportSummary.centers.reduce((worst: any, center: any) => 
+        const worstCenter = reportSummary.centers.reduce((worst: any, center: any) =>
           center.score < worst.score ? center : worst
         );
 
@@ -517,7 +519,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
 
       setReportData(reportSummary);
       setShowReportsModal(true);
-      
+
       console.log('✅ Reporte generado:', reportSummary);
     } catch (error) {
       console.error('❌ Error generando reportes:', error);
@@ -573,8 +575,8 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
         backgroundColor: '#f9fafb'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            fontSize: '48px', 
+          <div style={{
+            fontSize: '48px',
             marginBottom: '16px',
             animation: 'spin 1s linear infinite'
           }}>🔧</div>
@@ -624,7 +626,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
               Dashboard de Mantenimiento - KPIs Ejecutivos
             </h1>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={loadKpis}
@@ -647,7 +649,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
               <Building size={16} />
               {loadingKpis ? 'Actualizando...' : 'Actualizar KPIs'}
             </button>
-            
+
             <button
               onClick={() => setShowCreateModal(true)}
               style={{
@@ -669,7 +671,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
             </button>
           </div>
         </div>
-        
+
         <p style={{ color: '#6b7280', margin: 0 }}>
           Dashboard ejecutivo con KPIs en tiempo real y gestión de revisiones trimestrales
         </p>
@@ -724,8 +726,8 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
               <div style={{
                 fontSize: '36px',
                 fontWeight: 'bold',
-                color: kpiData.overallScore >= 80 ? '#10b981' : 
-                       kpiData.overallScore >= 60 ? '#f59e0b' : '#ef4444'
+                color: kpiData.overallScore >= 80 ? '#10b981' :
+                  kpiData.overallScore >= 60 ? '#f59e0b' : '#ef4444'
               }}>
                 {kpiData.overallScore}%
               </div>
@@ -733,7 +735,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                 {kpiData.trends.improvement > 0 ? '📈' : '📉'} {Math.abs(kpiData.trends.improvement)}% vs anterior
               </div>
             </div>
-            
+
             <div style={{
               backgroundColor: '#f0fdf4',
               padding: '20px',
@@ -803,41 +805,41 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                 .sort((a: any, b: any) => b.score - a.score)
                 .slice(0, 3)
                 .map((center: any, index: number) => (
-                <div
-                  key={index}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    backgroundColor: index === 0 ? '#f0fdf4' : '#f9fafb',
-                    borderRadius: '6px',
-                    border: index === 0 ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                    </span>
-                    <span style={{ fontWeight: '600', fontSize: '14px' }}>
-                      {center.centerName}
-                    </span>
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      backgroundColor: index === 0 ? '#f0fdf4' : '#f9fafb',
+                      borderRadius: '6px',
+                      border: index === 0 ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                      </span>
+                      <span style={{ fontWeight: '600', fontSize: '14px' }}>
+                        {center.centerName}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        {center.itemsOk}✅ {center.itemsRegular}⚠️ {center.itemsBad}❌
+                      </span>
+                      <span style={{
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        color: center.score >= 80 ? '#10b981' :
+                          center.score >= 60 ? '#f59e0b' : '#ef4444'
+                      }}>
+                        {center.score}%
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                      {center.itemsOk}✅ {center.itemsRegular}⚠️ {center.itemsBad}❌
-                    </span>
-                    <span style={{
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      color: center.score >= 80 ? '#10b981' : 
-                             center.score >= 60 ? '#f59e0b' : '#ef4444'
-                    }}>
-                      {center.score}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
 
@@ -910,7 +912,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
             {kpiData.message}
           </div>
           <p style={{ color: '#9ca3af', fontSize: '14px', maxWidth: '400px', margin: '0 auto' }}>
-            Una vez que los encargados completen las revisiones trimestrales, aquí verás métricas en tiempo real, 
+            Una vez que los encargados completen las revisiones trimestrales, aquí verás métricas en tiempo real,
             rankings por centro, issues críticos y tendencias de rendimiento.
           </p>
           <div style={{
@@ -976,77 +978,97 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
-            {reviews.flatMap((review) => 
-              review.assignments && review.assignments.length > 0 
+            {reviews.flatMap((review) =>
+              review.assignments && review.assignments.length > 0
                 ? review.assignments.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        backgroundColor: '#fafafa'
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '12px'
-                      }}>
-                        <div>
-                          <h3 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: '#1f2937',
-                            margin: '0 0 8px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            <Building size={20} />
-                            {assignment.center_name} - {review.quarter}
-                          </h3>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '16px',
-                            fontSize: '14px',
-                            color: '#6b7280'
-                          }}>
-                            <span>📋 {review.total_zones || 9} zonas</span>
-                            <span>🔧 {review.total_concepts || 30} conceptos</span>
-                            <span>📅 Fecha límite: {review.deadline_date || 'Sin definir'}</span>
-                            <span>👤 Encargado: {assignment.assigned_to || 'Sin asignar'}</span>
-                          </div>
-                        </div>
-                        
+                  <div
+                    key={assignment.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      backgroundColor: '#fafafa'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '12px'
+                    }}>
+                      <div>
+                        <h3 style={{
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          color: '#1f2937',
+                          margin: '0 0 8px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <Building size={20} />
+                          {assignment.center_name} - {review.quarter}
+                        </h3>
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          color: getStatusColor(assignment.status)
+                          gap: '16px',
+                          fontSize: '14px',
+                          color: '#6b7280'
                         }}>
-                          {getStatusIcon(assignment.status)}
-                          <span style={{ fontWeight: '600' }}>
-                            {getStatusText(assignment.status)}
-                          </span>
+                          <span>📋 {review.total_zones || 9} zonas</span>
+                          <span>🔧 {review.total_concepts || 30} conceptos</span>
+                          <span>📅 Fecha límite: {review.deadline_date || 'Sin definir'}</span>
+                          <span>👤 Encargado: {assignment.assigned_to || 'Sin asignar'}</span>
                         </div>
                       </div>
 
                       <div style={{
                         display: 'flex',
+                        alignItems: 'center',
                         gap: '8px',
-                        marginTop: '16px'
+                        color: getStatusColor(assignment.status)
                       }}>
+                        {getStatusIcon(assignment.status)}
+                        <span style={{ fontWeight: '600' }}>
+                          {getStatusText(assignment.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginTop: '16px'
+                    }}>
+                      <button
+                        onClick={() => handleViewDetails(assignment.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={14} />
+                        Ver Detalles
+                      </button>
+
+                      {review.status === 'draft' && (
                         <button
-                          onClick={() => handleViewDetails(assignment.id)}
+                          onClick={() => handleActivateReview(review.id)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
                             padding: '8px 12px',
-                            backgroundColor: '#3b82f6',
+                            backgroundColor: '#10b981',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
@@ -1054,33 +1076,13 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                             cursor: 'pointer'
                           }}
                         >
-                          <Eye size={14} />
-                          Ver Detalles
+                          <Play size={14} />
+                          Activar y Notificar
                         </button>
-                        
-                        {review.status === 'draft' && (
-                          <button
-                            onClick={() => handleActivateReview(review.id)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '8px 12px',
-                              backgroundColor: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Play size={14} />
-                            Activar y Notificar
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ))
+                  </div>
+                ))
                 : (
                   <div
                     key={review.id}
@@ -1110,7 +1112,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                           Revisión sin asignaciones aún
                         </p>
                       </div>
-                      
+
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1192,7 +1194,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                 <Wrench size={24} style={{ color: '#f59e0b' }} />
                 Convocar Revisión {getCurrentQuarter().quarter}
               </h2>
-              
+
               <button
                 onClick={() => setShowCreateModal(false)}
                 style={{
@@ -1206,7 +1208,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                 ✕
               </button>
             </div>
-            
+
             <p style={{ color: '#6b7280', marginBottom: '20px' }}>
               Se creará una revisión trimestral de mantenimiento para todos los centros
             </p>
@@ -1277,7 +1279,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
               >
                 Cancelar
               </button>
-              
+
               <button
                 onClick={handleCreateReview}
                 disabled={!deadlineDate || loading}
@@ -1378,8 +1380,8 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                         padding: '12px',
-                        backgroundColor: item.status === 'mal' ? '#fef2f2' : 
-                                       item.status === 'regular' ? '#fef3c7' : '#f0f9ff'
+                        backgroundColor: item.status === 'mal' ? '#fef2f2' :
+                          item.status === 'regular' ? '#fef3c7' : '#f0f9ff'
                       }}
                     >
                       <div style={{
@@ -1406,7 +1408,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                           fontSize: '12px',
                           fontWeight: '600',
                           backgroundColor: item.status === 'bien' ? '#10b981' :
-                                         item.status === 'regular' ? '#f59e0b' : '#ef4444',
+                            item.status === 'regular' ? '#f59e0b' : '#ef4444',
                           color: 'white'
                         }}>
                           {item.status.toUpperCase()}
@@ -1518,13 +1520,13 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                 <div style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
-                  color: reportData.overallScore >= 80 ? '#10b981' : 
-                         reportData.overallScore >= 60 ? '#f59e0b' : '#ef4444'
+                  color: reportData.overallScore >= 80 ? '#10b981' :
+                    reportData.overallScore >= 60 ? '#f59e0b' : '#ef4444'
                 }}>
                   {reportData.overallScore}%
                 </div>
               </div>
-              
+
               <div style={{
                 backgroundColor: '#f0fdf4',
                 padding: '16px',
@@ -1577,7 +1579,7 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                       borderRadius: '8px',
                       padding: '16px',
                       backgroundColor: center === reportData.bestCenter ? '#f0fdf4' :
-                                     center === reportData.worstCenter ? '#fef2f2' : '#f9fafb'
+                        center === reportData.worstCenter ? '#fef2f2' : '#f9fafb'
                     }}
                   >
                     <div style={{
@@ -1599,8 +1601,8 @@ const MaintenanceDashboardBeni: React.FC<MaintenanceDashboardBeniProps> = ({ onC
                         <div style={{
                           fontSize: '20px',
                           fontWeight: 'bold',
-                          color: center.score >= 80 ? '#10b981' : 
-                                 center.score >= 60 ? '#f59e0b' : '#ef4444'
+                          color: center.score >= 80 ? '#10b981' :
+                            center.score >= 60 ? '#f59e0b' : '#ef4444'
                         }}>
                           {center.score}%
                         </div>

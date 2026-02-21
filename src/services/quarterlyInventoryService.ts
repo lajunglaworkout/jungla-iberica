@@ -43,6 +43,29 @@ interface QuarterlyReviewItem {
   status: 'pending' | 'counted' | 'verified';
 }
 
+// Decisión de Beni por cada ítem con discrepancia
+export interface ReviewDecision {
+  item_id: number;                   // ID del quarterly_review_item
+  inventory_item_id: number;         // ID en inventory_items
+  product_name: string;
+  category?: string;
+  current_system_quantity: number;
+  counted_quantity: number;
+  regular_quantity: number;
+  deteriorated_quantity: number;
+  actions: {
+    darDeBaja: boolean;              // Restar rotos del inventario
+    enviarAPedido: boolean;          // Añadir al pedido post-revisión
+    marcarRegular: boolean;          // Flagear en inventario como 'regular'
+  };
+  quantities: {
+    broken: number;                  // Unidades rotas a dar de baja
+    missing: number;                 // Unidades faltantes (sistema - contadas)
+    regular: number;                 // Unidades en estado regular
+    toOrder: number;                 // Cantidad total a pedir (rotos + faltantes seleccionados)
+  };
+}
+
 class QuarterlyInventoryService {
 
   // Eliminar revisión completa (Beni)
@@ -339,12 +362,22 @@ class QuarterlyInventoryService {
 
 
 
-  // Completar revisión (Encargado)
+  // Completar revisión (Encargado) -> Pasa a estado 'submitted'
   async completeAssignment(assignmentId: number, completedBy: string) {
     try {
       console.log('✅ Completando asignación:', assignmentId);
 
-      const { data, error } = await supabase
+      // 1. Obtener datos de la asignación y revisión
+      const { data: assignmentData, error: fetchError } = await supabase
+        .from('quarterly_inventory_assignments')
+        .select('*, review:quarterly_reviews(*)')
+        .eq('id', assignmentId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Completar la asignación (Encargado ha terminado)
+      const { data: assignment, error: errorUpdate } = await supabase
         .from('quarterly_inventory_assignments')
         .update({
           status: 'completed',
@@ -355,86 +388,365 @@ class QuarterlyInventoryService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (errorUpdate) throw errorUpdate;
 
-      // Notificar a Beni
+      // 3. Actualizar estado de la revisión a 'submitted' (Enviada a Beni)
+      const { error: reviewError } = await supabase
+        .from('quarterly_reviews')
+        .update({
+          status: 'submitted'
+        })
+        .eq('id', assignmentData.review_id);
+
+      if (reviewError) {
+        console.error('⚠️ Error actualizando status de revisión a submitted:', reviewError);
+      }
+
+      // 4. Calcular resumen para notificaciones
+      // Obtener items para contar discrepancias
+      const { data: items } = await supabase
+        .from('quarterly_review_items')
+        .select('*')
+        .eq('assignment_id', assignmentId);
+
+      const totalItems = items?.length || 0;
+      const discrepancies = items?.filter(i => {
+        const total = (i.counted_quantity || 0) + (i.regular_state_quantity || 0) + (i.deteriorated_quantity || 0);
+        return total !== i.current_system_quantity;
+      }).length || 0;
+
+      // 5. Notificar a Beni (Logística)
       await this.sendNotification({
-        review_id: data.review_id,
-        user_email: 'beni.jungla@gmail.com', // Email de Beni
-        notification_type: 'review_completed',
-        message: `Revisión completada por ${completedBy} en ${data.center_name}`
+        review_id: assignmentData.review_id,
+        user_email: 'beni.jungla@gmail.com',
+        notification_type: 'review_submitted',
+        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} ENVIADA por ${completedBy}.\n${totalItems} productos contabilizados. ${discrepancies} discrepancias.`
       });
 
-      return { success: true, assignment: data };
+      // 6. Notificar a Carlos (CEO/Admin)
+      // Usamos un email genérico o de admin si no tenemos el específico
+      await this.sendNotification({
+        review_id: assignmentData.review_id,
+        user_email: 'carlossuarezparra@gmail.com', // Placeholder dirección
+        notification_type: 'review_submitted',
+        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} completada por encargado.`
+      });
+
+      return { success: true, assignment };
     } catch (error) {
       console.error('❌ Error completando asignación:', error);
       return { success: false, error };
     }
   }
 
-  // Autorizar eliminación de items rotos (Beni solo autoriza, sistema elimina automáticamente)
-  async authorizeItemRemoval(reviewId: number, authorizedBy: string) {
+  // APLICAR CAMBIOS DE LA REVISIÓN (Beni)
+  // Esta función es la CRÍTICA. Actualiza el inventario real y cierra la revisión.
+  async applyReviewChanges(reviewId: number, itemsToApply: any[], appliedBy: string) {
     try {
-      console.log('🔍 Verificando items marcados para eliminar...');
+      console.log(`🚀 Aplicando ${itemsToApply.length} cambios de revisión ${reviewId}...`);
 
-      // 1. Obtener items marcados para eliminar
-      const { data: items, error: itemsError } = await supabase
-        .from('quarterly_review_items')
-        .select('*')
-        .gt('to_remove_quantity', 0);
+      const changesSummary = {
+        updated: 0,
+        movements: 0,
+        broken: 0,
+        lost: 0,
+        found: 0,
+        value_lost: 0
+      };
 
-      if (itemsError) throw itemsError;
+      // 1. Procesar cada item seleccionado
+      for (const item of itemsToApply) {
+        // Calcular cantidades
+        const currentSystem = item.current_system_quantity; // Lo que el sistema pensaba que había
 
-      if (!items || items.length === 0) {
-        return {
-          success: true,
-          message: 'No hay items marcados para eliminar',
-          removedItems: []
-        };
-      }
+        // NUEVA LÓGICA: counted_quantity es el TOTAL FÍSICO presente en el centro
+        const totalPhysical = item.counted_quantity || 0;
 
-      console.log(`📋 ${items.length} items marcados para eliminar`);
+        // Subconjuntos (informacion de estado)
+        const brokenQuantity = item.deteriorated_quantity || 0;
 
-      // 2. AUTOMÁTICAMENTE actualizar cantidades en inventory_items
-      const updates = items.map(async (item) => {
-        const newQuantity = item.current_system_quantity - item.to_remove_quantity;
+        // La cantidad "Válida" que quedará en stock tras tirar lo roto
+        // Si hay 16 contados y 4 rotos -> Quedan 12 buenos.
+        const newValidQuantity = totalPhysical - brokenQuantity;
 
-        console.log(`🗑️ ${item.product_name}: ${item.current_system_quantity} → ${newQuantity} (eliminando ${item.to_remove_quantity})`);
+        if (newValidQuantity < 0) {
+          console.error(`❌ Error lógico en item ${item.product_name}: Rotos (${brokenQuantity}) > Total (${totalPhysical})`);
+          continue; // Skip seguridad
+        }
+        const discrepancy = totalPhysical - currentSystem; // -2 me falta, +2 me sobra
 
-        return supabase
+        // Acciones:
+        // A. Ajuste de inventario (por pérdida/ganancia inexplicable)
+        if (discrepancy !== 0) {
+          await supabase.from('inventory_movements').insert({
+            inventory_item_id: item.inventory_item_id,
+            type: discrepancy < 0 ? 'adjustment_loss' : 'adjustment_gain',
+            quantity_change: discrepancy,
+            previous_quantity: currentSystem,
+            new_quantity: currentSystem + discrepancy,
+            reason: `Revisión Trimestral: ${discrepancy < 0 ? 'Pérdida' : 'Excedente'} detectado (por ${appliedBy})`
+          });
+
+          if (discrepancy < 0) changesSummary.lost += Math.abs(discrepancy);
+          else changesSummary.found += discrepancy;
+
+          changesSummary.movements++;
+        }
+
+        // B. Baja por rotura (si hay items rotos)
+        if (brokenQuantity > 0) {
+          // El sistema "tenía" (System + Discrepancy) = TotalPhysical.
+          // Ahora bajamos los rotos.
+          await supabase.from('inventory_movements').insert({
+            inventory_item_id: item.inventory_item_id,
+            type: 'breakage',
+            quantity_change: -(brokenQuantity),
+            previous_quantity: totalPhysical,
+            new_quantity: newValidQuantity,
+            reason: `Revisión Trimestral: Baja por deterioro/rotura (por ${appliedBy})`
+          });
+          changesSummary.broken += brokenQuantity;
+          changesSummary.movements++;
+        }
+
+        // C. Actualización FINAL del item en inventory_items
+        const { error: updateError } = await supabase
           .from('inventory_items')
           .update({
-            quantity: newQuantity,
+            cantidad_actual: newValidQuantity,
             updated_at: new Date().toISOString()
           })
           .eq('id', item.inventory_item_id);
+
+        if (updateError) {
+          console.error(`❌ Error actualizando item ${item.product_name}:`, updateError);
+        } else {
+          changesSummary.updated++;
+        }
+      }
+
+      // 2. Marcar revisión como COMPLETADA y APLICADA
+      await supabase
+        .from('quarterly_reviews')
+        .update({
+          status: 'completed', // Fin del ciclo
+          approved_by: appliedBy,
+          approved_date: new Date().toISOString(),
+          notes: `Aplicados ${changesSummary.updated} cambios. Rotos: ${changesSummary.broken}, Perdidos: ${changesSummary.lost}.`
+        })
+        .eq('id', reviewId);
+
+      // 3. Notificación final a Carlos (CEO) con el resumen financiero (placeholder)
+      const summaryMsg = `🏁 Revisión APLICADA. Cambios: ${changesSummary.updated}. Roturas: ${changesSummary.broken}. Extravíos: ${changesSummary.lost}.`;
+
+      await this.sendNotification({
+        review_id: reviewId,
+        user_email: 'carlossuarezparra@gmail.com',
+        notification_type: 'review_applied',
+        message: summaryMsg
       });
 
-      await Promise.all(updates);
+      console.log('✅ Revisión aplicada con éxito:', changesSummary);
+      return { success: true, summary: changesSummary };
 
-      // 3. Marcar revisión como completada
+    } catch (error) {
+      console.error('❌ Error aplicando cambios de revisión:', error);
+      return { success: false, error };
+    }
+  }
+
+  // NUEVO: Procesar decisiones de Beni sobre la revisión
+  // Este método reemplaza applyReviewChanges con un flujo de decisiones por ítem
+  async processReviewDecisions(
+    reviewId: number,
+    centerName: string,
+    quarter: string,
+    decisions: ReviewDecision[],
+    processedBy: string
+  ) {
+    try {
+      console.log(`🚀 Procesando ${decisions.length} decisiones para revisión ${reviewId}...`);
+
+      const summary = {
+        bajas: 0,             // Items dados de baja (rotos restados)
+        bajasUnidades: 0,     // Total unidades rotas retiradas
+        regulares: 0,         // Items marcados como regular
+        faltantes: 0,         // Items con faltante de stock
+        faltantesUnidades: 0, // Total unidades faltantes
+        pedidoItems: 0,       // Items añadidos al pedido
+        pedidoUnidades: 0,    // Total unidades a pedir
+        inventarioActualizado: 0,
+        movimientos: 0,
+      };
+
+      // ================================================
+      // 1. PROCESAR CADA DECISIÓN
+      // ================================================
+      for (const decision of decisions) {
+        const {
+          inventory_item_id,
+          product_name,
+          current_system_quantity,
+          counted_quantity,
+          actions,
+          quantities
+        } = decision;
+
+        const totalPhysical = counted_quantity || 0;
+        const discrepancy = totalPhysical - current_system_quantity;
+
+        // A. DAR DE BAJA (restar rotos del inventario)
+        if (actions.darDeBaja && quantities.broken > 0) {
+          // Registrar movimiento de rotura
+          await supabase.from('inventory_movements').insert({
+            inventory_item_id: inventory_item_id,
+            type: 'breakage',
+            quantity_change: -(quantities.broken),
+            previous_quantity: totalPhysical,
+            new_quantity: totalPhysical - quantities.broken,
+            reason: `Revisión Trimestral ${quarter}: Baja por rotura/deterioro (por ${processedBy})`
+          });
+
+          summary.bajas++;
+          summary.bajasUnidades += quantities.broken;
+          summary.movimientos++;
+        }
+
+        // B. REGISTRAR FALTANTES (ajuste de pérdida)
+        if (discrepancy < 0) {
+          await supabase.from('inventory_movements').insert({
+            inventory_item_id: inventory_item_id,
+            type: 'adjustment_loss',
+            quantity_change: discrepancy,
+            previous_quantity: current_system_quantity,
+            new_quantity: totalPhysical,
+            reason: `Revisión Trimestral ${quarter}: ${Math.abs(discrepancy)} unidades faltantes (por ${processedBy})`
+          });
+
+          summary.faltantes++;
+          summary.faltantesUnidades += Math.abs(discrepancy);
+          summary.movimientos++;
+        } else if (discrepancy > 0) {
+          // Excedente encontrado
+          await supabase.from('inventory_movements').insert({
+            inventory_item_id: inventory_item_id,
+            type: 'adjustment_gain',
+            quantity_change: discrepancy,
+            previous_quantity: current_system_quantity,
+            new_quantity: totalPhysical,
+            reason: `Revisión Trimestral ${quarter}: ${discrepancy} unidades de más encontradas (por ${processedBy})`
+          });
+          summary.movimientos++;
+        }
+
+        // C. ACTUALIZAR INVENTARIO
+        const newQuantity = totalPhysical - (actions.darDeBaja ? quantities.broken : 0);
+
+        const { error: updateError } = await supabase
+          .from('inventory_items')
+          .update({
+            cantidad_actual: newQuantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', inventory_item_id);
+
+        if (!updateError) {
+          summary.inventarioActualizado++;
+          if (actions.marcarRegular) summary.regulares++;
+        } else {
+          console.error(`❌ Error actualizando ${product_name}:`, updateError);
+        }
+
+        // D. CONTABILIZAR PARA PEDIDO
+        if (actions.enviarAPedido && quantities.toOrder > 0) {
+          summary.pedidoItems++;
+          summary.pedidoUnidades += quantities.toOrder;
+        }
+      }
+
+      // ================================================
+      // 2. GENERAR PEDIDO POST-REVISIÓN (si hay items)
+      // ================================================
+      let orderId: string | null = null;
+
+      const itemsForOrder = decisions.filter(d => d.actions.enviarAPedido && d.quantities.toOrder > 0);
+
+      if (itemsForOrder.length > 0) {
+        const orderIdStr = `REV-${quarter.replace(/\s/g, '')}-${centerName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+        // Construir notas con detalle de items
+        const itemsDetail = itemsForOrder.map(d =>
+          `• ${d.product_name}: ${d.quantities.toOrder} uds (${d.quantities.broken > 0 ? `Rotos: ${d.quantities.broken}` : ''}${d.quantities.missing > 0 ? ` Faltantes: ${d.quantities.missing}` : ''})`.trim()
+        ).join('\n');
+
+        // Insertar pedido en Supabase
+        const { error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            id: orderIdStr,
+            type: 'review_order',
+            from_location: centerName,
+            to_location: 'Proveedor',
+            order_date: new Date().toISOString().split('T')[0],
+            status: 'pending',
+            amount: 0,
+            created_by: `${processedBy} - Revisión ${quarter}`,
+            notes: `📋 Pedido Post-Revisión ${quarter} - ${centerName} (Revisión #${reviewId})\n${itemsForOrder.length} productos:\n${itemsDetail}`
+          });
+
+        if (orderError) {
+          console.error('❌ Error creando pedido post-revisión:', orderError);
+          // No fail completo, seguimos con el resto
+        } else {
+          orderId = orderIdStr;
+          console.log(`📦 Pedido post-revisión creado: ${orderIdStr}`);
+        }
+      }
+
+      // ================================================
+      // 3. MARCAR REVISIÓN COMO COMPLETADA
+      // ================================================
       await supabase
         .from('quarterly_reviews')
         .update({
           status: 'completed',
-          approved_by: authorizedBy,
-          approved_date: new Date().toISOString()
+          approved_by: processedBy,
+          approved_date: new Date().toISOString(),
+          notes: [
+            `✅ Procesado por ${processedBy}`,
+            `Bajas: ${summary.bajasUnidades} uds (${summary.bajas} productos)`,
+            `Faltantes: ${summary.faltantesUnidades} uds (${summary.faltantes} productos)`,
+            `Regular: ${summary.regulares} productos marcados`,
+            orderId ? `Pedido: ${orderId} (${summary.pedidoUnidades} uds)` : 'Sin pedido generado'
+          ].join(' | ')
         })
         .eq('id', reviewId);
 
-      console.log(`✅ ${items.length} items eliminados automáticamente del inventario`);
+      // ================================================
+      // 4. NOTIFICACIÓN A CARLOS (CEO)
+      // ================================================
+      const summaryMsg = [
+        `🏁 Revisión ${quarter} ${centerName} PROCESADA por ${processedBy}.`,
+        `📊 Bajas: ${summary.bajasUnidades} uds | Faltantes: ${summary.faltantesUnidades} uds | Regular: ${summary.regulares} items`,
+        orderId ? `🛒 Pedido ${orderId} generado con ${summary.pedidoUnidades} uds.` : ''
+      ].filter(Boolean).join('\n');
 
+      await this.sendNotification({
+        review_id: reviewId,
+        user_email: 'carlossuarezparra@gmail.com',
+        notification_type: 'review_applied',
+        message: summaryMsg
+      });
+
+      console.log('✅ Revisión procesada con éxito:', summary);
       return {
         success: true,
-        message: `${items.length} items eliminados del inventario`,
-        removedItems: items.map(i => ({
-          name: i.product_name,
-          removed: i.to_remove_quantity,
-          newQuantity: i.current_system_quantity - i.to_remove_quantity
-        }))
+        summary,
+        orderId
       };
+
     } catch (error) {
-      console.error('❌ Error autorizando eliminación:', error);
+      console.error('❌ Error procesando decisiones de revisión:', error);
       return { success: false, error };
     }
   }
@@ -448,10 +760,22 @@ class QuarterlyInventoryService {
   }) {
     try {
       const { error } = await supabase
-        .from('review_notifications')
-        .insert(data);
+        .from('notifications') // Corregido: tabla unificada
+        .insert({
+          recipient_email: data.user_email,
+          type: data.notification_type,
+          title: 'Gestión de Inventario', // Título genérico o derivado
+          message: data.message,
+          reference_type: 'quarterly_review',
+          reference_id: data.review_id.toString(),
+          link: 'logistics-quarterly', // Special link for navigation handler
+          is_read: false
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error Supabase enviando notificación:', error);
+        throw error;
+      }
       console.log('📧 Notificación enviada a:', data.user_email);
     } catch (error) {
       console.error('❌ Error enviando notificación:', error);

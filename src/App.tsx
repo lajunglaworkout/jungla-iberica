@@ -1151,7 +1151,18 @@ const NavigationDashboard: React.FC = () => {
                 isOpen={showNotificationPanel}
                 onClose={() => setShowNotificationPanel(false)}
                 onNavigate={(moduleId) => {
-                  setSelectedModule(moduleId);
+                  if (moduleId === 'logistics-quarterly') {
+                    setSelectedModule('logistics');
+                    setTimeout(() => {
+                      window.dispatchEvent(
+                        new CustomEvent('logistics-module-view', {
+                          detail: { view: 'quarterly' }
+                        })
+                      );
+                    }, 100);
+                  } else {
+                    setSelectedModule(moduleId);
+                  }
                   setShowNotificationPanel(false);
                 }}
               />

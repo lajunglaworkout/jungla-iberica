@@ -50,6 +50,25 @@ const CenterManagement: React.FC = () => {
     return centerNames[centerId || 9] || 'Centro Sevilla';
   };
 
+  // 👂 ESCUCHAR EVENTOS DE NAVEGACIÓN (Para notificaciones)
+  React.useEffect(() => {
+    const handleNavigation = (event: CustomEvent) => {
+      console.log('🔔 CenterManagement: Recibido evento de navegación:', event.detail);
+      if (event.detail && event.detail.view) {
+        if (event.detail.view === 'inventory-review') {
+          setActiveAction('inventory-review');
+        } else if (event.detail.view === 'maintenance-review') {
+          setActiveAction('maintenance-review');
+        }
+      }
+    };
+
+    window.addEventListener('center-management-view', handleNavigation as EventListener);
+    return () => {
+      window.removeEventListener('center-management-view', handleNavigation as EventListener);
+    };
+  }, []);
+
   const actionCards: EmployeeAction[] = useMemo(() => {
     const baseCards = [
       { id: 'my-profile', title: 'Mi Perfil', description: 'Ver y editar datos personales', icon: <User size={24} /> },

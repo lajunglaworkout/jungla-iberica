@@ -4,6 +4,7 @@ import QuarterlyReviewForm from './QuarterlyReviewForm';
 import { useInventory } from '../../hooks/useInventory';
 import { useSession } from '../../contexts/SessionContext';
 import quarterlyInventoryService from '../../services/quarterlyInventoryService';
+import { supabase } from '../../lib/supabase';
 
 const QuarterlyReviewSystemWithSupabase: React.FC = () => {
   const { inventoryItems } = useInventory();
@@ -36,35 +37,67 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     return { quarter: `Q${quarter}-${year}`, year, quarterNum: quarter };
   };
 
-  const openReviewForm = (review: any) => {
-    // Si la revisión no tiene items cargados, cargarlos del inventario actual
-    if (!review.reviewItems) {
-      const centerMap: Record<number, string> = {
-        9: 'sevilla',
-        10: 'jerez',
-        11: 'puerto',
-        1: 'central'
-      };
+  const openReviewForm = async (review: any) => {
+    setLoading(true);
+    let formItems = [];
 
-      const centerKey = centerMap[review.center_id];
-      const items = inventoryItems.filter(item => item.center === centerKey);
+    // 1. Obtener la asignación asociada a esta revisión (si existe)
+    const { data: assignment } = await supabase
+      .from('quarterly_inventory_assignments')
+      .select('id, status')
+      .eq('review_id', review.id)
+      .single();
 
-      console.log(`📦 Cargando ${items.length} items para revisión de ${review.center_name}`);
+    // 2. Si hay asignación, buscar items guardados
+    let savedItemsMap: Record<number, any> = {};
+    if (assignment) {
+      const { data: savedItems } = await supabase
+        .from('quarterly_review_items')
+        .select('*')
+        .eq('assignment_id', assignment.id);
 
-      review.reviewItems = items.map(item => ({
+      if (savedItems && savedItems.length > 0) {
+        savedItems.forEach((item: any) => {
+          savedItemsMap[item.inventory_item_id] = item;
+        });
+        console.log(`📥 Recuperados ${savedItems.length} items guardados de la asignación ${assignment.id}`);
+      }
+    }
+
+    // 3. Construir lista combinando Inventario Maestro + Progreso Guardado
+    const centerMap: Record<number, string> = {
+      9: 'sevilla',
+      10: 'jerez',
+      11: 'puerto',
+      1: 'central'
+    };
+
+    const centerKey = centerMap[review.center_id];
+    const masterItems = inventoryItems.filter(item => item.center === centerKey);
+
+    console.log(`📦 Cargando ${masterItems.length} items maestros para revisión de ${review.center_name}`);
+
+    formItems = masterItems.map(item => {
+      const saved = savedItemsMap[item.id];
+      return {
         id: item.id,
         name: item.name,
         category: item.category,
-        system: item.quantity,
-        counted: 0,
-        regular: 0,
-        deteriorated: 0,
-        obs: ''
-      }));
-    }
+        system: item.quantity, // Siempre mostrar stock actual del sistema
+        // Si hay guardado, usar valor guardado. Si no, 0.
+        counted: saved ? saved.counted_quantity : 0,
+        regular: saved ? saved.regular_quantity : 0,
+        deteriorated: saved ? saved.deteriorated_quantity : 0,
+        obs: saved ? saved.observations : ''
+      };
+    });
+
+    review.reviewItems = formItems;
+    review.assignment = assignment; // Guardar referencia
 
     setSelectedReview(review);
     setCurrentView('form');
+    setLoading(false);
   };
 
   const backToList = () => {
@@ -173,48 +206,204 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
     setLoading(false);
   };
 
-  // AUTORIZAR ELIMINACIÓN DE ITEMS ROTOS (Beni)
-  const handleAuthorizeRemoval = async (reviewId: number) => {
-    const confirm = window.confirm(
-      '⚠️ ¿Autorizar eliminación de items rotos?\n\n' +
-      'Esta acción:\n' +
-      '• Eliminará automáticamente los items marcados del inventario\n' +
-      '• Actualizará las cantidades en el sistema\n' +
-      '• Marcará la revisión como completada\n\n' +
-      '¿Continuar?'
-    );
+  // MODAL DE DECISIONES POST-REVISIÓN (Beni)
+  const [showDecisionModal, setShowDecisionModal] = useState(false);
+  const [reviewToProcess, setReviewToProcess] = useState<any>(null);
+  const [allReviewItems, setAllReviewItems] = useState<any[]>([]); // Todos los items de la revisión
+  const [decisions, setDecisions] = useState<Record<number, {
+    darDeBaja: boolean;
+    enviarAPedido: boolean;
+    marcarRegular: boolean;
+    toOrder: number;
+  }>>({});
+  const [showOnlyDiscrepancies, setShowOnlyDiscrepancies] = useState(true);
 
-    if (!confirm) return;
+  const openDecisionModal = async (review: any) => {
+    setLoading(true);
+
+    // Buscar asignación de esta revisión
+    const { data: assignments } = await supabase
+      .from('quarterly_inventory_assignments')
+      .select('id')
+      .eq('review_id', review.id)
+      .limit(1);
+
+    if (!assignments || assignments.length === 0) {
+      alert('Error cargando detalles de asignación');
+      setLoading(false);
+      return;
+    }
+
+    const { data: reviewItems } = await supabase
+      .from('quarterly_review_items')
+      .select('*')
+      .eq('assignment_id', assignments[0].id);
+
+    if (reviewItems) {
+      setAllReviewItems(reviewItems);
+
+      // Inicializar decisiones por defecto para items con discrepancias
+      const initialDecisions: Record<number, any> = {};
+      reviewItems.forEach((item: any) => {
+        const counted = item.counted_quantity || 0;
+        const system = item.current_system_quantity || 0;
+        const broken = item.deteriorated_quantity || 0;
+        const regular = item.regular_quantity || 0;
+        const missing = system > counted ? system - counted : 0;
+        const hasIssue = (counted !== system) || broken > 0 || regular > 0;
+
+        if (hasIssue) {
+          initialDecisions[item.id] = {
+            darDeBaja: broken > 0,       // Auto-check si hay rotos
+            enviarAPedido: broken > 0 || missing > 0, // Auto-check si hay faltantes o rotos
+            marcarRegular: regular > 0,  // Auto-check si hay regular
+            toOrder: broken + missing,   // Cantidad sugerida: rotos + faltantes
+          };
+        }
+      });
+      setDecisions(initialDecisions);
+    }
+
+    setReviewToProcess(review);
+    setShowDecisionModal(true);
+    setLoading(false);
+  };
+
+  const updateDecision = (itemId: number, field: string, value: any) => {
+    setDecisions(prev => ({
+      ...prev,
+      [itemId]: {
+        ...(prev[itemId] || { darDeBaja: false, enviarAPedido: false, marcarRegular: false, toOrder: 0 }),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleProcessDecisions = async () => {
+    if (!reviewToProcess) return;
+
+    // Construir array de decisiones para el servicio
+    const itemsWithDecisions = allReviewItems
+      .filter((item: any) => decisions[item.id])
+      .map((item: any) => {
+        const d = decisions[item.id];
+        const counted = item.counted_quantity || 0;
+        const system = item.current_system_quantity || 0;
+        const broken = item.deteriorated_quantity || 0;
+        const regular = item.regular_quantity || 0;
+        const missing = system > counted ? system - counted : 0;
+
+        return {
+          item_id: item.id,
+          inventory_item_id: item.inventory_item_id,
+          product_name: item.product_name,
+          category: item.category,
+          current_system_quantity: system,
+          counted_quantity: counted,
+          regular_quantity: regular,
+          deteriorated_quantity: broken,
+          actions: {
+            darDeBaja: d.darDeBaja,
+            enviarAPedido: d.enviarAPedido,
+            marcarRegular: d.marcarRegular,
+          },
+          quantities: {
+            broken: d.darDeBaja ? broken : 0,
+            missing,
+            regular,
+            toOrder: d.enviarAPedido ? d.toOrder : 0,
+          }
+        };
+      });
+
+    if (itemsWithDecisions.length === 0) {
+      alert('No has seleccionado ninguna acción. Marca al menos una decisión para procesar.');
+      return;
+    }
+
+    // Resumen para confirmación
+    const totalBajas = itemsWithDecisions.filter(d => d.actions.darDeBaja).length;
+    const totalPedido = itemsWithDecisions.filter(d => d.actions.enviarAPedido).length;
+    const totalRegular = itemsWithDecisions.filter(d => d.actions.marcarRegular).length;
+    const totalUnidadesPedido = itemsWithDecisions.reduce((sum, d) => sum + d.quantities.toOrder, 0);
+
+    const confirmMsg = [
+      `⚡ ¿Procesar estas decisiones?\n`,
+      totalBajas > 0 ? `🗑️ Dar de baja: ${totalBajas} productos` : '',
+      totalPedido > 0 ? `🛒 Pedido post-revisión: ${totalPedido} productos (${totalUnidadesPedido} uds)` : '',
+      totalRegular > 0 ? `⚠️ Marcar regular: ${totalRegular} productos` : '',
+      `\n• Se actualizará el inventario.`,
+      `• Se generará el pedido automáticamente.`,
+      `• Carlos recibirá notificación resumen.`
+    ].filter(Boolean).join('\n');
+
+    if (!window.confirm(confirmMsg)) return;
 
     setLoading(true);
-    const result = await quarterlyInventoryService.authorizeItemRemoval(
-      reviewId,
+    const result = await quarterlyInventoryService.processReviewDecisions(
+      reviewToProcess.id,
+      reviewToProcess.center_name,
+      reviewToProcess.quarter,
+      itemsWithDecisions,
       employee?.email || 'beni.jungla@gmail.com'
     );
 
-    if (result.success) {
-      const summary = result.removedItems?.map((item: any) =>
-        `• ${item.name}: -${item.removed} (nuevo total: ${item.newQuantity})`
-      ).join('\n');
+    if (result.success && result.summary) {
+      const s = result.summary;
+      let successMsg = `✅ Revisión procesada correctamente.\n\n`;
+      successMsg += `📊 Resumen:\n`;
+      if (s.bajasUnidades > 0) successMsg += `• 🗑️ ${s.bajasUnidades} uds dadas de baja (${s.bajas} productos)\n`;
+      if (s.faltantesUnidades > 0) successMsg += `• ❌ ${s.faltantesUnidades} uds faltantes registradas\n`;
+      if (s.regulares > 0) successMsg += `• ⚠️ ${s.regulares} productos marcados como Regular\n`;
+      if (result.orderId) successMsg += `\n🛒 Pedido generado: ${result.orderId}\n(${s.pedidoUnidades} unidades en ${s.pedidoItems} productos)`;
 
-      alert(`✅ Items eliminados del inventario:\n\n${summary}`);
+      alert(successMsg);
+      setShowDecisionModal(false);
+      setDecisions({});
       loadReviews();
     } else {
-      alert('❌ Error autorizando eliminación');
+      alert('❌ Error procesando decisiones. Revisa la consola.');
     }
-
     setLoading(false);
   };
+
+  // Filtrar items para mostrar
+  const getFilteredItems = () => {
+    if (!showOnlyDiscrepancies) return allReviewItems;
+    return allReviewItems.filter((item: any) => {
+      const counted = item.counted_quantity || 0;
+      const system = item.current_system_quantity || 0;
+      const broken = item.deteriorated_quantity || 0;
+      const regular = item.regular_quantity || 0;
+      return counted !== system || broken > 0 || regular > 0;
+    });
+  };
+
+  // ========== RENDER ==========
 
   if (currentView === 'form' && selectedReview) {
     return <QuarterlyReviewForm onBack={backToList} reviewData={selectedReview} />;
   }
+
+  // Contar totales para el resumen del modal
+  const countDecisionSummary = () => {
+    let bajas = 0, pedido = 0, regulares = 0, unidades = 0;
+    Object.values(decisions).forEach(d => {
+      if (d.darDeBaja) bajas++;
+      if (d.enviarAPedido) { pedido++; unidades += d.toOrder; }
+      if (d.marcarRegular) regulares++;
+    });
+    return { bajas, pedido, regulares, unidades };
+  };
+
+  const summary = countDecisionSummary();
 
   return (
     <div style={{ padding: '2rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <h2>📋 Revisiones Trimestrales de Inventario</h2>
+        {/* Boton Convocar solo para Beni/Admin */}
         <button
           onClick={() => setShowCreateModal(true)}
           disabled={loading}
@@ -233,6 +422,145 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
           <Plus size={20} /> Convocar Revisión {getCurrentQuarter().quarter}
         </button>
       </div>
+
+      {/* MODAL DE DECISIONES POST-REVISIÓN */}
+      {showDecisionModal && reviewToProcess && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100,
+          display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}>
+          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '1200px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ marginTop: 0 }}>⚡ Decisiones Post-Revisión</h2>
+            <p style={{ color: '#6b7280' }}>Revisión: <strong>{reviewToProcess.quarter} - {reviewToProcess.center_name}</strong></p>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4b5563' }}>
+                <input
+                  type="checkbox"
+                  checked={showOnlyDiscrepancies}
+                  onChange={(e) => setShowOnlyDiscrepancies(e.target.checked)}
+                  style={{ transform: 'scale(1.2)' }}
+                />
+                Mostrar solo items con discrepancias/roturas
+              </label>
+              <div style={{ display: 'flex', gap: '10px', fontSize: '14px', fontWeight: '500' }}>
+                {summary.bajas > 0 && <span style={{ color: '#ef4444' }}>🗑️ {summary.bajas} Bajas</span>}
+                {summary.pedido > 0 && <span style={{ color: '#3b82f6' }}>🛒 {summary.pedido} Pedido ({summary.unidades} uds)</span>}
+                {summary.regulares > 0 && <span style={{ color: '#f59e0b' }}>⚠️ {summary.regulares} Regular</span>}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem', maxHeight: '50vh', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead style={{ backgroundColor: '#f3f4f6', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ddd', width: '25%' }}>Producto</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '8%' }}>Sistema</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '8%' }}>Contados</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '8%' }}>Rotos</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '8%' }}>Regular</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '10%' }}>Diferencia</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '10%' }}>Dar de Baja</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '10%' }}>Enviar a Pedido</th>
+                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #ddd', width: '10%' }}>Marcar Regular</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getFilteredItems().map((item: any) => {
+                    const counted = item.counted_quantity || 0;
+                    const system = item.current_system_quantity || 0;
+                    const broken = item.deteriorated_quantity || 0;
+                    const regular = item.regular_quantity || 0;
+                    const diff = counted - system;
+                    const missing = system > counted ? system - counted : 0;
+
+                    const itemDecisions = decisions[item.id] || { darDeBaja: false, enviarAPedido: false, marcarRegular: false, toOrder: broken + missing };
+
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '10px', fontWeight: '500' }}>{item.product_name}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: '#6b7280' }}>{system}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>{counted}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: broken > 0 ? '#ef4444' : '#d1d5db' }}>
+                          {broken > 0 ? broken : '-'}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: regular > 0 ? '#f59e0b' : '#d1d5db' }}>
+                          {regular > 0 ? regular : '-'}
+                        </td>
+                        <td style={{
+                          padding: '10px', textAlign: 'center',
+                          color: diff < 0 ? '#ef4444' : diff > 0 ? '#10b981' : '#6b7280',
+                          fontWeight: diff !== 0 ? 'bold' : 'normal'
+                        }}>
+                          {diff > 0 ? `+${diff}` : diff}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={itemDecisions.darDeBaja}
+                            onChange={(e) => updateDecision(item.id, 'darDeBaja', e.target.checked)}
+                            disabled={broken === 0}
+                          />
+                          {broken > 0 && <span style={{ marginLeft: '5px', color: '#ef4444' }}>({broken})</span>}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={itemDecisions.enviarAPedido}
+                            onChange={(e) => updateDecision(item.id, 'enviarAPedido', e.target.checked)}
+                            disabled={broken + missing === 0}
+                          />
+                          {(broken + missing > 0) && (
+                            <input
+                              type="number"
+                              value={itemDecisions.toOrder}
+                              onChange={(e) => updateDecision(item.id, 'toOrder', parseInt(e.target.value) || 0)}
+                              min="0"
+                              style={{ width: '50px', marginLeft: '5px', padding: '3px', borderRadius: '4px', border: '1px solid #ccc' }}
+                              disabled={!itemDecisions.enviarAPedido}
+                            />
+                          )}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={itemDecisions.marcarRegular}
+                            onChange={(e) => updateDecision(item.id, 'marcarRegular', e.target.checked)}
+                            disabled={regular === 0}
+                          />
+                          {regular > 0 && <span style={{ marginLeft: '5px', color: '#f59e0b' }}>({regular})</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {getFilteredItems().length === 0 && (
+                    <tr><td colSpan={9} style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>✅ No hay items con discrepancias o roturas.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setShowDecisionModal(false)} style={{ padding: '10px 20px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button
+                onClick={handleProcessDecisions}
+                disabled={loading || Object.keys(decisions).length === 0}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: loading || Object.keys(decisions).length === 0 ? '#9ca3af' : '#059669',
+                  color: 'white',
+                  cursor: loading || Object.keys(decisions).length === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {loading ? 'Procesando...' : `Procesar Decisiones (${Object.keys(decisions).length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de creación */}
       {showCreateModal && (
@@ -365,13 +693,15 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                   fontWeight: '600',
                   backgroundColor:
                     review.status === 'completed' ? '#059669' :
-                      review.status === 'active' ? '#3b82f6' :
-                        '#6b7280',
+                      review.status === 'submitted' ? '#3b82f6' :
+                        review.status === 'active' ? '#f59e0b' :
+                          '#6b7280',
                   color: 'white'
                 }}>
-                  {review.status === 'completed' ? '✅ Completada' :
-                    review.status === 'active' ? '🔄 Activa' :
-                      '📝 Borrador'}
+                  {review.status === 'completed' ? '✅ Aplicada' :
+                    review.status === 'submitted' ? '🔵 Enviada' :
+                      review.status === 'active' ? '🟡 Activa' :
+                        '📝 Borrador'}
                 </span>
               </div>
 
@@ -380,7 +710,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                   onClick={() => openReviewForm(review)}
                   style={{
                     padding: '8px 16px',
-                    backgroundColor: '#3b82f6',
+                    backgroundColor: '#6b7280',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -415,13 +745,14 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                   </button>
                 )}
 
-                {review.status === 'active' && review.total_discrepancies > 0 && (
+                {/* BOTON DE APLICAR SOLO PARA STATUS SUBMITTED (O Active si se quiere forzar) */}
+                {(review.status === 'submitted' || review.status === 'active') && (
                   <button
-                    onClick={() => handleAuthorizeRemoval(review.id)}
+                    onClick={() => openDecisionModal(review)}
                     disabled={loading}
                     style={{
                       padding: '8px 16px',
-                      backgroundColor: loading ? '#9ca3af' : '#f59e0b',
+                      backgroundColor: loading ? '#9ca3af' : '#059669',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
@@ -432,7 +763,7 @@ const QuarterlyReviewSystemWithSupabase: React.FC = () => {
                       fontSize: '14px'
                     }}
                   >
-                    <CheckCircle size={16} /> Autorizar Eliminación
+                    <CheckCircle size={16} /> Revisar y Aplicar
                   </button>
                 )}
               </div>

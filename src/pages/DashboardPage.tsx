@@ -34,7 +34,7 @@ import { UserManagementSystem } from '../components/admin/UserManagementSystem';
 import SmartIncidentModal from '../components/incidents/SmartIncidentModal';
 import IncidentManagementModal from '../components/incidents/IncidentManagementModal';
 import { checklistIncidentService } from '../services/checklistIncidentService';
-import { getUserNotifications } from '../services/notificationService';
+import { getUserNotifications, markNotificationAsRead } from '../services/notificationService';
 import '../styles/dashboard.css';
 
 // Datos de ejemplo para mostrar funcionalidad completa
@@ -205,6 +205,8 @@ interface SmartAlert {
   hrView?: string;
   logisticsView?: string;
   taskId?: string | number; // Para notificaciones de tareas
+  reviewId?: string | number; // Para revisiones trimestrales
+  notificationId?: number; // Para marcar como leída al hacer click
 }
 
 const DashboardPage: React.FC = () => {
@@ -535,10 +537,15 @@ const DashboardPage: React.FC = () => {
           const notificationsResult = await getUserNotifications(employee.email, true); // Solo no leídas
 
           if (notificationsResult.success && notificationsResult.notifications) {
-            const taskNotifications = notificationsResult.notifications;
-            console.log(`📧 Encontradas ${taskNotifications.length} notificaciones de tareas`);
+            const allNotifications = notificationsResult.notifications;
+            console.log(`📧 Procesando ${allNotifications.length} notificaciones`);
 
-            // Convertir notificaciones de tareas a alertas
+            // 1. Procesar TAREAS (excluyendo revisiones)
+            const taskNotifications = allNotifications.filter((n: any) =>
+              (n.type === 'task_assigned' || n.type === 'task_deadline') &&
+              n.reference_type !== 'quarterly_review'
+            );
+
             taskNotifications.forEach((notification: any) => {
               newAlerts.push({
                 id: `task-notification-${notification.id}`,
@@ -551,9 +558,43 @@ const DashboardPage: React.FC = () => {
                 department: 'Tareas',
                 actionUrl: '/meetings',
                 moduleId: 'meetings',
-                taskId: notification.task_id // Añadir ID de tarea para navegación específica
+                taskId: notification.task_id,
+                notificationId: notification.id // Guardar ID original
               });
             });
+
+            // 2. Procesar REVISIONES TRIMESTRALES
+            const reviewNotifications = allNotifications.filter((n: any) =>
+              n.reference_type === 'quarterly_review' ||
+              n.type === 'review_assigned'
+            );
+
+            if (reviewNotifications.length > 0) {
+              console.log(`📋 Encontradas ${reviewNotifications.length} notificaciones de revisión`);
+              reviewNotifications.forEach((notification: any) => {
+                // Determinar destino según el rol del usuario
+                const isAdmin = employee?.role === 'admin' || employee?.role === 'superadmin';
+                const targetModuleId = isAdmin ? 'logistics' : 'center-management';
+                const targetView = isAdmin ? 'quarterly' : 'inventory-review';
+                const targetDepartment = isAdmin ? 'Logística' : 'Gestión';
+
+                newAlerts.push({
+                  id: `review-notification-${notification.id}`,
+                  title: notification.title,
+                  description: notification.message || 'Nueva revisión asignada',
+                  type: 'info',
+                  priority: 'high',
+                  createdAt: notification.created_at,
+                  isRead: notification.is_read,
+                  department: targetDepartment,
+                  actionUrl: `/${targetModuleId}`,
+                  moduleId: targetModuleId,
+                  logisticsView: targetView,
+                  reviewId: notification.reference_id,
+                  notificationId: notification.id
+                });
+              });
+            }
           }
         } catch (error) {
           console.error('❌ Error cargando notificaciones de tareas:', error);
@@ -1231,59 +1272,88 @@ const DashboardPage: React.FC = () => {
 
   const handleAlertNavigation = (alert: SmartAlert) => {
     console.log('🔔 handleAlertNavigation llamado con:', alert);
-    console.log('🔔 Estados actuales:', {
-      showIncidentModal,
-      showIncidentManagementModal,
-      selectedDepartment
-    });
 
-    // Si es una notificación de tarea, abrir modal de completar tarea
+    // 1. PRIORIDAD TOTAL: NAVEGACIÓN
+    // Si tiene moduleId, navegar inmediatamente (sin esperar a nada)
+    if (alert.moduleId) {
+      console.log('🚀 Navegando a módulo:', alert.moduleId);
+
+      // 1. Dispatch evento principal de navegación
+      window.dispatchEvent(
+        new CustomEvent('navigate-module', {
+          detail: {
+            moduleId: alert.moduleId,
+            fallbackUrl: alert.actionUrl ?? null,
+            // App.tsx espera logisticsView para despachar logistics-module-view
+            logisticsView: alert.moduleId === 'logistics' ? alert.logisticsView : undefined
+          }
+        })
+      );
+
+      // 2. Si es para gestión del centro, lanzar evento específico
+      // Esto es necesario porque App.tsx maneja el módulo pero CenterManagement maneja la sub-vista
+      if (alert.moduleId === 'center-management' && alert.logisticsView) {
+        setTimeout(() => {
+          console.log('🚀 Lanzando evento de vista interna CenterManagement:', alert.logisticsView);
+          window.dispatchEvent(
+            new CustomEvent('center-management-view', {
+              detail: { view: alert.logisticsView }
+            })
+          );
+        }, 100);
+      }
+
+      // 3. FIRE AND FORGET: Marcar como leída después de lanzar la navegación
+      if (alert.notificationId) {
+        // TEMPORALMENTE DESACTIVADO para diagnosticar logout
+        // console.log('🔔 (DEBUG) Saltando markNotificationAsRead para evitar logout:', alert.notificationId);
+
+        // REACTIVANDO: El problema era el módulo incorrecto, no el update
+        markNotificationAsRead(alert.notificationId)
+          .then(() => console.log('✅ Notificación marcada como leída (background)'))
+          .catch(err => console.error('❌ Error marcando notificación (background):', err));
+      }
+
+      return;
+    }
+
+    // Lógica para modales (se mantiene igual, pero añadimos el mark as read safety)
+
+    // Si es una notificación de tarea
     if (alert.id.startsWith('task-notification-')) {
-      console.log('📋 Abriendo modal de tarea:', alert.taskId);
-      // Crear objeto de tarea para el modal
       setSelectedTaskForCompletion({
         taskId: alert.taskId,
         title: alert.title || 'Tarea pendiente',
         description: alert.description
       });
       setShowTaskCompletionModal(true);
+
+      // Marcar como leída
+      if (alert.notificationId) markNotificationAsRead(alert.notificationId).catch(console.error);
       return;
     }
 
-    // Si es una alerta de incidencias vencidas o próximas a vencer
+    // Si es una alerta de incidencias vencidas
     if (alert.id === 'overdue-incidents' || alert.id === 'near-deadline-incidents') {
-      console.log('🔥 ABRIENDO MODAL DE INCIDENCIAS VENCIDAS');
-      setSelectedDepartment(''); // Sin filtro de departamento para ver todas
-      setShowOverdueIncidentsOnly(true); // Mostrar solo incidencias vencidas
+      setSelectedDepartment('');
+      setShowOverdueIncidentsOnly(true);
       setShowIncidentManagementModal(true);
-      console.log('🔥 Estado después de setear:', { showIncidentManagementModal: true, showOverdueIncidentsOnly: true });
       return;
     }
 
-    // Si es una alerta de incidencias, abrir el modal de gestión
+    // Si es una alerta de incidencias normales
     if (alert.id.startsWith('incidents-')) {
-      console.log('🔥 ABRIENDO MODAL DE GESTIÓN DE INCIDENCIAS:', alert.department);
       setSelectedDepartment(alert.department || '');
       setShowIncidentManagementModal(true);
-      console.log('🔥 Estado después de setear:', { showIncidentManagementModal: true });
       return;
     }
 
-    if (alert.moduleId) {
-      window.dispatchEvent(
-        new CustomEvent('navigate-module', {
-          detail: {
-            moduleId: alert.moduleId,
-            fallbackUrl: alert.actionUrl ?? null,
-            hrView: alert.hrView,
-            logisticsView: alert.logisticsView
-          }
-        })
-      );
-      return;
-    }
-
+    // Último recurso: Action URL directa (solo si no es módulo)
     if (alert.actionUrl) {
+      // Marcar como leída antes de redescargar la página
+      if (alert.notificationId) {
+        markNotificationAsRead(alert.notificationId).catch(console.error);
+      }
       window.location.href = alert.actionUrl;
     }
   };

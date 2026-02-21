@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, CheckCircle, XCircle, User, Truck, AlertTriangle, Clock, Filter, ChevronDown, Search } from 'lucide-react';
+import { Package, CheckCircle, XCircle, User, Truck, AlertTriangle, Clock, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../contexts/SessionContext';
 
@@ -17,11 +17,29 @@ interface UniformRequest {
   notes?: string;
 }
 
+const STATUS_FILTERS = [
+  { key: 'pending', label: 'Pendientes', icon: '🟡', color: '#f59e0b' },
+  { key: 'approved', label: 'Aprobados', icon: '🔵', color: '#3b82f6' },
+  { key: 'shipped', label: 'Envíos', icon: '🟣', color: '#8b5cf6' },
+  { key: 'problem', label: 'Incidencias', icon: '🔴', color: '#ef4444' },
+  { key: 'history', label: 'Historial', icon: '⚫', color: '#6b7280' },
+];
+
+const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string; Icon: any }> = {
+  pending: { bg: '#fef3c7', color: '#92400e', label: 'Pendiente', Icon: Clock },
+  approved: { bg: '#dbeafe', color: '#1e40af', label: 'Aprobado', Icon: CheckCircle },
+  shipped: { bg: '#ede9fe', color: '#6d28d9', label: 'Enviado', Icon: Truck },
+  awaiting_confirmation: { bg: '#ffedd5', color: '#9a3412', label: 'Esperando Conf.', Icon: Clock },
+  confirmed: { bg: '#dcfce7', color: '#166534', label: 'Entregado', Icon: CheckCircle },
+  disputed: { bg: '#fee2e2', color: '#991b1b', label: 'Incidencia', Icon: AlertTriangle },
+  rejected: { bg: '#f3f4f6', color: '#374151', label: 'Rechazado', Icon: XCircle },
+};
+
 const UniformRequestsPanel: React.FC = () => {
   const { employee } = useSession();
   const [requests, setRequests] = useState<UniformRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<string>('pending'); // pending, approved, shipped, problem, history
+  const [filterStatus, setFilterStatus] = useState<string>('pending');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -56,22 +74,17 @@ const UniformRequestsPanel: React.FC = () => {
 
       if (!request) return;
 
-      const updatePayload = {
-        status,
-        ...additionalData
-      };
+      const updatePayload = { status, ...additionalData };
 
-      // 1. Update Request
       await supabase
         .from('uniform_requests')
         .update(updatePayload)
         .eq('id', id);
 
-      // 2. If Approving, deduct stock
+      // If Approving, deduct stock
       if (status === 'approved' && request.status === 'pending') {
         if (request.items) {
           for (const item of request.items) {
-            // Map employee field names to Inventory Item Names
             const ITEM_MAPPINGS: Record<string, string> = {
               'vestuario_chandal': 'CHÁNDAL',
               'vestuario_sudadera': 'SUDADERA FRÍO',
@@ -87,7 +100,7 @@ const UniformRequestsPanel: React.FC = () => {
               .from('inventory_items')
               .select('id, cantidad_actual')
               .eq('name', inventoryName)
-              .eq('size', item.size) // Also match size!
+              .eq('size', item.size)
               .single();
 
             if (invItem) {
@@ -103,12 +116,7 @@ const UniformRequestsPanel: React.FC = () => {
         }
       }
 
-      // 3. If Resolving Dispute (Back to Shipped or Confirmed?)
-      // Usually resolved means either Reship (new request?) or just close it.
-      // references user request: "Benito must resolve".
-
       await loadRequests();
-      // alert('Estado actualizado');
     } catch (error) {
       console.error(error);
       alert('Error actualizando estado');
@@ -137,120 +145,250 @@ const UniformRequestsPanel: React.FC = () => {
     return true;
   });
 
+  // Count by status for badges
+  const statusCounts = {
+    pending: requests.filter(r => r.status === 'pending').length,
+    approved: requests.filter(r => r.status === 'approved').length,
+    shipped: requests.filter(r => r.status === 'shipped' || r.status === 'awaiting_confirmation').length,
+    problem: requests.filter(r => r.status === 'disputed').length,
+    history: requests.filter(r => r.status === 'confirmed' || r.status === 'rejected').length,
+  };
+
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending': return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold flex items-center gap-1"><Clock size={12} /> Pendiente</span>;
-      case 'approved': return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle size={12} /> Aprobado</span>;
-      case 'shipped': return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-bold flex items-center gap-1"><Truck size={12} /> Enviado</span>;
-      case 'awaiting_confirmation': return <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-bold flex items-center gap-1"><Clock size={12} /> Esperando Conf.</span>;
-      case 'confirmed': return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle size={12} /> Entregado</span>;
-      case 'disputed': return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold flex items-center gap-1"><AlertTriangle size={12} /> Incidencia</span>;
-      case 'rejected': return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-bold flex items-center gap-1"><XCircle size={12} /> Rechazado</span>;
-      default: return null;
-    }
+    const cfg = STATUS_CONFIG[status];
+    if (!cfg) return null;
+    const { bg, color, label, Icon } = cfg;
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: '4px',
+        padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600',
+        backgroundColor: bg, color: color
+      }}>
+        <Icon size={12} /> {label}
+      </span>
+    );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2">
-          <Package className="text-emerald-600" />
-          <h2 className="text-xl font-bold text-gray-800">Panel de Vestuario</h2>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {['pending', 'approved', 'shipped', 'problem', 'history'].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === status
-                ? 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-500 ring-offset-1'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-            >
-              {status === 'pending' && '🟡 Pendientes'}
-              {status === 'approved' && '🔵 Aprobados'}
-              {status === 'shipped' && '🟣 Envíos'}
-              {status === 'problem' && '🔴 Incidencias'}
-              {status === 'history' && '⚫ Historial'}
-            </button>
-          ))}
+    <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '1.5rem', border: '1px solid #e5e7eb' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ backgroundColor: '#ecfdf5', padding: '10px', borderRadius: '12px' }}>
+            <Package size={22} style={{ color: '#059669' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>
+              Solicitudes de Vestuario
+            </h2>
+            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '2px 0 0 0' }}>
+              {requests.length} solicitud(es) total · {statusCounts.pending} pendiente(s)
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      {/* Status filter pills */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        {STATUS_FILTERS.map(f => {
+          const count = statusCounts[f.key as keyof typeof statusCounts] || 0;
+          const isActive = filterStatus === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilterStatus(f.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '10px',
+                fontSize: '0.8rem', fontWeight: isActive ? '700' : '500',
+                backgroundColor: isActive ? '#059669' : '#f3f4f6',
+                color: isActive ? 'white' : '#4b5563',
+                border: 'none', cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span>{f.icon}</span>
+              {f.label}
+              {count > 0 && (
+                <span style={{
+                  backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : '#e5e7eb',
+                  padding: '1px 7px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: '700',
+                  color: isActive ? 'white' : '#374151'
+                }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
+        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
         <input
           type="text"
           placeholder="Buscar por empleado o centro..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          style={{
+            width: '100%', padding: '10px 12px 10px 36px',
+            border: '1px solid #e5e7eb', borderRadius: '10px',
+            fontSize: '0.875rem', color: '#374151',
+            outline: 'none', boxSizing: 'border-box'
+          }}
         />
       </div>
 
-      <div className="grid gap-4">
-        {loading ? (
-          <div className="text-center py-10 text-gray-500">Cargando solicitudes...</div>
-        ) : filteredRequests.length === 0 ? (
-          <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
-            <p className="text-gray-500">No hay solicitudes en esta sección.</p>
-          </div>
-        ) : (
-          filteredRequests.map(req => (
-            <div key={req.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-4 border-b border-gray-50 flex justify-between items-start bg-gray-50/50">
-                <div className="flex items-start gap-3">
-                  <div className="bg-white p-2 rounded-lg border border-gray-100">
-                    <User size={20} className="text-gray-400" />
+      {/* Requests List */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af', fontSize: '0.9rem' }}>
+          Cargando solicitudes...
+        </div>
+      ) : filteredRequests.length === 0 ? (
+        <div style={{
+          textAlign: 'center', padding: '3rem',
+          backgroundColor: '#f9fafb', borderRadius: '12px',
+          border: '2px dashed #e5e7eb'
+        }}>
+          <Package size={40} style={{ margin: '0 auto 0.75rem', display: 'block', opacity: 0.3, color: '#9ca3af' }} />
+          <p style={{ fontSize: '0.95rem', fontWeight: '600', color: '#6b7280', margin: '0 0 4px 0' }}>Sin solicitudes</p>
+          <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: 0 }}>No hay solicitudes en esta sección.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filteredRequests.map(req => (
+            <div
+              key={req.id}
+              style={{
+                border: '1px solid #e5e7eb', borderRadius: '14px',
+                overflow: 'hidden', transition: 'box-shadow 0.2s',
+                backgroundColor: '#fafbfc'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+            >
+              {/* Request Header */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 18px',
+                backgroundColor: 'white', borderBottom: '1px solid #f3f4f6'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '38px', height: '38px', borderRadius: '10px',
+                    backgroundColor: '#f0fdf4', border: '1px solid #d1fae5',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <User size={18} style={{ color: '#059669' }} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">{req.employee_name}</h3>
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      {req.location} · {new Date(req.requested_at).toLocaleDateString()}
-                    </p>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#1f2937' }}>
+                      {req.employee_name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      📍 {req.location} · 📅 {new Date(req.requested_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
                   </div>
                 </div>
-                <div>{getStatusBadge(req.status)}</div>
+                {getStatusBadge(req.status)}
               </div>
 
-              <div className="p-4 grid md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Artículos Solicitados</h4>
-                  <div className="space-y-2">
+              {/* Request Body */}
+              <div style={{ padding: '14px 18px' }}>
+                {/* Items Table */}
+                <div style={{ marginBottom: req.notes || req.reason ? '12px' : '0' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    Artículos solicitados
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {req.items?.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
-                        <span className="text-sm font-medium text-gray-700">{item.itemName}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs bg-white px-1.5 py-0.5 rounded border border-gray-200">Talla: {item.size}</span>
-                          <span className="text-xs font-bold text-emerald-600">x{item.quantity}</span>
+                      <div key={idx} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', backgroundColor: 'white',
+                        borderRadius: '8px', border: '1px solid #e5e7eb'
+                      }}>
+                        <span style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1f2937' }}>
+                          {item.itemName}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px',
+                            backgroundColor: '#f3f4f6', color: '#374151', fontWeight: '500'
+                          }}>
+                            Talla: {item.size}
+                          </span>
+                          <span style={{
+                            fontSize: '0.75rem', fontWeight: '700', color: '#059669',
+                            backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '6px'
+                          }}>
+                            ×{item.quantity}
+                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
-                  {req.notes && (
-                    <p className="mt-3 text-sm text-gray-600 bg-yellow-50 p-2 rounded border border-yellow-100">
-                      📝 <span className="font-medium">Nota:</span> {req.notes}
-                    </p>
-                  )}
-                  {req.reason && (
-                    <p className="mt-1 text-xs text-gray-400">Motivo: {req.reason === 'reposicion' ? 'Reposición' : 'Compra'}</p>
-                  )}
                 </div>
 
-                <div className="flex flex-col justify-center items-end gap-2 border-l border-gray-50 pl-4">
-                  {/* ACCIONES */}
+                {/* Notes & Reason */}
+                {req.notes && (
+                  <div style={{
+                    padding: '8px 12px', backgroundColor: '#fffbeb',
+                    borderRadius: '8px', border: '1px solid #fef3c7',
+                    fontSize: '0.8rem', color: '#92400e', marginBottom: '6px'
+                  }}>
+                    📝 <span style={{ fontWeight: '600' }}>Nota:</span> {req.notes}
+                  </div>
+                )}
+                {req.reason && (
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                    Motivo: {req.reason === 'reposicion' ? 'Reposición' : 'Compra'}
+                  </div>
+                )}
+
+                {/* Dispute detail */}
+                {req.status === 'disputed' && req.dispute_reason && (
+                  <div style={{
+                    padding: '10px 14px', backgroundColor: '#fef2f2',
+                    borderRadius: '8px', border: '1px solid #fecaca',
+                    fontSize: '0.85rem', color: '#991b1b', fontWeight: '500',
+                    marginTop: '8px'
+                  }}>
+                    🚨 <strong>Incidencia:</strong> {req.dispute_reason}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
                   {req.status === 'pending' && (
                     <>
                       <button
                         onClick={() => updateStatus(req.id, 'approved', { approved_at: new Date().toISOString() })}
-                        className="w-full py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
+                        style={{
+                          flex: 1, padding: '10px 16px', borderRadius: '10px',
+                          backgroundColor: '#059669', color: 'white',
+                          border: 'none', cursor: 'pointer',
+                          fontSize: '0.85rem', fontWeight: '700',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#047857'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                       >
-                        <CheckCircle size={16} /> Aprobar Solicitud
+                        <CheckCircle size={16} /> Aprobar
                       </button>
                       <button
                         onClick={() => updateStatus(req.id, 'rejected')}
-                        className="w-full py-2 bg-white border border-red-200 text-red-600 rounded-lg font-medium text-sm hover:bg-red-50 flex items-center justify-center gap-2"
+                        style={{
+                          flex: 1, padding: '10px 16px', borderRadius: '10px',
+                          backgroundColor: 'white', color: '#dc2626',
+                          border: '1px solid #fecaca', cursor: 'pointer',
+                          fontSize: '0.85rem', fontWeight: '600',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                       >
                         <XCircle size={16} /> Rechazar
                       </button>
@@ -260,29 +398,41 @@ const UniformRequestsPanel: React.FC = () => {
                   {req.status === 'approved' && (
                     <button
                       onClick={() => handleMarkAsShipped(req.id)}
-                      className="w-full py-2 bg-purple-600 text-white rounded-lg font-bold text-sm hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2"
+                      style={{
+                        flex: 1, padding: '10px 16px', borderRadius: '10px',
+                        backgroundColor: '#7c3aed', color: 'white',
+                        border: 'none', cursor: 'pointer',
+                        fontSize: '0.85rem', fontWeight: '700',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6d28d9'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
                     >
                       <Truck size={16} /> Marcar como Enviado
                     </button>
                   )}
 
                   {req.status === 'disputed' && (
-                    <div className="w-full">
-                      <p className="text-sm text-red-600 mb-2 font-medium">🚨 Incidencia: {req.dispute_reason}</p>
-                      <button
-                        onClick={() => updateStatus(req.id, 'shipped')} // Reset to shipped to try again? Or 'approved'?
-                        className="w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-50"
-                      >
-                        Re-abrir Envío
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => updateStatus(req.id, 'shipped')}
+                      style={{
+                        flex: 1, padding: '10px 16px', borderRadius: '10px',
+                        backgroundColor: 'white', color: '#374151',
+                        border: '1px solid #d1d5db', cursor: 'pointer',
+                        fontSize: '0.85rem', fontWeight: '600',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                      }}
+                    >
+                      Re-abrir Envío
+                    </button>
                   )}
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

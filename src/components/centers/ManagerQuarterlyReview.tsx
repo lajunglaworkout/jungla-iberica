@@ -42,11 +42,11 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       const activeAssignment = result.assignments.find(
         (a: any) => a.review && a.review.status === 'active'
       );
-      
+
       if (activeAssignment) {
         console.log('✅ Asignación activa encontrada:', activeAssignment);
         setAssignment(activeAssignment);
-        
+
         // Cargar items del inventario para este centro
         await loadInventoryItems(activeAssignment);
       } else {
@@ -59,12 +59,14 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
 
   const loadInventoryItems = async (assignment: any) => {
     console.log('📦 Cargando items del inventario para centro:', employee?.center_id);
-    
-    // Primero cargar items del inventario base
+
+    // Primero cargar items del inventario base, ordenados por categoría y nombre
     const { data: inventoryItems, error: inventoryError } = await supabase
       .from('inventory_items')
       .select('*')
-      .eq('center_id', Number(employee?.center_id));
+      .eq('center_id', Number(employee?.center_id))
+      .order('categoria')
+      .order('nombre_item');
 
     if (inventoryError) {
       console.error('❌ Error cargando items del inventario:', inventoryError);
@@ -79,18 +81,11 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       .select('*')
       .eq('assignment_id', assignment.id);
 
-    console.log('🔍 Buscando items con assignment_id:', assignment.id);
-    console.log('🔍 Assignment completo:', assignment);
-
     if (reviewError) {
       console.error('❌ Error cargando items guardados:', reviewError);
-      // Continuar sin datos guardados
     }
 
     console.log('✅ Items guardados encontrados:', savedReviewItems?.length || 0);
-    if (savedReviewItems?.length > 0) {
-      console.log('📋 Primer item guardado:', savedReviewItems[0]);
-    }
 
     // Crear mapa de items guardados para acceso rápido
     const savedItemsMap = new Map();
@@ -98,31 +93,52 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       savedItemsMap.set(saved.inventory_item_id, saved);
     });
 
+    // Función de orden natural: extrae números del nombre para ordenar por peso/tamaño
+    const naturalSort = (a: string, b: string) => {
+      // Extraer la parte numérica (ej: "Mancuerna 10kg" → 10, "Goma 2,1 CM" → 2.1)
+      const getNum = (s: string) => {
+        const match = s.match(/(\d+[.,]?\d*)\s*(kg|cm|mm|l|ml)?/i);
+        return match ? parseFloat(match[1].replace(',', '.')) : 0;
+      };
+      // Primero comparar la parte textual (sin números), luego por el número
+      const textA = a.replace(/[\d,.]+(kg|cm|mm|l|ml)?/gi, '').trim();
+      const textB = b.replace(/[\d,.]+(kg|cm|mm|l|ml)?/gi, '').trim();
+      if (textA !== textB) return textA.localeCompare(textB, 'es');
+      return getNum(a) - getNum(b);
+    };
+
     // Preparar reviewData combinando inventario base + datos guardados
+    const reviewItems = inventoryItems?.map((item: any) => {
+      const savedData = savedItemsMap.get(item.id);
+      return {
+        id: item.id,
+        name: item.nombre_item || item.codigo || 'Sin nombre',
+        category: item.categoria || 'Sin categoría',
+        system: item.cantidad_actual || 0,
+        counted: savedData ? savedData.counted_quantity : null,
+        regular: savedData?.regular_quantity || 0,
+        deteriorated: savedData?.deteriorated_quantity || 0,
+        obs: savedData?.observations || ''
+      };
+    }) || [];
+
+    // Ordenar: primero por categoría, luego por nombre con orden natural (numérico)
+    reviewItems.sort((a: any, b: any) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category, 'es');
+      return naturalSort(a.name, b.name);
+    });
+
     const preparedReviewData = {
       id: assignment.id,
       quarter: assignment.review.quarter,
       year: assignment.review.year,
       center: assignment.center_name,
-      reviewItems: inventoryItems?.map((item: any) => {
-        const savedData = savedItemsMap.get(item.id);
-        
-        return {
-          id: item.id,
-          name: item.nombre_item || item.codigo || 'Sin nombre',
-          category: item.categoria || 'Sin categoría',
-          system: item.cantidad_actual || 0,
-          counted: savedData?.counted_quantity || 0,
-          regular: savedData?.regular_quantity || 0,
-          deteriorated: savedData?.deteriorated_quantity || 0,
-          obs: savedData?.observations || ''
-        };
-      }) || []
+      reviewItems
     };
 
     console.log('📋 ReviewData preparado con', preparedReviewData.reviewItems.length, 'items');
     console.log('📋 Items con datos guardados:', preparedReviewData.reviewItems.filter(item => item.counted > 0).length);
-    
+
     setReviewData(preparedReviewData);
   };
 

@@ -43,7 +43,7 @@ interface MaintenanceItem {
 }
 
 class QuarterlyMaintenanceService {
-  
+
   // Crear nueva revisión (Director de Mantenimiento)
   async createReview(data: {
     quarter: string;
@@ -55,11 +55,11 @@ class QuarterlyMaintenanceService {
   }) {
     try {
       console.log('🔧 Creando revisión trimestral de mantenimiento...');
-      
+
       // Primero eliminar cualquier revisión existente para este quarter/year
       console.log(`🗑️ Eliminando revisión existente ${data.quarter}-${data.year} si existe...`);
       await this.deleteReview(data.quarter, data.year);
-      
+
       const reviewData: QuarterlyMaintenanceReview = {
         quarter: data.quarter,
         year: data.year,
@@ -78,7 +78,7 @@ class QuarterlyMaintenanceService {
         .single();
 
       if (error) throw error;
-      
+
       console.log(`✅ Revisión de mantenimiento creada:`, review.id);
       return { success: true, review };
     } catch (error) {
@@ -174,7 +174,7 @@ class QuarterlyMaintenanceService {
       // 1. Actualizar status de la revisión
       const { data: review, error: reviewError } = await supabase
         .from('quarterly_maintenance_reviews')
-        .update({ 
+        .update({
           status: 'active',
           activated_at: new Date().toISOString()
         })
@@ -188,7 +188,7 @@ class QuarterlyMaintenanceService {
       const assignments = [];
       for (const center of centers) {
         const encargadoEmail = encargadosEmails[center.id];
-        
+
         const assignmentData: QuarterlyMaintenanceAssignment = {
           review_id: reviewId,
           center_id: center.id,
@@ -204,7 +204,7 @@ class QuarterlyMaintenanceService {
           .single();
 
         if (assignmentError) throw assignmentError;
-        
+
         console.log(`✅ Asignación creada para ${center.name}:`, assignment.id);
         assignments.push(assignment);
 
@@ -289,7 +289,7 @@ class QuarterlyMaintenanceService {
         console.error('❌ Error en query:', error);
         throw error;
       }
-      
+
       console.log('✅ Asignaciones encontradas:', data?.length || 0);
       return { success: true, assignments: data };
     } catch (error) {
@@ -382,17 +382,21 @@ class QuarterlyMaintenanceService {
   }) {
     try {
       const { error } = await supabase
-        .from('maintenance_review_notifications')
+        .from('notifications') // Corregido: tabla unificada
         .insert({
-          review_id: data.review_id,
-          user_email: data.user_email,
-          notification_type: data.notification_type,
+          recipient_email: data.user_email,
+          type: data.notification_type,
+          title: 'Gestión de Mantenimiento',
           message: data.message,
-          deadline_date: data.deadline_date,
-          status: 'pending'
+          reference_type: 'quarterly_maintenance_review',
+          reference_id: data.review_id.toString(),
+          is_read: false
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error Supabase enviando notificación:', error);
+        throw error;
+      }
       console.log('📧 Notificación enviada a:', data.user_email);
     } catch (error) {
       console.error('❌ Error enviando notificación:', error);
