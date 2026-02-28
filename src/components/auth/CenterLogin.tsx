@@ -1,6 +1,7 @@
 // src/components/auth/CenterLogin.tsx - Login específico para centros
 import React, { useState } from 'react';
 import { Building2, Lock, Mail, ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface CenterData {
   id: number;
@@ -73,14 +74,22 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
         throw new Error('Centro no encontrado. Verifica el email.');
       }
 
-      // NOTA: En producción, esto debería usar Supabase Auth
-      // Por ahora, validación simple para desarrollo
-      if (!password || password.length < 6) {
-        throw new Error('Contraseña inválida.');
-      }
+      // Autenticación real contra Supabase Auth
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
 
-      // Simular delay de autenticación
-      await new Promise(resolve => setTimeout(resolve, 800));
+      if (authError) {
+        // Traducir mensajes de error de Supabase al español
+        if (authError.message.includes('Invalid login credentials')) {
+          throw new Error('Contraseña incorrecta. Contacta con el administrador.');
+        }
+        if (authError.message.includes('Email not confirmed')) {
+          throw new Error('Email no confirmado. Contacta con el administrador.');
+        }
+        throw new Error('Error de autenticación. Verifica tus credenciales.');
+      }
 
       // Guardar sesión del centro en localStorage
       localStorage.setItem('centerSession', JSON.stringify({
@@ -142,15 +151,15 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
             Inicia sesión con la cuenta de tu centro
           </p>
           <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fbbf24',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #86efac',
             borderRadius: '8px',
             padding: '8px 12px',
             fontSize: '14px',
-            color: '#92400e',
+            color: '#166534',
             display: 'inline-block'
           }}>
-            🔒 Sistema offline - No requiere conexión a internet
+            🔒 Acceso seguro — Usa las credenciales de tu centro
           </div>
         </div>
 

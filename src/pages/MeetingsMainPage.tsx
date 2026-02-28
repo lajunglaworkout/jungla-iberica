@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { getUserAccessibleDepartments, type Department } from '../config/departmentPermissions';
+import {
+  getUserAccessibleDepartments,
+  DEPARTMENTS_CONFIG,
+  type Department
+} from '../config/departmentPermissions';
 import MeetingsDepartmentView from '../components/meetings/MeetingsDepartmentView';
 import { getTaskStatsByDepartments } from '../services/taskService';
+import { useSession } from '../contexts/SessionContext';
 
 interface MeetingsMainPageProps {
   onBack?: () => void;
@@ -17,20 +22,56 @@ interface DepartmentTaskStats {
   };
 }
 
+// Normaliza un nombre de departamento para comparar sin acento ni mayúsculas
+const normalizeName = (name: string) =>
+  name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * Devuelve la lista de Department del DEPARTMENTS_CONFIG que corresponden
+ * a los departamentos asignados al empleado en BD.
+ * La coincidencia es por nombre normalizado (sin acento, lowercase).
+ */
+const getDepartmentsFromSession = (
+  sessionDepts: { id: string | number; name: string }[]
+): Department[] => {
+  const allDepts = Object.values(DEPARTMENTS_CONFIG);
+  return sessionDepts
+    .map(sd => allDepts.find(d => normalizeName(d.name) === normalizeName(sd.name)))
+    .filter((d): d is Department => Boolean(d));
+};
+
 export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
   onBack,
-  userEmail = 'carlossuarezparra@gmail.com',
-  userName = 'Carlos Suárez'
+  userEmail = '',
+  userName = ''
 }) => {
+  const { employee, userRole } = useSession();
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [accessibleDepartments, setAccessibleDepartments] = useState<Department[]>([]);
   const [taskStats, setTaskStats] = useState<DepartmentTaskStats>({});
 
   useEffect(() => {
-    const departments = getUserAccessibleDepartments(userEmail);
+    let departments: Department[];
+
+    // Superadmin y CEO → acceso a todos los departamentos
+    if (userRole === 'superadmin' || userRole === 'ceo') {
+      departments = Object.values(DEPARTMENTS_CONFIG);
+    }
+    // Usar departamentos reales del empleado en BD (SessionContext)
+    else if (employee?.departments && employee.departments.length > 0) {
+      departments = getDepartmentsFromSession(employee.departments);
+    }
+    // Fallback: lista hardcodeada por email (compatibilidad)
+    else if (userEmail) {
+      departments = getUserAccessibleDepartments(userEmail);
+    }
+    else {
+      departments = [];
+    }
+
     setAccessibleDepartments(departments);
     loadTaskStats(departments);
-  }, [userEmail]);
+  }, [userEmail, employee, userRole]);
 
   const loadTaskStats = async (departments: Department[]) => {
     if (departments.length === 0) return;
@@ -90,7 +131,7 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
             color: '#6b7280',
             margin: '8px 0 0 0'
           }}>
-            Bienvenido, {userName}
+            Bienvenido, {userName || employee?.first_name || 'usuario'}
           </p>
         </div>
       </div>
