@@ -1,27 +1,36 @@
 /**
  * Ollama Local AI Service
  *
- * Integración con modelos de IA locales (Deepseek, Qwen) vía Ollama.
- * Ollama corre en http://localhost:11434 sin necesidad de API key.
+ * Integración con modelos locales instalados:
+ *   - qwen2.5:14b          (primario — excelente en español, ideal para actas)
+ *   - deepseek-coder-v2    (fallback — orientado a código pero funciona para texto)
  *
- * Para instalar: https://ollama.ai
- * Modelos recomendados:
- *   - ollama pull deepseek-r1:7b   (rápido, bueno para actas)
- *   - ollama pull qwen2.5:7b       (alternativa, muy bueno en español)
+ * Ollama corre en http://localhost:11434
+ *
+ * IMPORTANTE — CORS EN PRODUCCIÓN (Netlify):
+ * El navegador del usuario llama a su Ollama local. Para que funcione desde
+ * https://jungla-iberica.netlify.app hay que configurar Ollama una vez:
+ *
+ * Windows (PowerShell como admin):
+ *   [System.Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','Machine')
+ *   Restart-Service -Name ollama    # o reiniciar Ollama manualmente
+ *
+ * O arrancar Ollama con:
+ *   $env:OLLAMA_ORIGINS="*"; ollama serve
  */
 
 const OLLAMA_BASE_URL = 'http://localhost:11434';
 
-// Modelos en orden de preferencia — se prueba el primero disponible
+// Modelos en orden de preferencia — qwen2.5:14b primero (el mejor instalado para actas en español)
 const PREFERRED_MODELS = [
-  'deepseek-r1:14b',
-  'deepseek-r1:7b',
-  'deepseek-r1:1.5b',
-  'qwen2.5:14b',
+  'qwen2.5:14b',            // Instalado — excelente español, 14B parámetros
   'qwen2.5:7b',
   'qwen2.5:3b',
   'qwen:7b',
-  'llama3.2:3b',
+  'deepseek-coder-v2:latest', // Instalado — fallback (orientado a código)
+  'deepseek-r1:14b',
+  'deepseek-r1:7b',
+  'deepseek-r1:1.5b',
   'llama3.1:8b',
   'mistral:7b',
 ];
