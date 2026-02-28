@@ -26,11 +26,11 @@ export interface ProblematicItem {
 }
 
 class InventoryReportsService {
-  
+
   async getInventoryKPIs(): Promise<InventoryKPIs> {
     try {
       console.log('🔍 Obteniendo KPIs del inventario desde Supabase...');
-      
+
       const { data, error } = await supabase
         .from('inventory_items')
         .select('*')
@@ -49,11 +49,11 @@ class InventoryReportsService {
       console.log(`✅ ${data.length} items encontrados en Supabase`);
 
       const totalItems = data.length;
-      const totalValue = data.reduce((sum, item) => 
-        sum + ((item.precio_compra || 0) * (item.cantidad_actual || 0)), 0);
-      
-      const criticalItems = data.filter(item => 
-        (item.cantidad_actual || 0) <= 5).length;
+      const totalValue = data.reduce((sum, item) =>
+        sum + ((item.precio_compra || 0) * (item.quantity || 0)), 0);
+
+      const criticalItems = data.filter(item =>
+        (item.quantity || 0) <= 5).length;
 
       const totalRoturas = data.reduce((sum, item) => sum + (item.roturas || 0), 0);
       const totalInicial = data.reduce((sum, item) => sum + (item.cantidad_inicial || 0), 0);
@@ -99,7 +99,7 @@ class InventoryReportsService {
     };
   }
 
-  private getCenterStats(data: any[]): CenterStats[] {
+  private getCenterStats(data: Array<{ center_id: number; roturas?: number; cantidad_inicial?: number }>): CenterStats[] {
     const centers = { 9: 'Sevilla', 10: 'Jerez', 11: 'Puerto' };
     const stats: CenterStats[] = [];
 
@@ -122,7 +122,7 @@ class InventoryReportsService {
     return stats;
   }
 
-  private getProblematicItems(data: any[]): ProblematicItem[] {
+  private getProblematicItems(data: Array<{ center_id: number; nombre_item: string; categoria: string; roturas?: number }>): ProblematicItem[] {
     const itemMap = new Map();
 
     data.forEach(item => {

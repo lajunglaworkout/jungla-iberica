@@ -3,9 +3,11 @@ import {
     Calendar, Plus, Search, Filter, Edit2, Trash2, Eye,
     ChevronDown, MapPin, Users, Clock, ArrowLeft, X, Check, Building2
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { useSession } from '../../contexts/SessionContext';
 import { notifyEvent } from '../../services/notificationService';
+import { ui } from '../../utils/ui';
+
 
 interface Evento {
     id: number;
@@ -62,13 +64,8 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
     const loadEventos = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('eventos')
-                .select('*')
-                .order('fecha_evento', { ascending: false });
-
-            if (error) throw error;
-            setEventos(data || []);
+            const data = await eventService.eventos.getAll();
+            setEventos(data);
         } catch (error) {
             console.error('Error loading eventos:', error);
         } finally {
@@ -84,15 +81,14 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
     });
 
     const handleDelete = async (id: number) => {
-        if (!confirm('¿Estás seguro de eliminar este evento?')) return;
+        if (!await ui.confirm('¿Estás seguro de eliminar este evento?')) return;
 
         try {
-            const { error } = await supabase.from('eventos').delete().eq('id', id);
-            if (error) throw error;
+            await eventService.eventos.delete(id);
             loadEventos();
         } catch (error) {
             console.error('Error deleting evento:', error);
-            alert('Error al eliminar el evento');
+            ui.error('Error al eliminar el evento');
         }
     };
 
@@ -127,7 +123,7 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
                 </div>
 
                 <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={async () => setShowCreateModal(true)}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -155,7 +151,7 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
                         type="text"
                         placeholder="Buscar eventos..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={async (e) => setSearchTerm(e.target.value)}
                         style={{
                             width: '100%',
                             padding: '12px 12px 12px 40px',
@@ -169,7 +165,7 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
 
                 <select
                     value={filterEstado}
-                    onChange={(e) => setFilterEstado(e.target.value)}
+                    onChange={async (e) => setFilterEstado(e.target.value)}
                     style={{
                         padding: '12px 16px',
                         border: '1px solid #e5e7eb',
@@ -219,21 +215,21 @@ export const EventsList: React.FC<EventsListProps> = ({ onSelectEvent, onBack })
                                 </span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     <button
-                                        onClick={() => onSelectEvent(evento.id)}
+                                        onClick={async () => onSelectEvent(evento.id)}
                                         style={{ padding: '8px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                                         title="Ver detalle"
                                     >
                                         <Eye size={16} color="#6b7280" />
                                     </button>
                                     <button
-                                        onClick={() => setEditingEvento(evento)}
+                                        onClick={async () => setEditingEvento(evento)}
                                         style={{ padding: '8px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                                         title="Editar"
                                     >
                                         <Edit2 size={16} color="#2563eb" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(evento.id)}
+                                        onClick={async () => handleDelete(evento.id)}
                                         style={{ padding: '8px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                                         title="Eliminar"
                                     >
@@ -361,8 +357,8 @@ const EventFormModal: React.FC<{
     // Load centers
     useEffect(() => {
         const loadCenters = async () => {
-            const { data } = await supabase.from('centers').select('id, name').order('name');
-            setCenters(data || []);
+            const data = await eventService.centers.getAll();
+            setCenters(data);
             setLoadingCenters(false);
         };
         loadCenters();
@@ -371,21 +367,21 @@ const EventFormModal: React.FC<{
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.nombre || !formData.fecha_evento) {
-            alert('Nombre y fecha son obligatorios');
+            ui.error('Nombre y fecha son obligatorios');
             return;
         }
 
         // Validate alcance
         if (!formData.alcance) {
             setAlcanceError(true);
-            alert('Debes seleccionar un alcance para el evento');
+            ui.info('Debes seleccionar un alcance para el evento');
             return;
         }
 
         // Validate center if alcance is 'centro'
         if (formData.alcance === 'centro' && !formData.center_id) {
             setAlcanceError(true);
-            alert('Debes seleccionar un centro específico');
+            ui.info('Debes seleccionar un centro específico');
             return;
         }
 
@@ -400,17 +396,9 @@ const EventFormModal: React.FC<{
             };
 
             if (evento) {
-                const { error } = await supabase
-                    .from('eventos')
-                    .update(dataToSave)
-                    .eq('id', evento.id);
-                if (error) throw error;
+                await eventService.eventos.update(evento.id, dataToSave);
             } else {
-                const { data, error } = await supabase
-                    .from('eventos')
-                    .insert([dataToSave])
-                    .select();
-                if (error) throw error;
+                const data = await eventService.eventos.create(dataToSave);
 
                 // Enviar notificación si se creó correctamente
                 if (data && data[0]) {
@@ -440,7 +428,7 @@ const EventFormModal: React.FC<{
             onSave();
         } catch (error) {
             console.error('Error saving evento:', error);
-            alert('Error al guardar el evento');
+            ui.error('Error al guardar el evento');
         } finally {
             setSaving(false);
         }
@@ -484,7 +472,7 @@ const EventFormModal: React.FC<{
                             <input
                                 type="text"
                                 value={formData.nombre}
-                                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                onChange={async (e) => setFormData({ ...formData, nombre: e.target.value })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
                                 placeholder="Ej: Campeonato de Crossfit"
                                 required
@@ -500,7 +488,7 @@ const EventFormModal: React.FC<{
                                 <input
                                     type="date"
                                     value={formData.fecha_evento}
-                                    onChange={(e) => setFormData({ ...formData, fecha_evento: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, fecha_evento: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     required
                                 />
@@ -512,7 +500,7 @@ const EventFormModal: React.FC<{
                                 <input
                                     type="text"
                                     value={formData.localizacion}
-                                    onChange={(e) => setFormData({ ...formData, localizacion: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, localizacion: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     placeholder="Centro, ciudad..."
                                 />
@@ -526,7 +514,7 @@ const EventFormModal: React.FC<{
                             </label>
                             <select
                                 value={formData.estado}
-                                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                                onChange={async (e) => setFormData({ ...formData, estado: e.target.value })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white' }}
                             >
                                 <option value="planificacion">Planificación</option>
@@ -551,7 +539,7 @@ const EventFormModal: React.FC<{
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                                 <button
                                     type="button"
-                                    onClick={() => { setFormData({ ...formData, alcance: 'centro', center_id: null }); setAlcanceError(false); }}
+                                    onClick={async () => { setFormData({ ...formData, alcance: 'centro', center_id: null }); setAlcanceError(false); }}
                                     style={{
                                         padding: '12px',
                                         backgroundColor: formData.alcance === 'centro' ? '#10b981' : 'white',
@@ -567,7 +555,7 @@ const EventFormModal: React.FC<{
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => { setFormData({ ...formData, alcance: 'todos', center_id: null }); setAlcanceError(false); }}
+                                    onClick={async () => { setFormData({ ...formData, alcance: 'todos', center_id: null }); setAlcanceError(false); }}
                                     style={{
                                         padding: '12px',
                                         backgroundColor: formData.alcance === 'todos' ? '#3b82f6' : 'white',
@@ -583,7 +571,7 @@ const EventFormModal: React.FC<{
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => { setFormData({ ...formData, alcance: 'marca', center_id: null }); setAlcanceError(false); }}
+                                    onClick={async () => { setFormData({ ...formData, alcance: 'marca', center_id: null }); setAlcanceError(false); }}
                                     style={{
                                         padding: '12px',
                                         backgroundColor: formData.alcance === 'marca' ? '#f59e0b' : 'white',
@@ -603,7 +591,7 @@ const EventFormModal: React.FC<{
                             {formData.alcance === 'centro' && (
                                 <select
                                     value={formData.center_id || ''}
-                                    onChange={(e) => setFormData({ ...formData, center_id: Number(e.target.value) })}
+                                    onChange={async (e) => setFormData({ ...formData, center_id: Number(e.target.value) })}
                                     style={{
                                         width: '100%',
                                         padding: '12px',
@@ -637,7 +625,7 @@ const EventFormModal: React.FC<{
                                 </label>
                                 <select
                                     value={formData.modelo_economico}
-                                    onChange={(e) => setFormData({ ...formData, modelo_economico: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, modelo_economico: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white' }}
                                 >
                                     <option value="gratuito">Gratuito</option>
@@ -652,7 +640,7 @@ const EventFormModal: React.FC<{
                                     <input
                                         type="number"
                                         value={formData.precio}
-                                        onChange={(e) => setFormData({ ...formData, precio: Number(e.target.value) })}
+                                        onChange={async (e) => setFormData({ ...formData, precio: Number(e.target.value) })}
                                         style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                         min="0"
                                         step="0.01"
@@ -669,7 +657,7 @@ const EventFormModal: React.FC<{
                             <input
                                 type="number"
                                 value={formData.plazas_max}
-                                onChange={(e) => setFormData({ ...formData, plazas_max: Number(e.target.value) })}
+                                onChange={async (e) => setFormData({ ...formData, plazas_max: Number(e.target.value) })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                 min="1"
                             />
@@ -682,7 +670,7 @@ const EventFormModal: React.FC<{
                             </label>
                             <textarea
                                 value={formData.descripcion}
-                                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                                onChange={async (e) => setFormData({ ...formData, descripcion: e.target.value })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', minHeight: '100px', resize: 'vertical' }}
                                 placeholder="Descripción del evento..."
                             />

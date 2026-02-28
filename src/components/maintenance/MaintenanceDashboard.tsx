@@ -15,6 +15,7 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import {
   getNextInspectionDate,
   shouldSendReminder,
@@ -47,6 +48,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   centerId,
   onStartInspection
 }) => {
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState<DashboardStats>({
     totalInspections: 0,
     averageScore: 0,
@@ -390,7 +392,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         {/* Estadísticas principales */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '24px',
           marginBottom: '32px'
         }}>

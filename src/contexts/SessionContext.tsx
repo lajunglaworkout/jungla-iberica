@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { getUserByEmail, getEmployeeDepartments } from '../services/userService';
 
 // Interfaces
 interface Employee {
@@ -124,29 +125,16 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       console.log('✅ Consultando empleado en base de datos para:', email);
 
-      const { data: employeeData, error: dbError } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('email', email)
-        .eq('is_active', true)
-        .single();
+      const { success: empSuccess, user: employeeData, error: dbError } = await getUserByEmail(email);
 
       let basicEmployee: Employee;
       let roleToUse: string;
 
-      if (employeeData && !dbError) {
+      if (empSuccess && employeeData && !dbError) {
         // --- CASO 1: USUARIO ENCONTRADO EN BD (NUEVO SISTEMA) ---
 
         // 2. Obtener departamentos asignados (Multi-departamento)
-        const { data: empDepartments } = await supabase
-          .from('employee_departments')
-          .select('department_id, departments(id, name)')
-          .eq('employee_id', employeeData.id);
-
-        const departmentsList = empDepartments?.map((d: any) => ({
-          id: d.departments.id,
-          name: d.departments.name
-        })) || [];
+        const departmentsList = await getEmployeeDepartments(employeeData.id);
 
         console.log('✅ Empleado encontrado en BD:', employeeData);
         console.log('🏢 Departamentos asignados:', departmentsList);
@@ -315,7 +303,27 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           setLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log('👋 Usuario ha cerrado sesión');
+        // BUG-INF2 FIX: Verificar si la sesión realmente terminó antes de hacer logout.
+        // Problema: operaciones rápidas a Supabase (ej: activar revisión trimestral)
+        // pueden disparar un token refresh que genera una race condition con SIGNED_OUT falso.
+        console.log('🚨 SIGNED_OUT recibido, verificando sesión...', {
+          timestamp: new Date().toISOString(),
+          hasRefreshToken: !!session?.refresh_token
+        });
+
+        // Verificar si aún hay sesión activa
+        const { data: currentSession } = await supabase.auth.getSession();
+        if (currentSession.session?.access_token) {
+          console.log('⚠️ SIGNED_OUT ignorado: sesión activa detectada. Intentando refresh...');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError) {
+            console.log('🔄 Sesión refresheada exitosamente, ignorando SIGNED_OUT falso.');
+            return;
+          }
+          console.log('❌ Refresh falló, procediendo con logout:', refreshError.message);
+        }
+
+        console.log('👋 Logout confirmado — sesión realmente cerrada');
         setUser(null);
         userRef.current = null;
         setEmployee(null);
@@ -344,9 +352,19 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       setUserRole(null);
       setDashboardConfig(null);
       setError(null);
-    } catch (err) {
-      console.error('Error cerrando sesión:', err);
-      setError(err instanceof Error ? err.message : 'Error cerrando sesión');
+    } catch (err: unknown) {
+      // Ignorar el error si la sesión ya no existía en el servidor
+      if (err instanceof Error && err.message.includes('Auth session missing')) {
+        console.warn('La sesión ya había expirado en el servidor. Limpiando estado local.');
+        setUser(null);
+        setEmployee(null);
+        setUserRole(null);
+        setDashboardConfig(null);
+        setError(null);
+      } else {
+        console.error('Error cerrando sesión:', err);
+        setError(err instanceof Error ? err.message : 'Error cerrando sesión');
+      }
     } finally {
       setLoading(false);
     }

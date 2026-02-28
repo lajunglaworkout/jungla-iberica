@@ -10,8 +10,29 @@ import {
   AlertTriangle,
   Clock
 } from 'lucide-react';
-import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS, MAINTENANCE_STATUS, TASK_PRIORITY } from '../../types/maintenance';
+import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS, MAINTENANCE_STATUS, TASK_PRIORITY, MaintenanceZone, MaintenanceConcept } from '../../types/maintenance';
 import maintenanceService from '../../services/maintenanceService';
+
+interface InspectionItemState {
+  id: string;
+  zone_id?: string | number;
+  concept_id?: string | number;
+  zone_name?: string;
+  concept_name?: string;
+  status?: 'bien' | 'regular' | 'mal';
+  photos_deterioro?: string[];
+  notes?: string;
+  uuid?: string;
+  [key: string]: unknown;
+}
+
+// The inspection data map stores item states keyed by "zoneId_conceptId",
+// plus optional top-level metadata keys (inspection_date, notes).
+interface InspectionDataMap {
+  inspection_date?: string;
+  notes?: string;
+  [key: string]: InspectionItemState | string | undefined;
+}
 
 interface InspectionStepByStepProps {
   userEmail: string;
@@ -23,6 +44,8 @@ interface InspectionStepByStepProps {
 }
 
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
 
 const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   userEmail,
@@ -42,14 +65,14 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
       ? { id: centerId, name: centerName }
       : (availableCenters.length > 0 ? availableCenters[0] : { id: '', name: '' })
   );
-  const [inspectionData, setInspectionData] = useState<any>({});
+  const [inspectionData, setInspectionData] = useState<InspectionDataMap>({});
   const [inspectionId, setInspectionId] = useState<string | null>(null);
 
   // Inicializar datos de inspección
   useEffect(() => {
     const initializeInspection = async () => {
       // 1. Inicializar estructura vacía
-      const items: any = {};
+      const items: InspectionDataMap = {};
       MAINTENANCE_ZONES.forEach(zone => {
         const zoneConcepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
         zoneConcepts.forEach(concept => {
@@ -111,14 +134,17 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   }, [selectedCenter, userName]);
 
   // Actualizar item de inspección
-  const updateInspectionItem = (itemId: string, updates: any) => {
-    setInspectionData((prev: any) => {
+  const updateInspectionItem = (itemId: string, updates: Partial<InspectionItemState>) => {
+    setInspectionData((prev) => {
       const currentItem = prev[itemId];
-      const newItem = { ...currentItem, ...updates };
+      const currentItemObj: InspectionItemState = (typeof currentItem === 'object' && currentItem !== null)
+        ? currentItem
+        : { id: itemId };
+      const newItem: InspectionItemState = { ...currentItemObj, ...updates };
 
       // Guardar en BD si tenemos UUID (debounce simple: guardar siempre por ahora)
-      if (currentItem.uuid) {
-        maintenanceService.updateInspectionItemProgress(currentItem.uuid, updates)
+      if (currentItemObj.uuid) {
+        maintenanceService.updateInspectionItemProgress(currentItemObj.uuid as string, updates)
           .catch(err => console.error('Error saving item progress:', err));
       }
 
@@ -137,7 +163,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   const handleSubmitInspection = async () => {
     if (!inspectionId) {
-      alert('Error: No hay ID de inspección activo');
+      ui.error('Error: No hay ID de inspección activo');
       return;
     }
 
@@ -145,10 +171,12 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
       console.log(' Enviando inspección...');
 
       // Preparar datos de la inspección
-      const allItems = Object.values(inspectionData) as any[];
-      const itemsOk = allItems.filter((item: any) => item.status === 'bien').length;
-      const itemsRegular = allItems.filter((item: any) => item.status === 'regular').length;
-      const itemsBad = allItems.filter((item: any) => item.status === 'mal').length;
+      const allItems = Object.values(inspectionData).filter(
+        (item): item is InspectionItemState => typeof item === 'object' && item !== null && 'status' in item
+      );
+      const itemsOk = allItems.filter((item) => item.status === 'bien').length;
+      const itemsRegular = allItems.filter((item) => item.status === 'regular').length;
+      const itemsBad = allItems.filter((item) => item.status === 'mal').length;
       const totalItems = allItems.length;
       const overallScore = Math.round(((itemsOk * 100) + (itemsRegular * 60) + (itemsBad * 20)) / totalItems);
 
@@ -166,16 +194,16 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
       if (result.success) {
         console.log(' Inspección enviada correctamente');
-        alert('✅ Inspección finalizada y guardada correctamente');
+        ui.success('✅ Inspección finalizada y guardada correctamente');
         onBack(); // Volver al dashboard
       } else {
         console.error('Error enviando inspección:', result.error);
-        alert('Error enviando inspección: ' + result.error);
+        ui.error(`Error enviando inspección: ${result.error}`);
       }
 
     } catch (error) {
       console.error('Error en handleSubmitInspection:', error);
-      alert('Error enviando inspección');
+      ui.error('Error enviando inspección');
     }
   };
 
@@ -301,7 +329,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
             <input
               type="date"
               value={inspectionData.inspection_date || ''}
-              onChange={(e) => setInspectionData((prev: any) => ({ ...prev, inspection_date: e.target.value }))}
+              onChange={(e) => setInspectionData((prev) => ({ ...prev, inspection_date: e.target.value }))}
               style={{
                 width: '100%',
                 fontSize: '16px',
@@ -346,7 +374,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
         gap: '16px',
         marginBottom: '40px'
       }}>
-        {MAINTENANCE_ZONES.map((zone: any) => (
+        {MAINTENANCE_ZONES.map((zone: MaintenanceZone) => (
           <div key={zone.id} style={{
             backgroundColor: 'white',
             borderRadius: '12px',
@@ -375,7 +403,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
             <div>
               <div style={{ fontWeight: '600', color: '#111827', marginBottom: '2px' }}>{zone.name}</div>
               <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                {MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id).length} puntos de control
+                {MAINTENANCE_CONCEPTS.filter((c: MaintenanceConcept) => c.zone_id === zone.id).length} puntos de control
               </div>
             </div>
           </div>
@@ -418,7 +446,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
   // Renderizar paso de zona
   const renderZoneStep = (zoneIndex: number) => {
     const zone = MAINTENANCE_ZONES[zoneIndex];
-    const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
+    const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: MaintenanceConcept) => c.zone_id === zone.id);
 
     return (
       <div style={{ maxWidth: isMobile ? '100%' : '1000px', margin: '0 auto' }}>
@@ -492,7 +520,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
           gap: '24px',
           marginBottom: '40px'
         }}>
-          {zoneConcepts.map((concept: any) => {
+          {zoneConcepts.map((concept: MaintenanceConcept) => {
             const itemId = `${zone.id}_${concept.id}`;
             const item = inspectionData[itemId];
             const isProblem = item?.status !== 'bien';
@@ -705,7 +733,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
         <div style={{
           display: 'flex',
-          flexDirection: window.innerWidth < 768 ? 'column-reverse' : 'row',
+          flexDirection: isMobile ? 'column-reverse' : 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
           paddingTop: '20px',
@@ -726,7 +754,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
               justifyContent: 'center',
               fontWeight: '600',
               transition: 'all 0.2s',
-              width: window.innerWidth < 768 ? '100%' : 'auto'
+              width: isMobile ? '100%' : 'auto'
             }}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
@@ -750,7 +778,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
               fontWeight: '600',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
               transition: 'all 0.2s',
-              width: window.innerWidth < 768 ? '100%' : 'auto'
+              width: isMobile ? '100%' : 'auto'
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = '#059669';
@@ -771,10 +799,12 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
 
   // Renderizar paso de resumen
   const renderSummaryStep = () => {
-    const items = Object.values(inspectionData).filter((item: any) => item && typeof item === 'object' && item.status);
-    const bien = items.filter((item: any) => item.status === 'bien').length;
-    const regular = items.filter((item: any) => item.status === 'regular').length;
-    const mal = items.filter((item: any) => item.status === 'mal').length;
+    const items = Object.values(inspectionData).filter(
+      (item): item is InspectionItemState => typeof item === 'object' && item !== null && 'status' in item
+    );
+    const bien = items.filter((item) => item.status === 'bien').length;
+    const regular = items.filter((item) => item.status === 'regular').length;
+    const mal = items.filter((item) => item.status === 'mal').length;
     const total = items.length;
     const score = total > 0 ? Math.round(((bien * 100 + regular * 50) / total)) : 0;
 
@@ -785,7 +815,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
     };
 
     return (
-      <div style={{ maxWidth: window.innerWidth < 768 ? '100%' : '1000px', margin: '0 auto' }}>
+      <div style={{ maxWidth: isMobile ? '100%' : '1000px', margin: '0 auto' }}>
         <div style={{
           backgroundColor: 'white',
           borderRadius: '16px',
@@ -885,7 +915,7 @@ const InspectionStepByStep: React.FC<InspectionStepByStepProps> = ({
             <textarea
               placeholder="Añade cualquier observación general sobre la inspección..."
               value={inspectionData.notes || ''}
-              onChange={(e) => setInspectionData((prev: any) => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) => setInspectionData((prev) => ({ ...prev, notes: e.target.value }))}
               style={{
                 width: '100%',
                 padding: '16px',

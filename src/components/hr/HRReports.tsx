@@ -5,7 +5,10 @@ import {
   DollarSign, FileText, Award, Activity, BarChart3, PieChart,
   Download, Filter, RefreshCw, ArrowLeft, ChevronRight
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getFinancialDataByMonthYear } from '../../services/franquiciadoService';
+import { getAllEmployees } from '../../services/userService';
+import { getAttendanceRecordsInRange, getVacationRequestsPending, getEmployeeShiftsSince } from '../../services/hrService';
+import { getChecklistIncidentsSince } from '../../services/incidentService';
 import { useData } from '../../contexts/DataContext';
 
 interface HRReportsProps {
@@ -56,7 +59,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [selectedCenter, setSelectedCenter] = useState<number | 'all'>('all');
-  const [accountingData, setAccountingData] = useState<any[]>([]);
+  const [accountingData, setAccountingData] = useState<Record<string, unknown>[]>([]);
 
   useEffect(() => {
     loadDashboardMetrics();
@@ -68,19 +71,9 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
       // Obtener datos de contabilidad del mes actual
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
-      
-      const { data, error } = await supabase
-        .from('accounting_data')
-        .select('*')
-        .eq('año', currentYear)
-        .eq('mes', currentMonth);
 
-      if (error) {
-        console.error('Error cargando datos de contabilidad:', error);
-        return;
-      }
-
-      setAccountingData(data || []);
+      const data = await getFinancialDataByMonthYear(currentMonth, currentYear);
+      setAccountingData(data);
     } catch (error) {
       console.error('Error cargando datos de contabilidad:', error);
     }
@@ -93,58 +86,43 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
       const now = new Date().toISOString().split('T')[0];
 
       // 1. EMPLEADOS
-      const { data: employees } = await supabase
-        .from('employees')
-        .select('*');
+      const employees = await getAllEmployees();
 
-      const activeEmployees = employees?.filter(e => e.is_active) || [];
-      const totalEmployees = employees?.length || 0;
+      const activeEmployees = employees.filter((e: any) => e.is_active);
+      const totalEmployees = employees.length;
       const activeCount = activeEmployees.length;
 
       // 2. AUSENCIAS E INCIDENCIAS DE ASISTENCIA
-      const { data: attendanceRecords } = await supabase
-        .from('attendance_records')
-        .select('*')
-        .gte('date', periodStart)
-        .lte('date', now);
+      const attendanceRecords = await getAttendanceRecordsInRange(periodStart, now);
 
-      const totalAbsences = attendanceRecords?.filter(r => r.type === 'absence').length || 0;
-      const totalLateArrivals = attendanceRecords?.filter(r => r.type === 'late').length || 0;
-      const totalSickLeaves = attendanceRecords?.filter(r => r.type === 'sick_leave').length || 0;
-      
+      const totalAbsences = attendanceRecords.filter((r: any) => r.type === 'absence').length;
+      const totalLateArrivals = attendanceRecords.filter((r: any) => r.type === 'late').length;
+      const totalSickLeaves = attendanceRecords.filter((r: any) => r.type === 'sick_leave').length;
+
       // Calcular tasa de absentismo
       const workingDays = Math.max(1, Math.ceil((new Date(now).getTime() - new Date(periodStart).getTime()) / (1000 * 60 * 60 * 24)));
       const expectedAttendance = activeCount * workingDays;
       const absenteeismRate = expectedAttendance > 0 ? ((totalAbsences / expectedAttendance) * 100) : 0;
 
       // 3. INCIDENCIAS DEL SISTEMA
-      const { data: incidents } = await supabase
-        .from('checklist_incidents')
-        .select('*')
-        .gte('created_at', periodStart);
+      const incidents = await getChecklistIncidentsSince(periodStart);
 
-      const totalIncidents = incidents?.length || 0;
-      const incidentsUnanswered = incidents?.filter(i => 
+      const totalIncidents = incidents.length;
+      const incidentsUnanswered = incidents.filter((i: any) =>
         !i.rrhh_response || i.rrhh_response === ''
-      ).length || 0;
-      
-      const incidentsOverdue = incidents?.filter(i => 
+      ).length;
+
+      const incidentsOverdue = incidents.filter((i: any) =>
         i.due_date && new Date(i.due_date) < new Date() && i.status !== 'resolved'
-      ).length || 0;
+      ).length;
 
       // 4. VACACIONES
-      const { data: vacations } = await supabase
-        .from('vacation_requests')
-        .select('*')
-        .eq('status', 'pending');
+      const vacations = await getVacationRequestsPending();
 
-      const pendingVacations = vacations?.length || 0;
+      const pendingVacations = vacations.length;
 
       // 5. TURNOS
-      const { data: shifts } = await supabase
-        .from('employee_shifts')
-        .select('*')
-        .gte('date', periodStart);
+      const shifts = await getEmployeeShiftsSince(periodStart);
 
       setMetrics({
         totalEmployees,
@@ -154,7 +132,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
         turnoverRate: totalEmployees > 0 ? ((totalEmployees - activeCount) / totalEmployees * 100) : 0,
         avgTenure: 0,
         absenteeismRate,
-        shiftCoverage: shifts?.length || 0,
+        shiftCoverage: shifts.length,
         pendingVacations,
         expiredDocuments: 0,
         totalAbsences,
@@ -305,7 +283,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
               {/* Selector de periodo */}
               <select
                 value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value as any)}
+                onChange={(e) => setSelectedPeriod(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
                 style={{
                   padding: '10px 16px',
                   border: '1px solid #d1d5db',
@@ -361,7 +339,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'dashboard' | 'staff' | 'shifts' | 'vacations' | 'costs')}
               style={{
                 display: 'flex',
                 alignItems: 'center',

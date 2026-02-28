@@ -4,9 +4,11 @@ import {
     Check, Edit3, Trash2, Library, Sparkles,
     FileText, X, Save
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { sharedContentService } from '../../../services/academyService';
 import { AcademySharedContent, SharedContentType } from '../../../types/academy';
 import { useSession } from '../../../contexts/SessionContext';
+import { ui } from '../../../utils/ui';
+
 
 interface SharedResourcesViewProps {
     onBack: () => void;
@@ -43,12 +45,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
     const loadResources = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('academy_shared_content')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await sharedContentService.getAll();
             setResources(data || []);
         } catch (error) {
             console.error('Error loading resources:', error);
@@ -106,25 +103,15 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
             };
 
             if (editorMode === 'create') {
-                const { data, error } = await supabase
-                    .from('academy_shared_content')
-                    .insert([{
-                        ...payload,
-                        created_by: user?.id,
-                        is_public: true
-                    }])
-                    .select()
-                    .single();
+                const data = await sharedContentService.create({
+                    ...payload,
+                    created_by: user?.id,
+                    is_public: true
+                });
 
-                if (error) throw error;
                 if (data) setResources([data, ...resources]);
             } else if (editingResource) {
-                const { error } = await supabase
-                    .from('academy_shared_content')
-                    .update(payload)
-                    .eq('id', editingResource.id);
-
-                if (error) throw error;
+                await sharedContentService.update(editingResource.id, payload);
                 setResources(resources.map(r => r.id === editingResource.id ? { ...r, ...payload } : r));
             }
 
@@ -132,14 +119,14 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
             resetForm();
         } catch (error) {
             console.error('Error saving resource:', error);
-            alert('Error al guardar el recurso');
+            ui.error('Error al guardar el recurso');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Seguro que quieres eliminar este recurso?')) return;
+        if (!await ui.confirm('¿Seguro que quieres eliminar este recurso?')) return;
         try {
-            await supabase.from('academy_shared_content').delete().eq('id', id);
+            await sharedContentService.delete(id);
             setResources(resources.filter(r => r.id !== id));
         } catch (error) {
             console.error('Error deleting:', error);
@@ -197,7 +184,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                     {['all', 'prompt', 'guide', 'resource'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab as any)}
+                            onClick={async () => setActiveTab(tab as 'all' | 'prompt' | 'guide' | 'resource')}
                             className={`px-4 py-2 rounded-full font-medium transition-all ${activeTab === tab
                                     ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500'
                                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
@@ -218,12 +205,12 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                             type="text"
                             placeholder="Buscar recursos..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={async (e) => setSearchQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                     </div>
                     <button
-                        onClick={() => handleOpenEditor()}
+                        onClick={async () => handleOpenEditor()}
                         className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 shadow-sm transition-all hover:scale-105"
                     >
                         <Plus className="h-5 w-5" />
@@ -242,10 +229,10 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                     {resource.type}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleOpenEditor(resource)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">
+                                    <button onClick={async () => handleOpenEditor(resource)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500">
                                         <Edit3 className="h-4 w-4" />
                                     </button>
-                                    <button onClick={() => handleDelete(resource.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500">
+                                    <button onClick={async () => handleDelete(resource.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
@@ -257,7 +244,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                     {resource.content}
                                 </p>
                                 <button
-                                    onClick={() => handleCopy(resource.content, resource.id)}
+                                    onClick={async () => handleCopy(resource.content, resource.id)}
                                     className="absolute top-2 right-2 p-1.5 bg-white shadow-sm rounded border border-gray-200 hover:bg-gray-50 transition-all opacity-0 group-hover/code:opacity-100"
                                     title="Copiar contenido"
                                 >
@@ -293,7 +280,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                             <h2 className="text-xl font-bold text-gray-900">
                                 {editorMode === 'create' ? 'Nuevo Recurso' : 'Editar Recurso'}
                             </h2>
-                            <button onClick={() => setShowEditor(false)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={async () => setShowEditor(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
@@ -304,7 +291,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                                     <select
                                         value={formData.type}
-                                        onChange={(e) => setFormData({ ...formData, type: e.target.value as SharedContentType })}
+                                        onChange={async (e) => setFormData({ ...formData, type: e.target.value as SharedContentType })}
                                         className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                                     >
                                         <option value="prompt">✨ Prompt</option>
@@ -317,7 +304,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                     <input
                                         type="text"
                                         value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        onChange={async (e) => setFormData({ ...formData, category: e.target.value })}
                                         placeholder="Ej: Marketing, Copywriting"
                                         className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
@@ -329,7 +316,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                 <input
                                     type="text"
                                     value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, title: e.target.value })}
                                     placeholder="Nombre del recurso..."
                                     className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
                                 />
@@ -339,7 +326,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Contenido</label>
                                 <textarea
                                     value={formData.content}
-                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, content: e.target.value })}
                                     placeholder="Escribe o pega el contenido aquí..."
                                     className="w-full flex-1 border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm leading-relaxed"
                                 />
@@ -350,7 +337,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
                                 <input
                                     type="text"
                                     value={formData.tags}
-                                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, tags: e.target.value })}
                                     placeholder="gpt4, style, email..."
                                     className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
                                 />
@@ -359,7 +346,7 @@ export const SharedResourcesView: React.FC<SharedResourcesViewProps> = ({ onBack
 
                         <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
                             <button
-                                onClick={() => setShowEditor(false)}
+                                onClick={async () => setShowEditor(false)}
                                 className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-white transition-colors"
                             >
                                 Cancelar

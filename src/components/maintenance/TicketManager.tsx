@@ -3,9 +3,12 @@ import {
     AlertCircle, CheckCircle, Clock, Filter, X,
     User, MapPin, Calendar, Image as ImageIcon, Wrench, ChevronDown, Building2, FileText, ExternalLink
 } from 'lucide-react';
-import maintenanceService from '../../services/maintenanceService';
+import maintenanceService, { updateMaintenanceInspectionItem } from '../../services/maintenanceService';
+import { updateChecklistIncident } from '../../services/incidentService';
 import { useData } from '../../contexts/DataContext';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface Ticket {
     id: string | number;
@@ -84,25 +87,18 @@ const TicketManager: React.FC = () => {
         setIsSubmittingStart(true);
 
         try {
-            const { supabase } = await import('../../lib/supabase');
-
             // Only for checklist_incidents for now (maintenance tickets have different schema usually, but assuming unified)
             if (selectedTicket.source === 'checklist') {
-                const updateData = {
+                const result = await updateChecklistIncident(selectedTicket.id, {
                     status: 'en_proceso', // Using confirmed enum
                     started_by: employee?.name || 'Mantenimiento',
                     started_at: new Date().toISOString(),
                     action_plan: actionPlan,
                     estimated_time: estimatedTime,
                     updated_at: new Date().toISOString()
-                };
+                });
 
-                const { error } = await supabase
-                    .from('checklist_incidents')
-                    .update(updateData)
-                    .eq('id', selectedTicket.id);
-
-                if (error) throw error;
+                if (!result.success) throw new Error(result.error);
             } else {
                 // Generico fallback
                 await maintenanceService.updateTicketStatus(String(selectedTicket.id), 'in_progress');
@@ -115,7 +111,7 @@ const TicketManager: React.FC = () => {
             // For now close to force refresh list
         } catch (error) {
             console.error('Error starting work:', error);
-            alert('Error al iniciar trabajo. Verifica que la base de datos esté actualizada.');
+            ui.error('Error al iniciar trabajo. Verifica que la base de datos esté actualizada.');
         } finally {
             setIsSubmittingStart(false);
         }
@@ -123,28 +119,20 @@ const TicketManager: React.FC = () => {
 
     const handleStatusChange = async (ticketId: string | number, newStatus: string, source: string) => {
         if (source === 'checklist') {
-            const { supabase } = await import('../../lib/supabase');
             // FIX: Correct enum values based on check constraint
             const dbStatus = newStatus === 'open' ? 'abierta' :
                 newStatus === 'in_progress' ? 'en_proceso' : 'resuelta';
 
-            await supabase
-                .from('checklist_incidents')
-                .update({
-                    status: dbStatus,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', ticketId);
+            await updateChecklistIncident(ticketId, {
+                status: dbStatus,
+                updated_at: new Date().toISOString()
+            });
         } else if (source === 'inspection') {
-            const { supabase } = await import('../../lib/supabase');
-            await supabase
-                .from('maintenance_inspection_items')
-                .update({
-                    task_status: newStatus === 'open' ? 'pendiente' :
-                        newStatus === 'in_progress' ? 'en_progreso' : 'completada',
-                    completed_date: newStatus === 'resolved' ? new Date().toISOString() : null
-                })
-                .eq('id', ticketId);
+            await updateMaintenanceInspectionItem(ticketId, {
+                task_status: newStatus === 'open' ? 'pendiente' :
+                    newStatus === 'in_progress' ? 'en_progreso' : 'completada',
+                completed_date: newStatus === 'resolved' ? new Date().toISOString() : null
+            });
         } else {
             await maintenanceService.updateTicketStatus(String(ticketId), newStatus);
         }

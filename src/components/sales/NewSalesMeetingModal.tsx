@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { leadService } from '../../services/leadService';
 import { X, Video, Users, Calendar } from 'lucide-react';
 
 interface NewSalesMeetingModalProps {
@@ -28,15 +28,9 @@ const NewSalesMeetingModal: React.FC<NewSalesMeetingModalProps> = ({ onClose, on
 
   const cargarLeads = async () => {
     try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, nombre, email, telefono, empresa, proyecto_nombre')
-        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta'])
-        .order('nombre', { ascending: true });
+      const data = await leadService.getLeadsForMeeting();
 
-      if (error) throw error;
-      
-      console.log('✅ Leads cargados para reunión:', data);
+      console.log('✅ Leads cargados para reunion:', data);
       setLeads(data || []);
     } catch (error) {
       console.error('❌ Error cargando leads:', error);

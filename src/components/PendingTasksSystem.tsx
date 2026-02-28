@@ -4,7 +4,7 @@ import {
   Filter, Search, Eye, Edit, Trash2, Plus, ArrowRight,
   Building2, Users, Briefcase, DollarSign, Globe, Award, Zap, Activity
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { getTasksForUser, updateTaskStatus as updateTaskStatusService } from '../services/taskService';
 import { useSession } from '../contexts/SessionContext';
 
 interface PendingTask {
@@ -46,7 +46,7 @@ const PendingTasksSystem: React.FC = () => {
     critical: 0
   });
 
-  const departmentIcons: Record<string, React.ComponentType<any>> = {
+  const departmentIcons: Record<string, React.ComponentType<{ size?: number }>> = {
     'direccion': Building2,
     'rrhh_procedimientos': Users,
     'logistica': Briefcase,
@@ -81,23 +81,11 @@ const PendingTasksSystem: React.FC = () => {
 
     try {
       setLoading(true);
-
-      // Cargar tareas asignadas al usuario actual (por email o nombre)
-      const { data, error } = await supabase
-        .from('tareas')
-        .select('*')
-        .or(`asignado_a.eq.${employee.email},asignado_a.eq.${employee.name}`)
-        .in('estado', ['pendiente', 'en_progreso'])
-        .order('fecha_limite', { ascending: true });
-
       console.log('🔍 Buscando tareas para:', employee.email, 'o', employee.name);
-      console.log('📋 Tareas encontradas:', data?.length || 0);
-
-      if (error) throw error;
-
-      const tasksData = data || [];
-      setTasks(tasksData);
-      calculateStats(tasksData);
+      const tasksData = await getTasksForUser(employee.email, employee.name);
+      console.log('📋 Tareas encontradas:', tasksData.length);
+      setTasks(tasksData as PendingTask[]);
+      calculateStats(tasksData as PendingTask[]);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -153,16 +141,10 @@ const PendingTasksSystem: React.FC = () => {
 
   const updateTaskStatus = async (taskId: number, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('tareas')
-        .update({ estado: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      // Actualizar estado local
+      const result = await updateTaskStatusService(taskId, newStatus);
+      if (!result.success) throw new Error(result.error);
       setTasks(prev => prev.map(task =>
-        task.id === taskId ? { ...task, estado: newStatus as any } : task
+        task.id === taskId ? { ...task, estado: newStatus as PendingTask['estado'] } : task
       ));
     } catch (error) {
       console.error('Error updating task status:', error);

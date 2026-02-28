@@ -5,7 +5,7 @@ import { filterTasks } from '../../services/taskService';
 interface TaskFiltersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApplyFilters: (tasks: any[]) => void;
+  onApplyFilters: (tasks: Record<string, unknown>[]) => void;
 }
 
 export const TaskFiltersModal: React.FC<TaskFiltersModalProps> = ({

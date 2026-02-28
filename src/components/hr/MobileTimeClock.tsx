@@ -1,14 +1,19 @@
 // src/components/hr/MobileTimeClock.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-import { supabase } from '../../lib/supabase';
+import {
+  getEmployeeByEmail, getEmployeeIdOnly,
+  getTimeclockRecordToday, getValidQRToken,
+  getExistingTimeclockEntry, createTimeclockRecord,
+  updateTimeclockRecord, markQRTokenUsed
+} from '../../services/hrService';
 import { useSession } from '../../contexts/SessionContext';
-import { 
-  Camera, 
-  Clock, 
-  MapPin, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Camera,
+  Clock,
+  MapPin,
+  CheckCircle,
+  XCircle,
   Loader2,
   User,
   Calendar,
@@ -38,10 +43,10 @@ const MobileTimeClock: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [todayRecord, setTodayRecord] = useState<TimeclockRecord | null>(null);
-  const [employeeData, setEmployeeData] = useState<any>(null);
-  
+  const [employeeData, setEmployeeData] = useState<{ id: string | number; name?: string } | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
 
@@ -49,7 +54,7 @@ const MobileTimeClock: React.FC = () => {
     loadEmployeeData();
     loadTodayRecord();
     getCurrentLocation();
-    
+
     return () => {
       stopScanning();
     };
@@ -59,15 +64,10 @@ const MobileTimeClock: React.FC = () => {
     if (!user?.email) return;
 
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('email', user.email)
-        .single();
-
-      if (error) throw error;
-      setEmployeeData(data);
-    } catch (error: any) {
+      const data = await getEmployeeByEmail(user.email);
+      if (!data) throw new Error('Employee not found');
+      setEmployeeData(data as { id: string | number; name?: string });
+    } catch (error: unknown) {
       console.error('Error cargando datos del empleado:', error);
     }
   };
@@ -77,25 +77,13 @@ const MobileTimeClock: React.FC = () => {
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      
-      const { data: employee } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('email', user.email)
-        .single();
 
+      const employee = await getEmployeeIdOnly(user.email);
       if (!employee) return;
 
-      const { data, error } = await supabase
-        .from('timeclock_records')
-        .select('*')
-        .eq('employee_id', employee.id)
-        .eq('date', today)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      setTodayRecord(data);
-    } catch (error: any) {
+      const data = await getTimeclockRecordToday(employee.id, today);
+      setTodayRecord(data as TimeclockRecord | null);
+    } catch (error: unknown) {
       console.error('Error cargando registro de hoy:', error);
     }
   };
@@ -126,19 +114,19 @@ const MobileTimeClock: React.FC = () => {
 
     try {
       codeReader.current = new BrowserMultiFormatReader();
-      
+
       const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-      
+
       if (videoInputDevices.length === 0) {
         throw new Error('No se encontraron cámaras disponibles');
       }
 
       // Preferir cámara trasera si está disponible
-      const backCamera = videoInputDevices.find((device: any) => 
-        device.label.toLowerCase().includes('back') || 
+      const backCamera = videoInputDevices.find((device: MediaDeviceInfo) =>
+        device.label.toLowerCase().includes('back') ||
         device.label.toLowerCase().includes('rear')
       );
-      
+
       const selectedDeviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
 
       await codeReader.current.decodeFromVideoDevice(
@@ -152,9 +140,9 @@ const MobileTimeClock: React.FC = () => {
           }
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error iniciando escaneo:', error);
-      setError(`Error accediendo a la cámara: ${error.message}`);
+      setError(`Error accediendo a la cámara: ${error instanceof Error ? error.message : String(error)}`);
       setIsScanning(false);
     }
   };
@@ -183,20 +171,14 @@ const MobileTimeClock: React.FC = () => {
     try {
       // Parse QR data
       const qrData: QRData = JSON.parse(qrText);
-      
+
       // Validar que el QR no haya expirado
       if (Date.now() > qrData.expiresAt) {
         throw new Error('El código QR ha expirado. Solicita uno nuevo.');
       }
 
       // Verificar que el token existe y está activo
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('qr_tokens')
-        .select('*')
-        .eq('token', qrData.token)
-        .eq('is_used', false)
-        .gte('expires_at', new Date().toISOString())
-        .single();
+      const { data: tokenData, error: tokenError } = await getValidQRToken(qrData.token, new Date().toISOString());
 
       if (tokenError || !tokenData) {
         throw new Error('Código QR inválido o expirado.');
@@ -210,26 +192,30 @@ const MobileTimeClock: React.FC = () => {
       // Procesar fichaje
       await processClock(qrData, tokenData);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error procesando QR:', error);
-      setError(error.message || 'Error procesando código QR');
+      setError((error instanceof Error ? error.message : String(error)) || 'Error procesando código QR');
     } finally {
       setLoading(false);
     }
   };
 
-  const processClock = async (qrData: QRData, tokenData: any) => {
+  const processClock = async (qrData: QRData, tokenData: { id: string | number }) => {
     if (!employeeData || !location) return;
 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
 
     try {
-      if (!todayRecord) {
-        // Fichaje de entrada
-        const { data, error } = await supabase
-          .from('timeclock_records')
-          .insert({
+      // BUG-03 FIX: Query DB directly instead of relying on React state
+      // This prevents race condition where todayRecord hasn't loaded yet
+      const { data: existingRecord, error: queryError } = await getExistingTimeclockEntry(employeeData.id, today);
+
+      if (queryError) throw new Error(queryError);
+
+      if (!existingRecord) {
+        // No record for today → clock in (INSERT)
+        const { data, error } = await createTimeclockRecord({
             employee_id: employeeData.id,
             center_id: qrData.centerId,
             clock_in: now,
@@ -241,46 +227,37 @@ const MobileTimeClock: React.FC = () => {
               userAgent: navigator.userAgent,
               timestamp: Date.now()
             })
-          })
-          .select()
-          .single();
+          });
 
-        if (error) throw error;
+        if (error) throw new Error(error);
 
-        setTodayRecord(data);
+        setTodayRecord(data as TimeclockRecord | null);
         setSuccess(`✅ Entrada registrada en ${qrData.centerName} a las ${new Date().toLocaleTimeString()}`);
-        
-      } else if (todayRecord.clock_in && !todayRecord.clock_out) {
-        // Fichaje de salida
-        const { data, error } = await supabase
-          .from('timeclock_records')
-          .update({
+
+      } else if ((existingRecord as any).clock_in && !(existingRecord as any).clock_out) {
+        // Has clock_in but no clock_out → clock out (UPDATE)
+        const { data, error } = await updateTimeclockRecord((existingRecord as any).id, {
             clock_out: now,
             location_lat: location.lat,
             location_lng: location.lng
-          })
-          .eq('id', todayRecord.id)
-          .select()
-          .single();
+          });
 
-        if (error) throw error;
+        if (error) throw new Error(error);
 
-        setTodayRecord(data);
-        const totalHours = data.total_hours ? data.total_hours.toFixed(2) : '0';
+        setTodayRecord(data as TimeclockRecord | null);
+        const rec = data as any;
+        const totalHours = rec?.total_hours ? rec.total_hours.toFixed(2) : '0';
         setSuccess(`✅ Salida registrada en ${qrData.centerName} a las ${new Date().toLocaleTimeString()}. Total: ${totalHours}h`);
-        
+
       } else {
         throw new Error('Ya has completado tu jornada de hoy.');
       }
 
       // Desactivar el token usado (seguridad)
-      await supabase
-        .from('qr_tokens')
-        .update({ is_used: true })
-        .eq('id', tokenData.id);
+      await markQRTokenUsed((tokenData as any).id);
 
-    } catch (error: any) {
-      throw new Error(error.message || 'Error registrando fichaje');
+    } catch (error: unknown) {
+      throw new Error((error instanceof Error ? error.message : String(error)) || 'Error registrando fichaje');
     }
   };
 
@@ -351,8 +328,8 @@ const MobileTimeClock: React.FC = () => {
           border: `2px solid ${status.color}`
         }}>
           {status.icon}
-          <span style={{ 
-            marginLeft: '8px', 
+          <span style={{
+            marginLeft: '8px',
             color: status.color,
             fontWeight: 'bold',
             fontSize: '14px'
@@ -381,13 +358,13 @@ const MobileTimeClock: React.FC = () => {
 
         {!isScanning ? (
           <div style={{ textAlign: 'center' }}>
-            <Camera size={64} style={{ 
-              color: '#9ca3af', 
+            <Camera size={64} style={{
+              color: '#9ca3af',
               margin: '0 auto 16px',
               display: 'block'
             }} />
-            <p style={{ 
-              color: '#6b7280', 
+            <p style={{
+              color: '#6b7280',
               marginBottom: '20px',
               fontSize: '14px'
             }}>
@@ -462,7 +439,7 @@ const MobileTimeClock: React.FC = () => {
           alignItems: 'center',
           gap: '8px'
         }}>
-          <Loader2 size={20} style={{ 
+          <Loader2 size={20} style={{
             color: '#d97706',
             animation: 'spin 1s linear infinite'
           }} />
@@ -562,8 +539,8 @@ const MobileTimeClock: React.FC = () => {
                 padding: '8px 0'
               }}>
                 <span style={{ color: '#6b7280' }}>Total Horas:</span>
-                <span style={{ 
-                  fontWeight: 'bold', 
+                <span style={{
+                  fontWeight: 'bold',
                   color: '#059669',
                   fontSize: '18px'
                 }}>

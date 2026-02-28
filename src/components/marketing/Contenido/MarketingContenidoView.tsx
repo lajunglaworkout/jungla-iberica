@@ -215,7 +215,7 @@ export const MarketingContenidoView: React.FC<MarketingContenidoViewProps> = ({ 
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
                                         <select
                                             value={formData.category}
-                                            onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                                            onChange={e => setFormData({ ...formData, category: e.target.value as MarketingContent['category'] })}
                                             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
                                         >
                                             {CATEGORIES.map(cat => (
@@ -227,7 +227,7 @@ export const MarketingContenidoView: React.FC<MarketingContenidoViewProps> = ({ 
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
                                         <select
                                             value={formData.type}
-                                            onChange={e => setFormData({ ...formData, type: e.target.value as any })}
+                                            onChange={e => setFormData({ ...formData, type: e.target.value as MarketingContent['type'] })}
                                             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
                                         >
                                             <option value="video">Video</option>
@@ -282,7 +282,7 @@ export const MarketingContenidoView: React.FC<MarketingContenidoViewProps> = ({ 
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                                         <select
                                             value={formData.status}
-                                            onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                                            onChange={e => setFormData({ ...formData, status: e.target.value as MarketingContent['status'] })}
                                             className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none bg-white"
                                         >
                                             <option value="pendiente">Pendiente</option>

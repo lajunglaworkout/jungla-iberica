@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { X, TriangleAlert, Package, AlertTriangle } from 'lucide-react';
 import { inventoryReportsService } from '../../services/inventoryReportsService';
+import { getInventoryByCenters } from '../../services/logisticsService';
+import { ui } from '../../utils/ui';
+
+
+interface AffectedInventoryItem {
+  id?: number | string;
+  nombre_item?: string;
+  name?: string;
+  quantity?: number;
+  min_stock?: number;
+  center_id?: number;
+  categoria?: string;
+  size?: string;
+  talla?: string;
+  totalRoturas?: number;
+}
 
 interface CriticalAlert {
   id: string;
@@ -16,7 +32,7 @@ interface CriticalAlert {
   actionRequired: string;
   timestamp: Date;
   archived: boolean;
-  affectedItems?: any[]; // Lista de items afectados para mostrar detalles
+  affectedItems?: AffectedInventoryItem[];
 }
 
 const CriticalAlertsPanel: React.FC = () => {
@@ -40,16 +56,12 @@ const CriticalAlertsPanel: React.FC = () => {
       const newAlerts: CriticalAlert[] = [];
 
       // Obtener datos detallados para análisis más específico
-      const { supabase } = await import('../../lib/supabase');
-      const { data: inventoryData } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .in('center_id', [9, 10, 11]);
+      const inventoryData = await getInventoryByCenters([9, 10, 11]) as any[];
 
       // Agrupar items críticos por categoría y analizar patrones
       if (inventoryData && inventoryData.length > 0) {
         const criticalItems = inventoryData.filter(item => {
-          const currentStock = item.cantidad_actual || 0;
+          const currentStock = item.quantity || 0;
           const minStock = item.min_stock || 0;
           // Solo considerar crítico si está por debajo del stock mínimo definido
           return minStock > 0 && currentStock <= minStock;
@@ -63,14 +75,14 @@ const CriticalAlertsPanel: React.FC = () => {
           }
           acc[category].push(item);
           return acc;
-        }, {} as Record<string, any[]>);
+        }, {} as Record<string, AffectedInventoryItem[]>);
 
         // Crear alertas específicas por categoría crítica
         Object.entries(criticalByCategory).forEach(([category, items]) => {
-          if ((items as any[]).length >= 2) { // Solo alertar si hay 2+ items de la misma categoría realmente críticos
+          if (items.length >= 2) { // Solo alertar si hay 2+ items de la misma categoría realmente críticos
             // Analizar patrones inteligentes según el tipo de producto
-            const patternAnalysis = (items as any[]).reduce((acc: any, item: any) => {
-              const name = (item.nombre_item || '').toLowerCase();
+            const patternAnalysis = items.reduce((acc: Record<string, number>, item: AffectedInventoryItem) => {
+              const name = ((item.nombre_item as string) || '').toLowerCase();
               let pattern = 'general';
 
               // Para pesas/mancuernas: buscar peso en kg
@@ -117,15 +129,15 @@ const CriticalAlertsPanel: React.FC = () => {
             newAlerts.push({
               id: `critical-category-${category.toLowerCase().replace(/\s+/g, '-')}`,
               type: 'stock_critical',
-              severity: (items as any[]).length > 8 ? 'critical' : 'high',
+              severity: items.length > 8 ? 'critical' : 'high',
               title: `🚨 Stock Crítico: ${category}`,
               message: hasSpecificPatternIssue
-                ? `${(items as any[]).length} items críticos - Problema específico en ${mostCommonPattern[0]}`
-                : `${(items as any[]).length} items de ${category} en stock crítico`,
+                ? `${items.length} items críticos - Problema específico en ${mostCommonPattern[0]}`
+                : `${items.length} items de ${category} en stock crítico`,
               description: hasSpecificPatternIssue
                 ? `La categoría "${category}" tiene un problema crítico de stock, especialmente en ${mostCommonPattern[0]} (${mostCommonPattern[1]} items afectados). Estos items están por debajo de su stock mínimo definido.`
-                : `La categoría "${category}" tiene ${(items as any[]).length} productos por debajo de su stock mínimo definido. Esto indica un problema sistemático en la gestión de esta línea de productos.`,
-              value: (items as any[]).length,
+                : `La categoría "${category}" tiene ${items.length} productos por debajo de su stock mínimo definido. Esto indica un problema sistemático en la gestión de esta línea de productos.`,
+              value: items.length,
               threshold: 3,
               item: hasSpecificPatternIssue ? `${category} - ${mostCommonPattern[0]}` : category,
               actionRequired: hasSpecificPatternIssue
@@ -203,7 +215,7 @@ const CriticalAlertsPanel: React.FC = () => {
         }
         acc[category].push(item);
         return acc;
-      }, {} as Record<string, any[]>);
+      }, {} as Record<string, AffectedInventoryItem[]>);
 
       // Alertas específicas por categoría problemática
       Object.entries(problematicByCategory).forEach(([category, items]) => {
@@ -447,7 +459,7 @@ const CriticalAlertsPanel: React.FC = () => {
                         <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                           <td style={{ padding: '8px' }}>{item.nombre_item || item.name}</td>
                           <td style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', color: '#dc2626' }}>
-                            {item.cantidad_actual || item.quantity || 0}
+                            {item.quantity || 0}
                           </td>
                           <td style={{ padding: '8px', textAlign: 'center', color: '#6b7280' }}>
                             {item.min_stock || 0}
@@ -485,7 +497,7 @@ const CriticalAlertsPanel: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  alert('🚀 Funcionalidad de pedido automático próximamente');
+                  ui.info('🚀 Funcionalidad de pedido automático próximamente');
                   setSelectedAlert(null);
                 }}
                 style={{ padding: '10px 20px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}

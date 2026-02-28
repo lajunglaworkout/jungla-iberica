@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Package, Plus, Search, AlertTriangle } from 'lucide-react';
 import { InventoryItem, LocationType, ItemCategory } from '../../types/logistics';
 import { INVENTORY_CATEGORIES, getCategoryIcon } from '../../config/logistics';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface InventoryManagementProps {
   userLocation?: LocationType;
@@ -14,6 +15,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   canEdit = true,
   visibleCategories
 }) => {
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
 
@@ -98,15 +100,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   return (
     <div style={{ padding: isMobile ? '1rem' : '1.5rem', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <div style={{

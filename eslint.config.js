@@ -19,5 +19,14 @@ export default tseslint.config([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Warn on explicit 'any' — trackeable, no rompe build
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // Warn on unused vars (excepto prefijados con _)
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+    },
   },
 ])

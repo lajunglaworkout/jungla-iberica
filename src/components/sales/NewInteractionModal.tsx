@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { leadService, interactionService, leadTaskService } from '../../services/leadService';
 import { X, Mail, Phone, MessageSquare, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { useSession } from '../../contexts/SessionContext';
 
 interface NewInteractionModalProps {
   leadId: string;
@@ -10,6 +11,7 @@ interface NewInteractionModalProps {
 }
 
 const NewInteractionModal: React.FC<NewInteractionModalProps> = ({ leadId, leadName, onClose, onSuccess }) => {
+  const { employee } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -65,7 +67,7 @@ const NewInteractionModal: React.FC<NewInteractionModalProps> = ({ leadId, leadN
     setLoading(true);
 
     try {
-      // Guardar interacción
+      // Guardar interaccion
       const interactionData = {
         lead_id: leadId,
         tipo: formData.tipo,
@@ -76,62 +78,45 @@ const NewInteractionModal: React.FC<NewInteractionModalProps> = ({ leadId, leadN
         duracion_minutos: formData.duracion_minutos ? parseInt(formData.duracion_minutos) : null,
         fecha: new Date().toISOString(),
         fecha_seguimiento: formData.fecha_seguimiento || null,
-        created_by: 'carlossuarezparra@gmail.com' // TODO: Obtener del contexto
+        created_by: employee?.email || ''
       };
 
-      const { data: interaction, error: interactionError } = await supabase
-        .from('lead_interactions')
-        .insert([interactionData])
-        .select()
-        .single();
+      const interaction = await interactionService.create(interactionData);
 
-      if (interactionError) throw interactionError;
+      console.log('✅ Interaccion creada:', interaction);
 
-      console.log('✅ Interacción creada:', interaction);
-
-      // Si hay fecha de seguimiento y se marcó crear tarea, crear tarea
+      // Si hay fecha de seguimiento y se marco crear tarea, crear tarea
       if (formData.fecha_seguimiento && formData.crear_tarea) {
         const taskData = {
           titulo: `Seguimiento: ${formData.asunto}`,
           descripcion: `Lead: ${leadName}\n\n${formData.contenido}`,
-          asignado_a: 'carlossuarezparra@gmail.com', // TODO: Obtener del contexto
+          asignado_a: employee?.email || '',
+          creado_por: employee?.email || '',
           fecha_limite: formData.fecha_seguimiento,
           prioridad: 'media',
           estado: 'pendiente',
           departamento: 'ventas',
-          categoria: 'seguimiento_lead'
         };
 
-        const { data: task, error: taskError } = await supabase
-          .from('tareas')
-          .insert([taskData])
-          .select()
-          .single();
-
-        if (taskError) {
-          console.error('⚠️ Error creando tarea:', taskError);
-        } else {
+        try {
+          const task = await leadTaskService.createFollowUpTask(taskData);
           console.log('✅ Tarea de seguimiento creada:', task);
-          
-          // Actualizar interacción con tarea_id
-          await supabase
-            .from('lead_interactions')
-            .update({ tarea_id: task.id, tarea_creada: true })
-            .eq('id', interaction.id);
+
+          // Actualizar interaccion con tarea_id
+          await interactionService.update(interaction.id, { tarea_id: task.id, tarea_creada: true });
+        } catch (taskError) {
+          console.error('⚠️ Error creando tarea:', taskError);
         }
       }
 
       // Actualizar fecha_ultimo_contacto del lead
-      await supabase
-        .from('leads')
-        .update({ fecha_ultimo_contacto: new Date().toISOString() })
-        .eq('id', leadId);
+      await leadService.updateLeadLastContact(leadId);
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error creando interacción:', error);
-      setError(error.message || 'Error al crear la interacción');
+      setError(error instanceof Error ? error.message || 'Error al crear la interacción' : 'Error al crear la interacción');
     } finally {
       setLoading(false);
     }

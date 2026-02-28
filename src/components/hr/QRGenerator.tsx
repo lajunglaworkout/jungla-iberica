@@ -1,7 +1,7 @@
 // src/components/hr/QRGenerator.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
-import { supabase } from '../../lib/supabase';
+import { cleanupExpiredQRTokens, createQRToken } from '../../services/hrService';
 import { RefreshCw, MapPin, Clock, Shield } from 'lucide-react';
 
 interface QRGeneratorProps {
@@ -37,7 +37,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [centerId]);
+  }, [centerId, employeeId, employeeName]);
 
   const generateNewQR = async () => {
     setLoading(true);
@@ -45,10 +45,7 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
 
     try {
       // Limpiar tokens expirados manualmente
-      await supabase
-        .from('qr_tokens')
-        .delete()
-        .lt('expires_at', new Date().toISOString());
+      await cleanupExpiredQRTokens();
 
       // Generar nuevo token único por empleado
       const employeePrefix = employeeId ? `emp_${employeeId}` : `center_${centerId}`;
@@ -56,17 +53,15 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
       const expiresAt = new Date(Date.now() + 60 * 1000); // 60 segundos desde ahora
 
       // Guardar token en la base de datos
-      const { error: insertError } = await supabase
-        .from('qr_tokens')
-        .insert({
-          center_id: centerId,
-          employee_id: employeeId || null,
-          token: token,
-          expires_at: expiresAt.toISOString(),
-          is_used: false
-        });
+      const { success, error: insertError } = await createQRToken({
+        center_id: centerId,
+        employee_id: employeeId || null,
+        token: token,
+        expires_at: expiresAt.toISOString(),
+        is_used: false
+      });
 
-      if (insertError) throw insertError;
+      if (!success) throw new Error(insertError);
 
       // Crear datos del QR
       const qrData = {
@@ -99,9 +94,9 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ centerId, centerName, employe
       // Iniciar countdown
       startCountdown();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generando QR:', error);
-      setError(`Error generando código QR: ${error.message}`);
+      setError(`Error generando código QR: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }

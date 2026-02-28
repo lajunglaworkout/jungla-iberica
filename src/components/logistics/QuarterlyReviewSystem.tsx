@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { Plus, Eye, ArrowLeft } from 'lucide-react';
 import QuarterlyReviewForm from './QuarterlyReviewForm';
 import { useInventory } from '../../hooks/useInventory';
+import { ui } from '../../utils/ui';
+
 
 const QuarterlyReviewSystem: React.FC = () => {
   const { inventoryItems } = useInventory();
   const [selectedCenter, setSelectedCenter] = useState<'all' | number>('all');
   const [currentView, setCurrentView] = useState<'list' | 'form' | 'create'>('list');
-  const [selectedReview, setSelectedReview] = useState<any>(null);
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [selectedReview, setSelectedReview] = useState<Record<string, unknown> | null>(null);
+  const [reviews, setReviews] = useState<Record<string, unknown>[]>([]);
 
-  const openReviewForm = (review: any) => {
+  const openReviewForm = (review: Record<string, unknown>) => {
     setSelectedReview(review);
     setCurrentView('form');
   };
@@ -78,7 +80,7 @@ const QuarterlyReviewSystem: React.FC = () => {
     const reviewsWithItems = newReviews.filter(review => review.items > 0);
 
     if (reviewsWithItems.length === 0) {
-      alert('⚠️ No se encontraron productos en el inventario para crear revisiones.\n\nVerifica que el inventario esté cargado correctamente.');
+      ui.warning('⚠️ No se encontraron productos en el inventario para crear revisiones.\n\nVerifica que el inventario esté cargado correctamente.');
       return;
     }
 
@@ -86,7 +88,7 @@ const QuarterlyReviewSystem: React.FC = () => {
     setReviews(prev => [...prev, ...reviewsWithItems]);
     
     // Mostrar mensaje de confirmación con números reales
-    alert(`✅ Se han creado ${reviewsWithItems.length} revisiones para ${getCurrentQuarter()}\n\n` +
+    ui.success(`✅ Se han creado ${reviewsWithItems.length} revisiones para ${getCurrentQuarter()}\n\n` +
           reviewsWithItems.map(r => `🏪 ${r.center}: ${r.items} productos`).join('\n'));
   };
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { getTasksByUser, getPendingTasks, deleteTask, deleteTasksByIds } from '../services/taskService';
 import { Check, Trash2, Filter, Calendar, User, AlertCircle } from 'lucide-react';
 import TaskCompletionModal from '../components/meetings/TaskCompletionModal';
+import { ui } from '../utils/ui';
+
 
 interface Task {
   id: number;
@@ -64,26 +66,16 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
   const loadTasks = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('tareas')
-        .select('*')
-        .eq('estado', 'pendiente')
-        .order('fecha_limite', { ascending: true });
-
-      // Si no es superadmin, solo mostrar sus tareas
-      if (!isSuperAdmin) {
-        query = query.eq('asignado_a', userEmail);
+      let data: Task[];
+      if (isSuperAdmin) {
+        const result = await getPendingTasks();
+        data = (result.tasks ?? []) as Task[];
+      } else {
+        const result = await getTasksByUser(userEmail, 'pendiente');
+        data = (result.tasks ?? []) as Task[];
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error cargando tareas:', error);
-        return;
-      }
-
-      console.log(`📋 Tareas cargadas: ${data?.length || 0}`);
-      setTasks(data || []);
+      console.log(`📋 Tareas cargadas: ${data.length}`);
+      setTasks(data);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -105,61 +97,36 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
     setFilteredTasks(filtered);
   };
 
-  const deleteTask = async (taskId: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+  const handleDeleteTask = async (taskId: number) => {
+    if (!await ui.confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
       return;
     }
-
-    try {
-      const { error } = await supabase
-        .from('tareas')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error eliminando tarea:', error);
-        alert('Error al eliminar la tarea');
-        return;
-      }
-
-      console.log('✅ Tarea eliminada correctamente');
-      loadTasks();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al eliminar la tarea');
+    const result = await deleteTask(taskId);
+    if (!result.success) {
+      ui.error('Error al eliminar la tarea');
+      return;
     }
+    console.log('✅ Tarea eliminada correctamente');
+    loadTasks();
   };
 
   const deleteMultipleTasks = async () => {
     if (selectedTaskIds.length === 0) {
-      alert('Selecciona al menos una tarea para eliminar');
+      ui.info('Selecciona al menos una tarea para eliminar');
       return;
     }
-
-    if (!confirm(`¿Estás seguro de que quieres eliminar ${selectedTaskIds.length} tarea(s)?`)) {
+    if (!await ui.confirm(`¿Estás seguro de que quieres eliminar ${selectedTaskIds.length} tarea(s)?`)) {
       return;
     }
-
-    try {
-      const { error } = await supabase
-        .from('tareas')
-        .delete()
-        .in('id', selectedTaskIds);
-
-      if (error) {
-        console.error('Error eliminando tareas:', error);
-        alert('Error al eliminar las tareas');
-        return;
-      }
-
-      console.log(`✅ ${selectedTaskIds.length} tareas eliminadas correctamente`);
-      setSelectedTaskIds([]);
-      setSelectionMode(false);
-      loadTasks();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al eliminar las tareas');
+    const result = await deleteTasksByIds(selectedTaskIds);
+    if (!result.success) {
+      ui.error('Error al eliminar las tareas');
+      return;
     }
+    console.log(`✅ ${selectedTaskIds.length} tareas eliminadas correctamente`);
+    setSelectedTaskIds([]);
+    setSelectionMode(false);
+    loadTasks();
   };
 
   const toggleTaskSelection = (taskId: number) => {
@@ -233,7 +200,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
           <div style={{ display: 'flex', gap: '8px' }}>
             {!selectionMode ? (
               <button
-                onClick={() => setSelectionMode(true)}
+                onClick={async () => setSelectionMode(true)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -289,7 +256,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                   Eliminar ({selectedTaskIds.length})
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectionMode(false);
                     setSelectedTaskIds([]);
                   }}
@@ -333,7 +300,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
           </label>
           <select
             value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
+            onChange={async (e) => setSelectedDepartment(e.target.value)}
             style={{
               width: '100%',
               padding: '8px 12px',
@@ -364,7 +331,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
           </label>
           <select
             value={selectedPriority}
-            onChange={(e) => setSelectedPriority(e.target.value)}
+            onChange={async (e) => setSelectedPriority(e.target.value)}
             style={{
               width: '100%',
               padding: '8px 12px',
@@ -476,7 +443,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                         <input
                           type="checkbox"
                           checked={selectedTaskIds.includes(task.id)}
-                          onChange={() => toggleTaskSelection(task.id)}
+                          onChange={async () => toggleTaskSelection(task.id)}
                           style={{
                             width: '18px',
                             height: '18px',
@@ -548,7 +515,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                       {/* Botones de acción */}
                       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedTask(task);
                             setShowCompletionModal(true);
                           }}
@@ -572,7 +539,7 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
                         </button>
                         {isSuperAdmin && (
                           <button
-                            onClick={() => deleteTask(task.id)}
+                            onClick={async () => handleDeleteTask(task.id)}
                             style={{
                               display: 'flex',
                               alignItems: 'center',

@@ -24,9 +24,11 @@ import IncidentManagementSystem from './incidents/IncidentManagementSystem';
 import DailyOperations from './hr/DailyOperations';
 import { Employee } from '../types/employee';
 import { LocationType } from '../types/logistics';
-import { supabase } from '../lib/supabase';
+import { loadAllEmployees, getAllCenters, upsertEmployee } from '../services/userService';
 import { useSession } from '../contexts/SessionContext';
 import { useData } from '../contexts/DataContext';
+import { ui } from '../utils/ui';
+
 
 // ============ SUB-COMPONENTES =============
 
@@ -358,14 +360,11 @@ const HRManagementSystem: React.FC = () => {
     try {
       console.log('🔍 Cargando TODOS los empleados...');
 
-      // Cargar empleados de forma simple
-      const { data: activeEmployeesData, error: activeError } = await supabase
-        .from('employees')
-        .select('*');
+      const { success, employees: activeEmployeesData, error: loadError } = await loadAllEmployees();
 
-      if (activeError) {
-        console.error('❌ Error cargando empleados:', activeError);
-        setError(`Error al cargar empleados: ${activeError.message}`);
+      if (!success) {
+        console.error('❌ Error cargando empleados:', loadError);
+        setError(`Error al cargar empleados: ${loadError}`);
         return;
       }
 
@@ -378,12 +377,10 @@ const HRManagementSystem: React.FC = () => {
       }
 
       // Cargar centros por separado
-      const { data: centersData } = await supabase
-        .from('centers')
-        .select('*');
+      const centersData = await getAllCenters();
       // Mapear empleados de forma más simple y robusta
-      const empleadosMapeados = activeEmployeesData.map((emp: any) => {
-        const centro = centersData?.find(c => c.id === emp.center_id);
+      const empleadosMapeados = activeEmployeesData.map((emp) => {
+        const centro = centersData.find((c: Record<string, unknown>) => c.id === emp.center_id);
 
         // Crear objeto Employee con valores por defecto seguros
         const empleadoMapeado: Employee = {
@@ -398,7 +395,7 @@ const HRManagementSystem: React.FC = () => {
           city: emp.city || '',
           postal_code: emp.postal_code || '',
           center_id: emp.center_id || '0',
-          centro_nombre: centro?.name || 'Oficina Central',
+          centro_nombre: (centro as Record<string, unknown>)?.name as string || 'Oficina Central',
           hire_date: emp.hire_date ? new Date(emp.hire_date) : new Date(),
           termination_date: emp.termination_date ? new Date(emp.termination_date) : undefined,
           contract_type: emp.contract_type || 'Indefinido',
@@ -450,9 +447,9 @@ const HRManagementSystem: React.FC = () => {
       setEmployees(empleadosMapeados);
       console.log('✅ Carga completa:', empleadosMapeados.length, 'empleados');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error general en loadEmployees:', error);
-      setError(`Error al cargar los datos: ${error.message}`);
+      setError(`Error al cargar los datos: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -473,14 +470,14 @@ const HRManagementSystem: React.FC = () => {
     try {
       // SEGURIDAD: Prevenir creación de superadmins desde el formulario
       if (employeeData.role === 'Admin' && !selectedEmployee) {
-        alert('❌ No se pueden crear nuevos Superadmins. Este rol está reservado para el CEO.');
+        ui.error('❌ No se pueden crear nuevos Superadmins. Este rol está reservado para el CEO.');
         setIsLoading(false);
         return;
       }
 
       // Si está editando y cambia a superadmin, también bloquear
       if (employeeData.role === 'Admin' && selectedEmployee?.role !== 'Admin') {
-        alert('❌ No se puede cambiar el rol a Superadmin. Este rol está reservado para el CEO.');
+        ui.error('❌ No se puede cambiar el rol a Superadmin. Este rol está reservado para el CEO.');
         setIsLoading(false);
         return;
       }
@@ -516,13 +513,13 @@ const HRManagementSystem: React.FC = () => {
         pant_size: employeeData.pant_size,
         jacket_size: employeeData.jacket_size,
         // Campos de vestuario La Jungla
-        vestuario_chandal: (employeeData as any).vestuario_chandal,
-        vestuario_sudadera_frio: (employeeData as any).vestuario_sudadera_frio,
-        vestuario_chaleco_frio: (employeeData as any).vestuario_chaleco_frio,
-        vestuario_pantalon_corto: (employeeData as any).vestuario_pantalon_corto,
-        vestuario_polo_verde: (employeeData as any).vestuario_polo_verde,
-        vestuario_camiseta_entrenamiento: (employeeData as any).vestuario_camiseta_entrenamiento,
-        vestuario_observaciones: (employeeData as any).vestuario_observaciones,
+        vestuario_chandal: employeeData.vestuario_chandal,
+        vestuario_sudadera_frio: employeeData.vestuario_sudadera_frio,
+        vestuario_chaleco_frio: employeeData.vestuario_chaleco_frio,
+        vestuario_pantalon_corto: employeeData.vestuario_pantalon_corto,
+        vestuario_polo_verde: employeeData.vestuario_polo_verde,
+        vestuario_camiseta_entrenamiento: employeeData.vestuario_camiseta_entrenamiento,
+        vestuario_observaciones: employeeData.vestuario_observaciones,
         foto_perfil: employeeData.foto_perfil,
         is_active: employeeData.is_active !== false,
         observaciones: employeeData.observaciones,
@@ -541,52 +538,41 @@ const HRManagementSystem: React.FC = () => {
         console.log(`💾 Actualizando empleado con ID: ${selectedEmployee.id}`);
         console.log('📝 Datos a actualizar:', cleanData);
 
-        // 🔧 FIX CRÍTICO: Usar .select().single() para forzar la actualización
-        const { data, error } = await supabase
-          .from('employees')
-          .update(cleanData)
-          .eq('id', selectedEmployee.id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('❌ Error de Supabase:', error);
-          throw error;
+        const result = await upsertEmployee(cleanData, selectedEmployee.id);
+        if (!result.success) {
+          console.error('❌ Error guardando empleado:', result.error);
+          throw new Error(result.error);
         }
 
-        console.log('✅ Empleado actualizado correctamente:', data);
+        console.log('✅ Empleado actualizado correctamente:', result.data);
         console.log('🔍 Verificando datos guardados:', {
-          department_id: data?.department_id,
-          role: data?.role,
-          name: data?.first_name
+          department_id: result.data?.department_id,
+          role: result.data?.role,
+          name: result.data?.first_name
         });
-        alert('✅ Empleado actualizado correctamente');
+        ui.success('✅ Empleado actualizado correctamente');
       } else {
         console.log('➕ Creando nuevo empleado...');
         console.log('📝 Datos a insertar:', cleanData);
 
-        const { data, error } = await supabase
-          .from('employees')
-          .insert([{ ...cleanData, created_at: new Date().toISOString() }])
-          .select();
-
-        if (error) {
-          console.error('❌ Error de Supabase:', error);
-          throw error;
+        const result = await upsertEmployee(cleanData);
+        if (!result.success) {
+          console.error('❌ Error guardando empleado:', result.error);
+          throw new Error(result.error);
         }
 
-        console.log('✅ Empleado creado correctamente:', data);
-        alert('✅ Empleado creado correctamente');
+        console.log('✅ Empleado creado correctamente:', result.data);
+        ui.success('✅ Empleado creado correctamente');
       }
 
       setShowEmployeeForm(false);
       setSelectedEmployee(null);
       await loadEmployees();
-    } catch (err: any) {
-      const errorMessage = err.message || 'Error desconocido';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
       setError(errorMessage);
       console.error("❌ Error guardando empleado:", errorMessage);
-      alert(`❌ Error guardando empleado: ${errorMessage}`);
+      ui.error(`❌ Error guardando empleado: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

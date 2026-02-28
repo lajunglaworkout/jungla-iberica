@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { getTimeclockRecords } from '../../services/hrService';
 import { useData } from '../../contexts/DataContext';
 import { useSession } from '../../contexts/SessionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import QRGenerator from './QRGenerator';
+import { ui } from '../../utils/ui';
+
 import {
   Clock,
   Users,
@@ -47,6 +49,12 @@ interface TimeclockDashboardProps {
   onBack?: () => void;
 }
 
+interface TimeclockRawRecord {
+  employees: { nombre: string; apellidos: string };
+  centers: { name: string };
+  [key: string]: unknown;
+}
+
 const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const { centers, employees } = useData();
   const { employee: currentUser, userRole } = useSession();
@@ -75,45 +83,24 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   const loadTimeclockData = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('employee_timeclock')
-        .select(`
-          *,
-          employees!inner(nombre, apellidos, center_id),
-          centers!inner(name)
-        `)
-        .eq('date', selectedDate)
-        .eq('centers.id', selectedCenter);
-
-      // Si no tiene permisos, solo ve sus propios registros
-      if (!canViewAllRecords && currentUser?.id) {
-        // Asumiendo que employee_id en timeclock es el ID numérico del empleado
-        // Necesitamos mapear el UUID del usuario actual al ID numérico si es necesario
-        // Pero employee_timeclock usa integer employee_id.
-        // currentUser.id suele ser string (UUID) o number dependiendo de la implementación
-        // Verificando types: currentUser.id es string en SessionContext pero employees de useData tienen id number?
-        // En useData employees tiene id string.
-        // En employee_timeclock el employee_id es un int8 (según DB schema inferido) o hace referencia a employees.id
-        // Si employees.id es string, entonces la FK debe ser consistente.
-        // Asumiremos que currentUser.id es correcto para filtrar.
-        query = query.eq('employee_id', currentUser.id);
-      }
-
-      const { data: timeclockData, error: timeclockError } = await query.order('clock_in', { ascending: true });
-
-      if (timeclockError) throw timeclockError;
+      const timeclockData = await getTimeclockRecords({
+        date: selectedDate,
+        centerId: selectedCenter,
+        employeeId: currentUser?.id,
+        onlyForEmployee: !canViewAllRecords
+      });
 
       // Mapear datos con nombres
-      const mappedRecords: TimeclockRecord[] = (timeclockData || []).map((record: any) => ({
+      const mappedRecords: TimeclockRecord[] = (timeclockData as TimeclockRawRecord[]).map((record) => ({
         ...record,
         employee_name: `${record.employees.nombre} ${record.employees.apellidos}`,
         center_name: record.centers.name
-      }));
+      })) as unknown as TimeclockRecord[];
 
       setRecords(mappedRecords);
 
       // Calcular estadísticas
-      const centerEmployees = employees.filter(emp => emp.center_id === selectedCenter && emp.is_active);
+      const centerEmployees = employees.filter(emp => Number(emp.center_id) === Number(selectedCenter) && emp.is_active);
       const presentEmployees = mappedRecords.filter(r => r.clock_in);
       const totalHours = mappedRecords.reduce((sum, r) => sum + (r.total_hours || 0), 0);
 
@@ -133,7 +120,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
         lateArrivals
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando datos de fichaje:', error);
     } finally {
       setLoading(false);
@@ -141,15 +128,15 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
   };
 
   const getFilteredRecords = () => {
-    const centerEmployees = employees.filter(emp => emp.center_id === selectedCenter && emp.is_active);
+    const centerEmployees = employees.filter(emp => Number(emp.center_id) === Number(selectedCenter) && emp.is_active);
 
     switch (filterStatus) {
       case 'present':
         return records.filter(r => r.clock_in);
       case 'absent':
         // Empleados que no han fichado
-        const recordedEmployeeIds = records.map(r => r.employee_id);
-        const absentEmployees = centerEmployees.filter(emp => !recordedEmployeeIds.includes(emp.id));
+        const recordedEmployeeIds = records.map(r => Number(r.employee_id));
+        const absentEmployees = centerEmployees.filter(emp => !recordedEmployeeIds.includes(Number(emp.id)));
         return absentEmployees.map(emp => ({
           id: 0,
           employee_id: emp.id,
@@ -168,9 +155,9 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
         return records.filter(r => r.clock_in && !r.clock_out);
       default:
         // Combinar presentes y ausentes
-        const recordedIds = records.map(r => r.employee_id);
+        const recordedIds = records.map(r => Number(r.employee_id));
         const absentList = centerEmployees
-          .filter(emp => !recordedIds.includes(emp.id))
+          .filter(emp => !recordedIds.includes(Number(emp.id)))
           .map(emp => ({
             id: 0,
             employee_id: emp.id,
@@ -220,6 +207,11 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
       'Horas Totales': record.total_hours?.toFixed(2) || '0',
       Estado: getStatusText(record)
     }));
+
+    if (csvData.length === 0) {
+      ui.info('No hay registros para exportar');
+      return;
+    }
 
     const csvContent = [
       Object.keys(csvData[0]).join(','),
@@ -379,7 +371,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
               </label>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'present' | 'absent' | 'incomplete')}
                 style={{
                   width: '100%',
                   padding: '10px',

@@ -30,7 +30,7 @@ export const ROLE_MAPPING: Record<string, UserRole> = {
 };
 
 // Función para determinar el rol avanzado
-export const getAdvancedRole = (dbRole: string, employee?: any): UserRole => {
+export const getAdvancedRole = (dbRole: string, employee?: { email?: string; [key: string]: unknown }): UserRole => {
   // Casos especiales
   if (employee?.email === 'superadmin@lajungla.com') {
     return UserRole.SUPERADMIN;
@@ -345,7 +345,7 @@ export interface EmployeeWithRole extends Employee {
     id: number;
     name: string;
     type: 'Propio' | 'Franquicia';
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

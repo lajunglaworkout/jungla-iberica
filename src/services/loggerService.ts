@@ -6,7 +6,7 @@ export interface LogEntry {
     level: LogLevel;
     module: string;
     message: string;
-    meta?: any;
+    meta?: Record<string, unknown>;
     timestamp: number;
 }
 
@@ -45,21 +45,21 @@ class LoggerService {
     /**
      * Log an info message
      */
-    public info(module: string, message: string, meta?: any) {
+    public info(module: string, message: string, meta?: Record<string, unknown>) {
         this.addLog('info', module, message, meta);
     }
 
     /**
      * Log a warning message
      */
-    public warn(module: string, message: string, meta?: any) {
+    public warn(module: string, message: string, meta?: Record<string, unknown>) {
         this.addLog('warning', module, message, meta);
     }
 
     /**
      * Log an error message
      */
-    public error(module: string, message: string, meta?: any) {
+    public error(module: string, message: string, meta?: Record<string, unknown>) {
         console.error(`[Guard] ${module}: ${message}`, meta); // Always console error strictly for local debugging
         this.addLog('error', module, message, meta);
     }
@@ -67,13 +67,13 @@ class LoggerService {
     /**
      * Log a critical error message
      */
-    public critical(module: string, message: string, meta?: any) {
+    public critical(module: string, message: string, meta?: Record<string, unknown>) {
         this.addLog('critical', module, message, meta);
         // Critical errors trigger immediate flush
         this.flush();
     }
 
-    private addLog(level: LogLevel, module: string, message: string, meta?: any) {
+    private addLog(level: LogLevel, module: string, message: string, meta?: Record<string, unknown>) {
         const entry: LogEntry = {
             level,
             module,

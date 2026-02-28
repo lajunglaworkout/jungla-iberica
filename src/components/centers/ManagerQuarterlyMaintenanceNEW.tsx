@@ -2,17 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Wrench, CheckCircle, AlertTriangle, Camera } from 'lucide-react';
 import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS } from '../../types/maintenance';
 
+interface MaintenanceItemNEW {
+  zone_id: number;
+  zone_name: string;
+  concept_id: number;
+  concept_name: string;
+  status: 'bien' | 'regular' | 'mal';
+  observations: string;
+  photos_required: boolean;
+  [key: string]: unknown;
+}
+
 interface Props {
   onBack: () => void;
   centerId?: number;
 }
 
 const ManagerQuarterlyMaintenanceNEW: React.FC<Props> = ({ onBack }) => {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<MaintenanceItemNEW[]>([]);
 
   useEffect(() => {
     // Generar items de ejemplo
-    const tempItems: any[] = [];
+    const tempItems: MaintenanceItemNEW[] = [];
     MAINTENANCE_ZONES.forEach(zone => {
       const concepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
       concepts.forEach(concept => {
@@ -30,7 +41,7 @@ const ManagerQuarterlyMaintenanceNEW: React.FC<Props> = ({ onBack }) => {
     setItems(tempItems);
   }, []);
 
-  const updateItem = (index: number, field: string, value: any) => {
+  const updateItem = (index: number, field: string, value: string | boolean | number) => {
     setItems(prev => prev.map((item, i) => 
       i === index ? { 
         ...item, 
@@ -56,7 +67,7 @@ const ManagerQuarterlyMaintenanceNEW: React.FC<Props> = ({ onBack }) => {
     }
     acc[item.zone_name].push(item);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, MaintenanceItemNEW[]>);
 
   return (
     <div style={{

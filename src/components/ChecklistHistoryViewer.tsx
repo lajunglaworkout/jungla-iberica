@@ -12,7 +12,7 @@ interface Props {
 const ChecklistHistoryViewer: React.FC<Props> = ({ centerId, centerName, onClose }) => {
   const [history, setHistory] = useState<ChecklistHistory[]>([]);
   const [selected, setSelected] = useState<ChecklistHistory | null>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{ totalDays: number; completedDays: number; completionRate: number; averageTasks: number } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -26,7 +26,7 @@ const ChecklistHistoryViewer: React.FC<Props> = ({ centerId, centerName, onClose
 
   const getPercentage = (c: ChecklistHistory) => {
     const all = [...(c.apertura_tasks || []), ...(c.limpieza_tasks || []), ...(c.cierre_tasks || [])];
-    const done = all.filter((t: any) => t.completada);
+    const done = all.filter((t) => t.completada);
     return all.length > 0 ? Math.round((done.length / all.length) * 100) : 0;
   };
 
@@ -73,9 +73,9 @@ const ChecklistHistoryViewer: React.FC<Props> = ({ centerId, centerName, onClose
         {selected && (
           <div style={{ marginTop: '24px', padding: '24px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
             <h3 style={{ marginBottom: '16px' }}>{format(new Date(selected.date), 'dd MMMM yyyy', { locale: es })}</h3>
-            <div><strong>Apertura:</strong> {selected.apertura_tasks?.filter((t: any) => t.completada).length}/{selected.apertura_tasks?.length}</div>
-            <div><strong>Limpieza:</strong> {selected.limpieza_tasks?.filter((t: any) => t.completada).length}/{selected.limpieza_tasks?.length}</div>
-            <div><strong>Cierre:</strong> {selected.cierre_tasks?.filter((t: any) => t.completada).length}/{selected.cierre_tasks?.length}</div>
+            <div><strong>Apertura:</strong> {selected.apertura_tasks?.filter((t) => t.completada).length}/{selected.apertura_tasks?.length}</div>
+            <div><strong>Limpieza:</strong> {selected.limpieza_tasks?.filter((t) => t.completada).length}/{selected.limpieza_tasks?.length}</div>
+            <div><strong>Cierre:</strong> {selected.cierre_tasks?.filter((t) => t.completada).length}/{selected.cierre_tasks?.length}</div>
           </div>
         )}
       </div>

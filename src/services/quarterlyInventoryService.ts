@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { devLog } from '../utils/devLogger';
 
 interface QuarterlyReview {
   id?: number;
@@ -6,7 +7,7 @@ interface QuarterlyReview {
   center_name: string;
   quarter: string;
   year: number;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  status: 'draft' | 'active' | 'completed' | 'cancelled' | 'submitted' | 'aplicada';
   deadline_date?: string;
   created_by: string;
   created_date?: string;
@@ -71,7 +72,7 @@ class QuarterlyInventoryService {
   // Eliminar revisión completa (Beni)
   async deleteReview(quarter: string, year: number) {
     try {
-      console.log(`🗑️ Eliminando revisión ${quarter}-${year}...`);
+      devLog(`🗑️ Eliminando revisión ${quarter}-${year}...`);
 
       // 1. Obtener IDs de las revisiones a eliminar
       const { data: reviews, error: reviewsError } = await supabase
@@ -86,12 +87,12 @@ class QuarterlyInventoryService {
       }
 
       if (!reviews || reviews.length === 0) {
-        console.log('⚠️ No hay revisiones para eliminar');
+        devLog('⚠️ No hay revisiones para eliminar');
         return { success: true };
       }
 
       const reviewIds = reviews.map(r => r.id);
-      console.log('📋 IDs de revisiones a eliminar:', reviewIds);
+      devLog('📋 IDs de revisiones a eliminar:', reviewIds);
 
       // 2. Obtener IDs de asignaciones
       const { data: assignments, error: assignmentsError } = await supabase
@@ -101,7 +102,7 @@ class QuarterlyInventoryService {
 
       if (assignments && assignments.length > 0) {
         const assignmentIds = assignments.map(a => a.id);
-        console.log('📋 IDs de asignaciones a eliminar:', assignmentIds);
+        devLog('📋 IDs de asignaciones a eliminar:', assignmentIds);
 
         // 3. Eliminar items de revisión
         const { error: itemsError } = await supabase
@@ -112,7 +113,7 @@ class QuarterlyInventoryService {
         if (itemsError) {
           console.error('❌ Error eliminando items:', itemsError);
         } else {
-          console.log('✅ Items de revisión eliminados');
+          devLog('✅ Items de revisión eliminados');
         }
 
         // 4. Eliminar asignaciones
@@ -124,7 +125,7 @@ class QuarterlyInventoryService {
         if (assignmentsDeleteError) {
           console.error('❌ Error eliminando asignaciones:', assignmentsDeleteError);
         } else {
-          console.log('✅ Asignaciones eliminadas');
+          devLog('✅ Asignaciones eliminadas');
         }
       }
 
@@ -139,7 +140,7 @@ class QuarterlyInventoryService {
         return { success: false, error: reviewsDeleteError };
       }
 
-      console.log(`✅ Revisión ${quarter}-${year} eliminada completamente`);
+      devLog(`✅ Revisión ${quarter}-${year} eliminada completamente`);
       return { success: true };
     } catch (error) {
       console.error('❌ Error eliminando revisión:', error);
@@ -153,14 +154,14 @@ class QuarterlyInventoryService {
     year: number;
     deadline_date?: string;
     created_by: string;
-    centers: Array<{ id: number; name: string; items: any[] }>;
+    centers: Array<{ id: number; name: string; items: Record<string, unknown>[] }>;
     notes?: string;
   }) {
     try {
-      console.log('📋 Creando revisión trimestral de inventario...');
+      devLog('📋 Creando revisión trimestral de inventario...');
 
       // Primero eliminar cualquier revisión existente para este quarter/year
-      console.log(`🗑️ Eliminando revisión existente ${data.quarter}-${data.year} si existe...`);
+      devLog(`🗑️ Eliminando revisión existente ${data.quarter}-${data.year} si existe...`);
       await this.deleteReview(data.quarter, data.year);
 
       const reviews: QuarterlyReview[] = [];
@@ -188,7 +189,7 @@ class QuarterlyInventoryService {
 
         if (error) throw error;
 
-        console.log(`✅ Revisión creada para ${center.name}:`, review.id);
+        devLog(`✅ Revisión creada para ${center.name}:`, review.id);
         reviews.push(review);
       }
 
@@ -202,7 +203,7 @@ class QuarterlyInventoryService {
   // Activar revisión y crear asignaciones (Beni)
   async activateReview(reviewId: number, encargadoEmail?: string) {
     try {
-      console.log('🚀 Activando revisión:', reviewId);
+      devLog('🚀 Activando revisión:', reviewId);
 
       // 1. Actualizar status de la revisión
       const { data: review, error: reviewError } = await supabase
@@ -234,17 +235,18 @@ class QuarterlyInventoryService {
 
       if (assignmentError) throw assignmentError;
 
-      // 3. Enviar notificación al encargado
+      // 3. Enviar notificación al encargado (link to their center management)
       if (encargadoEmail) {
         await this.sendNotification({
           review_id: reviewId,
           user_email: encargadoEmail,
           notification_type: 'review_assigned',
-          message: `Nueva revisión trimestral de inventario asignada: ${review.quarter} - ${review.center_name}. Fecha límite: ${review.deadline_date || 'Sin definir'}`
+          message: `Nueva revisión trimestral de inventario asignada: ${review.quarter} - ${review.center_name}. Fecha límite: ${review.deadline_date || 'Sin definir'}`,
+          link: 'center-management-quarterly' // BUG-06: Route encargados to Gestión, not Logística
         });
       }
 
-      console.log('✅ Revisión activada y asignación creada');
+      devLog('✅ Revisión activada y asignación creada');
       return { success: true, review, assignment };
     } catch (error) {
       console.error('❌ Error activando revisión:', error);
@@ -291,7 +293,7 @@ class QuarterlyInventoryService {
   // Obtener asignaciones de un encargado
   async getAssignments(centerId: number, status?: string) {
     try {
-      console.log('🔍 Buscando asignaciones para centro:', centerId, 'con status:', status);
+      devLog('🔍 Buscando asignaciones para centro:', centerId, 'con status:', status);
 
       let query = supabase
         .from('quarterly_inventory_assignments')
@@ -312,8 +314,8 @@ class QuarterlyInventoryService {
         throw error;
       }
 
-      console.log('✅ Asignaciones encontradas:', data?.length || 0);
-      console.log('📋 Datos:', data);
+      devLog('✅ Asignaciones encontradas:', data?.length || 0);
+      devLog('📋 Datos:', data);
 
       return { success: true, assignments: data };
     } catch (error) {
@@ -325,9 +327,9 @@ class QuarterlyInventoryService {
   // Guardar items de la revisión
   async saveReviewItems(assignmentId: number, items: QuarterlyReviewItem[]) {
     try {
-      console.log('💾 Guardando items de revisión...');
-      console.log('📋 Items a guardar:', items.length);
-      console.log('📋 Primer item:', items[0]);
+      devLog('💾 Guardando items de revisión...');
+      devLog('📋 Items a guardar:', items.length);
+      devLog('📋 Primer item:', items[0]);
 
       // Verificar que la tabla existe y tiene las columnas correctas
       const { data: testData, error: testError } = await supabase
@@ -340,7 +342,7 @@ class QuarterlyInventoryService {
         throw new Error(`Tabla quarterly_review_items no existe o no tiene las columnas correctas. Error: ${testError.message}`);
       }
 
-      console.log('📋 Tabla verificada, primer registro:', testData?.[0] || 'Tabla vacía');
+      devLog('📋 Tabla verificada, primer registro:', testData?.[0] || 'Tabla vacía');
 
       const { data, error } = await supabase
         .from('quarterly_review_items')
@@ -352,7 +354,7 @@ class QuarterlyInventoryService {
 
       if (error) throw error;
 
-      console.log(`✅ ${data.length} items guardados`);
+      devLog(`✅ ${data.length} items guardados`);
       return { success: true, items: data };
     } catch (error) {
       console.error('❌ Error guardando items:', error);
@@ -365,7 +367,7 @@ class QuarterlyInventoryService {
   // Completar revisión (Encargado) -> Pasa a estado 'submitted'
   async completeAssignment(assignmentId: number, completedBy: string) {
     try {
-      console.log('✅ Completando asignación:', assignmentId);
+      devLog('✅ Completando asignación:', assignmentId);
 
       // 1. Obtener datos de la asignación y revisión
       const { data: assignmentData, error: fetchError } = await supabase
@@ -420,7 +422,8 @@ class QuarterlyInventoryService {
         review_id: assignmentData.review_id,
         user_email: 'beni.jungla@gmail.com',
         notification_type: 'review_submitted',
-        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} ENVIADA por ${completedBy}.\n${totalItems} productos contabilizados. ${discrepancies} discrepancias.`
+        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} ENVIADA por ${completedBy}.\n${totalItems} productos contabilizados. ${discrepancies} discrepancias.`,
+        link: 'logistics-quarterly'
       });
 
       // 6. Notificar a Carlos (CEO/Admin)
@@ -429,7 +432,8 @@ class QuarterlyInventoryService {
         review_id: assignmentData.review_id,
         user_email: 'carlossuarezparra@gmail.com', // Placeholder dirección
         notification_type: 'review_submitted',
-        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} completada por encargado.`
+        message: `📢 Revisión ${assignmentData.review.quarter} de ${assignmentData.center_name} completada por encargado.`,
+        link: 'logistics-quarterly'
       });
 
       return { success: true, assignment };
@@ -441,9 +445,16 @@ class QuarterlyInventoryService {
 
   // APLICAR CAMBIOS DE LA REVISIÓN (Beni)
   // Esta función es la CRÍTICA. Actualiza el inventario real y cierra la revisión.
-  async applyReviewChanges(reviewId: number, itemsToApply: any[], appliedBy: string) {
+  async applyReviewChanges(reviewId: number, itemsToApply: Array<{
+    inventory_item_id: number;
+    product_name?: string;
+    current_system_quantity: number;
+    counted_quantity?: number;
+    deteriorated_quantity?: number;
+    [key: string]: unknown;
+  }>, appliedBy: string) {
     try {
-      console.log(`🚀 Aplicando ${itemsToApply.length} cambios de revisión ${reviewId}...`);
+      devLog(`🚀 Aplicando ${itemsToApply.length} cambios de revisión ${reviewId}...`);
 
       const changesSummary = {
         updated: 0,
@@ -481,7 +492,7 @@ class QuarterlyInventoryService {
           await supabase.from('inventory_movements').insert({
             inventory_item_id: item.inventory_item_id,
             type: discrepancy < 0 ? 'adjustment_loss' : 'adjustment_gain',
-            quantity_change: discrepancy,
+            quantity: discrepancy,
             previous_quantity: currentSystem,
             new_quantity: currentSystem + discrepancy,
             reason: `Revisión Trimestral: ${discrepancy < 0 ? 'Pérdida' : 'Excedente'} detectado (por ${appliedBy})`
@@ -500,7 +511,7 @@ class QuarterlyInventoryService {
           await supabase.from('inventory_movements').insert({
             inventory_item_id: item.inventory_item_id,
             type: 'breakage',
-            quantity_change: -(brokenQuantity),
+            quantity: -(brokenQuantity),
             previous_quantity: totalPhysical,
             new_quantity: newValidQuantity,
             reason: `Revisión Trimestral: Baja por deterioro/rotura (por ${appliedBy})`
@@ -513,7 +524,7 @@ class QuarterlyInventoryService {
         const { error: updateError } = await supabase
           .from('inventory_items')
           .update({
-            cantidad_actual: newValidQuantity,
+            quantity: newValidQuantity,
             updated_at: new Date().toISOString()
           })
           .eq('id', item.inventory_item_id);
@@ -546,7 +557,7 @@ class QuarterlyInventoryService {
         message: summaryMsg
       });
 
-      console.log('✅ Revisión aplicada con éxito:', changesSummary);
+      devLog('✅ Revisión aplicada con éxito:', changesSummary);
       return { success: true, summary: changesSummary };
 
     } catch (error) {
@@ -565,7 +576,7 @@ class QuarterlyInventoryService {
     processedBy: string
   ) {
     try {
-      console.log(`🚀 Procesando ${decisions.length} decisiones para revisión ${reviewId}...`);
+      devLog(`🚀 Procesando ${decisions.length} decisiones para revisión ${reviewId}...`);
 
       const summary = {
         bajas: 0,             // Items dados de baja (rotos restados)
@@ -578,6 +589,13 @@ class QuarterlyInventoryService {
         inventarioActualizado: 0,
         movimientos: 0,
       };
+
+      // 0. OBTENER CENTER ID
+      let center_id = null;
+      if (centerName) {
+        const { data: centerData } = await supabase.from('centers').select('id').ilike('name', centerName).single();
+        if (centerData) center_id = centerData.id;
+      }
 
       // ================================================
       // 1. PROCESAR CADA DECISIÓN
@@ -592,20 +610,34 @@ class QuarterlyInventoryService {
           quantities
         } = decision;
 
-        const totalPhysical = counted_quantity || 0;
-        const discrepancy = totalPhysical - current_system_quantity;
+        // If counted_quantity was unmodified (null/falsy), skip this item
+        if (counted_quantity === null || counted_quantity === undefined) {
+          devLog(`⏭️ Item ${product_name} ignorado (no fue contado)`);
+          continue;
+        }
 
-        // A. DAR DE BAJA (restar rotos del inventario)
+        const totalPhysical = counted_quantity;
+        const discrepancy = totalPhysical - current_system_quantity;
         if (actions.darDeBaja && quantities.broken > 0) {
           // Registrar movimiento de rotura
-          await supabase.from('inventory_movements').insert({
-            inventory_item_id: inventory_item_id,
+          const movementData = {
+            inventory_item_id: inventory_item_id, // Reverted: The DB column IS actually inventory_item_id
             type: 'breakage',
-            quantity_change: -(quantities.broken),
+            movement_type: 'adjustment',
+            quantity: -(quantities.broken),
             previous_quantity: totalPhysical,
             new_quantity: totalPhysical - quantities.broken,
-            reason: `Revisión Trimestral ${quarter}: Baja por rotura/deterioro (por ${processedBy})`
-          });
+            reason: `Revisión ${quarter}`,
+            center_id: center_id,
+            user_name: processedBy
+          };
+          console.log('INSERT payload:', JSON.stringify(movementData));
+
+          const { error } = await supabase.from('inventory_movements').insert(movementData);
+          if (error) {
+            console.error('ERROR COMPLETO:', JSON.stringify(error));
+            throw new Error(`INSERT inventory_movements falló: ${JSON.stringify(error)}`);
+          }
 
           summary.bajas++;
           summary.bajasUnidades += quantities.broken;
@@ -613,29 +645,50 @@ class QuarterlyInventoryService {
         }
 
         // B. REGISTRAR FALTANTES (ajuste de pérdida)
+        // Solo si hay una discrepancia y no queríamos solo registrar items regulares/rotos
         if (discrepancy < 0) {
-          await supabase.from('inventory_movements').insert({
+          const movementData = {
             inventory_item_id: inventory_item_id,
             type: 'adjustment_loss',
-            quantity_change: discrepancy,
+            movement_type: 'adjustment',
+            quantity: discrepancy,
             previous_quantity: current_system_quantity,
             new_quantity: totalPhysical,
-            reason: `Revisión Trimestral ${quarter}: ${Math.abs(discrepancy)} unidades faltantes (por ${processedBy})`
-          });
+            reason: `Revisión ${quarter}`,
+            center_id: center_id,
+            user_name: processedBy
+          };
+          console.log('INSERT payload:', JSON.stringify(movementData));
+
+          const { error } = await supabase.from('inventory_movements').insert(movementData);
+          if (error) {
+            console.error('ERROR COMPLETO:', JSON.stringify(error));
+            throw new Error(`INSERT inventory_movements falló: ${JSON.stringify(error)}`);
+          }
 
           summary.faltantes++;
           summary.faltantesUnidades += Math.abs(discrepancy);
           summary.movimientos++;
         } else if (discrepancy > 0) {
           // Excedente encontrado
-          await supabase.from('inventory_movements').insert({
+          const movementData = {
             inventory_item_id: inventory_item_id,
             type: 'adjustment_gain',
-            quantity_change: discrepancy,
+            movement_type: 'adjustment',
+            quantity: discrepancy,
             previous_quantity: current_system_quantity,
             new_quantity: totalPhysical,
-            reason: `Revisión Trimestral ${quarter}: ${discrepancy} unidades de más encontradas (por ${processedBy})`
-          });
+            reason: `Revisión ${quarter}`,
+            center_id: center_id,
+            user_name: processedBy
+          };
+          console.log('INSERT payload:', JSON.stringify(movementData));
+
+          const { error } = await supabase.from('inventory_movements').insert(movementData);
+          if (error) {
+            console.error('ERROR COMPLETO:', JSON.stringify(error));
+            throw new Error(`INSERT inventory_movements falló: ${JSON.stringify(error)}`);
+          }
           summary.movimientos++;
         }
 
@@ -645,7 +698,7 @@ class QuarterlyInventoryService {
         const { error: updateError } = await supabase
           .from('inventory_items')
           .update({
-            cantidad_actual: newQuantity,
+            quantity: newQuantity,
             updated_at: new Date().toISOString()
           })
           .eq('id', inventory_item_id);
@@ -672,6 +725,13 @@ class QuarterlyInventoryService {
       const itemsForOrder = decisions.filter(d => d.actions.enviarAPedido && d.quantities.toOrder > 0);
 
       if (itemsForOrder.length > 0) {
+        // Log para auditar las cantidades del pedido según solicitud
+        console.log('📦 Items para pedido:', JSON.stringify(itemsForOrder.map(i => ({
+          nombre: i.product_name,
+          toOrder: i.quantities.toOrder,
+          enviarAPedido: i.actions.enviarAPedido
+        }))));
+
         const orderIdStr = `REV-${quarter.replace(/\s/g, '')}-${centerName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
 
         // Construir notas con detalle de items
@@ -680,6 +740,7 @@ class QuarterlyInventoryService {
         ).join('\n');
 
         // Insertar pedido en Supabase
+        // BUG-INF4 FIX: Incluir review_id y order_source para trazar el pedido
         const { error: orderError } = await supabase
           .from('orders')
           .insert({
@@ -689,6 +750,8 @@ class QuarterlyInventoryService {
             to_location: 'Proveedor',
             order_date: new Date().toISOString().split('T')[0],
             status: 'pending',
+            review_id: reviewId,
+            order_source: 'quarterly_review',
             amount: 0,
             created_by: `${processedBy} - Revisión ${quarter}`,
             notes: `📋 Pedido Post-Revisión ${quarter} - ${centerName} (Revisión #${reviewId})\n${itemsForOrder.length} productos:\n${itemsDetail}`
@@ -699,28 +762,51 @@ class QuarterlyInventoryService {
           // No fail completo, seguimos con el resto
         } else {
           orderId = orderIdStr;
-          console.log(`📦 Pedido post-revisión creado: ${orderIdStr}`);
+          devLog(`📦 Pedido post-revisión creado: ${orderIdStr}`);
+
+          // BUG-INF4 FIX: Insertar items individuales en order_items
+          const orderItems = itemsForOrder.map(d => ({
+            order_id: orderIdStr,
+            product_id: d.inventory_item_id,
+            product_name: d.product_name,
+            quantity: d.quantities.toOrder,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+
+          if (itemsError) {
+            console.error('❌ Error insertando order_items:', itemsError);
+          } else {
+            devLog(`📦 ${orderItems.length} items insertados en order_items`);
+          }
         }
       }
 
       // ================================================
       // 3. MARCAR REVISIÓN COMO COMPLETADA
       // ================================================
-      await supabase
+      const updateData = {
+        status: 'completed', // 'aplicada' throws HTTP 400 because of DB CHECK constraint
+        approved_by: processedBy,
+        approved_date: new Date().toISOString(),
+        notes: [
+          `✅ Procesado por ${processedBy}`,
+          `Bajas: ${summary.bajasUnidades} uds (${summary.bajas} productos)`,
+          `Faltantes: ${summary.faltantesUnidades} uds (${summary.faltantes} productos)`,
+          `Regular: ${summary.regulares} productos marcados`,
+          orderId ? `Pedido: ${orderId} (${summary.pedidoUnidades} uds)` : 'Sin pedido generado'
+        ].join(' | ')
+      };
+      console.log('PATCH payload:', JSON.stringify(updateData));
+
+      const { error: reviewUpdateError } = await supabase
         .from('quarterly_reviews')
-        .update({
-          status: 'completed',
-          approved_by: processedBy,
-          approved_date: new Date().toISOString(),
-          notes: [
-            `✅ Procesado por ${processedBy}`,
-            `Bajas: ${summary.bajasUnidades} uds (${summary.bajas} productos)`,
-            `Faltantes: ${summary.faltantesUnidades} uds (${summary.faltantes} productos)`,
-            `Regular: ${summary.regulares} productos marcados`,
-            orderId ? `Pedido: ${orderId} (${summary.pedidoUnidades} uds)` : 'Sin pedido generado'
-          ].join(' | ')
-        })
+        .update(updateData)
         .eq('id', reviewId);
+
+      if (reviewUpdateError) console.error('ERROR COMPLETO:', JSON.stringify(reviewUpdateError));
 
       // ================================================
       // 4. NOTIFICACIÓN A CARLOS (CEO)
@@ -738,7 +824,24 @@ class QuarterlyInventoryService {
         message: summaryMsg
       });
 
-      console.log('✅ Revisión procesada con éxito:', summary);
+      // Notificar al Encargado (center_manager)
+      const { data: assignmentData } = await supabase
+        .from('quarterly_inventory_assignments')
+        .select('assigned_to')
+        .eq('review_id', reviewId)
+        .eq('center_name', centerName)
+        .single();
+
+      if (assignmentData?.assigned_to) {
+        await this.sendNotification({
+          review_id: reviewId,
+          user_email: assignmentData.assigned_to,
+          notification_type: 'review_applied',
+          message: summaryMsg
+        });
+      }
+
+      devLog('✅ Revisión procesada con éxito:', summary);
       return {
         success: true,
         summary,
@@ -751,12 +854,38 @@ class QuarterlyInventoryService {
     }
   }
 
+  // Obtener asignación de una revisión (single)
+  async getAssignmentByReviewId(reviewId: number): Promise<{ id: number; status: string } | null> {
+    try {
+      const { data, error } = await supabase
+        .from('quarterly_inventory_assignments')
+        .select('id, status')
+        .eq('review_id', reviewId)
+        .limit(1);
+      if (error || !data || data.length === 0) return null;
+      return data[0] as { id: number; status: string };
+    } catch { return null; }
+  }
+
+  // Obtener items de revisión por asignación
+  async getReviewItemsByAssignmentId(assignmentId: number): Promise<Record<string, unknown>[]> {
+    try {
+      const { data, error } = await supabase
+        .from('quarterly_review_items')
+        .select('*')
+        .eq('assignment_id', assignmentId);
+      if (error) return [];
+      return (data ?? []) as Record<string, unknown>[];
+    } catch { return []; }
+  }
+
   // Enviar notificación
   private async sendNotification(data: {
     review_id: number;
     user_email: string;
     notification_type: string;
     message: string;
+    link?: string; // BUG-06: Allow custom links per recipient role
   }) {
     try {
       const { error } = await supabase
@@ -768,7 +897,7 @@ class QuarterlyInventoryService {
           message: data.message,
           reference_type: 'quarterly_review',
           reference_id: data.review_id.toString(),
-          link: 'logistics-quarterly', // Special link for navigation handler
+          link: data.link || 'logistics-quarterly', // BUG-06: Use custom link or default to logistics
           is_read: false
         });
 
@@ -776,7 +905,7 @@ class QuarterlyInventoryService {
         console.error('❌ Error Supabase enviando notificación:', error);
         throw error;
       }
-      console.log('📧 Notificación enviada a:', data.user_email);
+      devLog('📧 Notificación enviada a:', data.user_email);
     } catch (error) {
       console.error('❌ Error enviando notificación:', error);
     }

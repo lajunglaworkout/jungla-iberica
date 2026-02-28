@@ -4,7 +4,7 @@ import {
   Users, DollarSign, Target, Calendar, Bell, Eye, ArrowRight,
   Building2, Globe, Briefcase, Award, Zap, Activity
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { getAllActiveTasks } from '../services/taskService';
 
 interface UrgentAlert {
   id: string;
@@ -114,15 +114,9 @@ const CEODashboard: React.FC = () => {
 
   const loadPendingTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .select('*')
-        .in('estado', ['pendiente', 'en_progreso'])
-        .order('fecha_limite', { ascending: true });
+      const data = await getAllActiveTasks();
 
-      if (error) throw error;
-
-      const tasks: PendingTask[] = data?.map(task => {
+      const tasks: PendingTask[] = data.map(task => {
         const deadline = new Date(task.fecha_limite);
         const today = new Date();
         const daysOverdue = Math.floor((today.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24));

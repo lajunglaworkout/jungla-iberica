@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getUniformRequests } from '../../services/hrService';
 
 interface UniformMetrics {
     pendingCount: number;
@@ -8,7 +8,7 @@ interface UniformMetrics {
     shippedCount: number;
     disputedCount: number;
     totalRequests: number;
-    recentRequests: any[];
+    recentRequests: Record<string, unknown>[];
 }
 
 const UniformMetricsWidget: React.FC = () => {
@@ -29,17 +29,12 @@ const UniformMetricsWidget: React.FC = () => {
     const loadMetrics = async () => {
         try {
             setLoading(true);
-            const { data: requests, error } = await supabase
-                .from('uniform_requests')
-                .select('*')
-                .order('requested_at', { ascending: false });
+            const requests = await getUniformRequests();
 
-            if (error || !requests) return;
-
-            const pending = requests.filter(r => r.status === 'pending').length;
-            const approved = requests.filter(r => r.status === 'approved').length;
-            const shipped = requests.filter(r => r.status === 'shipped' || r.status === 'awaiting_confirmation').length;
-            const disputed = requests.filter(r => r.status === 'disputed').length;
+            const pending = requests.filter(r => r['status'] === 'pending').length;
+            const approved = requests.filter(r => r['status'] === 'approved').length;
+            const shipped = requests.filter(r => r['status'] === 'shipped' || r['status'] === 'awaiting_confirmation').length;
+            const disputed = requests.filter(r => r['status'] === 'disputed').length;
 
             setMetrics({
                 pendingCount: pending,

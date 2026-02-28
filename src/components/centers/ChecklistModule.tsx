@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ClipboardList, AlertTriangle, CheckCircle, XCircle, Calendar, Filter, Plus } from 'lucide-react';
-import SmartIncidentModal from '../incidents/SmartIncidentModal';
+import IncidentCreationModal from '../incidents/IncidentCreationModal';
+import { ui } from '../../utils/ui';
+
 
 interface ChecklistModuleProps {
   centerName: string;
@@ -26,7 +28,7 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentDescription, setIncidentDescription] = useState('');
-  
+
   // Mock data de reportes
   const [reportes, setReportes] = useState<ChecklistItem[]>([
     {
@@ -111,17 +113,17 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
 
   const handleNuevoReporte = () => {
     if (!nuevoReporte.descripcion || !nuevoReporte.responsable) {
-      alert('Por favor completa la descripción y responsable');
+      ui.info('Por favor completa la descripción y responsable');
       return;
     }
 
     const reporte: ChecklistItem = {
       id: Date.now().toString(),
       fecha: new Date().toISOString().split('T')[0],
-      categoria: nuevoReporte.categoria as any,
+      categoria: nuevoReporte.categoria as ChecklistItem['categoria'],
       descripcion: nuevoReporte.descripcion,
       estado: 'pendiente',
-      prioridad: nuevoReporte.prioridad as any,
+      prioridad: nuevoReporte.prioridad as ChecklistItem['prioridad'],
       responsable: nuevoReporte.responsable,
       observaciones: nuevoReporte.observaciones || ''
     };
@@ -135,7 +137,7 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
       observaciones: ''
     });
     setActiveTab('reportes');
-    alert('Reporte creado correctamente');
+    ui.success('Reporte creado correctamente');
   };
 
   const getEstadoColor = (estado: string) => {
@@ -246,44 +248,44 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
         {activeTab === 'nuevo' && (
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>➕ Crear Nuevo Reporte</h3>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div style={{ display: 'grid', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Categoría *</label>
-                  <select value={nuevoReporte.categoria} onChange={(e) => setNuevoReporte({...nuevoReporte, categoria: e.target.value as any})} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                  <select value={nuevoReporte.categoria} onChange={(e) => setNuevoReporte({ ...nuevoReporte, categoria: e.target.value as ChecklistItem['categoria'] })} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
                     {categorias.map(cat => (
                       <option key={cat.value} value={cat.value}>{cat.label}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Prioridad *</label>
-                  <select value={nuevoReporte.prioridad} onChange={(e) => setNuevoReporte({...nuevoReporte, prioridad: e.target.value as any})} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
+                  <select value={nuevoReporte.prioridad} onChange={(e) => setNuevoReporte({ ...nuevoReporte, prioridad: e.target.value as ChecklistItem['prioridad'] })} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }}>
                     {prioridades.map(pri => (
                       <option key={pri.value} value={pri.value}>{pri.label}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Responsable *</label>
-                  <input type="text" value={nuevoReporte.responsable} onChange={(e) => setNuevoReporte({...nuevoReporte, responsable: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} placeholder="Nombre del responsable" />
+                  <input type="text" value={nuevoReporte.responsable} onChange={(e) => setNuevoReporte({ ...nuevoReporte, responsable: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px' }} placeholder="Nombre del responsable" />
                 </div>
               </div>
-              
+
               <div style={{ display: 'grid', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Descripción *</label>
-                  <textarea value={nuevoReporte.descripcion} onChange={(e) => setNuevoReporte({...nuevoReporte, descripcion: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }} placeholder="Describe la incidencia o tarea..." />
+                  <textarea value={nuevoReporte.descripcion} onChange={(e) => setNuevoReporte({ ...nuevoReporte, descripcion: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }} placeholder="Describe la incidencia o tarea..." />
                 </div>
-                
+
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Observaciones</label>
-                  <textarea value={nuevoReporte.observaciones} onChange={(e) => setNuevoReporte({...nuevoReporte, observaciones: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '60px', resize: 'vertical' }} placeholder="Información adicional (opcional)" />
+                  <textarea value={nuevoReporte.observaciones} onChange={(e) => setNuevoReporte({ ...nuevoReporte, observaciones: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '60px', resize: 'vertical' }} placeholder="Información adicional (opcional)" />
                 </div>
-                
+
                 <button onClick={handleNuevoReporte} style={{ padding: '12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <Plus style={{ width: '16px', height: '16px' }} />
                   Crear Reporte
@@ -323,8 +325,8 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
         <AlertTriangle size={24} />
       </button>
 
-      {/* Modal de Incidencias Inteligente */}
-      <SmartIncidentModal
+      {/* BUG-08: Unified Incident Creation Modal */}
+      <IncidentCreationModal
         isOpen={showIncidentModal}
         onClose={() => setShowIncidentModal(false)}
         centerName={centerName}
@@ -332,7 +334,6 @@ const ChecklistModule: React.FC<ChecklistModuleProps> = ({ centerName, centerId,
         initialDescription={incidentDescription}
         onIncidentCreated={(incident) => {
           console.log('Incidencia creada desde checklist:', incident);
-          // Aquí puedes añadir la incidencia a la lista de reportes si quieres
         }}
       />
     </div>

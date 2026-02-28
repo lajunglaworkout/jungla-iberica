@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Task } from '../types/dashboard';
 import { createMeetingAlert, getDepartmentResponsible } from '../config/departments';
 import { deleteTasksByMeetingId } from './taskService';
+import { notifyMeetingScheduled } from './notificationService';
 
 export interface MeetingRecord {
   id?: number;
@@ -16,8 +17,8 @@ export interface MeetingRecord {
   leader_email: string;
   agenda?: string;
   objectives?: string[];
-  kpis?: any;
-  tasks?: any;
+  kpis?: Record<string, unknown>;
+  tasks?: Record<string, unknown>;
   notes?: string;
   summary?: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -72,7 +73,7 @@ export const taskToMeetingRecord = (task: Task): MeetingRecord => {
     tasks: {},
     notes: task.notes,
     summary: '',
-    status: task.status as any || 'scheduled',
+    status: (task.status as MeetingRecord['status']) || 'scheduled',
     completion_percentage: 0,
     created_by: task.createdBy || 'carlossuarezparra@gmail.com'
   };
@@ -97,7 +98,7 @@ export const meetingRecordToTask = (meeting: MeetingRecord): Task => {
     meetingType: meeting.type === 'quarterly' ? 'monthly' : meeting.type,
     department: meeting.department,
     priority: 'high',
-    status: meeting.status as any || 'pending',
+    status: meeting.status || 'pending',
     assignedTo: meeting.participants.join(', '),
     location: '',
     notes: meeting.notes,
@@ -147,11 +148,15 @@ export const saveMeetingToSupabase = async (task: Task): Promise<{ success: bool
       );
 
       if (alert) {
-        // Aquí se podría guardar la alerta en una tabla de notificaciones
-        console.log('🔔 Alerta creada:', alert);
-
-        // TODO: Guardar alerta en tabla notifications
-        // await saveNotificationToSupabase(alert);
+        // Guardar notificación en Supabase para el responsable del departamento
+        await notifyMeetingScheduled({
+          recipientEmail: alert.targetEmail,
+          meetingTitle: task.title,
+          meetingId: data?.id,
+          meetingDate: task.startDate,
+          meetingTime: task.startTime,
+          scheduledBy: task.createdBy,
+        });
       }
     }
 
@@ -284,5 +289,79 @@ export const getMeetingsByDepartment = async (department: string): Promise<{ suc
   } catch (error) {
     console.error('Error inesperado:', error);
     return { success: false, error: 'Error inesperado al cargar reuniones del departamento' };
+  }
+};
+
+/** Returns raw DB records (no Task conversion) — for components that use DB field names directly */
+export const getMeetingRecordsRaw = async (userEmail?: string): Promise<Record<string, unknown>[]> => {
+  try {
+    let query = supabase.from('meetings').select('*').order('created_at', { ascending: false });
+    if (userEmail) query = query.or(`created_by.eq.${userEmail},leader_email.eq.${userEmail},participants.cs.{${userEmail}}`);
+    const { data, error } = await query;
+    if (error) { console.error('Error cargando reuniones:', error); return []; }
+    return data || [];
+  } catch { return []; }
+};
+
+export const scheduleMeeting = async (record: Record<string, unknown>): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> => {
+  try {
+    const { data, error } = await supabase.from('meetings').insert(record).select().single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data as Record<string, unknown> };
+  } catch { return { success: false, error: 'Error programando reunión' }; }
+};
+
+export const createObjective = async (objective: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('objetivos').insert(objective);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error creando objetivo' }; }
+};
+
+export const createObjectives = async (objectives: Record<string, unknown>[]): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('objetivos').insert(objectives);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error creando objetivos' }; }
+};
+
+export const getAllMeetings = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('meetings').select('*').order('date', { ascending: false });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const createReunion = async (
+  data: Record<string, unknown>
+): Promise<{ success: boolean; record?: Record<string, unknown>; error?: string }> => {
+  try {
+    const { data: record, error } = await supabase.from('reuniones').insert([data]).select().single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, record: record as Record<string, unknown> };
+  } catch { return { success: false, error: 'Error creando reunión' }; }
+};
+
+export const createMeetingTasks = async (
+  tasks: Record<string, unknown>[]
+): Promise<{ success: boolean; data?: Record<string, unknown>[]; error?: string }> => {
+  try {
+    const { data, error } = await supabase.from('tareas').insert(tasks).select();
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: (data ?? []) as Record<string, unknown>[] };
+  } catch { return { success: false, error: 'Error creando tareas' }; }
+};
+
+export const updateMeetingTasks = async (meetingId: string | number, tasks: Record<string, unknown>[]): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const id = typeof meetingId === 'string' ? parseInt(meetingId) : meetingId;
+    const { error } = await supabase.from('meetings').update({ tasks }).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: 'Error al actualizar tareas de la reunión' };
   }
 };

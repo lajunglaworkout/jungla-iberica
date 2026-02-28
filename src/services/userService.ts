@@ -54,6 +54,75 @@ export const loadUsers = async () => {
   }
 };
 
+export const getDepartments = async (): Promise<{ id: number; name: string }[]> => {
+  try {
+    const { data, error } = await supabase.from('departments').select('*');
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+};
+
+export const createDepartment = async (name: string): Promise<{ id: number; name: string } | null> => {
+  try {
+    const { data, error } = await supabase.from('departments').insert([{ name }]).select().single();
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+export const searchEmployeesPaginated = async (options: {
+  role?: string;
+  searchTerm?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<{ users: Record<string, unknown>[]; total: number }> => {
+  try {
+    const { role, searchTerm, page = 0, pageSize = 20 } = options;
+    let query = supabase.from('employees').select('*', { count: 'exact' });
+    if (role && role !== 'all') query = query.eq('role', role);
+    if (searchTerm) query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+    const from = page * pageSize;
+    const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+    if (error) return { users: [], total: 0 };
+    return { users: data || [], total: count || 0 };
+  } catch {
+    return { users: [], total: 0 };
+  }
+};
+
+export const updateEmployeeDepartments = async (employeeId: number, departments: { id: number }[]): Promise<void> => {
+  await supabase.from('employee_departments').delete().eq('employee_id', employeeId);
+  if (departments.length > 0) {
+    await supabase.from('employee_departments').insert(departments.map(d => ({ employee_id: employeeId, department_id: d.id })));
+  }
+};
+
+export const loadAllEmployees = async () => {
+  try {
+    const { data, error } = await supabase.from('employees').select('*');
+    if (error) return { success: false, error: error.message, employees: [] };
+    return { success: true, employees: data || [] };
+  } catch (error) {
+    return { success: false, error: 'Error inesperado', employees: [] };
+  }
+};
+
+export const loadCenters = async (orFilter?: string) => {
+  try {
+    let query = supabase.from('centers').select('*');
+    if (orFilter) query = query.or(orFilter);
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message, centers: [] };
+    return { success: true, centers: data || [] };
+  } catch (error) {
+    return { success: false, error: 'Error inesperado', centers: [] };
+  }
+};
+
 // Crear nuevo usuario
 export const createUser = async (userData: CreateUserData) => {
   try {
@@ -150,6 +219,21 @@ export const getUserByEmail = async (email: string) => {
   } catch (error) {
     console.error('Error inesperado obteniendo usuario:', error);
     return { success: false, error: 'Error inesperado', user: null };
+  }
+};
+
+export const getEmployeeDepartments = async (employeeId: string | number): Promise<{ id: string | number; name: string }[]> => {
+  try {
+    const { data } = await supabase
+      .from('employee_departments')
+      .select('department_id, departments(id, name)')
+      .eq('employee_id', employeeId);
+    return data?.map((d: { departments: { id: string | number; name: string } }) => ({
+      id: d.departments.id,
+      name: d.departments.name
+    })) || [];
+  } catch {
+    return [];
   }
 };
 
@@ -531,6 +615,52 @@ export const reactivateUser = async (userId: string) => {
   }
 };
 
+export const getAllCenters = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('centers').select('*');
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const createCenter = async (centerData: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('centers').insert([centerData]);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error creando centro' }; }
+};
+
+export const countActiveEmployees = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.from('employees').select('id').eq('activo', true);
+    if (error) return 0;
+    return data?.length ?? 0;
+  } catch { return 0; }
+};
+
+export const getEmployeeById = async (id: number): Promise<Record<string, unknown> | null> => {
+  try {
+    const { data, error } = await supabase.from('employees').select('*').eq('id', id).single();
+    if (error) return null;
+    return data as Record<string, unknown>;
+  } catch { return null; }
+};
+
+export const updateEmployeeProfile = async (
+  id: number,
+  updates: { first_name?: string; last_name?: string; phone?: string; dni?: string }
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error actualizando perfil' }; }
+};
+
 // Reactivar acceso después de cambio de email (solo superadmin)
 export const reactivateEmailAccess = async (email: string) => {
   try {
@@ -564,13 +694,64 @@ export const reactivateEmailAccess = async (email: string) => {
     }
 
     console.log('✅ Estado de email actualizado');
-    return { 
-      success: true, 
-      message: `El usuario ${employeeData.name} puede intentar hacer login nuevamente con el email ${email}. Si persisten los problemas, debe contactar al administrador.` 
+    return {
+      success: true,
+      message: `El usuario ${employeeData.name} puede intentar hacer login nuevamente con el email ${email}. Si persisten los problemas, debe contactar al administrador.`
     };
 
   } catch (error) {
     console.error('Error inesperado reactivando acceso:', error);
     return { success: false, error: 'Error inesperado: ' + (error as Error).message };
   }
+};
+
+export const upsertEmployee = async (
+  data: Record<string, unknown>,
+  id?: string | number
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> => {
+  try {
+    if (id) {
+      const { data: result, error } = await supabase
+        .from('employees')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) return { success: false, error: error.message };
+      return { success: true, data: result as Record<string, unknown> };
+    } else {
+      const { data: result, error } = await supabase
+        .from('employees')
+        .insert([{ ...data, created_at: new Date().toISOString() }])
+        .select();
+      if (error) return { success: false, error: error.message };
+      return { success: true, data: ((result ?? [])[0]) as Record<string, unknown> };
+    }
+  } catch { return { success: false, error: 'Error guardando empleado' }; }
+};
+
+export const getEmployeeIdsByCenter = async (centerId: number): Promise<number[]> => {
+  try {
+    const { data, error } = await supabase.from('employees').select('id').eq('center_id', centerId);
+    if (error) return [];
+    return (data ?? []).map((e: Record<string, unknown>) => e.id as number);
+  } catch { return []; }
+};
+
+export const getAllEmployees = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('employees').select('*').order('name', { ascending: true });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const updateEmployeeById = async (
+  id: number | string, data: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('employees').update(data).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error actualizando empleado' }; }
 };

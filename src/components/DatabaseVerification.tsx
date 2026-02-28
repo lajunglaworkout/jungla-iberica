@@ -1,7 +1,7 @@
 // Componente temporal para verificar que las tablas se crearon correctamente
 import React, { useState } from 'react';
 import { CheckCircle, XCircle, Database, Play } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // NOTE: Database diagnostic tool - direct supabase access is appropriate here (generic table checks)
 
 interface TableStatus {
   name: string;
@@ -53,7 +53,7 @@ const DatabaseVerification: React.FC = () => {
           });
           console.log(`✅ Tabla ${tableName} existe y tiene ${count || 0} registros`);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         newResults.push({
           name: tableName,
           exists: false,

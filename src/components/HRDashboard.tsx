@@ -5,7 +5,7 @@ import {
   FileText, BarChart, ArrowLeft, TrendingUp, UserCheck,
   MapPin, AlertCircle, CheckCircle
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { countActiveEmployees } from '../services/userService';
 
 interface DashboardCard {
   id: string;
@@ -46,17 +46,10 @@ const HRDashboard: React.FC<HRDashboardProps> = ({ onNavigate, onBack }) => {
 
   const loadDashboardStats = async () => {
     try {
-      // Cargar estadísticas reales desde Supabase
-      const { data: employees } = await supabase
-        .from('employees')
-        .select('id, activo')
-        .eq('activo', true);
-
-      // Por ahora usamos datos simulados para las otras métricas
-      // En el futuro se conectarán con las tablas reales
+      const total = await countActiveEmployees();
       setStats({
-        totalEmployees: employees?.length || 24,
-        presentToday: Math.floor((employees?.length || 24) * 0.8), // 80% presente
+        totalEmployees: total || 24,
+        presentToday: Math.floor((total || 24) * 0.8),
         pendingEvaluations: 5,
         activeShifts: 12,
         documentsToReview: 3

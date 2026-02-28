@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { projectService } from '../../services/leadService';
 import {
   Building2, Plus, Search, Edit, Trash2, Eye, TrendingUp, DollarSign,
   MapPin, Calendar, BarChart3, Target, ArrowLeft
@@ -59,22 +59,7 @@ const ProjectManagementSystem: React.FC = () => {
   const cargarProyectos = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (filtroTipo !== 'todos') {
-        query = query.eq('tipo', filtroTipo);
-      }
-
-      if (filtroEstado !== 'todos') {
-        query = query.eq('status', filtroEstado);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const data = await projectService.getProjects(filtroTipo, filtroEstado);
       setProjects(data || []);
     } catch (error) {
       console.error('Error cargando proyectos:', error);

@@ -21,7 +21,7 @@ import ManagerReviewsPanel from './ManagerReviewsPanel';
 import ManagerQuarterlyReview from './ManagerQuarterlyReview';
 import ManagerQuarterlyMaintenance from './ManagerQuarterlyMaintenance';
 import { LocationType } from '../../types/logistics';
-import SmartIncidentModal from '../incidents/SmartIncidentModal';
+import IncidentCreationModal from '../incidents/IncidentCreationModal';
 
 interface EmployeeAction {
   id: string;
@@ -31,6 +31,8 @@ interface EmployeeAction {
 }
 
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
 
 const CenterManagement: React.FC = () => {
   const { employee } = useSession();
@@ -263,7 +265,7 @@ const CenterManagement: React.FC = () => {
         return (
           <EmployeeProfile
             onBack={() => setActiveAction('summary')}
-            currentEmployee={employee as any}
+            currentEmployee={employee!}
           />
         );
       case 'qr-scanner':
@@ -314,14 +316,14 @@ const CenterManagement: React.FC = () => {
         return (
           <VacationRequest
             onBack={() => setActiveAction('summary')}
-            currentEmployee={employee as any}
+            currentEmployee={employee!}
           />
         );
       case 'vacations':
         return (
           <VacationApproval
             onBack={() => setActiveAction('summary')}
-            currentEmployee={employee as any}
+            currentEmployee={employee!}
           />
         );
       case 'uniform-request':
@@ -331,7 +333,7 @@ const CenterManagement: React.FC = () => {
             employeeName={employee.name}
             onSubmit={(payload) => {
               console.log('Solicitud de vestuario enviada:', payload);
-              alert(`Solicitud enviada a Logística: ${payload.items.length} prendas por ${payload.reason}`);
+              ui.success(`Solicitud enviada a Logística: ${payload.items.length} prendas por ${payload.reason}`);
               setActiveAction('summary');
             }}
           />
@@ -419,13 +421,12 @@ const CenterManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Incidencia */}
-      <SmartIncidentModal
+      {/* BUG-08: Unified Incident Creation Modal */}
+      <IncidentCreationModal
         isOpen={showIncidentModal}
         onClose={() => setShowIncidentModal(false)}
         centerId={employee?.center_id?.toString() || '9'}
         centerName={getCenterName(Number(employee?.center_id) || 9)}
-        employee={employee as any}
         onIncidentCreated={(incident) => {
           console.log('✅ Incidencia creada:', incident);
           setShowIncidentModal(false);

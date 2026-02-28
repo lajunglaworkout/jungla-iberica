@@ -1,30 +1,50 @@
 import React, { useState } from 'react';
 import { Save, Send, ArrowLeft } from 'lucide-react';
 import quarterlyInventoryService from '../../services/quarterlyInventoryService';
+import { devLog } from '../../utils/devLogger';
+import { ui } from '../../utils/ui';
 
+
+interface ReviewItem {
+  id: number;
+  name: string;
+  system: number;
+  counted: number | null;
+  regular: number;
+  deteriorated: number;
+  obs: string;
+  touched?: boolean;
+  [key: string]: unknown;
+}
+interface QuarterlyReviewData {
+  reviewItems?: ReviewItem[];
+  [key: string]: unknown;
+}
 interface QuarterlyReviewFormProps {
   onBack: () => void;
-  reviewData: any;
+  reviewData: QuarterlyReviewData;
 }
 
 const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, reviewData }) => {
   // Usar los items reales del inventario si están disponibles, sino usar datos de ejemplo
-  const initialItems = reviewData.reviewItems || [
-    { id: 1, name: 'Mancuerna 4KG', system: 8, counted: 0, regular: 0, deteriorated: 0, obs: '' },
-    { id: 2, name: 'Mancuerna 5KG', system: 6, counted: 0, regular: 0, deteriorated: 0, obs: '' }
-  ];
+  // BUG-INF1 FIX: Cada item arranca con touched=false. Solo los que Francisco modifica manualmente
+  // se enviarán con counted_quantity real. Los no tocados se envían como null → el backend los ignora.
+  const initialItems = (reviewData.reviewItems || [
+    { id: 1, name: 'Mancuerna 4KG', system: 8, counted: null, regular: 0, deteriorated: 0, obs: '' },
+    { id: 2, name: 'Mancuerna 5KG', system: 6, counted: null, regular: 0, deteriorated: 0, obs: '' }
+  ]).map((item: ReviewItem) => ({ ...item, touched: false }));
 
   const [items, setItems] = useState(initialItems);
   const [showDiscrepanciesOnly, setShowDiscrepanciesOnly] = useState(false);
 
-  const updateItem = (id: number, field: string, value: any) => {
-    setItems((prev: any) => prev.map((item: any) =>
-      item.id === id ? { ...item, [field]: value } : item
+  const updateItem = (id: number, field: string, value: unknown) => {
+    setItems((prev) => prev.map((item) =>
+      item.id === id ? { ...item, [field]: value, touched: true } : item
     ));
   };
 
   // Calcular totales
-  const totals = items.reduce((acc: any, item: any) => ({
+  const totals = items.reduce((acc: { totalProducts: number; totalSystem: number; totalCounted: number; totalRegular: number; totalDeteriorated: number; discrepancies: number }, item) => ({
     totalProducts: acc.totalProducts + 1,
     totalSystem: acc.totalSystem + item.system,
     totalCounted: acc.totalCounted + (item.counted || 0), // Counted es el total
@@ -41,25 +61,26 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
   });
 
   const filteredItems = showDiscrepanciesOnly
-    ? items.filter((item: any) => item.counted !== null && item.counted !== '' && Number(item.counted) !== Number(item.system))
+    ? items.filter((item) => item.counted !== null && item.counted !== '' && Number(item.counted) !== Number(item.system))
     : items;
 
   // ...
 
   const handleSave = async () => {
-    console.log('💾 Guardando progreso...', items);
+    devLog('💾 Guardando progreso...', items);
 
     try {
       // Transformar items al formato esperado por el servicio
-      const reviewItems = items.map((item: any) => ({
+      // BUG-INF1 FIX: Solo enviar counted_quantity si el item fue tocado manualmente
+      const reviewItems = items.map((item) => ({
         inventory_item_id: item.id,
         product_name: item.name,
         category: item.category,
         current_system_quantity: item.system,
-        counted_quantity: item.counted || 0,
-        regular_quantity: item.regular || 0,
-        deteriorated_quantity: item.deteriorated || 0,
-        to_remove_quantity: item.deteriorated || 0, // Los deteriorados se marcan para eliminar
+        counted_quantity: item.touched ? (item.counted ?? null) : null,
+        regular_quantity: item.touched ? (item.regular || 0) : 0,
+        deteriorated_quantity: item.touched ? (item.deteriorated || 0) : 0,
+        to_remove_quantity: item.touched ? (item.deteriorated || 0) : 0,
         observations: item.obs || ''
       }));
 
@@ -67,41 +88,41 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
       const result = await quarterlyInventoryService.saveReviewItems(reviewData.id, reviewItems);
 
       if (result.success) {
-        alert('✅ Progreso guardado correctamente. Puedes continuar más tarde.');
-        console.log('✅ Items guardados:', result.items);
+        ui.success('✅ Progreso guardado correctamente. Puedes continuar más tarde.');
+        devLog('✅ Items guardados:', result.items);
       } else {
-        alert('❌ Error guardando el progreso. Inténtalo de nuevo.');
+        ui.error('❌ Error guardando el progreso. Inténtalo de nuevo.');
         console.error('❌ Error guardando:', result.error);
       }
     } catch (error) {
       console.error('❌ Error inesperado:', error);
-      alert('❌ Error inesperado guardando el progreso.');
+      ui.error('❌ Error inesperado guardando el progreso.');
     }
   };
 
   const handleSend = async () => {
-    console.log('📤 Enviando a Beni...', items);
+    devLog('📤 Enviando a Beni...', items);
 
     // 1. Validar inconsistencias lógicas (Subconjuntos > Total)
-    const illogicalItems = items.filter(item => {
+    const illogicalItems = items.filter((item) => {
       const subsets = (item.regular || 0) + (item.deteriorated || 0);
       return subsets > (item.counted || 0);
     });
 
     if (illogicalItems.length > 0) {
-      const itemList = illogicalItems.map(i => `• ${i.name} (Total: ${i.counted} | Detalle: ${(i.regular || 0) + (i.deteriorated || 0)})`).join('\n');
-      alert(`❌ Error lógico. La suma de 'Regular' y 'Deteriorado' no puede ser mayor que 'Contado' (que es el total):\n\n${itemList}`);
+      const itemList = illogicalItems.map((i) => `• ${i.name} (Total: ${i.counted} | Detalle: ${(i.regular || 0) + (i.deteriorated || 0)})`).join('\n');
+      ui.error(`Error logico: la suma de Regular+Deteriorado supera Contado en: ${itemList.replace(/\n/g, ' | ')}`);
       return;
     }
 
     // 2. Validar discrepancias con sistema (Avisar pero permitir enviar si es intencional)
-    const discrepancies = items.filter(item => {
+    const discrepancies = items.filter((item) => {
       // Comparar Total Físico (counted) con Sistema
       return Number(item.counted) !== Number(item.system);
     });
 
     if (discrepancies.length > 0) {
-      const confirmSend = window.confirm(
+      const confirmSend = await ui.confirm(
         `⚠️ Hay ${discrepancies.length} productos con discrepancias entre Contado y Sistema.\n\n` +
         `¿Confirmas que has contado bien y quieres enviar estas diferencias para ajuste?`
       );
@@ -117,15 +138,15 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
       const result = await quarterlyInventoryService.completeAssignment(reviewData.id, 'franciscogiraldezmorales@gmail.com');
 
       if (result.success) {
-        alert('✅ Revisión ENVIADA a Beni.\n\nAhora Logística revisará las discrepancias y aplicará los cambios al inventario.');
+        ui.success('✅ Revisión ENVIADA a Beni.\n\nAhora Logística revisará las discrepancias y aplicará los cambios al inventario.');
         onBack(); // Volver al panel principal
       } else {
-        alert('❌ Error enviando la revisión.');
+        ui.error('❌ Error enviando la revisión.');
         console.error('❌ Error completando:', result.error);
       }
     } catch (error) {
       console.error('❌ Error inesperado:', error);
-      alert('❌ Error inesperado enviando la revisión.');
+      ui.error('❌ Error inesperado enviando la revisión.');
     }
   };
 
@@ -167,7 +188,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
           </div>
           <div>
             <button
-              onClick={() => alert('🚧 Función "Añadir Producto Manual" en desarrollo.\n\nPor favor, añade productos no listados en el campo "Observaciones" de un item relacionado o al final de la revisión.')}
+              onClick={() => ui.warning('🚧 Función "Añadir Producto Manual" en desarrollo.\n\nPor favor, añade productos no listados en el campo "Observaciones" de un item relacionado o al final de la revisión.')}
               style={{
                 padding: '8px 16px',
                 backgroundColor: 'white',
@@ -200,7 +221,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
             <tbody>
               {(() => {
                 let lastCategory = '';
-                return filteredItems.map((item: any) => {
+                return filteredItems.map((item) => {
                   const isUncounted = item.counted === null || item.counted === '';
                   const hasDiscrepancy = !isUncounted && Number(item.counted) !== Number(item.system);
                   const showCategoryHeader = item.category !== lastCategory;
@@ -333,7 +354,7 @@ const QuarterlyReviewForm: React.FC<QuarterlyReviewFormProps> = ({ onBack, revie
         <div className="md:hidden flex flex-col gap-4 p-4 bg-gray-50">
           {(() => {
             let lastCategory = '';
-            return filteredItems.map((item: any) => {
+            return filteredItems.map((item) => {
               const isUncounted = item.counted === null || item.counted === '';
               const discrepancy = !isUncounted && Number(item.counted) !== Number(item.system);
               const showCategoryHeader = item.category !== lastCategory;

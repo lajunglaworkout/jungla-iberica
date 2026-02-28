@@ -3,7 +3,10 @@ import { ArrowLeft, Package, Calendar, CheckCircle, AlertCircle } from 'lucide-r
 import QuarterlyReviewForm from '../logistics/QuarterlyReviewForm';
 import { useSession } from '../../contexts/SessionContext';
 import quarterlyInventoryService from '../../services/quarterlyInventoryService';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // TODO: Migrate inventory_items and quarterly_review_items queries to quarterlyInventoryService or logisticsService
+import { devLog } from '../../utils/devLogger';
+import { ui } from '../../utils/ui';
+
 
 interface ManagerQuarterlyReviewProps {
   onBack: () => void;
@@ -11,10 +14,10 @@ interface ManagerQuarterlyReviewProps {
 
 const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack }) => {
   const { employee } = useSession();
-  const [assignment, setAssignment] = useState<any>(null);
+  const [assignment, setAssignment] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [reviewData, setReviewData] = useState<any>(null);
+  const [reviewData, setReviewData] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     loadAssignment();
@@ -22,12 +25,12 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
 
   const loadAssignment = async () => {
     if (!employee?.center_id) {
-      console.log('⚠️ No hay center_id');
+      devLog('⚠️ No hay center_id');
       setLoading(false);
       return;
     }
 
-    console.log('🔍 Cargando asignación para centro:', employee.center_id);
+    devLog('🔍 Cargando asignación para centro:', employee.center_id);
     setLoading(true);
 
     const result = await quarterlyInventoryService.getAssignments(
@@ -35,30 +38,30 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       'pending'
     );
 
-    console.log('📋 Resultado:', result);
+    devLog('📋 Resultado:', result);
 
     if (result.success && result.assignments && result.assignments.length > 0) {
       // Tomar la primera asignación activa
       const activeAssignment = result.assignments.find(
-        (a: any) => a.review && a.review.status === 'active'
+        (a: Record<string, unknown>) => a.review && a.review.status === 'active'
       );
 
       if (activeAssignment) {
-        console.log('✅ Asignación activa encontrada:', activeAssignment);
+        devLog('✅ Asignación activa encontrada:', activeAssignment);
         setAssignment(activeAssignment);
 
         // Cargar items del inventario para este centro
         await loadInventoryItems(activeAssignment);
       } else {
-        console.log('⚠️ No hay asignaciones activas');
+        devLog('⚠️ No hay asignaciones activas');
       }
     }
 
     setLoading(false);
   };
 
-  const loadInventoryItems = async (assignment: any) => {
-    console.log('📦 Cargando items del inventario para centro:', employee?.center_id);
+  const loadInventoryItems = async (assignment: Record<string, unknown>) => {
+    devLog('📦 Cargando items del inventario para centro:', employee?.center_id);
 
     // Primero cargar items del inventario base, ordenados por categoría y nombre
     const { data: inventoryItems, error: inventoryError } = await supabase
@@ -73,7 +76,7 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       return;
     }
 
-    console.log('✅ Items del inventario cargados:', inventoryItems?.length || 0);
+    devLog('✅ Items del inventario cargados:', inventoryItems?.length || 0);
 
     // Cargar datos ya guardados de la revisión
     const { data: savedReviewItems, error: reviewError } = await supabase
@@ -85,11 +88,11 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       console.error('❌ Error cargando items guardados:', reviewError);
     }
 
-    console.log('✅ Items guardados encontrados:', savedReviewItems?.length || 0);
+    devLog('✅ Items guardados encontrados:', savedReviewItems?.length || 0);
 
     // Crear mapa de items guardados para acceso rápido
     const savedItemsMap = new Map();
-    savedReviewItems?.forEach((saved: any) => {
+    savedReviewItems?.forEach((saved: Record<string, unknown>) => {
       savedItemsMap.set(saved.inventory_item_id, saved);
     });
 
@@ -108,13 +111,13 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
     };
 
     // Preparar reviewData combinando inventario base + datos guardados
-    const reviewItems = inventoryItems?.map((item: any) => {
+    const reviewItems = inventoryItems?.map((item: Record<string, unknown>) => {
       const savedData = savedItemsMap.get(item.id);
       return {
         id: item.id,
         name: item.nombre_item || item.codigo || 'Sin nombre',
         category: item.categoria || 'Sin categoría',
-        system: item.cantidad_actual || 0,
+        system: item.quantity || 0,
         counted: savedData ? savedData.counted_quantity : null,
         regular: savedData?.regular_quantity || 0,
         deteriorated: savedData?.deteriorated_quantity || 0,
@@ -123,7 +126,7 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
     }) || [];
 
     // Ordenar: primero por categoría, luego por nombre con orden natural (numérico)
-    reviewItems.sort((a: any, b: any) => {
+    reviewItems.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
       if (a.category !== b.category) return a.category.localeCompare(b.category, 'es');
       return naturalSort(a.name, b.name);
     });
@@ -136,8 +139,8 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
       reviewItems
     };
 
-    console.log('📋 ReviewData preparado con', preparedReviewData.reviewItems.length, 'items');
-    console.log('📋 Items con datos guardados:', preparedReviewData.reviewItems.filter(item => item.counted > 0).length);
+    devLog('📋 ReviewData preparado con', preparedReviewData.reviewItems.length, 'items');
+    devLog('📋 Items con datos guardados:', preparedReviewData.reviewItems.filter(item => item.counted > 0).length);
 
     setReviewData(preparedReviewData);
   };
@@ -151,10 +154,10 @@ const ManagerQuarterlyReview: React.FC<ManagerQuarterlyReviewProps> = ({ onBack 
     );
 
     if (result.success) {
-      alert('✅ Revisión completada y enviada a Beni para autorización');
+      ui.success('✅ Revisión completada y enviada a Beni para autorización');
       onBack();
     } else {
-      alert('❌ Error al completar la revisión');
+      ui.error('❌ Error al completar la revisión');
     }
   };
 

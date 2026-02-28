@@ -3,7 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { Camera, CameraOff, CheckCircle, XCircle, MapPin, Clock, User, ArrowLeft } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // timeclock_records, qr_tokens, employees queries remain here (complex auth-adjacent flow)
+import { upsertDailyAttendance } from '../../services/hrService';
+import { ui } from '../../utils/ui';
+
 
 interface QRScannerProps {
   onBack: () => void;
@@ -44,7 +47,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     // Verificar permisos de cámara
@@ -146,9 +149,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       );
 
       setCameraPermission('granted');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error iniciando escáner:', error);
-      let msg = error.message;
+      let msg = error instanceof Error ? error.message : String(error);
       if (error.name === 'NotAllowedError') msg = 'Permiso de cámara denegado.';
       if (error.name === 'NotFoundError') msg = 'No se encontró ninguna cámara.';
 
@@ -182,7 +185,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   };
 
   const handleQRResult = async (qrText: string) => {
-    // alert('🔍 DEBUG: QR DETECTADO\n' + qrText.substring(0, 50) + '...'); // TEST ALERT REMOVED
+    // ui.info(`🔍 DEBUG: QR DETECTADO\n${qrText.substring(0, 50) + '...'}`);
     console.log('Procesando QR:', qrText);
 
     if (loading) return;
@@ -246,17 +249,15 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       // 6. Register timeclock entry
       await registerTimeclock(qrData, tokenData);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error procesando QR:', error);
-      // Falla visiblemente
-      alert('❌ ERROR: ' + (error.message || 'Error desconocido procesando QR'));
-      setError(error.message || 'Error procesando el código QR.');
+      setError((error instanceof Error ? error.message : String(error)) || 'Error procesando el código QR.');
     } finally {
       setLoading(false);
     }
   };
 
-  const registerTimeclock = async (qrData: QRData, tokenData: any) => {
+  const registerTimeclock = async (qrData: QRData, tokenData: { id: string | number }) => {
     if (!employee?.email) throw new Error('Usuario no identificado');
 
     // 1. Obtener ID del empleado
@@ -272,14 +273,14 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     const now = new Date().toISOString();
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 2. Buscar si hay un fichaje ABIERTO hoy (status='entrada' y clock_out_time es null)
+    // 2. Buscar si hay un fichaje ABIERTO hoy (clock_in registrado pero clock_out aún nulo)
     const { data: openRecord } = await supabase
-      .from('time_records')
+      .from('timeclock_records')
       .select('*')
       .eq('employee_id', employeeData.id)
       .eq('date', today)
-      .is('clock_out_time', null)
-      .eq('status', 'entrada') // Aseguramos que sea una entrada pendiente
+      .is('clock_out', null)
+      .not('clock_in', 'is', null)
       .maybeSingle();
 
     let resultData: ScanResultData;
@@ -290,32 +291,28 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       // --- ES SALIDA (UPDATE) ---
       type = 'salida';
 
-      const clockIn = new Date(openRecord.clock_in_time);
+      const clockIn = new Date(openRecord.clock_in);
       const clockOut = new Date(now);
       const diffMs = clockOut.getTime() - clockIn.getTime();
       totalHours = parseFloat((diffMs / (1000 * 60 * 60)).toFixed(2));
 
       // Actualizamos el registro existente
       const { error: updateError } = await supabase
-        .from('time_records')
+        .from('timeclock_records')
         .update({
-          clock_out_time: now,
-          // clock_out_method: 'QRCode', // Si la columna existe en tu schema real, descomenta
-          // clock_out_location: locationString // Si quisieras guardar ubicación de salida
-          status: 'completado', // Marcamos como cerrado/completado
-          notes: `Jornada finalizada: ${totalHours}h`
+          clock_out: now,
+          location_lat: location?.lat ?? null,
+          location_lng: location?.lng ?? null,
         })
         .eq('id', openRecord.id);
 
       if (updateError) {
         console.error('ERROR UPDATE SALIDA:', updateError);
-        alert('❌ ERROR AL CERRAR FICHAJE: ' + JSON.stringify(updateError));
         throw new Error('Error al actualizar la salida: ' + updateError.message);
       }
 
       // Actualizar resumen diario (daily_attendance)
-      // Nota: Si ya existe una entrada en daily, la actualizamos con la salida
-      await supabase.from('daily_attendance').upsert({
+      await upsertDailyAttendance({
         employee_id: employeeData.id,
         employee_name: employeeData.name,
         center_id: qrData.centerId.toString(),
@@ -325,7 +322,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         total_hours: totalHours,
         status: 'presente',
         updated_at: now
-      }, { onConflict: 'employee_id,date' });
+      });
 
       resultData = {
         type: 'salida',
@@ -346,27 +343,25 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       }) : null;
 
       const { error: insertError } = await supabase
-        .from('time_records')
+        .from('timeclock_records')
         .insert({
           employee_id: employeeData.id,
           center_id: Number(qrData.centerId),
           date: today,
-          clock_in_time: now,
-          clock_in_method: 'QRCode',
-          clock_in_location: locationString,
-          clock_in_qr_token: qrData.token,
-          status: 'entrada', // Estado inicial
-          notes: 'Inicio de jornada'
+          clock_in: now,
+          qr_token_used: qrData.token,
+          location_lat: location?.lat ?? null,
+          location_lng: location?.lng ?? null,
+          device_info: JSON.stringify({ userAgent: navigator.userAgent, timestamp: Date.now() }),
         });
 
       if (insertError) {
         console.error('ERROR INSERT ENTRADA:', insertError);
-        alert('❌ ERROR AL CREAR ENTRADA: ' + JSON.stringify(insertError));
         throw new Error('Error al crear la entrada: ' + insertError.message);
       }
 
       // Crear resumen diario
-      await supabase.from('daily_attendance').upsert({
+      await upsertDailyAttendance({
         employee_id: employeeData.id,
         employee_name: employeeData.name,
         center_id: qrData.centerId.toString(),
@@ -375,7 +370,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         clock_in_time: now,
         status: 'presente',
         updated_at: now
-      }, { onConflict: 'employee_id,date' });
+      });
 
       resultData = {
         type: 'entrada',

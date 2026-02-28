@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Users, UserPlus, UserMinus, Target, TrendingUp, Calendar, RefreshCw } from 'lucide-react';
-import { clientsService, type ClientMetrics as SupabaseClientMetrics } from '../../services/clientsService';
+import { clientsService, type ClientMetrics as SupabaseClientMetrics, type ClientCancellationMetrics } from '../../services/clientsService';
 import CancellationAnalysis from './CancellationAnalysis';
+import { ui } from '../../utils/ui';
+
 
 interface ClientsModuleProps {
   centerName: string;
@@ -42,7 +44,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
   }, [centerId, metrics.mes, metrics.año]);
 
   // Evitar actualizaciones innecesarias
-  const handleCancellationMetricsChange = useCallback((cancellationMetrics: any) => {
+  const handleCancellationMetricsChange = useCallback((cancellationMetrics: ClientCancellationMetrics) => {
     setMetrics(prev => ({
       ...prev,
       bajas_reales: cancellationMetrics.total_bajas
@@ -70,8 +72,8 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
     try {
       // Verificar si hay datos manuales introducidos
       const hasManualData = (metrics.altas_fundador || 0) > 0 ||
-                           (metrics.altas_normal || 0) > 0 ||
-                           (metrics.altas_bonos || 0) > 0;
+        (metrics.altas_normal || 0) > 0 ||
+        (metrics.altas_bonos || 0) > 0;
 
       const dataToSave = {
         center_id: metrics.center_id,
@@ -98,13 +100,13 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
       const success = await clientsService.saveClientMetrics(dataToSave);
 
       if (success) {
-        alert('✅ Datos guardados correctamente');
+        ui.success('✅ Datos guardados correctamente');
       } else {
-        alert('❌ Error al guardar los datos');
+        ui.error('❌ Error al guardar los datos');
       }
     } catch (error) {
       console.error('Error guardando datos:', error);
-      alert('❌ Error al guardar los datos');
+      ui.error('❌ Error al guardar los datos');
     }
 
     setLoading(false);
@@ -112,70 +114,27 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
 
   const syncFromAccounting = async () => {
     setLoading(true);
-    console.log('Iniciando sincronización desde contabilidad...');
+    console.log('Iniciando sincronización desde contabilidad via Supabase...');
 
     try {
-      // Buscar datos sincronizados desde contabilidad
-      const syncData = localStorage.getItem(`clients_sync_${centerId}`);
-      console.log('Datos encontrados en localStorage:', syncData);
+      // SEC-03: Sync directly from Supabase, not from localStorage
+      const { clientsService: cs } = await import('../../services/clientsService');
+      const result = await cs.getClientMetrics(centerId, centerName, metrics.mes, metrics.año);
 
-      if (syncData) {
-        const accountingData = JSON.parse(syncData);
-        console.log('Datos parseados:', accountingData);
-        console.log('Comparando fechas:', {
-          contabilidad: { mes: accountingData.mes, año: accountingData.año },
-          clientes: { mes: metrics.mes, año: metrics.año }
-        });
-
-        if (accountingData.mes === metrics.mes && accountingData.año === metrics.año) {
-          // Verificar si ya hay datos manuales en el período actual
-          const hasExistingManualData = (metrics.altas_fundador || 0) > 0 ||
-                                       (metrics.altas_normal || 0) > 0 ||
-                                       (metrics.altas_bonos || 0) > 0;
-
-          if (hasExistingManualData) {
-            const confirmOverwrite = window.confirm(
-              `⚠️ Ya existen datos manuales para ${MESES[metrics.mes - 1]} ${metrics.año}.\n\n` +
-              `Altas Fundador: ${metrics.altas_fundador || 0}\n` +
-              `Altas Normal: ${metrics.altas_normal || 0}\n` +
-              `Altas Bonos: ${metrics.altas_bonos || 0}\n\n` +
-              `¿Deseas SOBREESCRIBIR estos datos con los de contabilidad?`
-            );
-
-            if (!confirmOverwrite) {
-              setLoading(false);
-              return;
-            }
-          }
-
-          const updatedMetrics = {
-            ...metrics,
-            clientes_contabilidad: accountingData.totalClientes,
-            facturacion_total: accountingData.facturacionTotal || 0
-          };
-
-          console.log('Actualizando métricas:', updatedMetrics);
-          setMetrics(updatedMetrics);
-
-          // También guardar en Supabase
-          try {
-            await clientsService.saveClientMetrics(updatedMetrics);
-            console.log('Datos guardados en Supabase exitosamente');
-
-            const modeText = hasExistingManualData ? 'SOBREESCRITOS' : 'SINCRONIZADOS';
-            alert(`✅ Datos ${modeText}: ${accountingData.totalClientes} clientes y €${(accountingData.facturacionTotal || 0).toLocaleString('es-ES')} de facturación desde contabilidad`);
-          } catch (error) {
-            console.error('Error guardando en Supabase:', error);
-          }
-        } else {
-          alert(`❌ No hay datos de contabilidad para ${MESES[metrics.mes - 1]} ${metrics.año}. Datos disponibles para ${MESES[accountingData.mes - 1]} ${accountingData.año}`);
-        }
+      if (result && ((result.clientes_contabilidad ?? 0) > 0 || (result.facturacion_total ?? 0) > 0)) {
+        const updatedMetrics = {
+          ...metrics,
+          clientes_contabilidad: result.clientes_contabilidad || 0,
+          facturacion_total: result.facturacion_total || 0
+        };
+        setMetrics(updatedMetrics);
+        ui.success(`✅ Datos sincronizados: ${updatedMetrics.clientes_contabilidad} clientes y €${(updatedMetrics.facturacion_total || 0).toLocaleString('es-ES')} de facturación`);
       } else {
-        alert('❌ No hay datos de contabilidad para sincronizar. Asegúrate de guardar datos en el módulo de contabilidad primero.');
+        ui.error(`❌ No hay datos de contabilidad para ${MESES[metrics.mes - 1]} ${metrics.año}. Guarda datos en contabilidad primero.`);
       }
     } catch (error) {
-      console.error('Error parseando datos:', error);
-      alert('❌ Error al procesar los datos de sincronización');
+      console.error('Error sincronizando:', error);
+      ui.error('❌ Error al procesar los datos de sincronización');
     }
 
     setLoading(false);
@@ -191,7 +150,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
           <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>👥 Gestión de Clientes - {centerName}</h1>
           <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Métricas y sincronización con contabilidad</p>
         </div>
-        
+
         {/* Selector de Año y Mes Separados */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -252,16 +211,16 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               ))}
             </select>
           </div>
-          
-          <button 
+
+          <button
             onClick={syncFromAccounting}
             disabled={loading}
-            style={{ 
-              padding: '8px 12px', 
-              backgroundColor: '#059669', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '8px', 
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
               cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -272,48 +231,35 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             <RefreshCw style={{ width: '16px', height: '16px' }} />
             Sincronizar
           </button>
-          
-          <button 
+
+          <button
             onClick={async () => {
               setLoading(true);
-              const syncData = localStorage.getItem(`clients_sync_${centerId}`);
-              if (syncData) {
-                try {
-                  const accountingData = JSON.parse(syncData);
-                  console.log('🔄 FORZAR - Datos completos:', accountingData);
-                  
-                  const updatedMetrics = {
-                    ...metrics,
-                    clientes_contabilidad: accountingData.totalClientes,
-                    facturacion_total: accountingData.facturacionTotal || 0
-                  };
-                  
-                  console.log('🔄 FORZAR - Métricas actualizadas:', updatedMetrics);
-                  setMetrics(updatedMetrics);
-                  
-                  const saveResult = await clientsService.saveClientMetrics(updatedMetrics);
-                  console.log('🔄 FORZAR - Resultado guardado:', saveResult);
-                  
-                  // Forzar recarga de datos desde Supabase
-                  await loadClientMetrics();
-                  
-                  alert(`🔄 Forzado: ${accountingData.totalClientes} clientes y €${(accountingData.facturacionTotal || 0).toLocaleString('es-ES')} sincronizados`);
-                } catch (error) {
-                  console.error('Error en forzar:', error);
-                  alert('❌ Error en sincronización forzada');
+              try {
+                // SEC-03: Force sync via Supabase, not localStorage
+                const { clientsService: cs } = await import('../../services/clientsService');
+                const result = await cs.getClientMetrics(centerId, centerName, metrics.mes, metrics.año);
+                if (result) {
+                  setMetrics(prev => ({
+                    ...prev,
+                    clientes_contabilidad: result.clientes_contabilidad || 0,
+                    facturacion_total: result.facturacion_total || 0
+                  }));
+                  ui.info(`🔄 Forzado: ${result.clientes_contabilidad || 0} clientes sincronizados desde Supabase`);
                 }
-              } else {
-                alert('❌ No hay datos para sincronizar');
+              } catch (error) {
+                console.error('Error en forzar:', error);
+                ui.error('❌ Error en sincronización forzada');
               }
               setLoading(false);
             }}
             disabled={loading}
-            style={{ 
-              padding: '8px 12px', 
-              backgroundColor: '#f59e0b', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '8px', 
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
               cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -322,36 +268,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             }}
           >
             🔄 Forzar
-          </button>
-          
-          <button 
-            onClick={() => {
-              const syncData = localStorage.getItem(`clients_sync_${centerId}`);
-              console.log('🔍 DEBUG - localStorage key:', `clients_sync_${centerId}`);
-              console.log('🔍 DEBUG - Raw data:', syncData);
-              console.log('🔍 DEBUG - Current metrics:', metrics);
-              if (syncData) {
-                const parsed = JSON.parse(syncData);
-                console.log('🔍 DEBUG - Parsed data:', parsed);
-                alert(`Debug: ${parsed.totalClientes} clientes, facturación: ${parsed.facturacionTotal || 'NO DEFINIDA'}`);
-              } else {
-                alert('Debug: No hay datos en localStorage');
-              }
-            }}
-            style={{ 
-              padding: '8px 12px', 
-              backgroundColor: '#6b7280', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '8px', 
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '14px'
-            }}
-          >
-            🔍 Debug
           </button>
         </div>
       </div>
@@ -531,25 +447,25 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Bajas</label>
-                <input 
-                  type="number" 
-                  value={metrics.bajas_reales} 
-                  onChange={(e) => handleChange('bajas_reales', e.target.value)} 
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    border: '1px solid #d1d5db', 
+                <input
+                  type="number"
+                  value={metrics.bajas_reales}
+                  onChange={(e) => handleChange('bajas_reales', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '16px',
                     fontWeight: 'bold',
                     color: '#ef4444'
-                  }} 
+                  }}
                 />
-                
+
                 {/* Mostrar el desglose de bajas directamente debajo */}
                 <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
                   <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}>Distribución de bajas por tiempo</div>
-                  <CancellationAnalysis 
+                  <CancellationAnalysis
                     centerId={centerId}
                     mes={metrics.mes}
                     año={metrics.año}
@@ -558,22 +474,22 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>Leads</label>
-                <input 
-                  type="number" 
-                  value={metrics.leads} 
-                  onChange={(e) => handleChange('leads', e.target.value)} 
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    border: '1px solid #d1d5db', 
+                <input
+                  type="number"
+                  value={metrics.leads}
+                  onChange={(e) => handleChange('leads', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '16px',
                     fontWeight: 'bold',
                     color: '#3b82f6'
-                  }} 
+                  }}
                 />
               </div>
               <div>
@@ -610,7 +526,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
             <RefreshCw style={{ width: '20px', height: '20px' }} />
             Datos Sincronizados desde Contabilidad
           </h3>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ padding: '16px', backgroundColor: '#ecfdf5', borderRadius: '8px', border: '1px solid #10b981' }}>
               <p style={{ fontSize: '14px', color: '#065f46', margin: '0 0 4px 0', fontWeight: '500' }}>👥 Clientes desde Contabilidad</p>
@@ -619,7 +535,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
                 {metrics.mes}/{metrics.año} • Sincronizado automáticamente
               </p>
             </div>
-            
+
             <div style={{ padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #3b82f6' }}>
               <p style={{ fontSize: '14px', color: '#1e40af', margin: '0 0 4px 0', fontWeight: '500' }}>💰 Facturación Total</p>
               <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#2563eb', margin: 0 }}>€{(metrics.facturacion_total || 0).toLocaleString('es-ES')}</p>
@@ -628,7 +544,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               </p>
             </div>
           </div>
-          
+
           {(!metrics.clientes_contabilidad || metrics.clientes_contabilidad === 0) && (
             <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #f59e0b' }}>
               <p style={{ fontSize: '14px', color: '#92400e', margin: 0 }}>
@@ -666,13 +582,13 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               </div>
             </div>
           </div>
-          
+
           {/* Tarjeta de Bajas */}
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '12px', 
-            padding: '20px', 
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             textAlign: 'center',
             position: 'relative',
             gridColumn: 'span 1',
@@ -686,18 +602,18 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               <UserMinus style={{ width: '24px', height: '24px', color: '#ef4444' }} />
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#ef4444', margin: 0 }}>Bajas Totales</h3>
             </div>
-            <p style={{ 
-              fontSize: '36px', 
-              fontWeight: 'bold', 
-              color: '#ef4444', 
+            <p style={{
+              fontSize: '36px',
+              fontWeight: 'bold',
+              color: '#ef4444',
               margin: '0 0 12px 0',
               lineHeight: '1.2'
             }}>
               {metrics.bajas_reales}
             </p>
-            <p style={{ 
-              fontSize: '14px', 
-              color: '#9ca3af', 
+            <p style={{
+              fontSize: '14px',
+              color: '#9ca3af',
               margin: 0,
               display: 'flex',
               alignItems: 'center',
@@ -707,7 +623,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ centerName, centerId, onB
               {MESES[metrics.mes - 1]} {metrics.año}
             </p>
           </div>
-          
+
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'center' }}>
             <Users style={{ width: '32px', height: '32px', color: '#3b82f6', margin: '0 auto 12px' }} />
             <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{metrics.clientes_activos}</p>

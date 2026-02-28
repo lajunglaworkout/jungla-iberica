@@ -18,11 +18,14 @@ import {
     Key,
     ChevronRight
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // auth.resetPasswordForEmail + functions.invoke require supabase directly
+import { getDepartments, createDepartment, searchEmployeesPaginated, updateEmployeeDepartments, loadCenters } from '../../services/userService';
 import { CreateCenterModal } from '../CreateCenterModal';
 import EmployeeForm from '../EmployeeForm';
 import { Employee } from '../../types/employee';
 import { CenterType, CenterStatus } from '../../types/center';
+import { ui } from '../../utils/ui';
+
 
 // Tipos para la vista
 type ViewMode = 'users' | 'centers';
@@ -65,8 +68,8 @@ export const UserManagementSystem: React.FC = () => {
     // Solo cargar departamentos una vez al montar
     useEffect(() => {
         const loadDeps = async () => {
-            const { data: depsData } = await supabase.from('departments').select('*');
-            if (depsData) setDepartments(depsData);
+            const depsData = await getDepartments();
+            setDepartments(depsData);
         }
         loadDeps();
     }, []);
@@ -75,37 +78,12 @@ export const UserManagementSystem: React.FC = () => {
         setIsLoading(true);
         try {
             if (currentView === 'users') {
-                let query = supabase
-                    .from('employees')
-                    .select('*', { count: 'exact' });
-
-                if (filterRole !== 'all') {
-                    query = query.eq('role', filterRole);
-                }
-
-                if (searchTerm) {
-                    query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-                }
-
-                const from = page * pageSize;
-                const to = from + pageSize - 1;
-
-                const { data, count, error } = await query
-                    .order('created_at', { ascending: false })
-                    .range(from, to);
-
-                if (error) throw error;
-                setUsers(data || []);
-                setTotalUsers(count || 0);
-
+                const { users, total } = await searchEmployeesPaginated({ role: filterRole, searchTerm, page, pageSize });
+                setUsers(users as unknown as Employee[]);
+                setTotalUsers(total);
             } else {
-                const { data, error } = await supabase
-                    .from('centers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                setCenters(data || []);
+                const result = await loadCenters();
+                setCenters((result.centers || []) as unknown as CenterType[]);
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -127,7 +105,7 @@ export const UserManagementSystem: React.FC = () => {
     };
 
     const handlePasswordReset = async (email: string) => {
-        if (!confirm(`¿Estás seguro de enviar un correo de restablecimiento de contraseña a ${email}?`)) {
+        if (!await ui.confirm(`¿Estás seguro de enviar un correo de restablecimiento de contraseña a ${email}?`)) {
             return;
         }
 
@@ -137,16 +115,16 @@ export const UserManagementSystem: React.FC = () => {
             });
 
             if (error) throw error;
-            alert(`✅ Correo de recuperación enviado a ${email}`);
-        } catch (error: any) {
+            ui.success(`✅ Correo de recuperación enviado a ${email}`);
+        } catch (error: unknown) {
             console.error('Error sending reset email:', error);
-            alert(`❌ Error al enviar correo: ${error.message}`);
+            ui.error(`❌ Error al enviar correo: ${error instanceof Error ? error.message : String(error)}`);
         }
     };
 
     // Handlers
     const handleDeleteUser = async (user: Employee) => {
-        if (!confirm(`¿Estás seguro de que quieres eliminar al usuario ${user.first_name} ${user.last_name}?\nEsta acción es irreversible y eliminará tanto su acceso como su perfil.`)) {
+        if (!await ui.confirm(`¿Estás seguro de que quieres eliminar al usuario ${user.first_name} ${user.last_name}?\nEsta acción es irreversible y eliminará tanto su acceso como su perfil.`)) {
             return;
         }
 
@@ -171,11 +149,11 @@ export const UserManagementSystem: React.FC = () => {
 
             // Recargar lista
             loadData();
-            alert('✅ Usuario eliminado correctamente');
+            ui.success('✅ Usuario eliminado correctamente');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error deleting user:', error);
-            alert(`❌ Error al eliminar usuario: ${error.message}`);
+            ui.error(`❌ Error al eliminar usuario: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setIsLoading(false);
         }
@@ -197,11 +175,7 @@ export const UserManagementSystem: React.FC = () => {
                 if (dep) {
                     departmentId = dep.id;
                 } else {
-                    const { data: newDep } = await supabase
-                        .from('departments')
-                        .insert([{ name: userData.departamento }])
-                        .select()
-                        .single();
+                    const newDep = await createDepartment(userData.departamento);
                     if (newDep) {
                         departmentId = newDep.id;
                         setDepartments(prev => [...prev, newDep]);
@@ -212,7 +186,7 @@ export const UserManagementSystem: React.FC = () => {
             // Preparar datos para tabla employees
             // --- PREPARAR DATOS ---
             // Cast to any to allow 'name' property which is required by DB but not in Employee interface
-            const dbData: any = {
+            const dbData: Record<string, unknown> = {
                 name: userData.first_name, // REQUIRED by DB constraint
                 first_name: userData.first_name,
                 last_name: userData.last_name,
@@ -310,26 +284,16 @@ export const UserManagementSystem: React.FC = () => {
 
             // --- GUARDAR DEPARTAMENTOS (Common - Frontend Side) ---
             if (savedEmployeeId && userData.departments) {
-                // Borrar anteriores
-                await supabase.from('employee_departments').delete().eq('employee_id', savedEmployeeId);
-
-                // Insertar nuevos
-                if (userData.departments.length > 0) {
-                    const deptInserts = userData.departments.map(d => ({
-                        employee_id: savedEmployeeId,
-                        department_id: d.id
-                    }));
-                    await supabase.from('employee_departments').insert(deptInserts);
-                }
+                await updateEmployeeDepartments(savedEmployeeId, userData.departments as { id: number }[]);
             }
 
             setShowUserModal(false);
             loadData();
-            alert('✅ Usuario guardado correctamente');
+            ui.success('✅ Usuario guardado correctamente');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error saving user FULL OBJECT:', error);
-            alert(`Error al guardar usuario: ${error.message}`);
+            ui.error(`Error al guardar usuario: ${error instanceof Error ? error.message : String(error)}`);
         }
     };
 
@@ -365,7 +329,7 @@ export const UserManagementSystem: React.FC = () => {
 
                         <div className="flex gap-3 bg-white/10 p-1.5 rounded-xl backdrop-blur-md border border-white/10">
                             <button
-                                onClick={() => setCurrentView('users')}
+                                onClick={async () => setCurrentView('users')}
                                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${currentView === 'users'
                                     ? 'bg-white text-emerald-700 shadow-md'
                                     : 'text-emerald-50 hover:bg-white/10'
@@ -375,7 +339,7 @@ export const UserManagementSystem: React.FC = () => {
                                 Usuarios
                             </button>
                             <button
-                                onClick={() => setCurrentView('centers')}
+                                onClick={async () => setCurrentView('centers')}
                                 className={`px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${currentView === 'centers'
                                     ? 'bg-white text-emerald-700 shadow-md'
                                     : 'text-emerald-50 hover:bg-white/10'
@@ -399,7 +363,7 @@ export const UserManagementSystem: React.FC = () => {
                             type="text"
                             placeholder={`Buscar ${currentView === 'users' ? 'usuarios por nombre o email' : 'centros'}...`}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={async (e) => setSearchTerm(e.target.value)}
                             className="block w-full pl-12 pr-4 py-3.5 text-base border-2 border-gray-200 rounded-xl bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm"
                         />
                     </div>
@@ -409,7 +373,7 @@ export const UserManagementSystem: React.FC = () => {
                         {currentView === 'users' && (
                             <select
                                 value={filterRole}
-                                onChange={(e) => setFilterRole(e.target.value)}
+                                onChange={async (e) => setFilterRole(e.target.value)}
                                 className="px-5 py-3.5 text-base rounded-xl border-2 border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 cursor-pointer shadow-sm hover:border-emerald-400 transition-all duration-200 min-w-[200px]"
                             >
                                 <option value="all">📋 Todos los roles</option>
@@ -422,7 +386,7 @@ export const UserManagementSystem: React.FC = () => {
                         )}
 
                         <button
-                            onClick={() => currentView === 'users' ? handleCreateUser() : setShowCenterModal(true)}
+                            onClick={async () => currentView === 'users' ? handleCreateUser() : setShowCenterModal(true)}
                             className="flex items-center justify-center gap-3 px-8 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 font-semibold text-base shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform hover:-translate-y-0.5 whitespace-nowrap"
                         >
                             <Plus size={22} strokeWidth={2.5} />
@@ -500,21 +464,21 @@ export const UserManagementSystem: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
-                                                        onClick={() => handlePasswordReset(user.email)}
+                                                        onClick={async () => handlePasswordReset(user.email)}
                                                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-100"
                                                         title="Enviar correo de recuperación de contraseña"
                                                     >
                                                         <Key size={18} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleEditUser(user)}
+                                                        onClick={async () => handleEditUser(user)}
                                                         className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-100"
                                                         title="Editar usuario"
                                                     >
                                                         <Edit size={18} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDeleteUser(user)}
+                                                        onClick={async () => handleDeleteUser(user)}
                                                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-transparent hover:border-red-100"
                                                         title="Eliminar usuario"
                                                     >
@@ -533,14 +497,14 @@ export const UserManagementSystem: React.FC = () => {
                                 </span>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                                        onClick={async () => setPage(p => Math.max(0, p - 1))}
                                         disabled={page === 0}
                                         className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Anterior
                                     </button>
                                     <button
-                                        onClick={() => setPage(p => p + 1)}
+                                        onClick={async () => setPage(p => p + 1)}
                                         disabled={(page + 1) * pageSize >= totalUsers}
                                         className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >

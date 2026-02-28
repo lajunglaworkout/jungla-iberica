@@ -1,7 +1,7 @@
 // src/hooks/useLogistics.ts
 import { useState, useEffect, useCallback } from 'react';
 import logisticsService from '../services/logisticsService';
-import type { Database } from '../lib/supabase';
+import type { Database } from '../types/database.gen';
 
 // Tipos de la base de datos
 type InventoryItem = Database['public']['Tables']['inventory_items']['Row'];
@@ -27,12 +27,21 @@ export interface ExtendedSupplier extends Supplier {
   delivery_time?: string;
 }
 
+export interface OrderItem {
+  id?: number;
+  inventory_item_id?: number;
+  product_name?: string;
+  quantity: number;
+  unit_price?: number;
+  total_price?: number;
+}
+
 export interface ExtendedOrder extends SupplierOrder {
   supplier_name?: string;
   supplier_contact?: string;
   supplier_email?: string;
   supplier_phone?: string;
-  order_items?: any[];
+  order_items?: OrderItem[];
   type?: 'center_to_brand' | 'brand_to_supplier';
   from?: string;
   to?: string;
@@ -48,7 +57,7 @@ export interface LogisticsState {
   orders: ExtendedOrder[];
   categories: ProductCategory[];
   alerts: StockAlert[];
-  
+
   // Estados de carga
   loading: {
     inventory: boolean;
@@ -57,7 +66,7 @@ export interface LogisticsState {
     categories: boolean;
     alerts: boolean;
   };
-  
+
   // Errores
   errors: {
     inventory?: string;
@@ -88,30 +97,30 @@ export function useLogistics() {
   // ===== FUNCIONES DE CARGA =====
 
   const loadInventory = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       loading: { ...prev.loading, inventory: true },
       errors: { ...prev.errors, inventory: undefined }
     }));
 
     try {
       const items = await logisticsService.inventory.getAll();
-      
+
       // Transformar datos para la UI
       const extendedItems: ExtendedInventoryItem[] = items.map(item => ({
         ...item,
         stock_status: logisticsService.utils.getStockStatus(item.quantity, item.min_stock)
       }));
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         inventoryItems: extendedItems,
         loading: { ...prev.loading, inventory: false }
       }));
     } catch (error) {
       console.error('Error loading inventory:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         loading: { ...prev.loading, inventory: false },
         errors: { ...prev.errors, inventory: 'Error cargando inventario' }
       }));
@@ -119,37 +128,37 @@ export function useLogistics() {
   }, []);
 
   const loadSuppliers = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       loading: { ...prev.loading, suppliers: true },
       errors: { ...prev.errors, suppliers: undefined }
     }));
 
     try {
       const suppliers = await logisticsService.suppliers.getAll();
-      
+
       // Transformar datos para la UI (agregar campos calculados)
       const extendedSuppliers: ExtendedSupplier[] = suppliers.map(supplier => ({
         ...supplier,
-        // Datos mock para compatibilidad con la UI actual
-        total_orders: Math.floor(Math.random() * 200) + 10,
-        total_amount: Math.floor(Math.random() * 100000) + 5000,
-        last_order_date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        rating: 3.5 + Math.random() * 1.5,
-        category: ['Vestuario', 'Material Deportivo'], // Será calculado desde pedidos reales
+        // Valores por defecto para compatibilidad con la UI, a la espera de integración real
+        total_orders: 0,
+        total_amount: 0,
+        last_order_date: undefined,
+        rating: 0,
+        category: [],
         type: supplier.city?.includes('Sevilla') || supplier.city?.includes('Jerez') || supplier.city?.includes('Cádiz') ? 'local' : 'nacional',
-        delivery_time: `${Math.floor(Math.random() * 10) + 1}-${Math.floor(Math.random() * 10) + 5} días`
+        delivery_time: 'Consultar'
       }));
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         suppliers: extendedSuppliers,
         loading: { ...prev.loading, suppliers: false }
       }));
     } catch (error) {
       console.error('Error loading suppliers:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         loading: { ...prev.loading, suppliers: false },
         errors: { ...prev.errors, suppliers: 'Error cargando proveedores' }
       }));
@@ -157,17 +166,17 @@ export function useLogistics() {
   }, []);
 
   const loadOrders = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       loading: { ...prev.loading, orders: true },
       errors: { ...prev.errors, orders: undefined }
     }));
 
     try {
       const orders = await logisticsService.orders.getAll();
-      
+
       // Transformar datos para la UI
-      const extendedOrders: ExtendedOrder[] = orders.map((order: any) => ({
+      const extendedOrders: ExtendedOrder[] = orders.map((order) => ({
         ...order,
         type: 'brand_to_supplier', // Todos los pedidos de la BD son a proveedores
         from: 'La Jungla Central',
@@ -182,15 +191,15 @@ export function useLogistics() {
         created_by_name: 'Beni García - Director Logística'
       }));
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         orders: extendedOrders,
         loading: { ...prev.loading, orders: false }
       }));
     } catch (error) {
       console.error('Error loading orders:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         loading: { ...prev.loading, orders: false },
         errors: { ...prev.errors, orders: 'Error cargando pedidos' }
       }));
@@ -198,23 +207,23 @@ export function useLogistics() {
   }, []);
 
   const loadCategories = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       loading: { ...prev.loading, categories: true },
       errors: { ...prev.errors, categories: undefined }
     }));
 
     try {
       const categories = await logisticsService.categories.getAll();
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         categories,
         loading: { ...prev.loading, categories: false }
       }));
     } catch (error) {
       console.error('Error loading categories:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         loading: { ...prev.loading, categories: false },
         errors: { ...prev.errors, categories: 'Error cargando categorías' }
       }));
@@ -222,23 +231,23 @@ export function useLogistics() {
   }, []);
 
   const loadAlerts = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       loading: { ...prev.loading, alerts: true },
       errors: { ...prev.errors, alerts: undefined }
     }));
 
     try {
       const alerts = await logisticsService.alerts.getActive();
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         alerts,
         loading: { ...prev.loading, alerts: false }
       }));
     } catch (error) {
       console.error('Error loading alerts:', error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         loading: { ...prev.loading, alerts: false },
         errors: { ...prev.errors, alerts: 'Error cargando alertas' }
       }));
@@ -247,7 +256,7 @@ export function useLogistics() {
 
   // ===== FUNCIONES DE OPERACIONES =====
 
-  const createInventoryItem = useCallback(async (item: any) => {
+  const createInventoryItem = useCallback(async (item: Record<string, unknown>) => {
     try {
       // Transformar datos de la UI al formato de BD
       const dbItem = {
@@ -257,8 +266,8 @@ export function useLogistics() {
         quantity: parseInt(item.quantity) || 0,
         min_stock: parseInt(item.min_stock) || 0,
         max_stock: parseInt(item.max_stock) || 100,
-        cost_per_unit: parseFloat(item.purchase_price) || 0,
-        selling_price: parseFloat(item.sale_price) || 0,
+        purchase_price: parseFloat(item.purchase_price) || 0,
+        sale_price: parseFloat(item.sale_price) || 0,
         location: item.location,
         status: 'active'
       };
@@ -272,7 +281,7 @@ export function useLogistics() {
     }
   }, [loadInventory]);
 
-  const updateInventoryItem = useCallback(async (id: number, updates: any) => {
+  const updateInventoryItem = useCallback(async (id: number, updates: Record<string, unknown>) => {
     try {
       // Transformar datos de la UI al formato de BD
       const dbUpdates = {
@@ -282,8 +291,8 @@ export function useLogistics() {
         quantity: parseInt(updates.quantity) || 0,
         min_stock: parseInt(updates.min_stock) || 0,
         max_stock: parseInt(updates.max_stock) || 100,
-        cost_per_unit: parseFloat(updates.purchase_price) || 0,
-        selling_price: parseFloat(updates.sale_price) || 0,
+        purchase_price: parseFloat(updates.purchase_price) || 0,
+        sale_price: parseFloat(updates.sale_price) || 0,
         location: updates.location
       };
 
@@ -334,22 +343,22 @@ export function useLogistics() {
   return {
     // Estado
     ...state,
-    
+
     // Funciones de carga
     loadInventory,
     loadSuppliers,
     loadOrders,
     loadCategories,
     loadAlerts,
-    
+
     // Funciones de operaciones
     createInventoryItem,
     updateInventoryItem,
     updateOrderStatus,
-    
+
     // Funciones utilitarias
     getOrderStats,
-    
+
     // Servicios directos (para operaciones avanzadas)
     services: logisticsService
   };

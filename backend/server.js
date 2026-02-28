@@ -55,7 +55,7 @@ app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // Configurar multer para subidas de archivos
 // Aumentar límite a 500MB para soportar audios de 45+ minutos
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 500 * 1024 * 1024 // 500MB
@@ -103,7 +103,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     console.log('🔄 Enviando a AssemblyAI...');
 
     const assemblyAiKey = process.env.ASSEMBLYAI_API_KEY;
-    
+
     if (!assemblyAiKey) {
       return res.status(500).json({
         success: false,
@@ -180,7 +180,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
 
       // Log cada 30 segundos para audios largos
       if (attempts % 30 === 0) {
-        console.log(`⏳ Transcribiendo... ${attempts}s (${Math.round(attempts/60)} min)`);
+        console.log(`⏳ Transcribiendo... ${attempts}s (${Math.round(attempts / 60)} min)`);
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -234,11 +234,11 @@ app.post('/api/generate-minutes', express.json(), async (req, res) => {
     // Generar acta con DeepSeek AI
     console.log('🔄 Generando acta con DeepSeek AI...');
 
-    const fecha = new Date().toLocaleDateString('es-ES', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const fecha = new Date().toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
 
     const prompt = `Eres un asistente profesional que genera actas de reunión. Analiza la siguiente transcripción y genera un acta estructurada en formato Markdown.
@@ -312,40 +312,40 @@ Formato: Markdown profesional en español.`;
  */
 function extractTasks(minutes, participants) {
   const tasks = [];
-  
+
   // Buscar sección de "Acciones Pendientes" o similar
   const lines = minutes.split('\n');
   let inTasksSection = false;
-  
+
   lines.forEach((line, index) => {
     const lowerLine = line.toLowerCase();
-    
+
     // Detectar inicio de sección de tareas
-    if (lowerLine.includes('acciones pendientes') || 
-        lowerLine.includes('tareas asignadas') ||
-        lowerLine.includes('próximos pasos') ||
-        lowerLine.includes('action items')) {
+    if (lowerLine.includes('acciones pendientes') ||
+      lowerLine.includes('tareas asignadas') ||
+      lowerLine.includes('próximos pasos') ||
+      lowerLine.includes('action items')) {
       inTasksSection = true;
       return;
     }
-    
+
     // Detectar fin de sección (nuevo encabezado)
     if (inTasksSection && line.match(/^#{1,3}\s+\d+\./)) {
       inTasksSection = false;
       return;
     }
-    
+
     // Extraer tareas de la sección
     if (inTasksSection && (line.trim().startsWith('-') || line.trim().startsWith('*'))) {
       let taskText = line.replace(/^[-*]\s*/, '').trim();
-      
+
       // Ignorar líneas vacías o muy cortas
       if (taskText.length < 5) return;
-      
+
       // Extraer responsable si está en formato "Tarea | Responsable: Nombre"
       let assignedTo = 'Sin asignar';
       const responsableMatch = taskText.match(/\|\s*Responsable:\s*([^|]+)/i);
-      
+
       if (responsableMatch) {
         assignedTo = responsableMatch[1].trim();
         taskText = taskText.split('|')[0].trim();
@@ -358,7 +358,7 @@ function extractTasks(minutes, participants) {
           }
         }
       }
-      
+
       // Crear tarea
       const task = {
         title: taskText,
@@ -366,11 +366,11 @@ function extractTasks(minutes, participants) {
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         priority: 'media'
       };
-      
+
       tasks.push(task);
     }
   });
-  
+
   console.log(`📝 Tareas extraídas: ${tasks.length}`);
   return tasks;
 }
@@ -379,8 +379,8 @@ function extractTasks(minutes, participants) {
  * Root endpoint for Railway healthcheck
  */
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     service: 'Jungla Meetings Backend',
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -399,15 +399,92 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * SEC-01: AI Content Ideas Proxy
+ * The Google API Key never leaves the backend.
+ * Frontend calls this endpoint instead of Gemini API directly.
+ */
+app.post('/api/ai/content-ideas', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server' });
+    }
+
+    const { goal, context, posts } = req.body;
+
+    const contextStr = context ? `
+      Profile Context:
+      - Followers: ${context.followers}
+      - Engagement Rate: ${context.engagement_rate}%
+      - Recent Reach: ${context.reach_last_30d}
+    ` : '';
+
+    const postsStr = posts && posts.length > 0 ? `
+      Recent Top Posts:
+      ${posts.map(p => `- Type: ${p.type}, Caption: "${p.caption}...", Likes: ${p.likes}, Reach: ${p.reach}`).join('\n')}
+    ` : '';
+
+    const prompt = `
+      Act as an expert social media strategist for a gym/fitness brand.
+      Goal: ${goal} (e.g., growth, community, sales).
+      ${contextStr}
+      ${postsStr}
+      Based on this data (if available) and the goal, generate 3 specific, high-impact content ideas.
+      Return ONLY a valid JSON array with this structure:
+      [
+        {
+          "id": "1",
+          "title": "Short catchy title",
+          "description": "Detailed description of the content",
+          "type": "reel" | "carousel" | "story",
+          "difficulty": "easy" | "medium" | "hard",
+          "estimated_reach": "High" | "Medium" | "Low",
+          "reason": "Why this works based on the data/goal"
+        }
+      ]
+    `;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Gemini API error:', errorData);
+      return res.status(response.status).json({ error: 'Gemini API error', details: errorData });
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return res.status(500).json({ error: 'No response from AI' });
+    }
+
+    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const ideas = JSON.parse(cleanJson);
+    res.json({ ideas });
+  } catch (error) {
+    console.error('AI proxy error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+/**
  * Iniciar servidor
  */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║  🎙️  Backend de Transcripción de Reuniones                ║
+║  🎙️  Backend CRM La Jungla Ibérica                       ║
 ║  ✅ Servidor iniciado en puerto ${PORT}                      ║
 ║  📝 POST /api/transcribe - Transcribir audio              ║
 ║  📋 POST /api/generate-minutes - Generar acta             ║
+║  🤖 POST /api/ai/content-ideas - Ideas IA (proxy)         ║
 ║  🏥 GET /health - Verificar estado                        ║
 ╚════════════════════════════════════════════════════════════╝
   `);

@@ -7,7 +7,7 @@ export interface InventoryMovement {
     user_name: string;
     center_id: number;
     type: 'adjustment' | 'purchase' | 'consumption' | 'return' | 'initial';
-    quantity_change: number;
+    quantity: number;
     previous_quantity: number;
     new_quantity: number;
     reason: string;
@@ -95,9 +95,9 @@ class InventoryMovementService {
             }
 
             // Mapear datos para aplanar la estructura
-            const mappedMovements = data.map((m: any) => ({
+            const mappedMovements = data.map((m: Record<string, unknown> & { inventory_items?: { nombre_item?: string; categoria?: string; category?: string } }) => ({
                 ...m,
-                item_name: m.inventory_items?.nombre_item || m.inventory_items?.name || 'Item eliminado',
+                item_name: m.inventory_items?.nombre_item || 'Item eliminado',
                 item_category: m.inventory_items?.categoria || m.inventory_items?.category || 'Sin categoría'
             }));
 

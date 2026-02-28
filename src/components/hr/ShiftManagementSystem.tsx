@@ -4,9 +4,11 @@ import {
   Clock, Plus, Edit, Trash2, Users, Calendar, Save, X, 
   AlertCircle, CheckCircle, MapPin, RotateCcw
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getAllShifts, createShift, updateShift, deleteShift } from '../../services/hrService';
 import { useSession } from '../../contexts/SessionContext';
 import { useData } from '../../contexts/DataContext';
+import { ui } from '../../utils/ui';
+
 
 // ============ INTERFACES ============
 interface Shift {
@@ -76,7 +78,7 @@ const ShiftForm: React.FC<{
   shift: Shift | null;
   onSave: (shiftData: ShiftFormData) => void;
   onCancel: () => void;
-  centers: any[];
+  centers: Array<{ id: string | number; name?: string; nombre?: string }>;
 }> = ({ shift, onSave, onCancel, centers }) => {
   const [formData, setFormData] = useState<ShiftFormData>({
     name: shift?.name || '',
@@ -545,24 +547,20 @@ const ShiftManagementSystem: React.FC = () => {
     try {
       console.log('🔍 Cargando turnos...');
       
-      const { data: shiftsData, error: shiftsError } = await supabase
-        .from('shifts')
-        .select('*')
-        .order('center_id', { ascending: true })
-        .order('start_time', { ascending: true });
-      
+      const { data: shiftsData, error: shiftsError } = await getAllShifts();
+
       if (shiftsError) {
         console.error('❌ Error cargando turnos:', shiftsError);
-        setError(`Error al cargar turnos: ${shiftsError.message}`);
+        setError(`Error al cargar turnos: ${shiftsError}`);
         return;
       }
+
+      console.log('📊 Turnos cargados:', shiftsData.length);
+      setShifts(shiftsData as Shift[]);
       
-      console.log('📊 Turnos cargados:', shiftsData?.length || 0);
-      setShifts(shiftsData || []);
-      
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error general en loadShifts:', error);
-      setError(`Error al cargar los datos: ${error.message}`);
+      setError(`Error al cargar los datos: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -578,27 +576,22 @@ const ShiftManagementSystem: React.FC = () => {
     try {
       if (selectedShift) {
         console.log(`💾 Actualizando turno con ID: ${selectedShift.id}`);
-        const { error } = await supabase
-          .from('shifts')
-          .update({ ...shiftData, updated_at: new Date().toISOString() })
-          .eq('id', selectedShift.id);
-        if (error) throw error;
+        const result = await updateShift(selectedShift.id, { ...shiftData as Record<string, unknown>, updated_at: new Date().toISOString() });
+        if (!result.success) throw new Error(result.error);
         console.log('✅ Turno actualizado');
       } else {
         console.log('➕ Creando nuevo turno...');
-        const { error } = await supabase
-          .from('shifts')
-          .insert([shiftData]);
-        if (error) throw error;
+        const result = await createShift(shiftData as Record<string, unknown>);
+        if (!result.success) throw new Error(result.error);
         console.log('✅ Turno creado');
       }
       
       setShowForm(false);
       setSelectedShift(null);
       await loadShifts();
-    } catch (err: any) {
-      setError(err.message);
-      console.error("Error guardando turno:", err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+      console.error("Error guardando turno:", err instanceof Error ? err.message : err);
     } finally {
       setIsLoading(false);
     }
@@ -616,18 +609,14 @@ const ShiftManagementSystem: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('shifts')
-        .delete()
-        .eq('id', shift.id);
-      
-      if (error) throw error;
+      const result = await deleteShift(shift.id);
+      if (!result.success) throw new Error(result.error);
       
       console.log('✅ Turno eliminado');
       await loadShifts();
-    } catch (err: any) {
-      setError(err.message);
-      console.error("Error eliminando turno:", err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+      console.error("Error eliminando turno:", err instanceof Error ? err.message : err);
     } finally {
       setIsLoading(false);
     }
@@ -710,16 +699,16 @@ const ShiftManagementSystem: React.FC = () => {
                   onClick={async () => {
                     console.log('🔍 Verificando conexión con tablas...');
                     try {
-                      const { data, error } = await supabase.from('shifts').select('*').limit(1);
-                      if (error) {
-                        alert(`❌ Error: ${error.message}`);
-                        console.error('Error tabla shifts:', error);
+                      const { data, error: connError } = await getAllShifts();
+                      if (connError) {
+                        ui.error(`❌ Error: ${connError}`);
+                        console.error('Error tabla shifts:', connError);
                       } else {
-                        alert('✅ ¡Tablas funcionando correctamente! Puedes crear turnos.');
+                        ui.success('✅ ¡Tablas funcionando correctamente! Puedes crear turnos.');
                         console.log('✅ Tabla shifts accesible:', data);
                       }
-                    } catch (err: any) {
-                      alert(`❌ Error de conexión: ${err.message}`);
+                    } catch (err: unknown) {
+                      ui.error(`❌ Error de conexión: ${err instanceof Error ? err.message : String(err)}`);
                       console.error('Error verificación:', err);
                     }
                   }}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, MapPin } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 
 interface Evento {
     id: number;
@@ -40,15 +40,8 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onSelectEvent, onB
             const firstDay = new Date(year, month, 1).toISOString().split('T')[0];
             const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-            const { data, error } = await supabase
-                .from('eventos')
-                .select('id, nombre, fecha_evento, localizacion, estado')
-                .gte('fecha_evento', firstDay)
-                .lte('fecha_evento', lastDay)
-                .order('fecha_evento');
-
-            if (error) throw error;
-            setEventos(data || []);
+            const data = await eventService.eventos.getByDateRange(firstDay, lastDay);
+            setEventos(data);
         } catch (error) {
             console.error('Error loading eventos:', error);
         } finally {

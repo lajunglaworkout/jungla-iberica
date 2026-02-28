@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Download, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { insertTasks } from '../../services/taskService';
 import { createTaskNotification } from '../../services/notificationService';
 import { saveMeetingToHistory } from '../../services/meetingRecordingService';
+import { ui } from '../../utils/ui';
+
 
 interface Task {
   id?: string;
@@ -19,7 +21,7 @@ interface MeetingResultsPanelProps {
   tasks: Task[];
   meetingTitle: string;
   participants: string[];
-  employees: any[];
+  employees: Array<{ id: string | number; name?: string; email?: string }>;
   departmentId?: string;
   onTasksUpdate?: (tasks: Task[]) => void;
   onClose?: () => void;
@@ -116,7 +118,13 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
   const handleSaveMeeting = async () => {
     try {
       // Guardar tareas en la tabla tareas
-      const tasksToSave: any[] = [];
+      interface TaskToSave {
+        titulo: string; descripcion: string; asignado_a: string; asignado_nombre: string;
+        creado_por: string; prioridad: string; estado: string; fecha_limite: string;
+        verificacion_requerida: boolean; reunion_titulo: string; reunion_participantes: string;
+        reunion_fecha: string; reunion_acta: string; departamento: string;
+      }
+      const tasksToSave: TaskToSave[] = [];
 
       editingTasks.forEach(task => {
         const assignedPeople = Array.isArray(task.assignedTo)
@@ -204,14 +212,11 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
       }
 
       if (tasksToSave.length > 0) {
-        const { data, error } = await supabase
-          .from('tareas')
-          .insert(tasksToSave)
-          .select();
+        const { data, error } = await insertTasks(tasksToSave);
 
         if (error) {
           console.error('❌ Error guardando tareas:', error);
-          alert('Error al guardar las tareas: ' + error.message);
+          ui.error(`Error al guardar las tareas: ${error.message}`);
           return;
         }
 
@@ -241,7 +246,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
         console.warn('⚠️ No hay tareas para guardar');
       }
 
-      alert('✅ Reunión y tareas guardadas correctamente');
+      ui.success('✅ Reunión y tareas guardadas correctamente');
       onTasksUpdate?.(editingTasks);
       // Cerrar el modal después de guardar
       setTimeout(() => {
@@ -249,7 +254,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
       }, 500);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al guardar la reunión');
+      ui.error('Error al guardar la reunión');
     }
   };
 
@@ -497,7 +502,7 @@ export const MeetingResultsPanel: React.FC<MeetingResultsPanelProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <select
                         value={task.priority}
-                        onChange={(e) => handleTaskChange(index, 'priority', e.target.value as any)}
+                        onChange={(e) => handleTaskChange(index, 'priority', e.target.value as Task['priority'])}
                         style={{
                           padding: '8px',
                           border: '1px solid #d1d5db',

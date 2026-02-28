@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, Square, Coffee } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
-import { supabase } from '../../lib/supabase';
+
 
 const TimeTrackingDashboard: React.FC = () => {
   const { employee } = useSession();

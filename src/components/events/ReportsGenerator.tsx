@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, FileSpreadsheet, FileText, Calendar, Users, DollarSign, CheckCircle2, Loader2, Building2, TrendingUp, TrendingDown, Star, Award, Target, ArrowRight, Trophy, ChevronDown } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
+import { ui } from '../../utils/ui';
+
 
 interface Center {
     id: number;
@@ -67,17 +69,14 @@ export const ReportsGenerator: React.FC<ReportsGeneratorProps> = ({ onBack }) =>
     const loadData = async () => {
         setLoading(true);
         try {
-            const { data: centersData } = await supabase.from('centers').select('id, name').order('name');
-            setCenters(centersData || []);
+            const centersData = await eventService.centers.getAll();
+            setCenters(centersData);
 
-            const { data: eventosData } = await supabase
-                .from('eventos')
-                .select('*')
-                .order('fecha_evento', { ascending: false });
+            const eventosData = await eventService.eventos.getAll();
 
-            const { data: participantesData } = await supabase.from('evento_participantes').select('evento_id, asistio');
-            const { data: gastosData } = await supabase.from('evento_gastos').select('evento_id, coste');
-            const { data: encuestasData } = await supabase.from('evento_encuestas').select('evento_id, puntuacion_general');
+            const participantesData = await eventService.participantes.getAll('evento_id, asistio');
+            const gastosData = await eventService.gastos.getAll('evento_id, coste');
+            const encuestasData = await eventService.encuestas.getAll('evento_id, puntuacion_general');
 
             const reports: ReportData[] = (eventosData || []).map(evento => {
                 const eventParticipantes = (participantesData || []).filter(p => p.evento_id === evento.id);
@@ -257,7 +256,7 @@ export const ReportsGenerator: React.FC<ReportsGeneratorProps> = ({ onBack }) =>
 
         const selectedData = reportData.filter(r => selectedEventos.includes(r.evento.id));
         if (selectedData.length === 0) {
-            alert('Selecciona al menos un evento');
+            ui.info('Selecciona al menos un evento');
             return;
         }
 

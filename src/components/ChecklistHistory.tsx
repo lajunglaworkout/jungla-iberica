@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { getChecklistHistoryByCenter } from '../services/checklistHistoryService';
 import { Eye, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { ui } from '../utils/ui';
+
 
 interface ChecklistHistoryProps {
   centerName: string;
@@ -11,7 +13,7 @@ interface HistoryItem {
   date: string;
   completed_by: string | null;
   completed_at: string | null;
-  tasks: any[];
+  tasks: Record<string, unknown>[];
   created_at: string;
 }
 
@@ -30,39 +32,10 @@ const ChecklistHistory: React.FC<ChecklistHistoryProps> = ({ centerName }) => {
     setError(null);
 
     try {
-      // Buscar el centro por nombre para obtener su ID
-      const { data: centerData, error: centerError } = await supabase
-        .from('centers')
-        .select('id')
-        .eq('name', centerName)
-        .single();
-
-      if (centerError) {
-        console.error('❌ Error buscando centro:', centerError);
-        throw new Error(`Centro ${centerName} no encontrado`);
-      }
-
-      if (!centerData) {
-        throw new Error(`Centro ${centerName} no existe`);
-      }
-
-      console.log('🏢 Centro encontrado:', centerData);
-
-      // Cargar historial de checklists
-      const { data: historyData, error: historyError } = await supabase
-        .from('daily_checklists')
-        .select('*')
-        .eq('center_id', centerData.id)
-        .order('date', { ascending: false })
-        .limit(30);
-
-      if (historyError) {
-        console.error('❌ Error cargando historial:', historyError);
-        throw historyError;
-      }
-
-      console.log('✅ Historial cargado:', historyData?.length || 0, 'registros');
-      setHistory(historyData || []);
+      const { history: historyData, error } = await getChecklistHistoryByCenter(centerName, 30);
+      if (error) throw new Error(error);
+      console.log('✅ Historial cargado:', historyData.length, 'registros');
+      setHistory(historyData as unknown as HistoryItem[]);
     } catch (err) {
       console.error('❌ Error en loadHistory:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -302,7 +275,7 @@ const ChecklistHistory: React.FC<ChecklistHistoryProps> = ({ centerName }) => {
                       onClick={() => {
                         console.log('👁️ Ver detalles del checklist:', item.id);
                         // Aquí se implementaría la vista de detalles
-                        alert('Funcionalidad de detalles en desarrollo');
+                        ui.info('Funcionalidad de detalles en desarrollo');
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.backgroundColor = '#059669';

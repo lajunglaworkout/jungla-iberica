@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSession } from '../contexts/SessionContext';
-import { supabase } from '../lib/supabase';
-import SmartIncidentModal from './incidents/SmartIncidentModal';
-import { checklistHistoryService } from '../services/checklistHistoryService';
+import IncidentCreationModal from './incidents/IncidentCreationModal';
+import { devLog } from '../utils/devLogger';
+import { checklistHistoryService, upsertDailyChecklist } from '../services/checklistHistoryService';
 import { signatureService } from '../services/signatureService';
 import QRSignatureModal from './QRSignatureModal';
 
 import { useIsMobile } from '../hooks/useIsMobile';
+import { ui } from '../utils/ui';
+
 
 // Interfaces para tipos de datos
 interface Task {
@@ -23,7 +25,7 @@ interface ChecklistData {
   apertura: Task[];
   limpieza: Task[];
   cierre: Task[];
-  incidencias: any[];
+  incidencias: Record<string, unknown>[];
 }
 
 interface ChecklistCompleteSystemProps {
@@ -305,12 +307,12 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         if (incompleteYesterday) {
           console.log('⚠️ Checklist de ayer sin completar:', incompleteYesterday.date);
           // Opcional: Mostrar alerta al usuario
-          // alert(`⚠️ El checklist del ${incompleteYesterday.date} no fue completado`);
+          // ui.warning(`⚠️ El checklist del ${incompleteYesterday.date} no fue completado`);
         }
       }
     } catch (error) {
       console.error('❌ Error fatal al cargar checklist:', error);
-      alert('Error al cargar el checklist. Por favor, verifica tu conexión e intenta de nuevo.');
+      ui.error('Error al cargar el checklist. Por favor, verifica tu conexión e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -412,12 +414,12 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       // Guardar en BD
       await guardarEstadoProvisional('en_progreso');
 
-      alert(`✅ Apertura firmada por ${employee.name || employee.email}`);
+      ui.success(`✅ Apertura firmada por ${employee.name || employee.email}`);
     }
     // CASO 2: Sin empleado logueado → Mostrar QR
     else {
       console.log('📱 Mostrando QR para firma de apertura');
-      alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+      ui.info('📱 Por favor, escanea el código QR con tu móvil para firmar');
       handleMostrarQRFirmaApertura();
     }
   };
@@ -439,12 +441,12 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
       // Guardar en BD
       await guardarEstadoProvisional('completado');
 
-      alert(`✅ Cierre firmado por ${employee.name || employee.email}`);
+      ui.success(`✅ Cierre firmado por ${employee.name || employee.email}`);
     }
     // CASO 2: Sin empleado logueado → Mostrar QR
     else {
       console.log('📱 Mostrando QR para firma de cierre');
-      alert('📱 Por favor, escanea el código QR con tu móvil para firmar');
+      ui.info('📱 Por favor, escanea el código QR con tu móvil para firmar');
       handleMostrarQRFirmaCierre();
     }
   };
@@ -477,22 +479,17 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
 
       console.log('📤 Guardando en Supabase:', checklistData);
 
-      const { data, error } = await supabase
-        .from('daily_checklists')
-        .upsert(checklistData, {
-          onConflict: 'center_id,date'
-        })
-        .select();
+      const { success, data, error } = await upsertDailyChecklist(checklistData as unknown as Record<string, unknown>);
 
-      if (error) {
+      if (!success) {
         console.error('❌ Error guardando en Supabase:', error);
-        alert('⚠️ Error al guardar en la base de datos. Verifica tu conexión.');
+        ui.warning('⚠️ Error al guardar en la base de datos. Verifica tu conexión.');
       } else {
         console.log('✅ Checklist guardado en Supabase:', data);
       }
     } catch (error) {
       console.error('❌ Error fatal en guardarEstadoProvisional:', error);
-      alert('⚠️ Error al guardar. Por favor, intenta de nuevo.');
+      ui.warning('⚠️ Error al guardar. Por favor, intenta de nuevo.');
     }
   };
 
@@ -509,8 +506,6 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
     if (!tasks || tasks.length === 0) {
       return <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay tareas en esta sección</p>;
     }
-
-    const isMobile = window.innerWidth < 768;
 
     return tasks.map((tarea: Task, index: number) => (
       <div key={tarea.id || index} style={{
@@ -675,11 +670,11 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           <div style={{
             backgroundColor: '#059669',
             color: 'white',
-            padding: window.innerWidth < 768 ? '16px' : '20px',
+            padding: isMobile ? '16px' : '20px',
             borderRadius: '12px',
-            marginBottom: window.innerWidth < 768 ? '16px' : '24px'
+            marginBottom: isMobile ? '16px' : '24px'
           }}>
-            <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
+            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
             <p style={{ fontSize: '18px', margin: '0', opacity: 0.9 }}>📅 Fecha: {new Date().toLocaleDateString('es-ES', {
               weekday: 'long',
               year: 'numeric',
@@ -914,8 +909,8 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         </>
       )}
 
-      {/* Smart Incident Modal */}
-      <SmartIncidentModal
+      {/* BUG-08: Unified Incident Creation Modal */}
+      <IncidentCreationModal
         isOpen={showIncidentModal}
         onClose={() => {
           setShowIncidentModal(false);
@@ -925,7 +920,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
         centerId={centerId || ''}
         initialDescription={selectedTaskForIncident ? `Problema con tarea: ${selectedTaskForIncident.titulo}` : ''}
         onIncidentCreated={(incident) => {
-          console.log('✅ Incidencia creada desde checklist:', incident);
+          devLog('✅ Incidencia creada desde checklist:', incident);
           setChecklist(prev => ({
             ...prev,
             incidencias: [...prev.incidencias, incident]
@@ -949,7 +944,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           };
           setFirmaApertura(nuevaFirma);
           guardarEstadoProvisional('en_progreso');
-          alert(`✅ Apertura firmada por ${employeeName}`);
+          ui.success(`✅ Apertura firmada por ${employeeName}`);
         }}
       />
 
@@ -969,7 +964,7 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
           };
           setFirmaCierre(nuevaFirma);
           guardarEstadoProvisional('completado');
-          alert(`✅ Cierre firmado por ${employeeName}`);
+          ui.success(`✅ Cierre firmado por ${employeeName}`);
         }}
       />
     </div >

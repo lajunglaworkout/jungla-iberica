@@ -1,17 +1,31 @@
 // src/services/checklistHistoryService.ts
 import { supabase } from '../lib/supabase';
 
+export interface ChecklistTask {
+  id?: string | number;
+  nombre?: string;
+  completada?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ChecklistFirma {
+  empleado?: string;
+  timestamp?: string;
+  firma?: string;
+  [key: string]: unknown;
+}
+
 export interface ChecklistHistory {
   id?: number;
   center_id: string;
   center_name: string;
   date: string;
-  apertura_tasks: any[];
-  limpieza_tasks: any[];
-  cierre_tasks: any[];
-  incidencias: any[];
-  firma_apertura?: any;
-  firma_cierre?: any;
+  apertura_tasks: ChecklistTask[];
+  limpieza_tasks: ChecklistTask[];
+  cierre_tasks: ChecklistTask[];
+  incidencias: ChecklistTask[];
+  firma_apertura?: ChecklistFirma;
+  firma_cierre?: ChecklistFirma;
   status: 'pendiente' | 'en_progreso' | 'completado';
   completed_at?: string;
   created_at?: string;
@@ -144,9 +158,9 @@ class ChecklistHistoryService {
       const completionRate = totalDays > 0 ? (completedDays / totalDays) * 100 : 0;
       
       const totalTasks = history.reduce((sum, h) => {
-        const apertura = h.apertura_tasks?.filter((t: any) => t.completada).length || 0;
-        const limpieza = h.limpieza_tasks?.filter((t: any) => t.completada).length || 0;
-        const cierre = h.cierre_tasks?.filter((t: any) => t.completada).length || 0;
+        const apertura = h.apertura_tasks?.filter((t) => t.completada).length || 0;
+        const limpieza = h.limpieza_tasks?.filter((t) => t.completada).length || 0;
+        const cierre = h.cierre_tasks?.filter((t) => t.completada).length || 0;
         return sum + apertura + limpieza + cierre;
       }, 0);
       
@@ -232,5 +246,42 @@ class ChecklistHistoryService {
   }
 }
 
+export const upsertDailyChecklist = async (
+  data: Record<string, unknown>
+): Promise<{ success: boolean; data?: Record<string, unknown>[]; error?: string }> => {
+  try {
+    const { data: result, error } = await supabase
+      .from('daily_checklists')
+      .upsert(data, { onConflict: 'center_id,date' })
+      .select();
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: (result ?? []) as Record<string, unknown>[] };
+  } catch { return { success: false, error: 'Error guardando checklist' }; }
+};
+
 export const checklistHistoryService = new ChecklistHistoryService();
 export default checklistHistoryService;
+
+/** Obtiene el historial de checklists buscando primero el centro por nombre */
+export const getChecklistHistoryByCenter = async (
+  centerName: string,
+  days: number = 30
+): Promise<{ history: ChecklistHistory[]; centerId: string | null; error?: string }> => {
+  try {
+    const { data: centerData, error: centerError } = await supabase
+      .from('centers')
+      .select('id')
+      .eq('name', centerName)
+      .single();
+
+    if (centerError || !centerData) {
+      return { history: [], centerId: null, error: `Centro ${centerName} no encontrado` };
+    }
+
+    const centerId = String(centerData.id);
+    const history = await checklistHistoryService.getChecklistHistory(centerId, days);
+    return { history, centerId };
+  } catch (err) {
+    return { history: [], centerId: null, error: String(err) };
+  }
+};

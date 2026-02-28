@@ -10,7 +10,8 @@ export async function testSupabaseConnection() {
     
     // Test 2: Verificar conectividad básica
     console.log('🔍 Test 2: Verificando conectividad...');
-    const { data, error } = await supabase.from('empleados').select('count').limit(1);
+    // AUDIT FIX: 'empleados' no existe → usar 'employees'
+    const { data, error } = await supabase.from('employees').select('count').limit(1);
     
     if (error) {
       console.error('❌ Test 2 falló:', error);

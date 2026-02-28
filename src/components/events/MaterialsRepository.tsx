@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Upload, Download, Trash2, Search, Image, FileVideo, File, Link2, X, Check, FolderOpen, ChevronRight, Calendar, ArrowLeft, Building2, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface Material {
     id: number;
@@ -68,17 +71,14 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
     const loadData = async () => {
         setLoading(true);
         try {
-            const { data: eventosData } = await supabase
-                .from('eventos')
-                .select('id, nombre, fecha_evento')
-                .order('fecha_evento', { ascending: false });
-            setEventos(eventosData || []);
+            const eventosData = await eventService.eventos.getWithFields('id, nombre, fecha_evento', {
+                orderBy: 'fecha_evento',
+                ascending: false
+            });
+            setEventos(eventosData);
 
-            const { data: materialesData } = await supabase
-                .from('evento_materiales')
-                .select('*')
-                .order('created_at', { ascending: false });
-            setMateriales(materialesData || []);
+            const materialesData = await eventService.materiales.getAll();
+            setMateriales(materialesData);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -101,7 +101,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
             setFormData({ ...formData, url_archivo: publicUrl, tamano_kb: Math.round(file.size / 1024) });
         } catch (error) {
             console.error('Error uploading file:', error);
-            alert('❌ Error al subir archivo. Asegúrate de que existe el bucket "eventos" en Supabase Storage.');
+            ui.error('❌ Error al subir archivo. Asegúrate de que existe el bucket "eventos" en Supabase Storage.');
         } finally {
             setUploading(false);
         }
@@ -109,30 +109,30 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
 
     const handleSave = async () => {
         if (!formData.nombre) {
-            alert('El nombre es obligatorio');
+            ui.error('El nombre es obligatorio');
             return;
         }
 
         try {
-            await supabase.from('evento_materiales').insert([{
+            await eventService.materiales.create({
                 ...formData,
                 center_id: isAdmin ? null : userCenterId,
                 created_by: Number(employee?.id)
-            }]);
+            } as Parameters<typeof eventService.materiales.create>[0]);
             loadData();
             setFormData({ tipo: 'documento' });
             setViewMode('main');
-            alert('✅ Material subido correctamente');
+            ui.success('✅ Material subido correctamente');
         } catch (error) {
             console.error('Error saving material:', error);
-            alert('Error al guardar');
+            ui.error('Error al guardar');
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('¿Eliminar este material?')) return;
+        if (!await ui.confirm('¿Eliminar este material?')) return;
         try {
-            await supabase.from('evento_materiales').delete().eq('id', id);
+            await eventService.materiales.delete(id);
             loadData();
         } catch (error) {
             console.error('Error deleting material:', error);
@@ -206,7 +206,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
                     {/* Upload Card */}
                     <button
-                        onClick={() => setViewMode('upload')}
+                        onClick={async () => setViewMode('upload')}
                         style={{
                             padding: '40px 32px',
                             backgroundColor: 'white',
@@ -242,7 +242,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
 
                     {/* Download Card */}
                     <button
-                        onClick={() => setViewMode('download')}
+                        onClick={async () => setViewMode('download')}
                         style={{
                             padding: '40px 32px',
                             backgroundColor: 'white',
@@ -303,7 +303,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
         return (
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <button
-                    onClick={() => { setViewMode('main'); setFormData({ tipo: 'documento' }); }}
+                    onClick={async () => { setViewMode('main'); setFormData({ tipo: 'documento' }); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '24px' }}
                 >
                     <ArrowLeft size={18} /> Volver
@@ -325,7 +325,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                                onChange={async (e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                                 style={{ display: 'none' }}
                             />
                             <input
@@ -333,7 +333,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                                 type="file"
                                 accept="image/*"
                                 capture="environment"
-                                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                                onChange={async (e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                                 style={{ display: 'none' }}
                             />
 
@@ -341,7 +341,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 {/* File picker button */}
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
+                                    onClick={async () => fileInputRef.current?.click()}
                                     disabled={uploading}
                                     style={{
                                         padding: '32px 16px',
@@ -364,7 +364,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
 
                                 {/* Camera button */}
                                 <button
-                                    onClick={() => cameraInputRef.current?.click()}
+                                    onClick={async () => cameraInputRef.current?.click()}
                                     disabled={uploading}
                                     style={{
                                         padding: '32px 16px',
@@ -402,7 +402,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                                         </span>
                                     </div>
                                     <button
-                                        onClick={() => setFormData({ ...formData, url_archivo: undefined, tamano_kb: undefined })}
+                                        onClick={async () => setFormData({ ...formData, url_archivo: undefined, tamano_kb: undefined })}
                                         style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer' }}
                                     >
                                         <X size={16} color="#16a34a" />
@@ -416,7 +416,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                             <input
                                 type="text"
                                 value={formData.nombre || ''}
-                                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                onChange={async (e) => setFormData({ ...formData, nombre: e.target.value })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                 placeholder="Factura proveedor, Cartel evento..."
                             />
@@ -426,7 +426,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Asociar a evento (opcional)</label>
                             <select
                                 value={formData.evento_id || ''}
-                                onChange={(e) => setFormData({ ...formData, evento_id: e.target.value ? Number(e.target.value) : undefined })}
+                                onChange={async (e) => setFormData({ ...formData, evento_id: e.target.value ? Number(e.target.value) : undefined })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                             >
                                 <option value="">Sin asociar (material general)</option>
@@ -443,7 +443,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                                         <button
                                             key={tipo}
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, tipo })}
+                                            onClick={async () => setFormData({ ...formData, tipo })}
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -469,7 +469,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Descripción (opcional)</label>
                             <textarea
                                 value={formData.descripcion || ''}
-                                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                                onChange={async (e) => setFormData({ ...formData, descripcion: e.target.value })}
                                 style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', minHeight: '80px' }}
                                 placeholder="Notas sobre este material..."
                             />
@@ -478,7 +478,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
 
                     <div style={{ padding: '20px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <button
-                            onClick={() => { setViewMode('main'); setFormData({ tipo: 'documento' }); }}
+                            onClick={async () => { setViewMode('main'); setFormData({ tipo: 'documento' }); }}
                             style={{ padding: '12px 24px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                         >
                             Cancelar
@@ -511,7 +511,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
         return (
             <div style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <button
-                    onClick={() => setViewMode('main')}
+                    onClick={async () => setViewMode('main')}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '24px' }}
                 >
                     <ArrowLeft size={18} /> Volver
@@ -524,7 +524,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
 
                 {/* General Materials Card */}
                 <button
-                    onClick={() => { setSelectedEventoId(null); setViewMode('event-materials'); }}
+                    onClick={async () => { setSelectedEventoId(null); setViewMode('event-materials'); }}
                     style={{
                         width: '100%',
                         padding: '20px 24px',
@@ -567,7 +567,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                         return (
                             <button
                                 key={evento.id}
-                                onClick={() => { setSelectedEventoId(evento.id); setViewMode('event-materials'); }}
+                                onClick={async () => { setSelectedEventoId(evento.id); setViewMode('event-materials'); }}
                                 style={{
                                     width: '100%',
                                     padding: '16px 20px',
@@ -620,7 +620,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
         return (
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <button
-                    onClick={() => { setViewMode('download'); setSelectedEventoId(null); setSearchTerm(''); }}
+                    onClick={async () => { setViewMode('download'); setSelectedEventoId(null); setSearchTerm(''); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '24px' }}
                 >
                     <ArrowLeft size={18} /> Volver a eventos
@@ -637,7 +637,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                             type="text"
                             placeholder="Buscar..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={async (e) => setSearchTerm(e.target.value)}
                             style={{ padding: '10px 12px 10px 40px', border: '1px solid #e5e7eb', borderRadius: '8px', width: '250px' }}
                         />
                     </div>
@@ -693,7 +693,7 @@ export const MaterialsRepository: React.FC<MaterialsRepositoryProps> = ({ onBack
                                         )}
                                         {isAdmin && (
                                             <button
-                                                onClick={() => handleDelete(material.id)}
+                                                onClick={async () => handleDelete(material.id)}
                                                 style={{ padding: '10px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                                             >
                                                 <Trash2 size={16} color="#dc2626" />

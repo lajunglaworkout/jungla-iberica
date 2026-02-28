@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
-import { Employee } from '../types/employee';
-import { supabase } from '../lib/supabase';
+import { Employee, UserRole } from '../types/employee';
+
+import { ui } from '../utils/ui';
+
 
 interface EmployeeFormProps {
   employee?: Employee | null;
@@ -126,7 +128,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
 
     if (!validation.isValid) {
       console.log('⚠️ Formulario no válido, abortando...');
-      alert('⚠️ Por favor completa todos los campos obligatorios:\n' + Object.values(validation.errors).join('\n'));
+      ui.warning(`⚠️ Por favor completa todos los campos obligatorios:\n${Object.values(validation.errors).join('\n')}`);
       return;
     }
 
@@ -536,7 +538,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                 <label style={labelStyle}>Rol en el Sistema</label>
                 <select
                   value={formData.role || 'Empleado'}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                   style={inputStyle}
                   required
                 >
@@ -576,7 +578,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                 <label style={labelStyle}>Tipo de Contrato</label>
                 <select
                   value={formData.contract_type || ''}
-                  onChange={(e) => setFormData({ ...formData, contract_type: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, contract_type: e.target.value as Employee['contract_type'] })}
                   style={inputStyle}
                   required
                 >
@@ -592,7 +594,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                 <label style={labelStyle}>Jornada</label>
                 <select
                   value={formData.work_schedule || ''}
-                  onChange={(e) => setFormData({ ...formData, work_schedule: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, work_schedule: e.target.value as Employee['work_schedule'] })}
                   style={inputStyle}
                   required
                 >
@@ -655,7 +657,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSave, onCancel,
                 <label style={labelStyle}>Nivel de Estudios</label>
                 <select
                   value={formData.education_level || ''}
-                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value as Employee['education_level'] })}
                   style={inputStyle}
                 >
                   <option value="">Seleccionar...</option>

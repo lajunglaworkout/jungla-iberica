@@ -53,6 +53,8 @@ interface InspectionFormData {
 }
 
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
 
 const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = ({
   userEmail,
@@ -182,11 +184,11 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
         console.log(`✅ Foto subida correctamente: ${result.url}`);
       } else {
         console.error('❌ Error subiendo foto:', result.error);
-        alert('Error al subir la foto. Inténtalo de nuevo.');
+        ui.error('Error al subir la foto. Inténtalo de nuevo.');
       }
     } catch (error) {
       console.error('❌ Error en handlePhotoUpload:', error);
-      alert('Error al subir la foto. Inténtalo de nuevo.');
+      ui.error('Error al subir la foto. Inténtalo de nuevo.');
     }
   };
 
@@ -246,7 +248,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
       });
 
       if (result.success) {
-        alert('✅ Inspección enviada correctamente');
+        ui.success('✅ Inspección enviada correctamente');
         console.log('✅ Inspección creada con ID:', result.data?.id);
         if (onClose) onClose();
       } else {
@@ -255,7 +257,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
 
     } catch (error) {
       console.error('❌ Error enviando inspección:', error);
-      alert('❌ Error al enviar la inspección. Inténtalo de nuevo.');
+      ui.error('❌ Error al enviar la inspección. Inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -340,7 +342,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
       {/* Sticky Mobile Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 md:relative md:bg-transparent md:border-0 md:p-0 md:mt-8 z-20">
         <div className="max-w-4xl mx-auto" style={{
-          width: window.innerWidth < 768 ? '100%' : 'auto'
+          width: isMobile ? '100%' : 'auto'
         }}>
           <button
             onClick={() => setCurrentStep(1)}
@@ -403,7 +405,7 @@ const MaintenanceInspectionSystem: React.FC<MaintenanceInspectionSystemProps> = 
                       {Object.entries(MAINTENANCE_STATUS).map(([status, config]) => (
                         <button
                           key={status}
-                          onClick={() => handleStatusChange(itemId, status as any)}
+                          onClick={() => handleStatusChange(itemId, status as 'bien' | 'regular' | 'mal')}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${item.status === status
                             ? 'text-white'
                             : 'text-gray-600 bg-gray-100 hover:bg-gray-200'

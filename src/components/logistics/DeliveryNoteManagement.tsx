@@ -11,38 +11,22 @@ interface Props {
 export const DeliveryNoteManagement: React.FC<Props> = ({ userLocation, userRole }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'paid'>('pending');
 
-  const mockNotes: DeliveryNote[] = [
-    {
-      id: 'dn-001',
-      deliveryNumber: 'ALB-2025-001',
-      orderId: 'order-001',
-      fromLocation: 'central',
-      toLocation: 'sevilla',
-      deliveredBy: 'logistica@lajungla.com',
-      deliveredAt: '2025-01-20T14:30:00Z',
-      receivedBy: 'francisco.giraldez@lajungla.com',
-      receivedAt: '2025-01-20T16:45:00Z',
-      items: [],
-      totalAmount: 102.50,
-      isReceived: true,
-      paymentStatus: 'pendiente'
-    }
-  ];
+  const mockNotes: DeliveryNote[] = [];
 
-  const filteredNotes = mockNotes.filter(note => 
+  const filteredNotes = mockNotes.filter(note =>
     activeTab === 'pending' ? note.paymentStatus === 'pendiente' : note.paymentStatus === 'pagado'
   );
 
   return (
     <div style={{ padding: '1.5rem' }}>
       <h1>Albaranes y Facturación</h1>
-      
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #e5e7eb' }}>
         {['pending', 'paid'].map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => setActiveTab(tab as 'pending' | 'paid')}
             style={{
               padding: '0.75rem 1rem',
               border: 'none',

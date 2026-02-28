@@ -28,11 +28,10 @@ export const inventoryService = {
         .from('inventory_items')
         .select(`
           *,
-          product_categories(name),
           suppliers(name, contact_person, email)
         `)
         .eq('status', 'active')
-        .order('name');
+        .order('nombre_item');
 
       if (error) {
         console.error('Error fetching inventory:', error);
@@ -358,7 +357,7 @@ export const alertService = {
         .from('stock_alerts')
         .select(`
           *,
-          inventory_items(name, sku, quantity, min_stock)
+          inventory_items(nombre_item, codigo, quantity, min_stock)
         `)
         .eq('is_resolved', false)
         .order('created_at', { ascending: false });
@@ -420,6 +419,140 @@ export const logisticsUtils = {
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('es-ES');
   }
+};
+
+// Pedidos internos (tabla 'orders', distinta de supplier_orders)
+export const getOrdersByStatus = async (statusFilter: string[]): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .in('status', statusFilter)
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+// ── LogisticsManagementSystem helpers ────────────────────────────────────────
+
+export const getInventoryAlerts = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('id, nombre_item, quantity, min_stock, center_id')
+      .order('center_id');
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const getInventoryByCenters = async (centerIds: number[]): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('inventory_items').select('*').in('center_id', centerIds);
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const getOrders = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('orders').select('*').order('order_date', { ascending: false });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const getSuppliersList = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('suppliers').select('*').order('name', { ascending: true });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const getToolsList = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase.from('tools').select('*').order('name', { ascending: true });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const getPendingUniformRequests = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('uniform_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('requested_at', { ascending: false });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const deleteOrder = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('orders').delete().eq('id', orderId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+};
+
+export const markOrderSent = async (orderId: string, sentDate: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('orders').update({ status: 'sent', sent_date: sentDate }).eq('id', orderId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+};
+
+export const deleteSupplierById = async (supplierId: number): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('suppliers').delete().eq('id', supplierId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+};
+
+export const deleteToolById = async (toolId: number): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('tools').delete().eq('id', toolId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+};
+
+export const createInventoryItem = async (data: Record<string, unknown>): Promise<{ data: Record<string, unknown> | null; error?: string }> => {
+  try {
+    const { data: result, error } = await supabase.from('inventory_items').insert(data).select().single();
+    if (error) return { data: null, error: error.message };
+    return { data: result as Record<string, unknown> };
+  } catch (err) { return { data: null, error: String(err) }; }
+};
+
+export const deleteInventoryItem = async (id: number): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('inventory_items').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+};
+
+export const getInventoryItemById = async (id: number): Promise<{ data: Record<string, unknown> | null; error?: string }> => {
+  try {
+    const { data, error } = await supabase.from('inventory_items').select('*').eq('id', id).single();
+    if (error) return { data: null, error: error.message };
+    return { data: data as Record<string, unknown> };
+  } catch (err) { return { data: null, error: String(err) }; }
+};
+
+export const updateInventoryItem = async (id: number, data: Record<string, unknown>): Promise<{ data: Record<string, unknown>[] | null; error?: string }> => {
+  try {
+    const { data: result, error } = await supabase.from('inventory_items').update(data).eq('id', id).select();
+    if (error) return { data: null, error: error.message };
+    return { data: (result ?? []) as Record<string, unknown>[] };
+  } catch (err) { return { data: null, error: String(err) }; }
 };
 
 // Exportar todos los servicios

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, Dumbbell } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // NOTE: supabase.auth.signInWithPassword is auth-specific, no service exists for login. Employee lookup could use userService.getUserByEmail
 import { useSession } from '../contexts/SessionContext';
 import { runFullDiagnostic } from '../utils/supabaseTest';
 import { APP_VERSION, BUILD_DATE } from '../version';
+import { ui } from '../utils/ui';
+
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -151,7 +153,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSubmit(e as any);
+      handleSubmit(e as unknown as React.FormEvent);
     }
   };
 
@@ -330,7 +332,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                     type="button"
                     className="jungla-forgot-password"
                     onClick={() => {
-                      alert('Funcionalidad de recuperación de contraseña por implementar');
+                      ui.info('Funcionalidad de recuperación de contraseña por implementar');
                     }}
                   >
                     ¿Olvidaste tu contraseña?
@@ -361,7 +363,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   <button
                     className="jungla-support-link"
                     onClick={() => {
-                      alert('Contacta con soporte: soporte@lajungla.com');
+                      ui.info('Contacta con soporte: soporte@lajungla.com');
                     }}
                   >
                     Contacta con soporte

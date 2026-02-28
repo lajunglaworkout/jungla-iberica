@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, User, Search } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { leadService } from '../../services/leadService';
 import { useData } from '../../contexts/DataContext';
+import { ui } from '../../utils/ui';
+
 
 interface ParticipantsSelectionModalProps {
   isOpen: boolean;
@@ -51,7 +53,7 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
         loadLeads();
       } else {
         // Usar empleados del contexto
-        const mappedEmployees = contextEmployees.map((emp: any) => ({
+        const mappedEmployees = contextEmployees.map((emp: Record<string, unknown>) => ({
           id: String(emp.id),
           name: emp.name || (emp.first_name ? `${emp.first_name} ${emp.last_name || ''}` : 'Sin nombre'),
           email: emp.email,
@@ -66,21 +68,9 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, nombre, email, telefono, empresa, proyecto_nombre, estado')
-        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta', 'negociacion'])
-        .order('nombre', { ascending: true });
-
-      if (error) {
-        console.error('❌ Error cargando leads:', error);
-        setLeads([]);
-        return;
-      }
-
-      console.log('✅ Leads cargados para participantes:', data);
-      setLeads(data || []);
-      setFilteredLeads(data || []);
+      const data = await leadService.getLeadsForMeeting();
+      setLeads(data);
+      setFilteredLeads(data);
     } catch (error) {
       console.error('Error:', error);
       setLeads([]);
@@ -142,7 +132,7 @@ export const ParticipantsSelectionModal: React.FC<ParticipantsSelectionModalProp
 
   const handleConfirm = () => {
     if (selectedParticipants.length === 0) {
-      alert('Debes seleccionar al menos un participante');
+      ui.info('Debes seleccionar al menos un participante');
       return;
     }
     onConfirm(selectedParticipants);

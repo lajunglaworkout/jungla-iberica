@@ -62,7 +62,7 @@ export async function generateMeetingMinutes(params: {
     openIncidents?: string;
     centerData?: string;
     objectives?: string;
-}): Promise<{ minutes: string; tasks: any[]; parseWarning?: string }> {
+}): Promise<{ minutes: string; tasks: Record<string, unknown>[]; parseWarning?: string }> {
     console.log(`📋 Generating meeting minutes for "${params.departmentName}"...`);
 
     const { data, error } = await supabase.functions.invoke('generate-meeting-minutes', {

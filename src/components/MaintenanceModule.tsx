@@ -1,20 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Settings, 
-  BarChart3,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Users,
-  Wrench
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import MaintenanceDashboard from './maintenance/MaintenanceDashboardStyled';
 import MaintenanceDashboardBeni from './maintenance/MaintenanceDashboardBeni';
 import ManagerQuarterlyMaintenance from './centers/ManagerQuarterlyMaintenance';
 import InspectionStepByStep from './maintenance/InspectionStepByStep';
-import maintenanceService from '../services/maintenanceService';
 import quarterlyMaintenanceService from '../services/quarterlyMaintenanceService';
 
 interface MaintenanceModuleProps {
@@ -37,208 +26,111 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
   const [isBeni, setIsBeni] = useState(false);
   const [hasActiveQuarterly, setHasActiveQuarterly] = useState(false);
 
-  // Detectar si es Beni y cargar revisiones activas
   useEffect(() => {
     const detectUserAndLoadData = async () => {
       const email = userEmail.toLowerCase();
-      
-      // Detectar si es Beni (director de mantenimiento) o CEO/superadmin
+
       const beniEmail = email.includes('beni') || email.includes('carlossuarezparra');
       setIsBeni(beniEmail);
 
-      // Si es Beni, mostrar dashboard de revisiones (NO verificar revisiones activas)
       if (beniEmail) {
         setCurrentView('quarterly');
-        setHasActiveQuarterly(false); // Beni siempre ve su dashboard, no la interfaz de inspección
-        return; // Salir aquí para Beni
+        setHasActiveQuarterly(false);
+        return;
+      }
+
+      let centerId = 'sevilla';
+      let centerNumId = 9;
+      let centerName = 'Centro Sevilla';
+
+      if (email.includes('jerez') || email.includes('ivan') || email.includes('pablo')) {
+        centerId = 'jerez'; centerNumId = 10; centerName = 'Centro Jerez';
+      } else if (email.includes('puerto') || email.includes('adrian') || email.includes('guillermo')) {
+        centerId = 'puerto'; centerNumId = 11; centerName = 'Centro Puerto';
+      } else if (email.includes('sevilla') || email.includes('francisco') || email.includes('fran') || email.includes('salva')) {
+        centerId = 'sevilla'; centerNumId = 9; centerName = 'Centro Sevilla';
+      }
+
+      setCenterInfo({ centerId, centerName, centerNumId });
+
+      // Solo mostrar revisión trimestral si hay una activa Y la asignación está en curso
+      const result = await quarterlyMaintenanceService.getAssignments(centerNumId);
+
+      const activeAssignment = result.success && result.assignments
+        ? result.assignments.find((a: Record<string, unknown> & { review?: { status?: string }; status?: string }) =>
+            a.review?.status === 'active' &&
+            (a.status === 'pending' || a.status === 'in_progress')
+          )
+        : null;
+
+      if (activeAssignment) {
+        console.log('✅ Revisión trimestral activa encontrada:', activeAssignment.id);
+        setHasActiveQuarterly(true);
+        setCurrentView('quarterly');
       } else {
-        // Si es encargado, detectar centro
-        let centerId = 'sevilla';
-        let centerNumId = 9;
-        let centerName = 'Centro Sevilla';
-        
-        if (email.includes('jerez') || email.includes('ivan') || email.includes('pablo')) {
-          centerId = 'jerez';
-          centerNumId = 10;
-          centerName = 'Centro Jerez';
-        } else if (email.includes('puerto') || email.includes('adrian') || email.includes('guillermo')) {
-          centerId = 'puerto';
-          centerNumId = 11;
-          centerName = 'Centro Puerto';
-        } else if (email.includes('sevilla') || email.includes('francisco') || email.includes('salva')) {
-          centerId = 'sevilla';
-          centerNumId = 9;
-          centerName = 'Centro Sevilla';
-        }
-
-        // Actualizar centerInfo
-        setCenterInfo({ centerId, centerName, centerNumId });
-
-        // Verificar si hay revisión trimestral activa
-        console.log('🔍 Verificando revisiones activas para centro:', centerNumId);
-        const result = await quarterlyMaintenanceService.getAssignments(
-          centerNumId,
-          undefined
-        );
-        
-        console.log('📋 Resultado de búsqueda:', result.assignments?.length || 0, 'asignaciones');
-        
-        if (result.success && result.assignments && result.assignments.length > 0) {
-          console.log('✅ Hay revisión trimestral activa');
-          setHasActiveQuarterly(true);
-          setCurrentView('quarterly');
-        } else {
-          console.log('ℹ️ No hay revisión trimestral activa');
-          setCurrentView('dashboard');
-        }
+        setCurrentView('dashboard');
       }
     };
 
     detectUserAndLoadData();
   }, [userEmail]);
 
-  const handleStartInspection = () => {
-    setCurrentView('inspection');
-  };
+  const handleStartInspection = () => setCurrentView('inspection');
+  const handleBackToDashboard = () => setCurrentView('dashboard');
+  const handleOpenQuarterly = () => setCurrentView('quarterly');
+  const handleCloseQuarterly = () => setCurrentView('dashboard');
 
-  const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
-  };
-
-  const handleOpenQuarterly = () => {
-    setCurrentView('quarterly');
-  };
-
-  const handleCloseQuarterly = () => {
-    setCurrentView('dashboard');
-  };
-
-  const renderHeader = () => (
-    <div style={{
-      backgroundColor: 'white',
-      borderBottom: '1px solid #e5e7eb',
-      padding: '24px',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <button
-            onClick={onBack}
-            style={{
-              marginRight: '16px',
-              padding: '8px',
-              color: '#6b7280',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-              e.currentTarget.style.color = '#374151';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#6b7280';
-            }}
-          >
-            <ArrowLeft style={{ width: '20px', height: '20px' }} />
-          </button>
-          <div>
-            <h1 style={{
-              fontSize: '28px',
-              fontWeight: 'bold',
-              color: '#111827',
-              margin: 0
-            }}>
-              {currentView === 'dashboard' ? 'Mantenimiento' : currentView === 'inspection' ? 'Nueva Inspección' : 'Revisión Trimestral'}
-            </h1>
-            <p style={{
-              color: '#6b7280',
-              fontSize: '14px',
-              margin: '4px 0 0 0'
-            }}>
-              {centerInfo.centerName} - {userName}
-            </p>
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {currentView === 'inspection' && (
-            <button
-              onClick={handleBackToDashboard}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '8px 16px',
-                color: '#6b7280',
-                backgroundColor: 'white',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.color = '#374151';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.color = '#6b7280';
-              }}
-            >
-              <BarChart3 style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-              Dashboard
-            </button>
-          )}
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            fontSize: '14px',
-            color: '#9ca3af'
-          }}>
-            <Clock style={{ width: '16px', height: '16px', marginRight: '4px' }} />
-            {new Date().toLocaleDateString('es-ES', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // Cabecera compacta solo para vistas secundarias (inspección / revisión trimestral de encargado)
+  const showSubHeader = !isBeni && (currentView === 'inspection' || (currentView === 'quarterly' && hasActiveQuarterly));
 
   return (
-    <div style={{
-      backgroundColor: '#f9fafb',
-      width: '100%',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {renderHeader()}
-      
-      <div style={{ 
-        flex: 1,
-        overflow: 'auto',
-        maxHeight: 'calc(100vh - 120px)'
-      }}>
+    <div style={{ backgroundColor: '#f9fafb', width: '100%', minHeight: '100%' }}>
+
+      {/* Sub-cabecera solo para vistas de inspección / revisión del encargado */}
+      {showSubHeader && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={handleBackToDashboard}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+          <span style={{ color: 'white', fontWeight: '600', fontSize: '16px' }}>
+            {currentView === 'inspection' ? '🔍 Nueva Inspección Mensual' : '📋 Revisión Trimestral'}
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', marginLeft: 'auto' }}>
+            {centerInfo.centerName}
+          </span>
+        </div>
+      )}
+
+      {/* Contenido principal */}
+      <div style={{ width: '100%' }}>
         {isBeni ? (
-          // VISTA PARA BENI (Director de Mantenimiento) - SIEMPRE SU DASHBOARD
           <MaintenanceDashboardBeni onClose={handleCloseQuarterly} />
         ) : hasActiveQuarterly ? (
-          // VISTA PARA ENCARGADO CON REVISIÓN TRIMESTRAL ACTIVA
           <ManagerQuarterlyMaintenance onBack={handleBackToDashboard} centerId={centerInfo.centerNumId} />
         ) : currentView === 'dashboard' ? (
-          // VISTA NORMAL DE DASHBOARD (Inspecciones mensuales)
           <MaintenanceDashboard
             userEmail={userEmail}
             userName={userName}
@@ -247,7 +139,6 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
             onStartInspection={handleStartInspection}
           />
         ) : (
-          // VISTA DE INSPECCIÓN MENSUAL
           <InspectionStepByStep
             userEmail={userEmail}
             userName={userName}

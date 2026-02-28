@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // TODO: Extract to auditService.ts - queries system_logs table (no existing service covers audit logs)
 import {
     AlertTriangle,
     CheckCircle,
@@ -21,7 +21,7 @@ interface LogEntry {
     level: 'info' | 'warning' | 'error' | 'critical';
     module: string;
     message: string;
-    meta: any;
+    meta: Record<string, unknown>;
     created_at: string;
     user_email: string | null;
 }

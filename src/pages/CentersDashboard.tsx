@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { getAllCenters } from '../services/userService';
 import { useSession } from '../contexts/SessionContext';
 import type { Center } from '../types/center';
 
@@ -11,16 +11,8 @@ export const CentersDashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchCenters = async () => {
-      const { data, error } = await supabase
-        .from('centers')
-        .select('*');
-
-      if (error) {
-        setError(error.message);
-        console.error("Error al obtener los centros:", error);
-      } else {
-        setCenters(data as Center[]);
-      }
+      const data = await getAllCenters();
+      setCenters(data as unknown as Center[]);
       setLoading(false);
     };
 

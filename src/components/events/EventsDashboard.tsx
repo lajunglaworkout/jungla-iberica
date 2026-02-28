@@ -4,7 +4,7 @@ import {
     CheckSquare, Package, FileText, BarChart3, Loader2,
     ArrowLeft, Plus, CalendarDays, MessageSquare
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { useSession } from '../../contexts/SessionContext';
 
 // Import sub-components
@@ -195,46 +195,28 @@ export const EventsDashboard: React.FC<EventsDashboardProps> = ({ userEmail, onB
                 .toISOString().split('T')[0];
 
             // Eventos este mes
-            const { count: eventosEsteMes } = await supabase
-                .from('eventos')
-                .select('*', { count: 'exact', head: true })
-                .gte('fecha_evento', firstDayOfMonth)
-                .lte('fecha_evento', lastDayOfMonth);
+            const eventosEsteMes = await eventService.eventos.countByDateRange(firstDayOfMonth, lastDayOfMonth);
 
             // Eventos activos (no finalizados ni cancelados)
-            const { count: eventosActivos } = await supabase
-                .from('eventos')
-                .select('*', { count: 'exact', head: true })
-                .not('estado', 'in', '("finalizado","cancelado")');
+            const eventosActivos = await eventService.eventos.countActive();
 
             // Participantes totales
-            const { count: participantes } = await supabase
-                .from('evento_participantes')
-                .select('*', { count: 'exact', head: true });
+            const participantes = await eventService.participantes.countAll();
 
             // Tareas pendientes
-            const { count: tareasPendientes } = await supabase
-                .from('evento_tareas')
-                .select('*', { count: 'exact', head: true })
-                .eq('realizado', false);
+            const tareasPendientes = await eventService.tareas.countPending();
 
             // Balance acumulado (ingresos - gastos)
-            const { data: ingresosData } = await supabase
-                .from('evento_ingresos')
-                .select('importe');
-            const totalIngresos = ingresosData?.reduce((sum, i) => sum + (i.importe || 0), 0) || 0;
+            const ingresosData = await eventService.ingresos.getAll('importe');
+            const totalIngresos = ingresosData.reduce((sum: number, i: Record<string, unknown>) => sum + ((i.importe as number) || 0), 0);
 
-            const { data: gastosData } = await supabase
-                .from('evento_gastos')
-                .select('coste');
-            const totalGastos = gastosData?.reduce((sum, g) => sum + (g.coste || 0), 0) || 0;
+            const gastosData = await eventService.gastos.getAll('coste');
+            const totalGastos = gastosData.reduce((sum: number, g: Record<string, unknown>) => sum + ((g.coste as number) || 0), 0);
 
-            // Satisfacción media
-            const { data: encuestasData } = await supabase
-                .from('evento_encuestas')
-                .select('puntuacion_general');
-            const satisfaccionMedia = encuestasData && encuestasData.length > 0
-                ? encuestasData.reduce((sum, e) => sum + (e.puntuacion_general || 0), 0) / encuestasData.length
+            // Satisfaccion media
+            const encuestasData = await eventService.encuestas.getAll('puntuacion_general');
+            const satisfaccionMedia = encuestasData.length > 0
+                ? encuestasData.reduce((sum: number, e: Record<string, unknown>) => sum + ((e.puntuacion_general as number) || 0), 0) / encuestasData.length
                 : 0;
 
             setMetrics({

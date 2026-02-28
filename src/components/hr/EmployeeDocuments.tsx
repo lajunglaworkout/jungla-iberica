@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, FileText, Download, Eye, Calendar, Shield } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface EmployeeDocumentsProps {
   onBack: () => void;
@@ -83,19 +85,19 @@ const EmployeeDocuments: React.FC<EmployeeDocumentsProps> = ({ onBack }) => {
 
   const handleDownload = (doc: Document) => {
     if (doc.status === 'disponible') {
-      alert(`Descargando: ${doc.name}`);
+      ui.info(`Descargando: ${doc.name}`);
       // Aquí iría la lógica real de descarga
     } else {
-      alert('Este documento no está disponible para descarga');
+      ui.info('Este documento no está disponible para descarga');
     }
   };
 
   const handleView = (doc: Document) => {
     if (doc.status === 'disponible') {
-      alert(`Visualizando: ${doc.name}`);
+      ui.info(`Visualizando: ${doc.name}`);
       // Aquí iría la lógica para abrir el documento
     } else {
-      alert('Este documento no está disponible para visualización');
+      ui.info('Este documento no está disponible para visualización');
     }
   };
 

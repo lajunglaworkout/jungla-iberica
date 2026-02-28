@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { projectService } from '../../services/leadService';
 import { X, Building2, DollarSign, TrendingUp, MapPin, FileText } from 'lucide-react';
 
 interface NewProjectModalProps {
@@ -49,7 +49,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, onSuccess })
 
     try {
       // Convertir campos numéricos
-      const projectData: any = {
+      const projectData: Record<string, unknown> = {
         name: formData.name,
         tipo: formData.tipo,
         ubicacion: formData.ubicacion || null,
@@ -66,20 +66,14 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({ onClose, onSuccess })
         roi_proyectado: formData.roi_proyectado ? parseFloat(formData.roi_proyectado) : null
       };
 
-      const { data, error } = await supabase
-        .from('projects')
-        .insert([projectData])
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await projectService.create(projectData);
 
       console.log('✅ Proyecto creado:', data);
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error creando proyecto:', error);
-      setError(error.message || 'Error al crear el proyecto');
+      setError(error instanceof Error ? error.message : 'Error al crear el proyecto');
     } finally {
       setLoading(false);
     }

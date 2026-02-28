@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Filter, ArrowUpRight, ArrowDownLeft, RefreshCw, Search, User, MapPin } from 'lucide-react';
-import inventoryMovementService from '../../services/inventoryMovementService';
+import { Calendar, Filter, ArrowUpRight, ArrowDownLeft, RefreshCw, Search, User, MapPin, Package } from 'lucide-react';
+import inventoryMovementService, { type InventoryMovement } from '../../services/inventoryMovementService';
 
 interface MovementsHistoryPanelProps {
     initialCenterId?: number | 'all';
 }
 
 const MovementsHistoryPanel: React.FC<MovementsHistoryPanelProps> = ({ initialCenterId = 'all' }) => {
-    const [movements, setMovements] = useState<any[]>([]);
+    const [movements, setMovements] = useState<InventoryMovement[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCenter, setSelectedCenter] = useState<number | 'all'>(initialCenterId);
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
@@ -18,7 +18,7 @@ const MovementsHistoryPanel: React.FC<MovementsHistoryPanelProps> = ({ initialCe
 
     const loadMovements = async () => {
         setLoading(true);
-        const filters: any = {
+        const filters: { center_id?: number; startDate?: string; endDate?: string; limit?: number } = {
             limit: 100
         };
 
@@ -55,20 +55,27 @@ const MovementsHistoryPanel: React.FC<MovementsHistoryPanelProps> = ({ initialCe
     };
 
     const getTypeLabel = (type: string) => {
-        const map: Record<string, { label: string; color: string; icon: any }> = {
-            'adjustment': { label: 'Ajuste Manual', color: '#f59e0b', icon: RefreshCw },
-            'purchase': { label: 'Compra', color: '#10b981', icon: ArrowDownLeft },
-            'consumption': { label: 'Consumo', color: '#ef4444', icon: ArrowUpRight },
-            'return': { label: 'Devolución', color: '#3b82f6', icon: ArrowDownLeft },
-            'initial': { label: 'Inventario Inicial', color: '#6b7280', icon: Package }
+        const map: Record<string, { label: string; color: string; icon: React.ComponentType<{ size?: number; style?: React.CSSProperties; className?: string }> }> = {
+            'adjustment':        { label: 'Ajuste Manual',       color: '#f59e0b', icon: RefreshCw },
+            'purchase':          { label: 'Compra',              color: '#10b981', icon: ArrowDownLeft },
+            'purchase_receipt':  { label: 'Recepción Proveedor', color: '#10b981', icon: ArrowDownLeft },
+            'consumption':       { label: 'Consumo',             color: '#ef4444', icon: ArrowUpRight },
+            'return':            { label: 'Devolución',          color: '#3b82f6', icon: ArrowDownLeft },
+            'initial':           { label: 'Inventario Inicial',  color: '#6b7280', icon: Package },
+            // Tipos de revisión trimestral
+            'breakage':          { label: 'Baja por Rotura',     color: '#dc2626', icon: ArrowUpRight },
+            'adjustment_loss':   { label: 'Merma Revisión',      color: '#f97316', icon: ArrowUpRight },
+            'adjustment_gain':   { label: 'Exceso Revisión',     color: '#16a34a', icon: ArrowDownLeft },
+            // Tipo genérico de revisión
+            'quarterly_review':  { label: 'Revisión Trimestral', color: '#7c3aed', icon: RefreshCw },
         };
-        return map[type] || { label: type, color: '#6b7280', icon: RefreshCw };
+        return map[type] || { label: type || 'Movimiento', color: '#6b7280', icon: RefreshCw };
     };
 
     const filteredMovements = movements.filter(m =>
-        m.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.reason?.toLowerCase().includes(searchTerm.toLowerCase())
+        (m.item_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.reason || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -239,10 +246,10 @@ const MovementsHistoryPanel: React.FC<MovementsHistoryPanelProps> = ({ initialCe
                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                             <div style={{
                                                 fontWeight: '600',
-                                                color: movement.quantity_change > 0 ? '#10b981' : '#ef4444',
+                                                color: movement.quantity > 0 ? '#10b981' : '#ef4444',
                                                 fontSize: '16px'
                                             }}>
-                                                {movement.quantity_change > 0 ? '+' : ''}{movement.quantity_change}
+                                                {movement.quantity > 0 ? '+' : ''}{movement.quantity}
                                             </div>
                                             <div style={{ fontSize: '11px', color: '#9ca3af' }}>
                                                 {movement.previous_quantity} ➜ {movement.new_quantity}

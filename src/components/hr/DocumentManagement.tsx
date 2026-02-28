@@ -4,7 +4,7 @@ import {
   ArrowLeft, Upload, FileText, Download, Trash2, Eye, Filter,
   Search, Calendar, User, File, AlertCircle, CheckCircle, FolderOpen
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useData } from '../../contexts/DataContext';
 

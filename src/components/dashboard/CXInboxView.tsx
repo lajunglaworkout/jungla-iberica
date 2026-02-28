@@ -35,7 +35,10 @@ const CENTER_CONFIG: Record<CenterKey, { label: string; color: string; bg: strin
 
 // Mock Data removed - using Supabase
 
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // realtime channel only
+import { getInboxMessages, saveTrainingData, saveInboxReply } from '../../services/cxService';
+import { ui } from '../../utils/ui';
+
 
 // ... (imports remain)
 
@@ -55,33 +58,24 @@ export const CXInboxView: React.FC = () => {
         // 1. Guardar en Dataset de Entrenamiento (Memoria del Agente)
         const originalMsg = messages.find(m => m.id === selectedMessageId);
         if (originalMsg) {
-            try {
-                await supabase
-                    .from('dataset_attcliente')
-                    .insert({
-                        original_message: originalMsg.preview,
-                        final_reply: textToSend,
-                        context: 'crm_manual_reply',
-                        source_message_id: selectedMessageId
-                    });
-            } catch (e) {
-                console.warn('No se pudo guardar entrenamiento (RLS)', e);
-            }
+            await saveTrainingData({
+                original_message: originalMsg.preview,
+                final_reply: textToSend,
+                context: 'crm_manual_reply',
+                source_message_id: selectedMessageId
+            });
         }
 
         // 2. Guardar respuesta para que el AGENTE la envíe a Wodbuster
-        const { error } = await supabase
-            .from('inbox_messages')
-            .update({
-                reply_to_send: textToSend,
-                reply_sent_at: null, // ← IMPORTANTE: Resetear para que el agente lo detecte
-                // NO marcamos como responded aún - el agente lo hará cuando confirme envío
-            })
-            .eq('id', selectedMessageId);
+        const result = await saveInboxReply(selectedMessageId, {
+            reply_to_send: textToSend,
+            reply_sent_at: null, // ← IMPORTANTE: Resetear para que el agente lo detecte
+            // NO marcamos como responded aún - el agente lo hará cuando confirme envío
+        });
 
-        if (error) {
-            console.error('Error guardando respuesta:', error);
-            alert('❌ Error al guardar respuesta');
+        if (!result.success) {
+            console.error('Error guardando respuesta:', result.error);
+            ui.error('❌ Error al guardar respuesta');
             return;
         }
 
@@ -91,24 +85,16 @@ export const CXInboxView: React.FC = () => {
         ));
         setReplyText('');
 
-        alert('📤 Respuesta guardada. El agente la enviará a Wodbuster automáticamente.');
+        ui.success('📤 Respuesta guardada. El agente la enviará a Wodbuster automáticamente.');
     };
 
     const fetchMessages = async () => {
         setIsSyncing(true);
         try {
-            const { data, error } = await supabase
-                .from('inbox_messages')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const data = await getInboxMessages();
 
-            if (error) {
-                console.error('Error fetching inbox:', error);
-                return;
-            }
-
-            if (data) {
-                const mappedMessages: Message[] = data.map((item: any) => {
+            {
+                const mappedMessages: Message[] = data.map((item: Record<string, unknown>) => {
                     // Crear conversación base con mensaje del usuario
                     const conversation: { from: 'user' | 'agent' | 'staff'; text: string; timestamp: string }[] = [
                         {

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { projectService } from '../../services/leadService';
 import { X, Building2, DollarSign, TrendingUp, MapPin, FileText, Trash2 } from 'lucide-react';
 
 interface EditProjectModalProps {
-  project: any;
+  project: Record<string, unknown>;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -51,7 +51,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
 
     try {
       // Convertir campos numéricos
-      const projectData: any = {
+      const projectData: Record<string, unknown> = {
         name: formData.name,
         tipo: formData.tipo,
         ubicacion: formData.ubicacion || null,
@@ -68,21 +68,14 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
         roi_proyectado: formData.roi_proyectado ? parseFloat(formData.roi_proyectado) : null
       };
 
-      const { data, error } = await supabase
-        .from('projects')
-        .update(projectData)
-        .eq('id', project.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await projectService.update(project.id, projectData);
 
       console.log('✅ Proyecto actualizado:', data);
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error actualizando proyecto:', error);
-      setError(error.message || 'Error al actualizar el proyecto');
+      setError((error instanceof Error ? error.message : String(error)) || 'Error al actualizar el proyecto');
     } finally {
       setLoading(false);
     }
@@ -91,19 +84,14 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, o
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', project.id);
-
-      if (error) throw error;
+      await projectService.delete(project.id);
 
       console.log('✅ Proyecto eliminado');
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error eliminando proyecto:', error);
-      setError(error.message || 'Error al eliminar el proyecto');
+      setError((error instanceof Error ? error.message : String(error)) || 'Error al eliminar el proyecto');
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);

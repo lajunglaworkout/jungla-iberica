@@ -14,6 +14,20 @@ interface PendingReview {
   centerName: string;
 }
 
+interface AssignmentItem {
+  id: number;
+  status?: string;
+  center_name?: string;
+  review?: {
+    status?: string;
+    quarter?: string;
+    deadline_date?: string;
+    total_items?: number;
+    total_centers?: number;
+  };
+  [key: string]: unknown;
+}
+
 interface ManagerReviewsPanelProps {
   onStartInventoryReview: () => void;
   onStartMaintenanceReview: () => void;
@@ -42,10 +56,9 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
     console.log('🔍 Empleado completo:', employee);
     setLoading(true);
     
-    // Cargar asignaciones de inventario pendientes
+    // Cargar asignaciones de inventario (pending o in_progress)
     const inventoryResult = await quarterlyInventoryService.getAssignments(
-      Number(employee.center_id),
-      'pending'
+      Number(employee.center_id)
     );
 
     console.log('📋 Resultado de asignaciones:', inventoryResult);
@@ -55,10 +68,10 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
     if (inventoryResult.success && inventoryResult.assignments) {
       console.log('✅ Asignaciones encontradas:', inventoryResult.assignments.length);
       
-      inventoryResult.assignments.forEach((assignment: any) => {
+      inventoryResult.assignments.forEach((assignment: AssignmentItem) => {
         console.log('🔍 Evaluando asignación:', assignment);
         
-        if (assignment.review && assignment.review.status === 'active') {
+        if (assignment.review && assignment.review.status === 'active' && assignment.status !== 'completed') {
           console.log('✅ Revisión activa encontrada:', assignment.review.quarter);
           reviews.push({
             id: assignment.id,
@@ -70,26 +83,25 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
             centerName: assignment.center_name
           });
         } else {
-          console.log('⚠️ Revisión no activa o sin datos:', assignment.review?.status);
+          console.log('⚠️ Revisión no activa, sin datos o ya completada:', assignment.review?.status, assignment.status);
         }
       });
     } else {
       console.log('❌ No se encontraron asignaciones o error:', inventoryResult.error);
     }
 
-    // TODO: Cargar asignaciones de mantenimiento pendientes
+    // Cargar asignaciones de mantenimiento (pending o in_progress)
     const maintenanceResult = await quarterlyMaintenanceService.getAssignments(
-      Number(employee.center_id),
-      'pending'
+      Number(employee.center_id)
     );
 
     if (maintenanceResult.success && maintenanceResult.assignments) {
       console.log('✅ Asignaciones de mantenimiento encontradas:', maintenanceResult.assignments.length);
       
-      maintenanceResult.assignments.forEach((assignment: any) => {
+      maintenanceResult.assignments.forEach((assignment: AssignmentItem) => {
         console.log('🔍 Evaluando asignación de mantenimiento:', assignment);
         
-        if (assignment.review && assignment.review.status === 'active') {
+        if (assignment.review && assignment.review.status === 'active' && assignment.status !== 'completed') {
           console.log('✅ Revisión de mantenimiento activa encontrada:', assignment.review.quarter);
           reviews.push({
             id: assignment.id,
@@ -97,11 +109,11 @@ const ManagerReviewsPanel: React.FC<ManagerReviewsPanelProps> = ({
             title: `Revisión de Mantenimiento ${assignment.review.quarter}`,
             deadline: assignment.review.deadline_date,
             status: assignment.status,
-            itemCount: assignment.review.total_concepts,
+            itemCount: assignment.review.total_centers || 0,
             centerName: assignment.center_name
           });
         } else {
-          console.log('⚠️ Revisión de mantenimiento no activa o sin datos:', assignment.review?.status);
+          console.log('⚠️ Revisión de mantenimiento no activa, sin datos o ya completada:', assignment.review?.status, assignment.status);
         }
       });
     } else {

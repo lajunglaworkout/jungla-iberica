@@ -12,7 +12,7 @@ import { OnlineCalendarioView } from './Calendario/OnlineCalendarioView';
 import { OnlineIdeasView } from './Ideas/OnlineIdeasView';
 import { OnlineFacturacionView } from './Facturacion/OnlineFacturacionView';
 import { OnlineReportesView } from './Reportes/OnlineReportesView';
-import { supabase } from '../../lib/supabase';
+import { onlineDashboardService } from '../../services/academyService';
 
 // Interfaces for dashboard data
 interface DashboardMetrics {
@@ -47,28 +47,10 @@ export const OnlineDashboard: React.FC<OnlineDashboardProps> = ({ hideBilling = 
     const loadDashboardMetrics = async () => {
         setLoading(true);
         try {
-            // Execute all count queries in parallel
-            // Note: Tables might not exist yet if migration hasn't run, so we handle errors gracefully
-            const [
-                { count: tasksCount },
-                { count: contentCount },
-                { count: scheduledCount },
-                { count: ideasCount },
-                { count: clientsCount }
-            ] = await Promise.all([
-                supabase.from('online_tasks').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                supabase.from('online_content').select('*', { count: 'exact', head: true }),
-                supabase.from('online_calendar').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
-                supabase.from('online_ideas').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-                supabase.from('online_clients').select('*', { count: 'exact', head: true }).eq('status', 'active')
-            ]);
+            const data = await onlineDashboardService.getMetrics();
 
             setMetrics({
-                pendingTasks: tasksCount || 0,
-                contentPieces: contentCount || 0,
-                scheduledPosts: scheduledCount || 0,
-                newIdeas: ideasCount || 0,
-                activeClients: clientsCount || 0,
+                ...data,
                 monthlyRevenue: 0 // Placeholder until Harbiz integration
             });
         } catch (error) {

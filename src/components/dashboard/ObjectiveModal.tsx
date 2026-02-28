@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { createObjective } from '../../services/meetingService';
 import { Target, X, Calendar, AlertTriangle, Save, Brain } from 'lucide-react';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface Props {
     onClose: () => void;
@@ -32,7 +34,7 @@ export const ObjectiveModal: React.FC<Props> = ({ onClose, onSave }) => {
             const riesgo = formData.impacto_negocio > 8 && formData.dificultad > 8 ? 'alto' : 'bajo';
             const probabilidad = 100 - (formData.dificultad * 5); // Algoritmo simple inicial
 
-            const { error } = await supabase.from('objetivos').insert({
+            const { success, error } = await createObjective({
                 ...formData,
                 estado: 'pendiente',
                 porcentaje_completitud: 0,
@@ -41,12 +43,12 @@ export const ObjectiveModal: React.FC<Props> = ({ onClose, onSave }) => {
                 creado_por: employee?.id
             });
 
-            if (error) throw error;
+            if (!success) throw new Error(error);
             onSave();
             onClose();
         } catch (err) {
             console.error('Error creating objective:', err);
-            alert('Error al crear objetivo');
+            ui.error('Error al crear objetivo');
         } finally {
             setLoading(false);
         }

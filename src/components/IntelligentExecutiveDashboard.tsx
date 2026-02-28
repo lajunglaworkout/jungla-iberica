@@ -8,7 +8,7 @@ import {
   Timer, Award, AlertTriangle, CheckCircle2, XCircle,
   Search, Filter, RefreshCw, Download, Settings, Loader2
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // TODO: Extract to executiveDashboardService.ts - queries alertas_automaticas, objetivos, reuniones, inbox_messages, metricas_departamento (no existing service covers these)
 import { useSession } from '../contexts/SessionContext';
 import { AIAnalysisService, DailyBriefing } from '../services/aiAnalysisService';
 
@@ -34,8 +34,8 @@ interface SmartObjective {
   porcentaje_completitud: number;
   motivo_no_cumplimiento?: string;
   acciones_correctivas?: string;
-  metrica_objetivo?: any;
-  metrica_actual?: any;
+  metrica_objetivo?: number | string | null;
+  metrica_actual?: number | string | null;
   impacto_negocio: number;
   dificultad: number;
   probabilidad_cumplimiento?: number;
@@ -904,7 +904,7 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveView(tab.id as any)}
+            onClick={() => setActiveView(tab.id as 'dashboard' | 'objectives' | 'alerts' | 'meetings' | 'system' | 'cx_inbox' | 'analytics')}
             style={{
               flex: 1,
               padding: '12px 16px',

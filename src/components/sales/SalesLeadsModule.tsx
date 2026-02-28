@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { 
+import { leadService, projectService } from '../../services/leadService';
+import {
   Users, Building2, Calculator, TrendingUp, ArrowLeft, Plus, Search,
   Filter, MapPin, Euro, Target, FileText, Phone, Mail, Calendar,
   Briefcase, PieChart, BarChart3, Edit, Trash2, Eye
@@ -48,35 +48,25 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
   const [busqueda, setBusqueda] = useState('');
   const [proyectosActivos, setProyectosActivos] = useState(0);
   const [leadsActivos, setLeadsActivos] = useState(0);
-  const [proyectosReales, setProyectosReales] = useState<any[]>([]);
+  const [proyectosReales, setProyectosReales] = useState<Record<string, unknown>[]>([]);
 
   // Cargar datos reales de Supabase
   useEffect(() => {
     const cargarDatosReales = async () => {
       // Contar proyectos activos
-      const { count: countProyectos } = await supabase
-        .from('projects')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-      
+      const countProyectos = await projectService.countActiveProjects();
+
       // Contar leads activos
-      const { count: countLeads } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta']);
-      
+      const countLeads = await leadService.countActiveLeads();
+
       // Obtener proyectos reales
-      const { data: proyectos } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('status', 'active')
-        .limit(5);
-      
-      setProyectosActivos(countProyectos || 0);
-      setLeadsActivos(countLeads || 0);
-      setProyectosReales(proyectos || []);
+      const proyectos = await projectService.getActiveProjects(5);
+
+      setProyectosActivos(countProyectos);
+      setLeadsActivos(countLeads);
+      setProyectosReales(proyectos);
     };
-    
+
     cargarDatosReales();
   }, []);
 
@@ -230,7 +220,7 @@ const SalesLeadsModule: React.FC<SalesLeadsModuleProps> = ({ onBack }) => {
           ].map((tab) => (
             <button 
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)} 
+              onClick={() => setActiveTab(tab.id as 'dashboard' | 'directorio' | 'proyectos' | 'calculadora' | 'pipeline' | 'gestion')}
               style={{ 
                 display: 'flex',
                 alignItems: 'center',

@@ -25,6 +25,11 @@ export default defineConfig({
     port: 5173,
     cors: true,
     proxy: {
+      // SEC-01: AI proxy goes to local backend (keeps API key server-side)
+      '/api/ai': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'https://gfnjlmfziczimaohgkct.supabase.co',
         changeOrigin: true,

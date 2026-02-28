@@ -1,6 +1,6 @@
 // src/components/ExecutiveDashboard.tsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // NOTE: Currently uses mock data only, supabase queries are commented out. No migration needed until real queries are implemented.
 import { 
   TrendingUp, TrendingDown, Users, DollarSign, 
   Activity, Building2, Target, Award, Loader2,

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Plus, Trash2, ChevronDown, Calendar, User, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { notifyTaskAssigned } from '../../services/notificationService';
+import { ui } from '../../utils/ui';
+
 
 interface Tarea {
     id: number;
@@ -52,31 +54,21 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
         setLoading(true);
         try {
             // Load eventos
-            const { data: eventosData } = await supabase
-                .from('eventos')
-                .select('id, nombre')
-                .not('estado', 'in', '("finalizado","cancelado")')
-                .order('fecha_evento', { ascending: false });
-            setEventos(eventosData || []);
+            const eventosData = await eventService.eventos.getWithFields('id, nombre', {
+                notEstadoIn: '("finalizado","cancelado")',
+                orderBy: 'fecha_evento',
+                ascending: false
+            });
+            setEventos(eventosData);
 
             // Load employees for assignment
-            const { data: employeesData } = await supabase
-                .from('employees')
-                .select('id, name')
-                .order('name');
-            setEmployees(employeesData || []);
+            const employeesData = await eventService.employees.getAll();
+            setEmployees(employeesData);
 
             // Load tareas with evento info
-            const { data: tareasData } = await supabase
-                .from('evento_tareas')
-                .select(`
-          *,
-          eventos!inner(id, nombre),
-          employees(name)
-        `)
-                .order('fecha_limite', { ascending: true });
+            const tareasData = await eventService.tareas.getAllWithRelations();
 
-            const formattedTareas = (tareasData || []).map((t: any) => ({
+            const formattedTareas = (tareasData || []).map((t: Record<string, unknown>) => ({
                 ...t,
                 persona_nombre: t.employees?.name
             }));
@@ -91,13 +83,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
 
     const handleToggleRealizado = async (tareaId: number, realizado: boolean) => {
         try {
-            await supabase
-                .from('evento_tareas')
-                .update({
-                    realizado: !realizado,
-                    completado_at: !realizado ? new Date().toISOString() : null
-                })
-                .eq('id', tareaId);
+            await eventService.tareas.toggleRealizado(tareaId, realizado);
 
             setTareas(tareas.map(t =>
                 t.id === tareaId ? { ...t, realizado: !realizado } : t
@@ -108,21 +94,18 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
     };
 
     const handleDelete = async (tareaId: number) => {
-        if (!confirm('¿Eliminar esta tarea?')) return;
+        if (!await ui.confirm('¿Eliminar esta tarea?')) return;
         try {
-            await supabase.from('evento_tareas').delete().eq('id', tareaId);
+            await eventService.tareas.delete(tareaId);
             setTareas(tareas.filter(t => t.id !== tareaId));
         } catch (error) {
             console.error('Error deleting tarea:', error);
         }
     };
 
-    const handleUpdateTarea = async (tareaId: number, field: string, value: any) => {
+    const handleUpdateTarea = async (tareaId: number, field: string, value: string | number | null) => {
         try {
-            await supabase
-                .from('evento_tareas')
-                .update({ [field]: value })
-                .eq('id', tareaId);
+            await eventService.tareas.updateField(tareaId, field, value);
 
             setTareas(tareas.map(t =>
                 t.id === tareaId ? { ...t, [field]: value } : t
@@ -153,18 +136,12 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
 
     const addTarea = async (eventoId: number) => {
         try {
-            const { data, error } = await supabase
-                .from('evento_tareas')
-                .insert([{
-                    evento_id: eventoId,
-                    descripcion: 'Nueva tarea',
-                    prioridad: 'media',
-                    realizado: false
-                }])
-                .select()
-                .single();
-
-            if (error) throw error;
+            await eventService.tareas.create({
+                evento_id: eventoId,
+                descripcion: 'Nueva tarea',
+                prioridad: 'media',
+                realizado: false
+            });
             loadData();
         } catch (error) {
             console.error('Error adding tarea:', error);
@@ -226,7 +203,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 <select
                     value={filterEvento}
-                    onChange={(e) => setFilterEvento(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
+                    onChange={async (e) => setFilterEvento(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
                     style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', minWidth: '200px' }}
                 >
                     <option value="todos">Todos los eventos</option>
@@ -236,7 +213,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                 </select>
                 <select
                     value={filterRealizado}
-                    onChange={(e) => setFilterRealizado(e.target.value as any)}
+                    onChange={async (e) => setFilterRealizado(e.target.value as 'todos' | 'pendientes' | 'completadas')}
                     style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white' }}
                 >
                     <option value="pendientes">Pendientes</option>
@@ -259,7 +236,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                     }}>
                         <h3 style={{ margin: 0, fontWeight: 600 }}>{group.nombre}</h3>
                         <button
-                            onClick={() => addTarea(Number(eventoId))}
+                            onClick={async () => addTarea(Number(eventoId))}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -298,7 +275,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                             <input
                                                 type="checkbox"
                                                 checked={tarea.realizado}
-                                                onChange={() => handleToggleRealizado(tarea.id, tarea.realizado)}
+                                                onChange={async () => handleToggleRealizado(tarea.id, tarea.realizado)}
                                                 style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#16a34a' }}
                                             />
                                         </td>
@@ -306,7 +283,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                             <input
                                                 type="text"
                                                 value={tarea.descripcion}
-                                                onChange={(e) => handleUpdateTarea(tarea.id, 'descripcion', e.target.value)}
+                                                onChange={async (e) => handleUpdateTarea(tarea.id, 'descripcion', e.target.value)}
                                                 style={{
                                                     width: '100%',
                                                     padding: '8px',
@@ -329,7 +306,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                                 <input
                                                     type="date"
                                                     value={tarea.fecha_limite || ''}
-                                                    onChange={(e) => handleUpdateTarea(tarea.id, 'fecha_limite', e.target.value)}
+                                                    onChange={async (e) => handleUpdateTarea(tarea.id, 'fecha_limite', e.target.value)}
                                                     style={{
                                                         padding: '6px',
                                                         border: '1px solid #e5e7eb',
@@ -343,7 +320,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                         <td style={{ padding: '12px' }}>
                                             <select
                                                 value={tarea.prioridad}
-                                                onChange={(e) => handleUpdateTarea(tarea.id, 'prioridad', e.target.value)}
+                                                onChange={async (e) => handleUpdateTarea(tarea.id, 'prioridad', e.target.value)}
                                                 style={{
                                                     padding: '6px 10px',
                                                     border: 'none',
@@ -363,7 +340,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                         <td style={{ padding: '12px' }}>
                                             <select
                                                 value={tarea.persona_designada_id || ''}
-                                                onChange={(e) => handleUpdateTarea(tarea.id, 'persona_designada_id', e.target.value ? Number(e.target.value) : null)}
+                                                onChange={async (e) => handleUpdateTarea(tarea.id, 'persona_designada_id', e.target.value ? Number(e.target.value) : null)}
                                                 style={{
                                                     padding: '6px 10px',
                                                     border: '1px solid #e5e7eb',
@@ -383,7 +360,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                             <input
                                                 type="text"
                                                 value={tarea.observaciones || ''}
-                                                onChange={(e) => handleUpdateTarea(tarea.id, 'observaciones', e.target.value)}
+                                                onChange={async (e) => handleUpdateTarea(tarea.id, 'observaciones', e.target.value)}
                                                 placeholder="Notas..."
                                                 style={{
                                                     width: '100%',
@@ -399,7 +376,7 @@ export const EventTasksBoard: React.FC<EventTasksBoardProps> = ({ onBack }) => {
                                         </td>
                                         <td style={{ padding: '12px' }}>
                                             <button
-                                                onClick={() => handleDelete(tarea.id)}
+                                                onClick={async () => handleDelete(tarea.id)}
                                                 style={{ padding: '6px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                             >
                                                 <Trash2 size={14} color="#dc2626" />

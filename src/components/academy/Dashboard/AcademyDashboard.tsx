@@ -10,7 +10,7 @@ import { ContenidosView } from '../Contenidos/ContenidosView';
 import { TareasView } from '../Tareas/TareasView';
 import { TutoresView } from '../Tutores/TutoresView';
 import { SharedResourcesView } from '../Recursos/SharedResourcesView';
-import { supabase } from '../../../lib/supabase';
+import { academyDashboardService } from '../../../services/academyService';
 
 // Interfaces for dashboard data
 interface DashboardMetrics {
@@ -45,37 +45,8 @@ export const AcademyDashboard: React.FC = () => {
     const loadDashboardMetrics = async () => {
         setLoading(true);
         try {
-            // Execute all count queries in parallel
-            const [
-                { count: modulesCount },
-                { count: lessonsCount },
-                { count: tasksCount },
-                { count: tutorsCount },
-                { count: centersCount },
-                { count: studentsCount },
-                { count: companiesCount },
-                { count: cohortsCount }
-            ] = await Promise.all([
-                supabase.from('academy_modules').select('*', { count: 'exact', head: true }),
-                supabase.from('academy_lessons').select('*', { count: 'exact', head: true }),
-                supabase.from('academy_tasks').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-                supabase.from('academy_tutors').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-                supabase.from('academy_partner_centers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-                supabase.from('academy_students_cache').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-                supabase.from('academy_companies_cache').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-                supabase.from('academy_cohortes').select('*', { count: 'exact', head: true }).gt('start_date', new Date().toISOString())
-            ]);
-
-            setMetrics({
-                totalModules: modulesCount || 0,
-                totalLessons: lessonsCount || 0,
-                pendingTasks: tasksCount || 0,
-                activeTutors: tutorsCount || 0,
-                activeCenters: centersCount || 0,
-                activeStudents: studentsCount || 0,
-                activeCompanies: companiesCount || 0,
-                upcomingCohorts: cohortsCount || 0
-            });
+            const data = await academyDashboardService.getMetrics();
+            setMetrics(data);
         } catch (error) {
             console.error('Error loading academy metrics:', error);
         } finally {

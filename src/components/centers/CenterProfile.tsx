@@ -5,6 +5,7 @@ import CenterQRDisplay from '../hr/CenterQRDisplay';
 import ChecklistCompleteSystem from '../ChecklistCompleteSystem';
 import { SessionProvider } from '../../contexts/SessionContext';
 import { DataProvider } from '../../contexts/DataContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface CenterProfileProps {
   centerId: number;
@@ -18,11 +19,12 @@ interface CenterStats {
   lastActivity: string;
 }
 
-const CenterProfile: React.FC<CenterProfileProps> = ({ 
-  centerId, 
-  centerName, 
-  centerLocation 
+const CenterProfile: React.FC<CenterProfileProps> = ({
+  centerId,
+  centerName,
+  centerLocation
 }) => {
+  const isMobile = useIsMobile();
   const [activeView, setActiveView] = useState<'dashboard' | 'qr-display'>('dashboard');
   const [showQRDisplay, setShowQRDisplay] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
@@ -121,7 +123,7 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
 
   return (
     <div style={{ 
-      padding: window.innerWidth < 768 ? '16px' : '24px', 
+      padding: isMobile ? '16px' : '24px', 
       backgroundColor: '#f9fafb', 
       minHeight: '100vh',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -131,20 +133,20 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
         <div style={{
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           borderRadius: '16px',
-          padding: window.innerWidth < 768 ? '20px' : '32px',
-          marginBottom: window.innerWidth < 768 ? '20px' : '32px',
+          padding: isMobile ? '20px' : '32px',
+          marginBottom: isMobile ? '20px' : '32px',
           boxShadow: '0 10px 40px rgba(5, 150, 105, 0.2)',
           color: 'white'
         }}>
-          <div style={{ display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row', justifyContent: 'space-between', alignItems: window.innerWidth < 768 ? 'flex-start' : 'center', gap: window.innerWidth < 768 ? '16px' : '0' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '16px' : '0' }}>
             <div>
-              <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '36px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+              <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
                 🏢 {centerName}
               </h1>
-              <p style={{ fontSize: window.innerWidth < 768 ? '14px' : '18px', margin: '0 0 16px 0', opacity: 0.9 }}>
+              <p style={{ fontSize: isMobile ? '14px' : '18px', margin: '0 0 16px 0', opacity: 0.9 }}>
                 📍 {centerLocation}
               </p>
-              <div style={{ display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row', gap: window.innerWidth < 768 ? '8px' : '24px', fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '8px' : '24px', fontSize: isMobile ? '14px' : '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Users size={18} />
                   <span>{stats.employeesPresent}/{stats.totalEmployees} empleados</span>
@@ -156,14 +158,14 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
               </div>
             </div>
             
-            <div style={{ textAlign: window.innerWidth < 768 ? 'left' : 'right' }}>
-              <div style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: 'bold', marginBottom: '4px' }}>
+            <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+              <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 'bold', marginBottom: '4px' }}>
                 {currentTime.toLocaleTimeString('es-ES', { 
                   hour: '2-digit', 
                   minute: '2-digit'
                 })}
               </div>
-              <div style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px', opacity: 0.9 }}>
+              <div style={{ fontSize: isMobile ? '14px' : '16px', opacity: 0.9 }}>
                 {currentTime.toLocaleDateString('es-ES', { 
                   weekday: 'long', 
                   day: 'numeric', 
@@ -175,7 +177,7 @@ const CenterProfile: React.FC<CenterProfileProps> = ({
         </div>
 
         {/* Panel de Control */}
-        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '2fr 1fr', gap: window.innerWidth < 768 ? '16px' : '24px', marginBottom: window.innerWidth < 768 ? '20px' : '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '16px' : '24px', marginBottom: isMobile ? '20px' : '32px' }}>
           {/* Botón Principal de Fichaje */}
           <div style={{
             backgroundColor: 'white',

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, Search, UserPlus, Check, X, ChevronDown, ChevronRight, Calendar } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
+import { ui } from '../../utils/ui';
+
 
 interface Participante {
     id: number;
@@ -48,24 +50,21 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
         setLoading(true);
         try {
             // Load eventos
-            const { data: eventosData } = await supabase
-                .from('eventos')
-                .select('id, nombre, fecha_evento, plazas_esperadas, plazas_max, estado')
-                .order('fecha_evento', { ascending: false });
+            const eventosData = await eventService.eventos.getWithFields(
+                'id, nombre, fecha_evento, plazas_esperadas, plazas_max, estado',
+                { orderBy: 'fecha_evento', ascending: false }
+            );
 
             // Load participantes
-            const { data: participantesData } = await supabase
-                .from('evento_participantes')
-                .select('*')
-                .order('fecha_inscripcion', { ascending: false });
+            const participantesData = await eventService.participantes.getAllOrdered();
 
             // Group participantes by evento
             const eventosMap = new Map<number, EventoConParticipantes>();
-            (eventosData || []).forEach(ev => {
+            eventosData.forEach(ev => {
                 eventosMap.set(ev.id, { ...ev, participantes: [] });
             });
 
-            (participantesData || []).forEach(p => {
+            participantesData.forEach(p => {
                 const evento = eventosMap.get(p.evento_id);
                 if (evento) {
                     evento.participantes.push(p);
@@ -73,7 +72,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
             });
 
             setEventosConParticipantes(Array.from(eventosMap.values()).filter(e => e.participantes.length > 0 || e.estado !== 'finalizado'));
-            setTotalParticipantes(participantesData?.length || 0);
+            setTotalParticipantes(participantesData.length);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -93,11 +92,11 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
 
     const handleSave = async () => {
         if (!formData.nombre || !formData.evento_id) {
-            alert('Nombre y evento son obligatorios');
+            ui.error('Nombre y evento son obligatorios');
             return;
         }
         try {
-            await supabase.from('evento_participantes').insert([formData]);
+            await eventService.participantes.insertRaw(formData);
             loadData();
             setShowModal(false);
             setFormData({ modalidad: 'individual' });
@@ -107,9 +106,9 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('¿Eliminar este participante?')) return;
+        if (!await ui.confirm('¿Eliminar este participante?')) return;
         try {
-            await supabase.from('evento_participantes').delete().eq('id', id);
+            await eventService.participantes.delete(id);
             loadData();
         } catch (error) {
             console.error('Error deleting participante:', error);
@@ -118,7 +117,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
 
     const handleToggleAsistio = async (id: number, asistio?: boolean) => {
         try {
-            await supabase.from('evento_participantes').update({ asistio: !asistio }).eq('id', id);
+            await eventService.participantes.update(id, { asistio: !asistio });
             loadData();
         } catch (error) {
             console.error('Error updating asistencia:', error);
@@ -165,7 +164,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                     <p style={{ color: '#6b7280', margin: '4px 0 0' }}>{totalParticipantes} participantes en {eventosConParticipantes.length} eventos</p>
                 </div>
                 <button
-                    onClick={() => setShowModal(true)}
+                    onClick={async () => setShowModal(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
                 >
                     <UserPlus size={20} /> Inscribir Participante
@@ -180,7 +179,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                         type="text"
                         placeholder="Buscar eventos o participantes..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={async (e) => setSearchTerm(e.target.value)}
                         style={{ width: '100%', padding: '12px 12px 12px 40px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px' }}
                     />
                 </div>
@@ -202,7 +201,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                         }}>
                             {/* Event Row Header */}
                             <button
-                                onClick={() => toggleExpanded(evento.id)}
+                                onClick={async () => toggleExpanded(evento.id)}
                                 style={{
                                     width: '100%',
                                     display: 'grid',
@@ -299,7 +298,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                                                         </td>
                                                         <td style={{ padding: '12px', textAlign: 'center' }}>
                                                             <button
-                                                                onClick={() => handleToggleAsistio(p.id, p.asistio)}
+                                                                onClick={async () => handleToggleAsistio(p.id, p.asistio)}
                                                                 style={{
                                                                     width: '32px',
                                                                     height: '32px',
@@ -318,7 +317,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                                                         </td>
                                                         <td style={{ padding: '12px' }}>
                                                             <button
-                                                                onClick={() => handleDelete(p.id)}
+                                                                onClick={async () => handleDelete(p.id)}
                                                                 style={{ padding: '6px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                                                             >
                                                                 <Trash2 size={14} color="#dc2626" />
@@ -358,7 +357,7 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Evento *</label>
                                 <select
                                     value={formData.evento_id || ''}
-                                    onChange={(e) => setFormData({ ...formData, evento_id: Number(e.target.value) })}
+                                    onChange={async (e) => setFormData({ ...formData, evento_id: Number(e.target.value) })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                 >
                                     <option value="">Seleccionar evento...</option>
@@ -370,23 +369,23 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                                 <input
                                     type="text"
                                     value={formData.nombre || ''}
-                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, nombre: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                 />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Email</label>
-                                    <input type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                                    <input type="email" value={formData.email || ''} onChange={async (e) => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Teléfono</label>
-                                    <input type="tel" value={formData.telefono || ''} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                                    <input type="tel" value={formData.telefono || ''} onChange={async (e) => setFormData({ ...formData, telefono: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
                                 </div>
                             </div>
                             <div>
                                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Modalidad</label>
-                                <select value={formData.modalidad} onChange={(e) => setFormData({ ...formData, modalidad: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                                <select value={formData.modalidad} onChange={async (e) => setFormData({ ...formData, modalidad: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
                                     <option value="individual">Individual</option>
                                     <option value="grupal">Grupal</option>
                                     <option value="equipo">Equipo</option>
@@ -395,12 +394,12 @@ export const ParticipantsList: React.FC<ParticipantsListProps> = ({ onBack }) =>
                             {(formData.modalidad === 'grupal' || formData.modalidad === 'equipo') && (
                                 <div>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Nombre del Equipo</label>
-                                    <input type="text" value={formData.equipo_nombre || ''} onChange={(e) => setFormData({ ...formData, equipo_nombre: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                                    <input type="text" value={formData.equipo_nombre || ''} onChange={async (e) => setFormData({ ...formData, equipo_nombre: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
                                 </div>
                             )}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                            <button onClick={() => { setShowModal(false); setFormData({ modalidad: 'individual' }); }} style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+                            <button onClick={async () => { setShowModal(false); setFormData({ modalidad: 'individual' }); }} style={{ padding: '12px 20px', backgroundColor: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
                             <button onClick={handleSave} style={{ padding: '12px 20px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Inscribir</button>
                         </div>
                     </div>

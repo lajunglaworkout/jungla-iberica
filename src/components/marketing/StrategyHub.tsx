@@ -18,28 +18,11 @@ const StrategyHub: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // 1. Try to get real data context
-            const token = localStorage.getItem('ig_access_token');
-            console.log("🔑 Token found:", !!token);
-
+            // SEC-02: Token is no longer stored in localStorage
+            // AI ideas are generated without Instagram profile context
+            // To use real IG data, connect from the Analytics Dashboard first
             let profileData = undefined;
             let postsData = undefined;
-
-            if (token) {
-                try {
-                    console.log("📡 Fetching context data...");
-                    // Parallel fetch for speed
-                    const [p, posts] = await Promise.all([
-                        marketingService.getRealProfile(token),
-                        marketingService.getRealPosts(token)
-                    ]);
-                    profileData = p;
-                    postsData = posts;
-                    console.log("✅ Context data fetched:", { profile: !!profileData, posts: postsData?.length });
-                } catch (e) {
-                    console.warn("⚠️ Could not fetch context for AI:", e);
-                }
-            }
 
             // 2. Generate ideas with context
             console.log("🤖 Calling AI service with goal:", goal);
@@ -52,9 +35,9 @@ const StrategyHub: React.FC = () => {
 
             setIdeas(newIdeas);
             setGenerated(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('❌ Error generating ideas:', error);
-            setError(error.message || "Error al generar ideas");
+            setError(error instanceof Error ? error.message || 'Error al generar ideas' : 'Error al generar ideas');
         } finally {
             setLoading(false);
         }

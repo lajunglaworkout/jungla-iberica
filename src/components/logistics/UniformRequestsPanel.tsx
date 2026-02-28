@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Package, CheckCircle, XCircle, User, Truck, AlertTriangle, Clock, Search } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getUniformRequests, processUniformRequestUpdate } from '../../services/hrService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
 
+
+interface UniformItem {
+  name?: string;
+  quantity?: number;
+  size?: string;
+  [key: string]: unknown;
+}
 interface UniformRequest {
   id: number;
   employee_name: string;
   location: string;
   reason: string;
   status: 'pending' | 'approved' | 'shipped' | 'awaiting_confirmation' | 'confirmed' | 'disputed' | 'rejected';
-  items: any[];
+  items: UniformItem[];
   requested_at: string;
   shipped_at?: string;
   confirmed_at?: string;
@@ -25,7 +33,7 @@ const STATUS_FILTERS = [
   { key: 'history', label: 'Historial', icon: '⚫', color: '#6b7280' },
 ];
 
-const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string; Icon: any }> = {
+const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }> = {
   pending: { bg: '#fef3c7', color: '#92400e', label: 'Pendiente', Icon: Clock },
   approved: { bg: '#dbeafe', color: '#1e40af', label: 'Aprobado', Icon: CheckCircle },
   shipped: { bg: '#ede9fe', color: '#6d28d9', label: 'Enviado', Icon: Truck },
@@ -49,14 +57,8 @@ const UniformRequestsPanel: React.FC = () => {
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('uniform_requests')
-        .select('*')
-        .order('requested_at', { ascending: false });
-
-      if (!error && data) {
-        setRequests(data);
-      }
+      const data = await getUniformRequests();
+      setRequests(data as UniformRequest[]);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -64,62 +66,19 @@ const UniformRequestsPanel: React.FC = () => {
     }
   };
 
-  const updateStatus = async (id: number, status: string, additionalData: any = {}) => {
+  const updateStatus = async (id: number, status: string, additionalData: Record<string, unknown> = {}) => {
     try {
-      const { data: request } = await supabase
-        .from('uniform_requests')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const currentRequest = requests.find(r => r.id === id);
+      if (!currentRequest) return;
 
-      if (!request) return;
-
-      const updatePayload = { status, ...additionalData };
-
-      await supabase
-        .from('uniform_requests')
-        .update(updatePayload)
-        .eq('id', id);
-
-      // If Approving, deduct stock
-      if (status === 'approved' && request.status === 'pending') {
-        if (request.items) {
-          for (const item of request.items) {
-            const ITEM_MAPPINGS: Record<string, string> = {
-              'vestuario_chandal': 'CHÁNDAL',
-              'vestuario_sudadera': 'SUDADERA FRÍO',
-              'vestuario_chaleco': 'CHALECO FRÍO',
-              'vestuario_pantalon': 'PANTALÓN CORTO',
-              'vestuario_polo': 'POLO VERDE',
-              'vestuario_camiseta': 'CAMISETA ENTRENAMIENTO PERSONAL'
-            };
-
-            const inventoryName = ITEM_MAPPINGS[item.itemId] || item.itemName;
-
-            const { data: invItem } = await supabase
-              .from('inventory_items')
-              .select('id, cantidad_actual')
-              .eq('name', inventoryName)
-              .eq('size', item.size)
-              .single();
-
-            if (invItem) {
-              const newQty = Math.max(0, invItem.cantidad_actual - item.quantity);
-              await supabase
-                .from('inventory_items')
-                .update({ cantidad_actual: newQty })
-                .eq('id', invItem.id);
-            } else {
-              console.warn(`No inventory item found for ${inventoryName} size ${item.size}`);
-            }
-          }
-        }
-      }
-
+      const result = await processUniformRequestUpdate(
+        id, status, additionalData, currentRequest.items, currentRequest.status
+      );
+      if (!result.success) throw new Error(result.error);
       await loadRequests();
     } catch (error) {
       console.error(error);
-      alert('Error actualizando estado');
+      ui.error('Error actualizando estado');
     }
   };
 
@@ -302,7 +261,7 @@ const UniformRequestsPanel: React.FC = () => {
                     Artículos solicitados
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {req.items?.map((item: any, idx: number) => (
+                    {req.items?.map((item: UniformItem, idx: number) => (
                       <div key={idx} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '8px 12px', backgroundColor: 'white',

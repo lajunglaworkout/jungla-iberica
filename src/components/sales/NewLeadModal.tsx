@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { leadService, projectService } from '../../services/leadService';
 import { X, User, Mail, Phone, MapPin, Building2, Euro, Target, FileText } from 'lucide-react';
+import { useSession } from '../../contexts/SessionContext';
 
 interface NewLeadModalProps {
   onClose: () => void;
@@ -8,9 +9,10 @@ interface NewLeadModalProps {
 }
 
 const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
+  const { employee } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proyectos, setProyectos] = useState<any[]>([]);
+  const [proyectos, setProyectos] = useState<Array<{ id: string | number; name?: string; nombre?: string }>>([]);
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -36,16 +38,8 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
 
   const cargarProyectos = async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id, name, ubicacion, valor_proyecto, status')
-        .in('status', ['active', 'en_venta', 'planificacion']);
+      const data = await projectService.getAvailableForLeads();
 
-      if (error) {
-        console.error('❌ Error cargando proyectos:', error);
-        throw error;
-      }
-      
       console.log('✅ Proyectos cargados:', data);
       setProyectos(data || []);
     } catch (error) {
@@ -119,23 +113,17 @@ const NewLeadModal: React.FC<NewLeadModalProps> = ({ onClose, onSuccess }) => {
         ...formData,
         fecha_primer_contacto: new Date().toISOString(),
         fecha_ultimo_contacto: new Date().toISOString(),
-        asignado_a: 'carlossuarezparra@gmail.com' // Usuario actual
+        asignado_a: employee?.email || ''
       };
 
-      const { data, error } = await supabase
-        .from('leads')
-        .insert([leadData])
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await leadService.createLead(leadData);
 
       console.log('✅ Lead creado:', data);
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error creando lead:', error);
-      setError(error.message || 'Error al crear el lead');
+      setError(error instanceof Error ? error.message : 'Error al crear el lead');
     } finally {
       setLoading(false);
     }

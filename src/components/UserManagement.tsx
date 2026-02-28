@@ -11,6 +11,8 @@ import {
   reactivateUser
 } from '../services/userService';
 import { useSession } from '../contexts/SessionContext';
+import { ui } from '../utils/ui';
+
 
 const MODULES = {
   logistics: '📦 Logística',
@@ -84,12 +86,12 @@ const UserManagement: React.FC = () => {
   // Crear nuevo usuario
   const handleCreateUser = async () => {
     if (!isSuperAdmin) {
-      alert('❌ Solo el superadmin puede crear usuarios');
+      ui.error('❌ Solo el superadmin puede crear usuarios');
       return;
     }
 
     if (!newUser.name || !newUser.email || !newUser.password) {
-      alert('❌ Nombre, email y contraseña son obligatorios');
+      ui.error('❌ Nombre, email y contraseña son obligatorios');
       return;
     }
 
@@ -97,7 +99,7 @@ const UserManagement: React.FC = () => {
     const result = await createUserWithAuth(newUser);
     
     if (result.success) {
-      alert('✅ Usuario creado correctamente');
+      ui.success('✅ Usuario creado correctamente');
       setTeam(prev => [...prev, result.user!]);
       setShowCreateModal(false);
       setNewUser({
@@ -111,7 +113,7 @@ const UserManagement: React.FC = () => {
         assigned_modules: []
       });
     } else {
-      alert('❌ Error creando usuario: ' + result.error);
+      ui.error(`❌ Error creando usuario: ${result.error}`);
     }
     setLoading(false);
   };
@@ -121,7 +123,7 @@ const UserManagement: React.FC = () => {
     if (!isSuperAdmin || !selectedUserId) return;
 
     if (!newPassword || newPassword.length < 6) {
-      alert('❌ La contraseña debe tener al menos 6 caracteres');
+      ui.error('❌ La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
@@ -129,12 +131,12 @@ const UserManagement: React.FC = () => {
     const result = await changeUserPassword(selectedUserId, newPassword);
     
     if (result.success) {
-      alert('✅ ' + (result.message || 'Cambio de contraseña registrado'));
+      ui.success(`✅ ${(result.message || 'Cambio de contraseña registrado')}`);
       setShowPasswordModal(false);
       setNewPassword('');
       setSelectedUserId(null);
     } else {
-      alert('❌ Error: ' + result.error);
+      ui.error(`❌ Error: ${result.error}`);
     }
     setLoading(false);
   };
@@ -144,7 +146,7 @@ const UserManagement: React.FC = () => {
     if (!isSuperAdmin || !selectedUserId) return;
 
     if (!newEmail || !newEmail.includes('@')) {
-      alert('❌ Email inválido');
+      ui.error('❌ Email inválido');
       return;
     }
 
@@ -153,7 +155,7 @@ const UserManagement: React.FC = () => {
     
     if (result.success) {
       const message = result.message || 'Email actualizado en la base de datos.';
-      alert(`✅ ${message}\n\n⚠️ IMPORTANTE: El usuario debe contactar al administrador si no puede acceder con el nuevo email.`);
+      ui.success(`✅ ${message}\n\n⚠️ IMPORTANTE: El usuario debe contactar al administrador si no puede acceder con el nuevo email.`);
       setTeam(prev => prev.map(u => 
         u.user_id === selectedUserId ? { ...u, email: newEmail } : u
       ));
@@ -161,7 +163,7 @@ const UserManagement: React.FC = () => {
       setNewEmail('');
       setSelectedUserId(null);
     } else {
-      alert('❌ Error cambiando email: ' + result.error);
+      ui.error(`❌ Error cambiando email: ${result.error}`);
     }
     setLoading(false);
   };
@@ -169,12 +171,12 @@ const UserManagement: React.FC = () => {
   // Desactivar/Reactivar usuario
   const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
     if (!isSuperAdmin) {
-      alert('❌ Solo el superadmin puede cambiar el estado de usuarios');
+      ui.error('❌ Solo el superadmin puede cambiar el estado de usuarios');
       return;
     }
 
     const action = isActive ? 'desactivar' : 'reactivar';
-    if (!confirm(`¿Estás seguro de que quieres ${action} este usuario?`)) return;
+    if (!await ui.confirm(`¿Estás seguro de que quieres ${action} este usuario?`)) return;
 
     setLoading(true);
     const result = isActive 
@@ -182,12 +184,12 @@ const UserManagement: React.FC = () => {
       : await reactivateUser(userId);
     
     if (result.success) {
-      alert(`✅ Usuario ${action}do correctamente`);
+      ui.success(`✅ Usuario ${action}do correctamente`);
       setTeam(prev => prev.map(u => 
         u.user_id === userId ? { ...u, is_active: !isActive } : u
       ));
     } else {
-      alert(`❌ Error ${action}ndo usuario: ` + result.error);
+      ui.error(`❌ Error ${action}ndo usuario: ${result.error}`);
     }
     setLoading(false);
   };
@@ -246,7 +248,7 @@ const UserManagement: React.FC = () => {
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {isSuperAdmin && (
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={async () => setShowCreateModal(true)}
                 style={{
                   padding: '0.5rem 1rem',
                   backgroundColor: '#10b981',
@@ -265,7 +267,7 @@ const UserManagement: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => window.location.reload()}
+              onClick={async () => window.location.reload()}
               style={{
                 padding: '0.5rem 1rem',
                 backgroundColor: '#ef4444',
@@ -287,7 +289,7 @@ const UserManagement: React.FC = () => {
             type="text"
             placeholder="Buscar usuario..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={async (e) => setSearchTerm(e.target.value)}
             style={{
               flex: 1,
               minWidth: '200px',
@@ -300,7 +302,7 @@ const UserManagement: React.FC = () => {
           
           <select
             value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
+            onChange={async (e) => setFilterRole(e.target.value)}
             style={{
               padding: '0.75rem',
               border: '1px solid #d1d5db',
@@ -320,7 +322,7 @@ const UserManagement: React.FC = () => {
 
           <select
             value={filterCenter}
-            onChange={(e) => setFilterCenter(e.target.value)}
+            onChange={async (e) => setFilterCenter(e.target.value)}
             style={{
               padding: '0.75rem',
               border: '1px solid #d1d5db',
@@ -393,7 +395,7 @@ const UserManagement: React.FC = () => {
                     {Object.entries(MODULES).map(([id, name]) => (
                       <button
                         key={id}
-                        onClick={() => toggleModule(user.id, id)}
+                        onClick={async () => toggleModule(user.id, id)}
                         style={{
                           padding: '0.25rem 0.5rem',
                           borderRadius: '6px',
@@ -432,7 +434,7 @@ const UserManagement: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                   {editingUser === user.id ? (
                     <button
-                      onClick={() => setEditingUser(null)}
+                      onClick={async () => setEditingUser(null)}
                       style={{
                         padding: '0.5rem',
                         backgroundColor: '#059669',
@@ -447,7 +449,7 @@ const UserManagement: React.FC = () => {
                     </button>
                   ) : (
                     <button
-                      onClick={() => setEditingUser(user.id)}
+                      onClick={async () => setEditingUser(user.id)}
                       style={{
                         padding: '0.5rem',
                         backgroundColor: '#6b7280',
@@ -465,7 +467,7 @@ const UserManagement: React.FC = () => {
                   {isSuperAdmin && user.email !== employee?.email && (
                     <>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setSelectedUserId(user.user_id || user.id);
                           setSelectedUserName(user.name);
                           setNewEmail(user.email);
@@ -485,7 +487,7 @@ const UserManagement: React.FC = () => {
                       </button>
                       
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setSelectedUserId(user.user_id || user.id);
                           setSelectedUserName(user.name);
                           setShowPasswordModal(true);
@@ -504,7 +506,7 @@ const UserManagement: React.FC = () => {
                       </button>
                       
                       <button
-                        onClick={() => handleToggleUserStatus(user.user_id || user.id, user.is_active)}
+                        onClick={async () => handleToggleUserStatus(user.user_id || user.id, user.is_active)}
                         style={{
                           padding: '0.5rem',
                           backgroundColor: user.is_active ? '#ef4444' : '#10b981',
@@ -560,7 +562,7 @@ const UserManagement: React.FC = () => {
                   type="text"
                   placeholder="Nombre completo"
                   value={newUser.name}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 />
                 
@@ -568,7 +570,7 @@ const UserManagement: React.FC = () => {
                   type="email"
                   placeholder="Email"
                   value={newUser.email}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 />
                 
@@ -577,12 +579,12 @@ const UserManagement: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Contraseña"
                     value={newUser.password}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={async (e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                     style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', width: '100%', paddingRight: '3rem' }}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={async () => setShowPassword(!showPassword)}
                     style={{
                       position: 'absolute',
                       right: '0.75rem',
@@ -601,7 +603,7 @@ const UserManagement: React.FC = () => {
                   type="tel"
                   placeholder="Teléfono (opcional)"
                   value={newUser.phone}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 />
                 
@@ -609,13 +611,13 @@ const UserManagement: React.FC = () => {
                   type="text"
                   placeholder="DNI (opcional)"
                   value={newUser.dni}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, dni: e.target.value }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, dni: e.target.value }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 />
                 
                 <select
                   value={newUser.base_role}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, base_role: e.target.value as any }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, base_role: e.target.value as 'ceo' | 'director' | 'center_manager' | 'trainer' | 'employee' }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 >
                   <option value="employee">Empleado</option>
@@ -627,7 +629,7 @@ const UserManagement: React.FC = () => {
                 
                 <select
                   value={newUser.center_id}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, center_id: e.target.value }))}
+                  onChange={async (e) => setNewUser(prev => ({ ...prev, center_id: e.target.value }))}
                   style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
                 >
                   <option value="">🏢 Marca/Central</option>
@@ -645,7 +647,7 @@ const UserManagement: React.FC = () => {
                       <button
                         key={id}
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           const modules = newUser.assigned_modules;
                           const updated = modules.includes(id)
                             ? modules.filter(m => m !== id)
@@ -687,7 +689,7 @@ const UserManagement: React.FC = () => {
                   {loading ? 'Creando...' : 'Crear Usuario'}
                 </button>
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={async () => setShowCreateModal(false)}
                   style={{
                     flex: 1,
                     padding: '0.75rem',
@@ -750,7 +752,7 @@ const UserManagement: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Nueva contraseña (mín. 6 caracteres)"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={async (e) => setNewPassword(e.target.value)}
                   style={{ 
                     padding: '0.75rem', 
                     border: '1px solid #d1d5db', 
@@ -761,7 +763,7 @@ const UserManagement: React.FC = () => {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={async () => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
                     right: '0.75rem',
@@ -794,7 +796,7 @@ const UserManagement: React.FC = () => {
                   {loading ? 'Cambiando...' : 'Cambiar Contraseña'}
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setShowPasswordModal(false);
                     setNewPassword('');
                     setShowPassword(false);
@@ -860,7 +862,7 @@ const UserManagement: React.FC = () => {
                 type="email"
                 placeholder="Nuevo email"
                 value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
+                onChange={async (e) => setNewEmail(e.target.value)}
                 style={{ 
                   padding: '0.75rem', 
                   border: '1px solid #d1d5db', 
@@ -888,7 +890,7 @@ const UserManagement: React.FC = () => {
                   {loading ? 'Cambiando...' : 'Cambiar Email'}
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setShowEmailModal(false);
                     setNewEmail('');
                   }}

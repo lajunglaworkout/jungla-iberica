@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Monitor, Smartphone, Settings } from 'lucide-react';
 import CenterQRDisplay from './CenterQRDisplay';
+import { ui } from '../../utils/ui';
+
 
 interface AdminQRDisplayProps {
   onBack: () => void;
@@ -205,7 +207,7 @@ const AdminQRDisplay: React.FC<AdminQRDisplayProps> = ({ onBack }) => {
                   if (newWindow) {
                     newWindow.focus();
                   } else {
-                    alert('Permite ventanas emergentes para abrir en nueva ventana');
+                    ui.info('Permite ventanas emergentes para abrir en nueva ventana');
                   }
                 }}
                 style={{

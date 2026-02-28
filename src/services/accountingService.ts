@@ -309,7 +309,7 @@ class AccountingService {
       // Formatear datos
       return (data || []).map(record => ({
         ...record,
-        cuotas: (record.monthly_cuotas || []).map((cuota: any) => ({
+        cuotas: (record.monthly_cuotas || []).map((cuota: Record<string, unknown> & { cuota_types?: { nombre?: string; precio?: number } }) => ({
           id: cuota.id,
           cuota_type_id: cuota.cuota_type_id,
           cantidad: cuota.cantidad,
@@ -337,7 +337,7 @@ class AccountingService {
 
       if (error) throw error;
 
-      const years = [...new Set((data || []).map((record: any) => record.año))];
+      const years = [...new Set((data || []).map((record: { año: number }) => record.año))];
       return years;
     } catch (error) {
       console.error('Error loading available years:', error);
@@ -439,7 +439,7 @@ class AccountingService {
           .filter(gasto => gasto.concepto && gasto.importe > 0)
           .map(gasto => {
             // Crear un objeto con solo los campos necesarios
-            const gastoToInsert: any = {
+            const gastoToInsert: { financial_data_id: string; concepto: string; importe: number; categoria: string } = {
               financial_data_id: financialDataId,
               concepto: gasto.concepto.trim(),
               importe: Number(gasto.importe) || 0,
@@ -482,6 +482,28 @@ class AccountingService {
       return true;
     } catch (error) {
       console.error('❌ Error saving financial data:', error);
+      return false;
+    }
+  }
+
+  async deleteMonthlyCuota(financialDataId: string, cuotaId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('monthly_cuotas').delete().eq('financial_data_id', financialDataId).eq('id', cuotaId);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error eliminando cuota:', error);
+      return false;
+    }
+  }
+
+  async deleteGastoExtra(financialDataId: string, gastoId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('gastos_extras').delete().eq('financial_data_id', financialDataId).eq('id', gastoId);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error eliminando gasto extra:', error);
       return false;
     }
   }

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Plus, Clock, CheckCircle, Truck } from 'lucide-react';
 import { InternalOrder, OrderStatus, LocationType } from '../../types/logistics';
 import { getLocationName } from '../../config/logistics';
+import { getOrdersByStatus } from '../../services/logisticsService';
 
 interface OrderManagementProps {
   userLocation?: LocationType;
@@ -13,31 +14,50 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
   canCreateOrders = true
 }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+  const [orders, setOrders] = useState<InternalOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockOrders: InternalOrder[] = [
-    {
-      id: 'order-001',
-      orderNumber: 'PED-2025-001',
-      fromLocation: 'central',
-      toLocation: 'sevilla',
-      status: 'pendiente',
-      requestedBy: 'francisco.giraldez@lajungla.com',
-      requestedAt: '2025-01-20T10:30:00Z',
-      items: [],
-      totalAmount: 102.50,
-      notes: 'Pedido urgente - stock bajo en gomas elásticas',
-      paymentStatus: 'pendiente'
+  useEffect(() => {
+    loadOrders();
+  }, [activeTab]);
+
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      // Filtrar por estado según la pestaña (pendiente/procesando vs completado)
+      const statusFilter = activeTab === 'pending'
+        ? ['pending', 'processing', 'pendiente', 'procesando']
+        : ['completed', 'delivered', 'entregado'];
+
+      const data = await getOrdersByStatus(statusFilter);
+      setOrders(data as unknown as InternalOrder[]);
+    } catch (error) {
+      console.error('Error cargando pedidos:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const getStatusIcon = (status: OrderStatus) => {
-    switch (status) {
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
       case 'pendiente': return <Clock size={16} style={{ color: '#d97706' }} />;
+      case 'processing':
       case 'procesando': return <Truck size={16} style={{ color: '#0ea5e9' }} />;
+      case 'completed':
+      case 'delivered':
       case 'entregado': return <CheckCircle size={16} style={{ color: '#059669' }} />;
       default: return <Clock size={16} />;
     }
   };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <p style={{ color: '#6b7280', fontSize: '18px' }}>Cargando pedidos...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
@@ -72,7 +92,7 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as 'pending' | 'completed')}
               style={{
                 padding: '0.75rem 1rem',
                 border: 'none',
@@ -91,7 +111,7 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
 
       {/* Lista de pedidos */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {mockOrders.map(order => (
+        {orders.map((order) => (
           <div key={order.id} style={{
             backgroundColor: 'white',
             padding: '1.5rem',
@@ -102,7 +122,7 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
-                    {order.orderNumber}
+                    {order.order_number || order.orderNumber || `PED-${order.id.slice(0, 8)}`}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     {getStatusIcon(order.status)}
@@ -112,12 +132,12 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
                   </div>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  De: <strong>{getLocationName(order.fromLocation)}</strong> → 
-                  A: <strong>{getLocationName(order.toLocation)}</strong>
+                  De: <strong>{getLocationName(order.from_location || order.fromLocation)}</strong> →
+                  A: <strong>{getLocationName(order.to_location || order.toLocation)}</strong>
                 </div>
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#059669' }}>
-                €{order.totalAmount.toFixed(2)}
+                €{((order.total_amount || order.totalAmount) || 0).toFixed(2)}
               </div>
             </div>
             {order.notes && (

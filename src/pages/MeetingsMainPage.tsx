@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { getUserAccessibleDepartments } from '../config/departmentPermissions';
+import { getUserAccessibleDepartments, type Department } from '../config/departmentPermissions';
 import MeetingsDepartmentView from '../components/meetings/MeetingsDepartmentView';
-import { supabase } from '../lib/supabase';
+import { getTaskStatsByDepartments } from '../services/taskService';
 
 interface MeetingsMainPageProps {
   onBack?: () => void;
@@ -23,7 +23,7 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
   userName = 'Carlos Suárez'
 }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
-  const [accessibleDepartments, setAccessibleDepartments] = useState<any[]>([]);
+  const [accessibleDepartments, setAccessibleDepartments] = useState<Department[]>([]);
   const [taskStats, setTaskStats] = useState<DepartmentTaskStats>({});
 
   useEffect(() => {
@@ -32,45 +32,11 @@ export const MeetingsMainPage: React.FC<MeetingsMainPageProps> = ({
     loadTaskStats(departments);
   }, [userEmail]);
 
-  const loadTaskStats = async (departments: any[]) => {
-    try {
-      const stats: DepartmentTaskStats = {};
-      
-      // Cargar todas las tareas
-      const { data: allTasks, error } = await supabase
-        .from('tareas')
-        .select('*');
-
-      if (error) {
-        console.error('Error cargando tareas:', error);
-        return;
-      }
-
-      // Inicializar stats para todos los departamentos
-      for (const dept of departments) {
-        stats[dept.id] = {
-          pending: 0,
-          completed: 0
-        };
-      }
-
-      // Contar tareas por departamento
-      if (allTasks) {
-        for (const dept of departments) {
-          const deptTasks = allTasks.filter((t: any) => t.departamento === dept.id);
-          stats[dept.id] = {
-            pending: deptTasks.filter((t: any) => t.estado === 'pendiente').length,
-            completed: deptTasks.filter((t: any) => t.estado === 'completada').length
-          };
-        }
-      }
-
-      console.log(`📊 Estadísticas de tareas por departamento:`, stats);
-      
-      setTaskStats(stats);
-    } catch (error) {
-      console.error('Error cargando estadísticas de tareas:', error);
-    }
+  const loadTaskStats = async (departments: Department[]) => {
+    if (departments.length === 0) return;
+    const deptIds = departments.map((d) => d.id);
+    const stats = await getTaskStatsByDepartments(deptIds);
+    setTaskStats(stats);
   };
 
   if (selectedDepartment) {

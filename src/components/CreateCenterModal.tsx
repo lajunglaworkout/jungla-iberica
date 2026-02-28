@@ -1,7 +1,7 @@
 // En: src/components/CreateCenterModal.tsx
 
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { createCenter } from '../services/userService';
 import type { CenterType, CenterStatus } from '../types/center';
 
 interface CreateCenterModalProps {
@@ -38,7 +38,7 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
   const [error, setError] = useState<string | null>(null);
 
   // Función para actualizar cualquier campo del formulario
-  const updateFormData = (field: string, value: any) => {
+  const updateFormData = (field: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -120,12 +120,10 @@ export const CreateCenterModal: React.FC<CreateCenterModalProps> = ({ isOpen, on
         updated_at: new Date().toISOString()
       };
 
-      const { error: insertError } = await supabase
-        .from('centers')
-        .insert([centerData]);
+      const { success, error: insertError } = await createCenter(centerData as Record<string, unknown>);
 
-      if (insertError) {
-        throw insertError;
+      if (!success) {
+        throw new Error(insertError);
       }
 
       console.log('✅ Centro creado exitosamente:', formData.name);

@@ -89,45 +89,23 @@ describe('AccountingModule', () => {
     expect(añoSelect).toHaveValue('2023');
   });
 
-  it('debe mostrar los contadores de clientes', async () => {
+  it('debe mostrar el resumen de ingresos netos', async () => {
     render(<AccountingModule {...defaultProps} />);
-    
-    // Esperar a que se cargue el componente
+
     await screen.findByText(/Contabilidad - Test Center/);
-    
-    // Esperar a que se carguen los inputs
-    const altasInput = await screen.findByPlaceholderText('Nuevos clientes');
-    const bajasInput = await screen.findByPlaceholderText('Bajas de clientes');
-    
-    // Verificar que los elementos están presentes
-    expect(altasInput).toBeInTheDocument();
-    expect(bajasInput).toBeInTheDocument();
-    
-    // Verificar el texto del neto
-    const netoText = await screen.findByText(/Neto:/);
-    expect(netoText).toBeInTheDocument();
+
+    // El componente muestra "Ingresos Netos (sin IVA)" en el resumen financiero
+    const ingresosNetos = await screen.findByText(/Ingresos Netos/);
+    expect(ingresosNetos).toBeInTheDocument();
   });
 
-  it('debe permitir actualizar los contadores de clientes', async () => {
+  it('debe mostrar el beneficio neto en el resumen financiero', async () => {
     render(<AccountingModule {...defaultProps} />);
-    
-    // Esperar a que se cargue el componente
+
     await screen.findByText(/Contabilidad - Test Center/);
-    
-    // Obtener los inputs de altas y bajas
-    const altasInput = await screen.findByPlaceholderText('Nuevos clientes');
-    const bajasInput = await screen.findByPlaceholderText('Bajas de clientes');
-    
-    // Actualizar los valores
-    fireEvent.change(altasInput, { target: { value: '10' } });
-    fireEvent.change(bajasInput, { target: { value: '3' } });
-    
-    // Verificar que los valores se actualizaron
-    expect(altasInput).toHaveValue(10);
-    expect(bajasInput).toHaveValue(3);
-    
-    // Verificar que el neto se calcula correctamente
-    const netoText = await screen.findByText(/Neto:.*7/);
-    expect(netoText).toBeInTheDocument();
+
+    // El componente muestra "Beneficio Neto" en el panel de resumen
+    const beneficioNeto = await screen.findByText(/Beneficio Neto/);
+    expect(beneficioNeto).toBeInTheDocument();
   });
 });

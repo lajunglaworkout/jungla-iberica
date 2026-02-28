@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, History, ListTodo, Check, Trash2 } from 'lucide-react';
 import { DEPARTMENTS_CONFIG } from '../../config/departmentPermissions';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // TODO: Migrate meeting queries to meetingService.getMeetingsByDepartment, task queries to taskService from '../../services/meetingService' and '../../services/taskService'
 import MeetingModal from './MeetingModal';
 import ParticipantsSelectionModal from './ParticipantsSelectionModal';
 import TaskCompletionModal from './TaskCompletionModal';
+import { sanitizeHtml } from '../../utils/sanitize';
+import { ui } from '../../utils/ui';
+
 
 interface MeetingsDepartmentViewProps {
   departmentId: string;
@@ -13,6 +16,12 @@ interface MeetingsDepartmentViewProps {
   onBack: () => void;
 }
 
+interface MeetingDetailTask {
+  titulo?: string;
+  asignado_a?: string;
+  estado?: string;
+  [key: string]: unknown;
+}
 interface Meeting {
   id: number;
   title: string;
@@ -22,6 +31,8 @@ interface Meeting {
   participants: string[];
   created_by?: string;
   summary?: string;
+  tasks?: MeetingDetailTask[];
+  transcript?: string;
 }
 
 interface Task {
@@ -51,9 +62,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<any>(null);
+  const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<Task | null>(null);
   const [showMeetingDetailModal, setShowMeetingDetailModal] = useState(false);
-  const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<any>(null);
+  const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<Meeting | null>(null);
 
   const department = DEPARTMENTS_CONFIG[departmentId];
 
@@ -154,7 +165,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
   };
 
   const deleteTask = async (taskId: number | string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+    if (!await ui.confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
       return;
     }
 
@@ -166,7 +177,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
       if (error) {
         console.error('Error eliminando tarea:', error);
-        alert('Error al eliminar la tarea');
+        ui.error('Error al eliminar la tarea');
         return;
       }
 
@@ -174,7 +185,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       loadTasks(); // Recargar tareas
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al eliminar la tarea');
+      ui.error('Error al eliminar la tarea');
     }
   };
 
@@ -201,7 +212,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}"`);
       });
 
-      const formattedTasks = (data || []).map((task: any) => ({
+      const formattedTasks = (data || []).map((task: Record<string, unknown>) => ({
         id: task.id,
         title: task.titulo,
         assigned_to: task.asignado_a,
@@ -287,7 +298,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         marginBottom: '32px'
       }}>
         <button
-          onClick={() => {
+          onClick={async () => {
             setSelectedMeeting(null);
             setShowParticipantsModal(true);
           }}
@@ -311,7 +322,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         </button>
 
         <button
-          onClick={() => {
+          onClick={async () => {
             setShowHistoryModal(true);
             loadHistoryMeetings();
           }}
@@ -335,7 +346,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         </button>
 
         <button
-          onClick={() => setShowTasksModal(true)}
+          onClick={async () => setShowTasksModal(true)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -386,7 +397,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
             {meetings.slice(0, 5).map(meeting => (
               <div
                 key={meeting.id}
-                onClick={() => {
+                onClick={async () => {
                   setSelectedMeeting(meeting);
                   setShowMeetingModal(true);
                 }}
@@ -495,7 +506,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                 📋 Historial de Reuniones
               </h2>
               <button
-                onClick={() => setShowHistoryModal(false)}
+                onClick={async () => setShowHistoryModal(false)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -534,7 +545,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                   {historyMeetings.map(meeting => (
                     <div
                       key={meeting.id}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedMeetingDetail(meeting);
                         setShowMeetingDetailModal(true);
                       }}
@@ -570,7 +581,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                         </div>
                         {meeting.summary && (
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
                               setSelectedMeetingDetail(meeting);
                               setShowMeetingDetailModal(true);
@@ -651,7 +662,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                 ✅ Mis Tareas Pendientes
               </h2>
               <button
-                onClick={() => setShowTasksModal(false)}
+                onClick={async () => setShowTasksModal(false)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -726,7 +737,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedTaskForCompletion(task);
                             setShowCompletionModal(true);
                           }}
@@ -750,7 +761,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                         </button>
                         {userEmail === 'carlossuarezparra@gmail.com' && (
                           <button
-                            onClick={() => deleteTask(task.id)}
+                            onClick={async () => deleteTask(task.id)}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -837,7 +848,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                 {selectedMeetingDetail.title}
               </h2>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowMeetingDetailModal(false);
                   setSelectedMeetingDetail(null);
                 }}
@@ -920,7 +931,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                     lineHeight: '1.6'
                   }}
                     dangerouslySetInnerHTML={{
-                      __html: selectedMeetingDetail.summary.replace(/\n/g, '<br/>')
+                      __html: sanitizeHtml(selectedMeetingDetail.summary.replace(/\n/g, '<br/>'))
                     }}
                   />
                 </div>
@@ -933,10 +944,10 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                     ✅ Tareas Asignadas ({selectedMeetingDetail.tasks.length})
                   </h3>
                   <div style={{ display: 'grid', gap: '12px' }}>
-                    {selectedMeetingDetail.tasks.map((task: any, index: number) => (
+                    {selectedMeetingDetail.tasks.map((task: MeetingDetailTask, index: number) => (
                       <div
                         key={index}
-                        onClick={() => {
+                        onClick={async () => {
                           // Solo permitir completar si la tarea está asignada al usuario actual y está pendiente
                           if ((task.asignado_a) === userEmail && task.estado === 'pendiente') {
                             setSelectedTaskForCompletion({

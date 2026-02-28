@@ -112,6 +112,6 @@ export interface OnlineMetric {
     type: 'content' | 'team' | 'financial';
     period_start?: string;
     period_end?: string;
-    data: any;
+    data: Record<string, unknown>;
     created_at: string;
 }

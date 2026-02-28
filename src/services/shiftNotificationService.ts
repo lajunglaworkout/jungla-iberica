@@ -19,6 +19,20 @@ interface ShiftAssignment {
   date: string;
 }
 
+interface ShiftRecord {
+  id: number;
+  name: string;
+  start_time: string;
+  end_time: string;
+  centers?: { name?: string };
+}
+
+interface EmployeeAssignment {
+  employee_id: string;
+  shift_id?: number;
+  employees?: { nombre?: string; apellidos?: string; email?: string };
+}
+
 class ShiftNotificationService {
   /**
    * Enviar notificación de turno publicado
@@ -51,7 +65,7 @@ class ShiftNotificationService {
       }
 
       // Crear notificaciones para cada empleado
-      const notifications = (assignments || []).map((assignment: any) => ({
+      const notifications = (assignments || []).map((assignment: EmployeeAssignment) => ({
         shift_id: shiftId,
         employee_id: assignment.employee_id,
         employee_email: assignment.employees?.email || '',
@@ -94,7 +108,7 @@ class ShiftNotificationService {
         .select('*, employees(email, nombre, apellidos)')
         .eq('shift_id', shiftId);
 
-      const notifications = (assignments || []).map((assignment: any) => ({
+      const notifications = (assignments || []).map((assignment: EmployeeAssignment) => ({
         shift_id: shiftId,
         employee_id: assignment.employee_id,
         employee_email: assignment.employees?.email || '',
@@ -120,9 +134,9 @@ class ShiftNotificationService {
   /**
    * Simular envío de email (para desarrollo)
    */
-  private simulateEmailSending(shift: any, assignments: any[]): void {
+  private simulateEmailSending(shift: ShiftRecord, assignments: EmployeeAssignment[]): void {
     console.log('\n📧 ========== SIMULACIÓN DE EMAIL ==========');
-    console.log(`Para: ${assignments.map((a: any) => a.employees?.email).join(', ')}`);
+    console.log(`Para: ${assignments.map((a) => a.employees?.email).join(', ')}`);
     console.log(`Asunto: 📅 Tus turnos han sido publicados`);
     console.log('\n--- CONTENIDO ---');
     console.log(`Hola,`);

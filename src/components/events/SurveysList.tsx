@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Star, Plus, Search, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
+import { ui } from '../../utils/ui';
+
 
 interface Encuesta {
     id: number;
@@ -39,11 +41,14 @@ export const SurveysList: React.FC<SurveysListProps> = ({ onBack }) => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const { data: eventosData } = await supabase.from('eventos').select('id, nombre').order('fecha_evento', { ascending: false });
-            setEventos(eventosData || []);
+            const eventosData = await eventService.eventos.getWithFields('id, nombre', {
+                orderBy: 'fecha_evento',
+                ascending: false
+            });
+            setEventos(eventosData);
 
-            const { data: encuestasData } = await supabase.from('evento_encuestas').select('*').order('created_at', { ascending: false });
-            setEncuestas(encuestasData || []);
+            const encuestasData = await eventService.encuestas.getAll();
+            setEncuestas(encuestasData);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -53,11 +58,11 @@ export const SurveysList: React.FC<SurveysListProps> = ({ onBack }) => {
 
     const handleSave = async () => {
         if (!formData.evento_id || !formData.participante_nombre) {
-            alert('Evento y nombre del participante son obligatorios');
+            ui.error('Evento y nombre del participante son obligatorios');
             return;
         }
         try {
-            await supabase.from('evento_encuestas').insert([formData]);
+            await eventService.encuestas.create(formData as Encuesta);
             loadData();
             setShowModal(false);
             setFormData({ origen: 'crm' });
@@ -224,7 +229,7 @@ export const SurveysList: React.FC<SurveysListProps> = ({ onBack }) => {
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         {[1, 2, 3, 4, 5].map(star => (
                                             <button key={star} type="button" onClick={() => setFormData({ ...formData, [field]: star })} style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                                <Star size={28} fill={((formData as any)[field] || 0) >= star ? '#f59e0b' : 'none'} color={((formData as any)[field] || 0) >= star ? '#f59e0b' : '#d1d5db'} />
+                                                <Star size={28} fill={((formData as Record<string, number>)[field] || 0) >= star ? '#f59e0b' : 'none'} color={((formData as Record<string, number>)[field] || 0) >= star ? '#f59e0b' : '#d1d5db'} />
                                             </button>
                                         ))}
                                     </div>

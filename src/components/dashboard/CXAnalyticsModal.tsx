@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, BarChart2, Clock, MessageSquare, TrendingUp, Brain, Users } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getCXInboxStats, type CXMessage } from '../../services/cxService';
 
 interface CXAnalyticsModalProps {
     isOpen: boolean;
@@ -31,17 +31,9 @@ export const CXAnalyticsModal: React.FC<CXAnalyticsModalProps> = ({ isOpen, onCl
     const loadStats = async () => {
         setLoading(true);
         try {
-            // Cargar mensajes
-            const { data: messages } = await supabase
-                .from('inbox_messages')
-                .select('status, created_at, reply_sent_at, agent_proposal');
+            const { messages, trainingCount } = await getCXInboxStats();
 
-            // Cargar ejemplos de entrenamiento
-            const { count: trainingCount } = await supabase
-                .from('dataset_attcliente')
-                .select('*', { count: 'exact', head: true });
-
-            if (messages) {
+            if (messages.length >= 0) {
                 const total = messages.length;
                 const pending = messages.filter(m => m.status === 'new').length;
                 const responded = messages.filter(m => m.status === 'responded').length;

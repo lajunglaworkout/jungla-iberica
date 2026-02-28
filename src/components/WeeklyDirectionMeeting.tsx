@@ -5,7 +5,8 @@ import {
   RotateCcw, Users, Calendar, Target, FileText, Flag, User, 
   TrendingUp, BarChart3, Timer, MessageSquare, Archive
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { getDirectionPendingTasks, markDirectionTaskCompleted, markDirectionTaskDelayed, createDirectionTask } from '../services/taskService';
+import { useSession } from '../contexts/SessionContext';
 
 // ============ INTERFACES ============
 interface Task {
@@ -69,6 +70,7 @@ const PRIORITY_COLORS = {
 
 // ============ COMPONENTE PRINCIPAL ============
 const WeeklyDirectionMeeting: React.FC<WeeklyDirectionMeetingProps> = ({ isOpen, onClose }) => {
+  const { employee } = useSession();
   const [currentStep, setCurrentStep] = useState<'review' | 'create' | 'summary'>('review');
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
@@ -170,15 +172,7 @@ const WeeklyDirectionMeeting: React.FC<WeeklyDirectionMeetingProps> = ({ isOpen,
   const loadPendingTasks = async () => {
     setLoading(true);
     try {
-      // Cargar todas las tareas pendientes sin filtro de fecha
-      const { data: tasks, error } = await supabase
-        .from('tareas')
-        .select('*')
-        .in('estado', ['pendiente', 'en_progreso'])
-        .eq('departamento_responsable', 'direccion')
-        .order('fecha_limite', { ascending: true });
-
-      if (error) throw error;
+      const tasks = await getDirectionPendingTasks();
 
       // Enriquecer con nombres de asignados y datos adicionales
       const enrichedTasks = tasks?.map(task => {
@@ -218,18 +212,8 @@ const WeeklyDirectionMeeting: React.FC<WeeklyDirectionMeetingProps> = ({ isOpen,
 
   const markTaskCompleted = async (taskId: string, reason: string) => {
     try {
-      const { error } = await supabase
-        .from('tareas')
-        .update({
-          estado: 'completada',
-          completado_en: new Date().toISOString(),
-          motivo_completado: reason
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      // Mover tarea a completadas
+      const result = await markDirectionTaskCompleted(taskId, new Date().toISOString(), reason);
+      if (!result.success) throw new Error(result.error);
       const task = pendingTasks.find(t => t.id === taskId);
       if (task) {
         setCompletedTasks(prev => [...prev, { ...task, status: 'completada', completion_reason: reason }]);
@@ -242,20 +226,10 @@ const WeeklyDirectionMeeting: React.FC<WeeklyDirectionMeetingProps> = ({ isOpen,
 
   const markTaskDelayed = async (taskId: string, reason: string, newDeadline: string) => {
     try {
-      const { error } = await supabase
-        .from('tareas')
-        .update({
-          fecha_limite: newDeadline,
-          motivo_retraso: reason,
-          actualizado_en: new Date().toISOString()
-        })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      // Actualizar tarea local
-      setPendingTasks(prev => prev.map(t => 
-        t.id === taskId 
+      const result = await markDirectionTaskDelayed(taskId, newDeadline, reason);
+      if (!result.success) throw new Error(result.error);
+      setPendingTasks(prev => prev.map(t =>
+        t.id === taskId
           ? { ...t, deadline: newDeadline, delay_reason: reason }
           : t
       ));
@@ -268,27 +242,24 @@ const WeeklyDirectionMeeting: React.FC<WeeklyDirectionMeetingProps> = ({ isOpen,
     if (!newTaskForm.title.trim() || newTaskForm.assigned_to.length === 0) return;
 
     try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .insert([{
-          titulo: newTaskForm.title,
-          descripcion: newTaskForm.description,
-          asignado_a: newTaskForm.assigned_to,
-          fecha_limite: newTaskForm.deadline,
-          prioridad: newTaskForm.priority,
-          categoria: newTaskForm.category,
-          estado: 'pendiente',
-          departamento_responsable: 'direccion',
-          creado_por: 'carlossuarezparra@gmail.com',
-          creado_en: new Date().toISOString()
-        }])
-        .select()
-        .single();
+      const result = await createDirectionTask({
+        titulo: newTaskForm.title,
+        descripcion: newTaskForm.description,
+        asignado_a: newTaskForm.assigned_to,
+        fecha_limite: newTaskForm.deadline,
+        prioridad: newTaskForm.priority,
+        categoria: newTaskForm.category,
+        estado: 'pendiente',
+        departamento_responsable: 'direccion',
+        creado_por: employee?.email || '',
+        creado_en: new Date().toISOString()
+      });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error);
+      const data = result.data!;
 
       const newTask: Task = {
-        id: data.id.toString(),
+        id: (data.id as string | number).toString(),
         title: newTaskForm.title,
         description: newTaskForm.description,
         assigned_to: newTaskForm.assigned_to,

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Wrench, 
-  Users, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
+import {
+  Calendar,
+  Wrench,
+  Users,
+  AlertCircle,
+  CheckCircle,
+  Clock,
   Plus,
   Eye,
   Play,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import quarterlyMaintenanceService from '../../services/quarterlyMaintenanceService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface QuarterlyMaintenanceSystemProps {
   onClose?: () => void;
@@ -32,13 +34,13 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
-    
+
     let quarter = '';
     if (month >= 1 && month <= 3) quarter = 'Q1';
     else if (month >= 4 && month <= 6) quarter = 'Q2';
     else if (month >= 7 && month <= 9) quarter = 'Q3';
     else quarter = 'Q4';
-    
+
     return { quarter: `${quarter}-${year}`, year };
   };
 
@@ -68,7 +70,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
   // CONVOCAR NUEVA REVISIÓN TRIMESTRAL DE MANTENIMIENTO
   const handleCreateReview = async () => {
     if (!deadlineDate) {
-      alert('⚠️ Por favor establece una fecha límite');
+      ui.warning('⚠️ Por favor establece una fecha límite');
       return;
     }
 
@@ -82,7 +84,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
     ];
 
     const { quarter, year } = getCurrentQuarter();
-    
+
     const result = await quarterlyMaintenanceService.createReview({
       quarter,
       year,
@@ -92,16 +94,16 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
     });
 
     if (result.success) {
-      alert(`✅ Revisión Trimestral de Mantenimiento ${quarter} convocada\n\n` +
-            `Se han creado revisiones para:\n` +
-            centers.map(c => `🏪 ${c.name}: Mantenimiento completo`).join('\n') +
-            `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
-            `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
+      ui.success(`✅ Revisión Trimestral de Mantenimiento ${quarter} convocada\n\n` +
+        `Se han creado revisiones para:\n` +
+        centers.map(c => `🏪 ${c.name}: Mantenimiento completo`).join('\n') +
+        `\n\n⏰ Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}\n\n` +
+        `📌 Ahora debes ACTIVAR cada revisión para notificar a los encargados.`);
       setShowCreateModal(false);
       setDeadlineDate('');
       loadReviews();
     } else {
-      alert('❌ Error convocando revisión de mantenimiento');
+      ui.error('❌ Error convocando revisión de mantenimiento');
     }
 
     setLoading(false);
@@ -109,7 +111,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
 
   // ACTIVAR REVISIÓN Y NOTIFICAR A ENCARGADOS
   const handleActivateReview = async (reviewId: number) => {
-    const confirm = window.confirm('¿Activar esta revisión y notificar a los encargados de los centros?');
+    const confirm = await ui.confirm('¿Activar esta revisión y notificar a los encargados de los centros?');
     if (!confirm) return;
 
     setLoading(true);
@@ -117,9 +119,9 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
 
     // Mapeo de encargados por centro
     const encargadosEmails: Record<number, string> = {
-      9: 'francisco.sevilla@lajungla.com', // Sevilla
-      10: 'ivan.jerez@lajungla.com',       // Jerez
-      11: 'adrian.puerto@lajungla.com'     // Puerto
+      9: 'franciscogiraldezmorales@gmail.com', // Sevilla
+      10: 'ivan.jerez@lajungla.es',            // Jerez
+      11: 'guillermo.puerto@lajungla.es'       // Puerto
     };
 
     const centers = [
@@ -131,10 +133,10 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
     const result = await quarterlyMaintenanceService.activateReview(reviewId, centers, encargadosEmails);
 
     if (result.success) {
-      alert('✅ Revisión activada y notificaciones enviadas a los encargados');
+      ui.success('✅ Revisión activada y notificaciones enviadas a los encargados');
       loadReviews();
     } else {
-      alert('❌ Error activando la revisión');
+      ui.error('❌ Error activando la revisión');
       console.error('Error:', result.error);
     }
 
@@ -178,8 +180,8 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
         backgroundColor: '#f9fafb'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ 
-            fontSize: '48px', 
+          <div style={{
+            fontSize: '48px',
             marginBottom: '16px',
             animation: 'spin 1s linear infinite'
           }}>🔧</div>
@@ -229,9 +231,9 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
               Revisiones Trimestrales de Mantenimiento
             </h1>
           </div>
-          
+
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={async () => setShowCreateModal(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -250,7 +252,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
             Convocar Revisión {getCurrentQuarter().quarter}
           </button>
         </div>
-        
+
         <p style={{ color: '#6b7280', margin: 0 }}>
           Sistema de convocatoria y seguimiento de revisiones trimestrales de mantenimiento
         </p>
@@ -277,7 +279,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
               Convoca la primera revisión trimestral de mantenimiento para comenzar
             </p>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={async () => setShowCreateModal(true)}
               style={{
                 backgroundColor: '#10b981',
                 color: 'white',
@@ -335,7 +337,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
                       <span>📅 Fecha límite: {review.deadline_date || 'Sin definir'}</span>
                     </div>
                   </div>
-                  
+
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -371,10 +373,10 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
                     <Eye size={14} />
                     Ver Detalles
                   </button>
-                  
+
                   {review.status === 'draft' && (
                     <button
-                      onClick={() => handleActivateReview(review.id)}
+                      onClick={async () => handleActivateReview(review.id)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -439,9 +441,9 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
                 <Wrench size={24} style={{ color: '#f59e0b' }} />
                 Convocar Revisión {getCurrentQuarter().quarter}
               </h2>
-              
+
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={async () => setShowCreateModal(false)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -452,7 +454,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
                 <X size={24} />
               </button>
             </div>
-            
+
             <p style={{ color: '#6b7280', marginBottom: '20px' }}>
               Se creará una revisión trimestral de mantenimiento para todos los centros
             </p>
@@ -470,7 +472,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
               <input
                 type="date"
                 value={deadlineDate}
-                onChange={(e) => setDeadlineDate(e.target.value)}
+                onChange={async (e) => setDeadlineDate(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -508,7 +510,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
               justifyContent: 'flex-end'
             }}>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={async () => setShowCreateModal(false)}
                 style={{
                   padding: '12px 20px',
                   backgroundColor: '#f3f4f6',
@@ -522,7 +524,7 @@ const QuarterlyMaintenanceSystemWithSupabase: React.FC<QuarterlyMaintenanceSyste
               >
                 Cancelar
               </button>
-              
+
               <button
                 onClick={handleCreateReview}
                 disabled={!deadlineDate || loading}

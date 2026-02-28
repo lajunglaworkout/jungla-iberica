@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Video, Image as ImageIcon, FileText, Trash2, ArrowLeft, Instagram } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { onlineCalendarService, onlineContentService } from '../../../services/academyService';
 import { OnlineCalendarEvent, OnlineContent, ContentCategory } from '../../../types/online';
+import { ui } from '../../../utils/ui';
+
 
 interface OnlineCalendarioViewProps {
     onBack: () => void;
@@ -48,13 +50,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
         try {
-            const { data, error } = await supabase
-                .from('online_calendar')
-                .select('*, content: online_content(*)')
-                .gte('scheduled_at', startOfMonth.toISOString())
-                .lte('scheduled_at', endOfMonth.toISOString());
-
-            if (error) throw error;
+            const data = await onlineCalendarService.getByDateRange(startOfMonth, endOfMonth);
             setEvents(data || []);
         } catch (error) {
             console.error('Error loading calendar events:', error);
@@ -65,10 +61,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
 
     const loadContentLibrary = async () => {
         try {
-            const { data } = await supabase
-                .from('online_content')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const data = await onlineContentService.getAll();
             setContentLibrary(data || []);
         } catch (error) {
             console.error('Error loading content library:', error);
@@ -93,16 +86,9 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
 
         try {
             if (editingEvent) {
-                const { error } = await supabase
-                    .from('online_calendar')
-                    .update(payload)
-                    .eq('id', editingEvent.id);
-                if (error) throw error;
+                await onlineCalendarService.update(editingEvent.id, payload);
             } else {
-                const { error } = await supabase
-                    .from('online_calendar')
-                    .insert([payload]);
-                if (error) throw error;
+                await onlineCalendarService.create(payload);
             }
 
             setShowModal(false);
@@ -110,14 +96,14 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
             loadEvents();
         } catch (error) {
             console.error('Error saving event:', error);
-            alert('Error al guardar la publicación');
+            ui.error('Error al guardar la publicación');
         }
     };
 
     const handleDeleteEvent = async (id: string) => {
-        if (!confirm('¿Eliminar esta publicación programada?')) return;
+        if (!await ui.confirm('¿Eliminar esta publicación programada?')) return;
         try {
-            await supabase.from('online_calendar').delete().eq('id', id);
+            await onlineCalendarService.delete(id);
             setEvents(events.filter(e => e.id !== id));
             setShowModal(false);
         } catch (error) {
@@ -141,7 +127,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
         setFormPlatform(event.platform);
         setFormProfile(event.profile || PROFILES[0]);
         setFormCaption(event.caption || '');
-        setFormStatus(event.status as any);
+        setFormStatus(event.status as 'scheduled' | 'published');
 
         const date = new Date(event.scheduled_at);
         setFormTime(date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0'));
@@ -235,7 +221,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                             <div
                                 key={day}
                                 className={"bg-white min-h-[120px] p-2 hover:bg-gray-50 transition-colors cursor-pointer group relative " + (isToday ? 'bg-blue-50' : '')}
-                                onClick={() => openAddModal(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+                                onClick={async () => openAddModal(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <span className={"text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full " + (isToday ? 'bg-blue-600 text-white' : 'text-gray-700')}>
@@ -254,7 +240,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                                         return (
                                             <div
                                                 key={event.id}
-                                                onClick={(e) => { e.stopPropagation(); openEditModal(event); }}
+                                                onClick={async (e) => { e.stopPropagation(); openEditModal(event); }}
                                                 className="text-xs p-1.5 rounded border truncate cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
                                                 style={{ backgroundColor: style.bg, color: style.color, borderColor: style.color + '40' }}
                                             >
@@ -315,7 +301,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                                 {editingEvent ? 'Editar Publicación' : 'Programar Publicación'}
                             </h2>
                             <button
-                                onClick={() => setShowModal(false)}
+                                onClick={async () => setShowModal(false)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
                             >
                                 <X size={24} />
@@ -397,7 +383,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                                             <input
                                                 type="radio"
                                                 checked={formStatus === 'scheduled'}
-                                                onChange={() => setFormStatus('scheduled')}
+                                                onChange={async () => setFormStatus('scheduled')}
                                                 className="text-violet-600 focus:ring-violet-500 h-4 w-4"
                                             />
                                             <span className="text-sm font-medium text-gray-700">⏰ Programado</span>
@@ -406,7 +392,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                                             <input
                                                 type="radio"
                                                 checked={formStatus === 'published'}
-                                                onChange={() => setFormStatus('published')}
+                                                onChange={async () => setFormStatus('published')}
                                                 className="text-green-600 focus:ring-green-500 h-4 w-4"
                                             />
                                             <span className="text-sm font-medium text-gray-700">✅ Publicado</span>
@@ -427,7 +413,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
                         }}>
                             {editingEvent ? (
                                 <button
-                                    onClick={() => handleDeleteEvent(editingEvent.id)}
+                                    onClick={async () => handleDeleteEvent(editingEvent.id)}
                                     style={{
                                         padding: '10px',
                                         backgroundColor: '#fee2e2', // Red-100
@@ -445,7 +431,7 @@ export const OnlineCalendarioView: React.FC<OnlineCalendarioViewProps> = ({ onBa
 
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <button
-                                    onClick={() => setShowModal(false)}
+                                    onClick={async () => setShowModal(false)}
                                     style={{
                                         padding: '10px 20px',
                                         backgroundColor: 'white',

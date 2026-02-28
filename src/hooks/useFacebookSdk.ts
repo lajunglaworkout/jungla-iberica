@@ -1,8 +1,32 @@
 import { useState, useEffect } from 'react';
 
+interface FacebookAuthResponse {
+  accessToken: string;
+  expiresIn: number;
+  signedRequest: string;
+  userID: string;
+}
+
+interface FacebookLoginResponse {
+  authResponse?: FacebookAuthResponse;
+  status: 'connected' | 'not_authorized' | 'unknown';
+}
+
+interface FacebookLoginOptions {
+  scope?: string;
+  auth_type?: string;
+  [key: string]: unknown;
+}
+
+interface FacebookSDK {
+  init: (params: { appId: string; cookie: boolean; xfbml: boolean; version: string }) => void;
+  getLoginStatus: (callback: (response: FacebookLoginResponse) => void) => void;
+  login: (callback: (response: FacebookLoginResponse) => void, options?: FacebookLoginOptions) => void;
+}
+
 declare global {
     interface Window {
-        FB: any;
+        FB: FacebookSDK;
         fbAsyncInit: () => void;
     }
 }
@@ -33,7 +57,7 @@ export const useFacebookSdk = () => {
                 setIsSdkLoaded(true);
 
                 // Verify initialization in background for debugging
-                window.FB.getLoginStatus((response: any) => {
+                window.FB.getLoginStatus((response: FacebookLoginResponse) => {
                     console.log("Facebook SDK initialized successfully. Status:", response.status);
                 });
             } catch (error) {
@@ -54,17 +78,17 @@ export const useFacebookSdk = () => {
                 var js, fjs = d.getElementsByTagName(s)[0];
                 if (d.getElementById(id)) { return; }
                 js = d.createElement(s); js.id = id;
-                (js as any).src = "https://connect.facebook.net/en_US/sdk.js";
-                (js as any).onerror = () => {
+                (js as HTMLScriptElement).src = "https://connect.facebook.net/en_US/sdk.js";
+                (js as HTMLScriptElement).onerror = () => {
                     setSdkError('Facebook SDK blocked. Please disable AdBlocker.');
                     console.error('Facebook SDK failed to load. Likely blocked by client.');
                 };
-                (fjs as any).parentNode.insertBefore(js, fjs);
+                fjs.parentNode?.insertBefore(js, fjs);
             }(document, 'script', 'facebook-jssdk'));
         }
     }, []);
 
-    const login = (options: any = {}) => {
+    const login = (options: FacebookLoginOptions = {}) => {
         return new Promise((resolve, reject) => {
             if (!window.FB) {
                 reject('Facebook SDK not loaded');
@@ -75,7 +99,7 @@ export const useFacebookSdk = () => {
             // const scope = 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement';
             // const loginOptions = { scope, ...options };
 
-            window.FB.login((response: any) => {
+            window.FB.login((response: FacebookLoginResponse) => {
                 if (response.authResponse) {
                     resolve(response);
                 } else {

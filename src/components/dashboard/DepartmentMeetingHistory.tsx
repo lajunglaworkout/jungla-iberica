@@ -4,7 +4,7 @@ import { DEPARTMENTS, CENTERS, getDepartmentByName, getAssignmentResponsible } f
 import { Calendar, Clock, Users, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { supabase } from '../../lib/supabase';
+import { getMeetingRecordsRaw } from '../../services/meetingService';
 
 interface DepartmentMeetingHistoryProps {
   tasks: Task[];
@@ -28,18 +28,9 @@ export const DepartmentMeetingHistory: React.FC<DepartmentMeetingHistoryProps> =
   const loadRealMeetings = async () => {
     try {
       console.log('📅 Cargando reuniones reales del historial...');
-      const { data, error } = await supabase
-        .from('meetings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error cargando reuniones:', error);
-        setRealMeetings([]);
-      } else {
-        console.log(`✅ Reuniones cargadas del historial: ${data?.length || 0}`);
-        setRealMeetings(data || []);
-      }
+      const data = await getMeetingRecordsRaw();
+      console.log(`✅ Reuniones cargadas del historial: ${data.length}`);
+      setRealMeetings(data);
     } catch (error) {
       console.error('❌ Error:', error);
       setRealMeetings([]);

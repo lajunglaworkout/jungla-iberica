@@ -28,6 +28,8 @@ import MaintenanceAnalytics from './MaintenanceAnalytics';
 import TicketManager from './TicketManager';
 import InspectionHistory from './InspectionHistory';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface DirectorStats {
     totalActiveTickets: number;
@@ -149,18 +151,18 @@ const MaintenanceDirectorDashboard: React.FC = () => {
         // Recargar datos para actualizar la fecha en la tabla
         loadDashboardData();
         setIsConvoking(false);
-        alert('✅ Convocatoria enviada correctamente a todos los centros con fecha límite: ' + deadline.toLocaleDateString());
+        ui.success(`✅ Convocatoria enviada correctamente a todos los centros con fecha límite: ${deadline.toLocaleDateString()}`);
     };
 
     const handleResetData = async () => {
-        if (window.confirm('⚠️ ¿Estás seguro de que deseas ELIMINAR TODOS los datos de pruebas (inspecciones, items, alertas)? Esta acción no se puede deshacer.')) {
+        if (await ui.confirm('⚠️ ¿Estás seguro de que deseas ELIMINAR TODOS los datos de pruebas (inspecciones, items, alertas)? Esta acción no se puede deshacer.')) {
             setLoading(true);
             const result = await maintenanceService.clearAllData();
             if (result.success) {
-                alert('✅ Datos eliminados correctamente. Recargando...');
+                ui.success('✅ Datos eliminados correctamente. Recargando...');
                 loadDashboardData();
             } else {
-                alert('❌ Error eliminando datos: ' + result.error);
+                ui.error(`❌ Error eliminando datos: ${result.error}`);
             }
             setLoading(false);
         }
@@ -173,7 +175,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
     };
 
     const handleNotify = (centerName: string) => {
-        alert(`📧 Notificación enviada al encargado de ${centerName} para recordar la inspección pendiente.`);
+        ui.success(`📧 Notificación enviada al encargado de ${centerName} para recordar la inspección pendiente.`);
     };
 
     const filteredHistory = history.filter(inspection =>
@@ -262,7 +264,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                 {/* Tabs */}
                 <div style={{ display: 'flex', gap: '4px', marginTop: '24px', borderBottom: '1px solid #e5e7eb' }}>
                     <button
-                        onClick={() => setActiveTab('dashboard')}
+                        onClick={async () => setActiveTab('dashboard')}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -281,7 +283,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                         Dashboard
                     </button>
                     <button
-                        onClick={() => setActiveTab('convocatoria')}
+                        onClick={async () => setActiveTab('convocatoria')}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -300,7 +302,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                         Convocatoria
                     </button>
                     <button
-                        onClick={() => setActiveTab('historico')}
+                        onClick={async () => setActiveTab('historico')}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -319,7 +321,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                         Histórico
                     </button>
                     <button
-                        onClick={() => setActiveTab('analiticas')}
+                        onClick={async () => setActiveTab('analiticas')}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -338,7 +340,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                         Analíticas
                     </button>
                     <button
-                        onClick={() => setActiveTab('incidencias')}
+                        onClick={async () => setActiveTab('incidencias')}
                         style={{
                             padding: '12px 24px',
                             fontSize: '14px',
@@ -371,7 +373,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                     }}>
                         {/* Card 1 - Clickable to Incidencias */}
                         <div
-                            onClick={() => setActiveTab('incidencias')}
+                            onClick={async () => setActiveTab('incidencias')}
                             style={{
                                 backgroundColor: 'white',
                                 borderRadius: '12px',
@@ -683,7 +685,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                                                 {item.status !== 'completed' && (
                                                     <>
                                                         <button
-                                                            onClick={() => {
+                                                            onClick={async () => {
                                                                 setSelectedCenterId(item.centerId);
                                                                 setIsInspecting(true);
                                                             }}
@@ -712,7 +714,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                                                             Inspeccionar
                                                         </button>
                                                         <button
-                                                            onClick={() => handleNotify(item.centerName)}
+                                                            onClick={async () => handleNotify(item.centerName)}
                                                             style={{
                                                                 backgroundColor: 'transparent',
                                                                 border: '1px solid #d1d5db',
@@ -800,7 +802,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
                             <input
                                 type="date"
                                 value={convocationDeadline}
-                                onChange={(e) => setConvocationDeadline(e.target.value)}
+                                onChange={async (e) => setConvocationDeadline(e.target.value)}
                                 style={{
                                     width: '100%',
                                     padding: '10px',
@@ -813,7 +815,7 @@ const MaintenanceDirectorDashboard: React.FC = () => {
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                             <button
-                                onClick={() => setIsConvoking(false)}
+                                onClick={async () => setIsConvoking(false)}
                                 style={{
                                     padding: '8px 16px',
                                     borderRadius: '6px',

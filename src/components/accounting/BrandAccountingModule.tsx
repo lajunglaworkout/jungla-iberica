@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { leadService, projectService } from '../../services/leadService';
 import { 
   ArrowLeft, BarChart3, TrendingUp, Users, Building2, Handshake, Calendar, PieChart, FileText,
   DollarSign, Target, Calculator
@@ -17,18 +17,13 @@ const BrandAccountingModule: React.FC<BrandAccountingModuleProps> = ({ onBack })
 
   useEffect(() => {
     const cargarEstadisticas = async () => {
-      const { count: countLeads } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .in('estado', ['prospecto', 'contactado', 'reunion', 'propuesta']);
-      
-      const { count: countProyectos } = await supabase
-        .from('projects')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-      
-      setLeadsActivos(countLeads || 0);
-      setProyectosActivos(countProyectos || 0);
+      const [countLeads, countProyectos] = await Promise.all([
+        leadService.countActiveLeads().catch(() => 0),
+        projectService.countActiveProjects().catch(() => 0),
+      ]);
+
+      setLeadsActivos(countLeads);
+      setProyectosActivos(countProyectos);
     };
     
     cargarEstadisticas();

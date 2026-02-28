@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabase';
 
+export interface MeetingTask {
+  title?: string;
+  titulo?: string;
+  assignedTo?: string;
+  asignado_a?: string;
+  deadline?: string;
+  fecha_limite?: string;
+}
+
 export interface MeetingRecording {
   id?: string;
   meeting_id: number;
@@ -7,7 +16,7 @@ export interface MeetingRecording {
   audio_url?: string;
   transcript?: string;
   meeting_minutes?: string;
-  tasks_assigned?: any[];
+  tasks_assigned?: MeetingTask[];
   status: 'recording' | 'processing' | 'completed' | 'error';
   created_at?: string;
   duration_seconds?: number;
@@ -18,18 +27,40 @@ export class AudioRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private actualMimeType: string = 'audio/webm';
 
   async startRecording(): Promise<boolean> {
     try {
       this.audioChunks = [];
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.mediaRecorder = new MediaRecorder(this.stream);
+
+      // Seleccionar el tipo nativo que soporta el navegador
+      // NUNCA usar 'audio/wav' — MediaRecorder no genera WAV real
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/mp4'
+      ];
+      const supportedType = preferredTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+      this.mediaRecorder = supportedType
+        ? new MediaRecorder(this.stream, { mimeType: supportedType })
+        : new MediaRecorder(this.stream);
+
+      // Guardar el MIME type base (sin codecs) para enviarlo a Gemini
+      const rawMime = this.mediaRecorder.mimeType || 'audio/webm';
+      this.actualMimeType = rawMime.split(';')[0]; // 'audio/webm;codecs=opus' → 'audio/webm'
+      console.log(`🎙️ MediaRecorder mimeType: ${rawMime} → enviando: ${this.actualMimeType}`);
 
       this.mediaRecorder.ondataavailable = (event) => {
-        this.audioChunks.push(event.data);
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(1000); // chunk cada segundo para estabilidad
       console.log('🎙️ Grabación iniciada');
       return true;
     } catch (error) {
@@ -46,9 +77,10 @@ export class AudioRecorder {
       }
 
       this.mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+        // Usar el MIME type real del MediaRecorder
+        const audioBlob = new Blob(this.audioChunks, { type: this.actualMimeType });
+        console.log(`🎙️ Grabación detenida: ${audioBlob.size} bytes, type: ${audioBlob.type}`);
         this.cleanup();
-        console.log('🎙️ Grabación detenida');
         resolve(audioBlob);
       };
 
@@ -77,7 +109,7 @@ export const saveMeetingRecording = async (
   audioBlob: Blob,
   transcript: string,
   meetingMinutes: string,
-  tasksAssigned: any[]
+  tasksAssigned: MeetingTask[]
 ): Promise<{ success: boolean; recordingId?: string; error?: string }> => {
   try {
     console.log('💾 Guardando transcripción y acta en Supabase (sin audio)...');
@@ -132,7 +164,7 @@ export const saveMeetingToHistory = async (
   participants: string[],
   transcript: string,
   meetingMinutes: string,
-  tasksAssigned: any[]
+  tasksAssigned: MeetingTask[]
 ): Promise<{ success: boolean; meetingId?: string; error?: string }> => {
   try {
     console.log('📅 Guardando reunión en historial...', {
@@ -140,6 +172,10 @@ export const saveMeetingToHistory = async (
       department: departmentId,
       participants: participants.length
     });
+
+    // Obtener el usuario autenticado actual
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserEmail = user?.email || 'unknown@jungla.com';
 
     const now = new Date();
     const currentDate = now.toISOString().split('T')[0];
@@ -155,11 +191,11 @@ export const saveMeetingToHistory = async (
       end_time: endTime,
       duration_minutes: 60,
       participants: participants,
-      leader_email: 'carlossuarezparra@gmail.com',
+      leader_email: currentUserEmail,
       agenda: transcript.substring(0, 500), // Limitar a 500 caracteres
       objectives: [],
       kpis: {},
-      tasks: tasksAssigned.map((t: any) => ({
+      tasks: tasksAssigned.map((t) => ({
         title: t.title || t.titulo,
         assignedTo: t.assignedTo || t.asignado_a,
         deadline: t.deadline || t.fecha_limite
@@ -168,7 +204,7 @@ export const saveMeetingToHistory = async (
       summary: meetingMinutes.substring(0, 1000), // Limitar a 1000 caracteres
       status: 'completed',
       completion_percentage: 100,
-      created_by: 'carlossuarezparra@gmail.com'
+      created_by: currentUserEmail
     };
 
     console.log('📋 Datos a guardar:', meetingData);

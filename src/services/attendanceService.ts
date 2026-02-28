@@ -181,7 +181,7 @@ export const detectDailyAttendanceIncidents = async (
               incidents.push({
                 employee_id: employeeId,
                 date: date,
-                type: 'early_departure' as any,
+                type: 'early_departure' as const,
                 reason: `Salió a las ${clockOutTime}, turno terminaba a las ${shiftEndTime}`,
                 notes: `Salida anticipada: ${earlyMinutes} minutos`,
                 created_by: 'Sistema Automático'
@@ -305,7 +305,7 @@ export const getProcessingLog = async (
   startDate?: string,
   endDate?: string,
   centerId?: number
-): Promise<any[]> => {
+): Promise<Record<string, unknown>[]> => {
   try {
     let query = supabase
       .from('attendance_processing_log')
@@ -356,7 +356,7 @@ export const wasProcessedToday = async (): Promise<boolean> => {
  */
 export const autoProcessIfNeeded = async (): Promise<{ processed: boolean; count: number }> => {
   const alreadyProcessed = await wasProcessedToday();
-  
+
   if (alreadyProcessed) {
     console.log('✅ Ya se procesó la asistencia hoy');
     return { processed: false, count: 0 };
@@ -365,6 +365,83 @@ export const autoProcessIfNeeded = async (): Promise<{ processed: boolean; count
   console.log('🤖 Ejecutando auto-procesamiento de asistencia...');
   const count = await processTodayAttendance();
   console.log(`✅ Auto-procesamiento completado: ${count} incidencias detectadas`);
-  
+
   return { processed: true, count };
+};
+
+// ── Attendance CRUD ────────────────────────────────────────────────────────
+
+export const getAttendanceRecordsEnriched = async (
+  dateFrom: string,
+  dateTo: string
+): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data: attendanceData, error } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .gte('date', dateFrom)
+      .lte('date', dateTo)
+      .order('date', { ascending: false });
+    if (error || !attendanceData) return [];
+
+    const employeeIds = [...new Set(attendanceData.map((r: Record<string, unknown>) => r.employee_id as number))];
+    const { data: employeesData } = await supabase
+      .from('employees')
+      .select('id, name, center_id')
+      .in('id', employeeIds);
+
+    return attendanceData.map((record: Record<string, unknown>) => {
+      const emp = (employeesData ?? []).find((e: Record<string, unknown>) => e.id === record.employee_id);
+      return {
+        ...record,
+        employee_name: (emp as Record<string, unknown>)?.name || 'Desconocido',
+        center_id: (emp as Record<string, unknown>)?.center_id || null,
+      };
+    });
+  } catch { return []; }
+};
+
+export const getEmployeeAttendanceHistory = async (
+  employeeId: number
+): Promise<Record<string, unknown>[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .order('date', { ascending: false });
+    if (error) return [];
+    return (data ?? []) as Record<string, unknown>[];
+  } catch { return []; }
+};
+
+export const createAttendanceRecord = async (
+  data: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('attendance_records').insert([data]);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error creando registro' }; }
+};
+
+export const deleteAttendanceRecord = async (
+  id: number
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('attendance_records').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error eliminando registro' }; }
+};
+
+export const updateAttendanceRecord = async (
+  id: number,
+  data: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('attendance_records').update(data).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch { return { success: false, error: 'Error actualizando registro' }; }
 };

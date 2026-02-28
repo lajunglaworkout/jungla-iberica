@@ -49,190 +49,18 @@ export interface Competitor {
     engagement_rate: number;
 }
 
-// Mock Data
-export const MOCK_PROFILE: InstagramProfile = {
-    username: 'lajungla_iberica',
-    followers: 12543,
-    following: 450,
-    posts: 342,
-    profile_pic_url: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&h=400&fit=crop',
-    biography: '🌴 Tu gimnasio salvaje en Andalucía\n💪 Entrena diferente\n📍 Sevilla | Jerez | Puerto',
-    engagement_rate: 4.8,
-    reach_last_30d: 45200,
-    impressions_last_30d: 120500
-};
-
-export const MOCK_POSTS: PostMetric[] = [
-    {
-        id: '1',
-        type: 'reel',
-        thumbnail_url: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=400&fit=crop',
-        caption: '¡No te rindas! El proceso es lento pero vale la pena 💪 #gymmotivation',
-        likes: 1240,
-        comments: 45,
-        shares: 230,
-        saves: 560,
-        reach: 15400,
-        date: '2023-11-28',
-        performance_score: 95,
-        tags: ['Viral Audio', 'High Retention']
-    },
-    {
-        id: '2',
-        type: 'carousel',
-        thumbnail_url: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop',
-        caption: '5 Errores comunes en Press Banca ❌ vs ✅',
-        likes: 890,
-        comments: 120,
-        shares: 450,
-        saves: 890,
-        reach: 12300,
-        date: '2023-11-25',
-        performance_score: 92,
-        tags: ['Educational', 'Saveable']
-    },
-    {
-        id: '3',
-        type: 'video',
-        thumbnail_url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop',
-        caption: 'Clase de Zumba de ayer! 🔥 Qué energía equipo!',
-        likes: 450,
-        comments: 23,
-        shares: 15,
-        saves: 5,
-        reach: 3400,
-        date: '2023-11-22',
-        performance_score: 65,
-        tags: ['Community']
-    }
-];
-
-const MOCK_IDEAS_GROWTH: ContentIdea[] = [
-    {
-        id: '1',
-        title: 'ASMR de Gimnasio',
-        description: 'Graba sonidos satisfactorios del gym: discos chocando, magnesio, cierre de taquilla.',
-        type: 'reel',
-        difficulty: 'easy',
-        estimated_reach: 'High',
-        reason: 'Trending Format'
-    },
-    {
-        id: '2',
-        title: 'POV: Tu primer día',
-        description: 'Video humorístico sobre cómo te sientes el primer día vs el mes 6.',
-        type: 'reel',
-        difficulty: 'medium',
-        estimated_reach: 'Very High',
-        reason: 'High Relatability'
-    },
-    {
-        id: '3',
-        title: 'Challenge de Plancha',
-        description: 'Reto viral: ¿Cuánto aguantas en plancha? Etiqueta a un amigo.',
-        type: 'reel',
-        difficulty: 'easy',
-        estimated_reach: 'High',
-        reason: 'Viral Potential'
-    }
-];
-
-const MOCK_IDEAS_COMMUNITY: ContentIdea[] = [
-    {
-        id: '1',
-        title: 'Spotlight de Miembro',
-        description: 'Entrevista corta a un miembro veterano sobre su transformación.',
-        type: 'reel',
-        difficulty: 'medium',
-        estimated_reach: 'Medium',
-        reason: 'Community Building'
-    },
-    {
-        id: '2',
-        title: 'Preguntas y Respuestas',
-        description: 'Sticker de preguntas en Stories: "Dudas sobre nutrición".',
-        type: 'story',
-        difficulty: 'easy',
-        estimated_reach: 'Medium',
-        reason: 'Engagement'
-    },
-    {
-        id: '3',
-        title: 'Nuestro Equipo',
-        description: 'Carrusel presentando a los entrenadores y sus especialidades.',
-        type: 'carousel',
-        difficulty: 'easy',
-        estimated_reach: 'Medium',
-        reason: 'Trust Building'
-    }
-];
-
-const MOCK_IDEAS_SALES: ContentIdea[] = [
-    {
-        id: '1',
-        title: 'Oferta Flash 24h',
-        description: 'Story con cuenta atrás para matrícula gratis. Link en bio.',
-        type: 'story',
-        difficulty: 'easy',
-        estimated_reach: 'Medium',
-        reason: 'Urgency'
-    },
-    {
-        id: '2',
-        title: 'Antes y Después',
-        description: 'Carrusel de casos de éxito reales con llamada a la acción clara.',
-        type: 'carousel',
-        difficulty: 'medium',
-        estimated_reach: 'High',
-        reason: 'Social Proof'
-    },
-    {
-        id: '3',
-        title: 'Tour del Gimnasio',
-        description: 'Reel rápido mostrando las instalaciones y máquinas nuevas. "Ven a probar".',
-        type: 'reel',
-        difficulty: 'medium',
-        estimated_reach: 'Medium',
-        reason: 'Showcase'
-    }
-];
-
-const MOCK_COMPETITORS: Competitor[] = [
-    {
-        username: 'mcfit_es',
-        followers: 45000,
-        growth_rate: 1.2,
-        top_content_type: 'Reels Humor',
-        engagement_rate: 3.5
-    },
-    {
-        username: 'basicfit_es',
-        followers: 89000,
-        growth_rate: 0.8,
-        top_content_type: 'Challenges',
-        engagement_rate: 2.1
-    },
-    {
-        username: 'crossfit_sevilla',
-        followers: 15000,
-        growth_rate: 5.4,
-        top_content_type: 'WOD Demos',
-        engagement_rate: 6.8
-    }
-];
+// Mock Data (Eliminado a petición del usuario)
 
 // Service
 // Service
 export const marketingService = {
     // Mock methods for fallback
     getProfile: async (): Promise<InstagramProfile> => {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return MOCK_PROFILE;
+        throw new Error("No real profile data available");
     },
 
     getTopPosts: async (): Promise<PostMetric[]> => {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return MOCK_POSTS;
+        return [];
     },
 
     // Real API methods
@@ -319,7 +147,7 @@ export const marketingService = {
             } else if (engagedData.data && engagedData.data[0] && Array.isArray(engagedData.data[0].values)) {
                 const values = engagedData.data[0].values;
                 // Sum up the last 28 days of engagement
-                insights.impressions = values.reduce((acc: number, curr: any) => acc + (curr.value || 0), 0);
+                insights.impressions = values.reduce((acc: number, curr: { value?: number }) => acc + (curr.value || 0), 0);
             }
         } catch (e) {
             console.warn("Engaged Fetch Exception:", e);
@@ -339,7 +167,7 @@ export const marketingService = {
             const mediaForCalc = await mediaForCalcRes.json();
 
             if (mediaForCalc.data && mediaForCalc.data.length > 0 && profileData.followers_count > 0) {
-                const totalInteractions = mediaForCalc.data.reduce((acc: number, post: any) => {
+                const totalInteractions = mediaForCalc.data.reduce((acc: number, post: { like_count?: number; comments_count?: number }) => {
                     return acc + (post.like_count || 0) + (post.comments_count || 0);
                 }, 0);
 
@@ -395,7 +223,7 @@ export const marketingService = {
             return [];
         }
 
-        return mediaData.data.map((post: any) => {
+        return mediaData.data.map((post: { id: string; caption?: string; media_type?: string; media_product_type?: string; media_url?: string; thumbnail_url?: string; permalink?: string; timestamp?: string; like_count?: number; comments_count?: number; children?: { data?: Array<{ media_type?: string }> } }) => {
             // Determine precise type
             let type: 'video' | 'image' | 'carousel' | 'reel' = 'image';
 
@@ -425,104 +253,45 @@ export const marketingService = {
     },
 
     getAIContentIdeas: async (goal: string, profile?: InstagramProfile, posts?: PostMetric[]): Promise<ContentIdea[]> => {
-        const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-
-        // Check for missing or placeholder key
-        if (!apiKey || apiKey.includes('tu_api_key')) {
-            console.warn("Google API Key missing or placeholder, returning mocks for goal:", goal);
-            // Simulate delay for realism
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (goal === 'community') return MOCK_IDEAS_COMMUNITY;
-            if (goal === 'sales') return MOCK_IDEAS_SALES;
-            return MOCK_IDEAS_GROWTH;
-        }
-
-        console.log("🤖 Generating AI ideas with goal:", goal);
-
+        // SEC-01: API Key removed from frontend. Calls now proxied through backend.
         try {
-            const context = profile ? `
-                Profile Context:
-                - Followers: ${profile.followers}
-                - Engagement Rate: ${profile.engagement_rate}%
-                - Recent Reach: ${profile.reach_last_30d}
-            ` : '';
+            const context = profile ? {
+                followers: profile.followers,
+                engagement_rate: profile.engagement_rate,
+                reach_last_30d: profile.reach_last_30d
+            } : null;
 
-            const postsContext = posts && posts.length > 0 ? `
-                Recent Top Posts:
-                ${posts.slice(0, 5).map(p => `- Type: ${p.type}, Caption: "${p.caption.substring(0, 50)}...", Likes: ${p.likes}, Reach: ${p.reach}`).join('\n')}
-            ` : '';
+            const postsContext = posts && posts.length > 0 ? posts.slice(0, 5).map(p => ({
+                type: p.type,
+                caption: p.caption.substring(0, 50),
+                likes: p.likes,
+                reach: p.reach
+            })) : null;
 
-            const prompt = `
-                Act as an expert social media strategist for a gym/fitness brand.
-                Goal: ${goal} (e.g., growth, community, sales).
-                
-                ${context}
-                ${postsContext}
-
-                Based on this data (if available) and the goal, generate 3 specific, high-impact content ideas.
-                Return ONLY a valid JSON array with this structure:
-                [
-                    {
-                        "id": "1",
-                        "title": "Short catchy title",
-                        "description": "Detailed description of the content",
-                        "type": "reel" | "carousel" | "story",
-                        "difficulty": "easy" | "medium" | "hard",
-                        "estimated_reach": "High" | "Medium" | "Low",
-                        "reason": "Why this works based on the data/goal"
-                    }
-                ]
-            `;
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch('/api/ai/content-ideas', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }]
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ goal, context, posts: postsContext })
             });
 
             if (!response.ok) {
-                throw new Error(`Gemini API Error: ${response.statusText}`);
+                throw new Error(`Backend AI proxy error: ${response.statusText}`);
             }
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!text) throw new Error("No response from AI");
-
-            // Clean markdown code blocks if present
-            const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanJson);
-
+            return data.ideas || data;
         } catch (error) {
             console.error("Error generating AI ideas:", error);
             // Fallback to mocks on error so the user always sees something
-            if (goal === 'community') return MOCK_IDEAS_COMMUNITY;
-            if (goal === 'sales') return MOCK_IDEAS_SALES;
-            return MOCK_IDEAS_GROWTH;
+            return [];
         }
     },
 
     getCompetitors: async (): Promise<Competitor[]> => {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        return MOCK_COMPETITORS;
+        return [];
     },
 
     getEngagementHistory: async () => {
-        return [
-            { date: '1 Nov', rate: 3.2 },
-            { date: '5 Nov', rate: 3.5 },
-            { date: '10 Nov', rate: 4.1 },
-            { date: '15 Nov', rate: 3.8 },
-            { date: '20 Nov', rate: 4.5 },
-            { date: '25 Nov', rate: 4.8 },
-            { date: '30 Nov', rate: 4.9 },
-        ];
+        return [];
     }
 };

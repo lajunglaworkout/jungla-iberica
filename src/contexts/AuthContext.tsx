@@ -1,7 +1,7 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 
 interface Employee {
   id: string;
@@ -22,7 +22,7 @@ interface AuthContextType {
   session: Session | null;
   employee: Employee | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | { message: string } | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         `)
         .eq('email', email)
         .single();
-      
+
       if (!error && data) {
         setEmployee(data);
       }
@@ -78,7 +78,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // SEC-08: Rate limiting for login attempts
+  const loginAttemptsRef = React.useRef<{ timestamps: number[] }>({ timestamps: [] });
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
   const signIn = async (email: string, password: string) => {
+    const now = Date.now();
+    // Clean old attempts outside the window
+    loginAttemptsRef.current.timestamps = loginAttemptsRef.current.timestamps.filter(
+      t => now - t < RATE_LIMIT_WINDOW_MS
+    );
+
+    if (loginAttemptsRef.current.timestamps.length >= MAX_LOGIN_ATTEMPTS) {
+      const oldestAttempt = loginAttemptsRef.current.timestamps[0];
+      const minutesLeft = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - oldestAttempt)) / 60000);
+      return { error: { message: `Demasiados intentos de inicio de sesión. Intenta de nuevo en ${minutesLeft} minuto(s).` } };
+    }
+
+    loginAttemptsRef.current.timestamps.push(now);
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -87,6 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    // BUG-02: Clear all state before signing out to prevent stale data/channels
+    setEmployee(null);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };

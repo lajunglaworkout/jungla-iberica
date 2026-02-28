@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Users, MapPin, Clock, Wifi, WifiOff } from 'lucide-react';
 import QRGenerator from './QRGenerator';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface CenterQRDisplayProps {
   onBack?: () => void;
@@ -13,11 +14,12 @@ interface CenterQRDisplayProps {
   fullscreen?: boolean;
 }
 
-const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({ 
-  onBack, 
-  centerInfo, 
-  fullscreen = false 
+const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
+  onBack,
+  centerInfo,
+  fullscreen = false
 }) => {
+  const isMobile = useIsMobile();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -51,10 +53,10 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
     zIndex: 1000,
     display: 'flex',
     flexDirection: 'column' as const,
-    padding: window.innerWidth < 768 ? '16px' : '24px',
+    padding: isMobile ? '16px' : '24px',
     overflowY: 'auto' as const
   } : {
-    padding: window.innerWidth < 768 ? '16px' : '24px',
+    padding: isMobile ? '16px' : '24px',
     backgroundColor: '#f9fafb',
     minHeight: '100vh',
     overflowY: 'auto' as const
@@ -64,12 +66,12 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
     <div style={containerStyle}>
       <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', flex: 1 }}>
         {/* Header con botón de volver SIEMPRE visible */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: window.innerWidth < 768 ? '20px' : '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: isMobile ? '20px' : '32px' }}>
           {onBack && (
             <button 
               onClick={onBack}
               style={{ 
-                padding: window.innerWidth < 768 ? '10px 16px' : '8px 16px', 
+                padding: isMobile ? '10px 16px' : '8px 16px', 
                 backgroundColor: '#f3f4f6', 
                 border: 'none', 
                 borderRadius: '8px',
@@ -77,14 +79,14 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                fontSize: window.innerWidth < 768 ? '16px' : '14px',
+                fontSize: isMobile ? '16px' : '14px',
                 fontWeight: '500'
               }}
             >
-              <ArrowLeft size={window.innerWidth < 768 ? 20 : 16} /> Volver
+              <ArrowLeft size={isMobile ? 20 : 16} /> Volver
             </button>
           )}
-          <h1 style={{ fontSize: window.innerWidth < 768 ? '20px' : '28px', fontWeight: 'bold', margin: 0 }}>
+          <h1 style={{ fontSize: isMobile ? '20px' : '28px', fontWeight: 'bold', margin: 0 }}>
             🏢 Fichaje del Centro
           </h1>
         </div>
@@ -93,19 +95,19 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
-          padding: window.innerWidth < 768 ? '12px' : '16px',
-          marginBottom: window.innerWidth < 768 ? '16px' : '24px',
+          padding: isMobile ? '12px' : '16px',
+          marginBottom: isMobile ? '16px' : '24px',
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
           display: 'flex',
-          flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
-          gap: window.innerWidth < 768 ? '12px' : '0'
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? '12px' : '0'
         }}>
-          <div style={{ display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row', alignItems: window.innerWidth < 768 ? 'flex-start' : 'center', gap: window.innerWidth < 768 ? '8px' : '16px', width: window.innerWidth < 768 ? '100%' : 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '8px' : '16px', width: isMobile ? '100%' : 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <MapPin size={20} color="#059669" />
-              <span style={{ fontWeight: '600', fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+              <span style={{ fontWeight: '600', fontSize: isMobile ? '14px' : '16px' }}>
                 {centerInfo.name}
               </span>
             </div>
@@ -116,7 +118,7 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
                 <WifiOff size={16} color="#ef4444" />
               )}
               <span style={{ 
-                fontSize: window.innerWidth < 768 ? '12px' : '14px', 
+                fontSize: isMobile ? '12px' : '14px', 
                 color: isOnline ? '#10b981' : '#ef4444',
                 fontWeight: '500'
               }}>
@@ -127,7 +129,7 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Clock size={16} color="#6b7280" />
-            <span style={{ fontSize: window.innerWidth < 768 ? '16px' : '18px', fontWeight: '600' }}>
+            <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '600' }}>
               {currentTime.toLocaleTimeString('es-ES', { 
                 hour: '2-digit', 
                 minute: '2-digit',
@@ -141,7 +143,7 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
         <div style={{ 
           backgroundColor: 'white',
           borderRadius: '16px',
-          padding: window.innerWidth < 768 ? '20px' : '32px',
+          padding: isMobile ? '20px' : '32px',
           textAlign: 'center',
           boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
           flex: 1,
@@ -150,9 +152,9 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
           justifyContent: 'center'
         }}>
           {/* Title */}
-          <div style={{ marginBottom: window.innerWidth < 768 ? '20px' : '32px' }}>
+          <div style={{ marginBottom: isMobile ? '20px' : '32px' }}>
             <h2 style={{ 
-              fontSize: window.innerWidth < 768 ? '24px' : (fullscreen ? '36px' : '28px'), 
+              fontSize: isMobile ? '24px' : (fullscreen ? '36px' : '28px'), 
               fontWeight: 'bold', 
               margin: '0 0 8px 0',
               color: '#111827'
@@ -160,7 +162,7 @@ const CenterQRDisplay: React.FC<CenterQRDisplayProps> = ({
               📱 Escanea para Fichar
             </h2>
             <p style={{ 
-              fontSize: window.innerWidth < 768 ? '14px' : (fullscreen ? '18px' : '16px'), 
+              fontSize: isMobile ? '14px' : (fullscreen ? '18px' : '16px'), 
               color: '#6b7280',
               margin: 0
             }}>

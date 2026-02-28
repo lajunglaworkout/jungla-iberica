@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AlertTriangle, Package, RefreshCw } from 'lucide-react';
 import { LocationType } from '../../types/logistics';
 import { useInventoryIntegration } from '../../hooks/useInventoryIntegration';
+import { ui } from '../../utils/ui';
+
 
 interface Props {
   userLocation: LocationType;
@@ -29,11 +31,11 @@ export const InventoryChecklistIntegration: React.FC<Props> = ({
     });
 
     if (result.success) {
-      alert('✅ Inventario actualizado automáticamente');
+      ui.success('✅ Inventario actualizado automáticamente');
       setForm({ itemName: '', quantity: 1, reason: '' });
       setShowForm(false);
     } else {
-      alert(`❌ Error: ${result.message}`);
+      ui.error(`❌ Error: ${result.message}`);
     }
   };
 

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, Calendar, ClipboardCheck, History, QrCode } from 'lucide-react';
 import { Employee } from '../../types/employee';
 import { useSession } from '../../contexts/SessionContext';
-import { supabase } from '../../lib/supabase';
+import { getUserByEmail } from '../../services/userService';
+import { getTimeclockForEmployeeToday } from '../../services/hrService';
 import TimeclockModal from './TimeclockModal';
 import ChecklistModal from './ChecklistModal';
 
@@ -34,41 +35,18 @@ const EmployeeOperations: React.FC<EmployeeOperationsProps> = ({ employee }) => 
 
   const loadTodayData = async () => {
     try {
-      // Primero obtener el ID numérico del empleado desde la tabla employees
-      const { data: employeeData, error: employeeError } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('email', employee.email)
-        .single();
-
-      if (employeeError || !employeeData) {
-        console.log('No se encontró empleado en la base de datos:', employeeError);
+      const employeeData = await getUserByEmail(employee.email);
+      if (!employeeData) {
+        console.log('No se encontró empleado en la base de datos');
         setTodayData({ timeclock: null });
         return;
       }
 
-      const numericEmployeeId = employeeData.id;
+      const numericEmployeeId = Number(employeeData.id);
       console.log('ID numérico del empleado:', numericEmployeeId);
 
-      // Intentar cargar datos de fichaje - la tabla puede no existir aún
-      try {
-        const { data: timeclockData, error } = await supabase
-          .from('timeclock_records')
-          .select('*')
-          .eq('employee_id', numericEmployeeId)
-          .eq('date', today)
-          .maybeSingle();
-        
-        if (error) {
-          console.log('Tabla timeclock_records no disponible o sin datos:', error.message);
-          setTodayData({ timeclock: null });
-        } else {
-          setTodayData({ timeclock: timeclockData });
-        }
-      } catch (timeclockError) {
-        console.log('Error accediendo a timeclock_records (tabla puede no existir):', timeclockError);
-        setTodayData({ timeclock: null });
-      }
+      const timeclockData = await getTimeclockForEmployeeToday(numericEmployeeId, today);
+      setTodayData({ timeclock: timeclockData });
     } catch (error) {
       console.error('Error general en loadTodayData:', error);
       setTodayData({ timeclock: null });

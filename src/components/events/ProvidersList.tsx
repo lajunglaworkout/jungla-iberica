@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Trash2, Edit2, Phone, Mail, Star, X, Check, Search, MapPin, Filter, Building2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface Proveedor {
     id: number;
@@ -66,19 +68,12 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
         setLoading(true);
         try {
             // Load centers
-            const { data: centersData } = await supabase
-                .from('centers')
-                .select('id, name')
-                .order('name');
-            setCenters(centersData || []);
+            const centersData = await eventService.centers.getAll();
+            setCenters(centersData);
 
             // Load proveedores
-            const { data, error } = await supabase
-                .from('proveedores')
-                .select('*')
-                .order('nombre');
-            if (error) throw error;
-            setProveedores(data || []);
+            const data = await eventService.proveedores.getAll();
+            setProveedores(data);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -88,7 +83,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
 
     const handleSave = async () => {
         if (!formData.nombre) {
-            alert('El nombre es obligatorio');
+            ui.error('El nombre es obligatorio');
             return;
         }
 
@@ -100,22 +95,22 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
             };
 
             if (editing) {
-                await supabase.from('proveedores').update(dataToSave).eq('id', editing.id);
+                await eventService.proveedores.update(editing.id, dataToSave);
             } else {
-                await supabase.from('proveedores').insert([dataToSave]);
+                await eventService.proveedores.create(dataToSave as Parameters<typeof eventService.proveedores.create>[0]);
             }
             loadData();
             closeModal();
         } catch (error) {
             console.error('Error saving proveedor:', error);
-            alert('Error al guardar');
+            ui.error('Error al guardar');
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('¿Eliminar este proveedor?')) return;
+        if (!await ui.confirm('¿Eliminar este proveedor?')) return;
         try {
-            await supabase.from('proveedores').delete().eq('id', id);
+            await eventService.proveedores.delete(id);
             loadData();
         } catch (error) {
             console.error('Error deleting proveedor:', error);
@@ -206,7 +201,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                     </p>
                 </div>
                 <button
-                    onClick={() => openModal()}
+                    onClick={async () => openModal()}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -234,7 +229,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                         type="text"
                         placeholder="Buscar proveedores..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={async (e) => setSearchTerm(e.target.value)}
                         style={{
                             width: '100%',
                             padding: '10px 12px 10px 40px',
@@ -251,7 +246,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                         <Building2 size={18} color="#6b7280" />
                         <select
                             value={filterCentro}
-                            onChange={(e) => setFilterCentro(e.target.value === 'todos' ? 'todos' : e.target.value === 'comunes' ? 'comunes' : Number(e.target.value))}
+                            onChange={async (e) => setFilterCentro(e.target.value === 'todos' ? 'todos' : e.target.value === 'comunes' ? 'comunes' : Number(e.target.value))}
                             style={{
                                 padding: '10px 12px',
                                 border: '1px solid #e5e7eb',
@@ -280,7 +275,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                 {CATEGORIAS.map(cat => (
                     <button
                         key={cat.value}
-                        onClick={() => setFilterCategoria(cat.value)}
+                        onClick={async () => setFilterCategoria(cat.value)}
                         style={{
                             padding: '8px 16px',
                             borderRadius: '20px',
@@ -333,13 +328,13 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     <button
-                                        onClick={() => openModal(proveedor)}
+                                        onClick={async () => openModal(proveedor)}
                                         style={{ padding: '6px', backgroundColor: '#dbeafe', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                                     >
                                         <Edit2 size={14} color="#2563eb" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(proveedor.id)}
+                                        onClick={async () => handleDelete(proveedor.id)}
                                         style={{ padding: '6px', backgroundColor: '#fee2e2', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                                     >
                                         <Trash2 size={14} color="#dc2626" />
@@ -445,7 +440,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                 <input
                                     type="text"
                                     value={formData.nombre || ''}
-                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, nombre: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     placeholder="Nombre del proveedor"
                                 />
@@ -456,7 +451,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Categoría</label>
                                     <select
                                         value={formData.categoria || 'otros'}
-                                        onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                                        onChange={async (e) => setFormData({ ...formData, categoria: e.target.value })}
                                         style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     >
                                         {CATEGORIAS.filter(c => c.value !== 'todos').map(cat => (
@@ -468,7 +463,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Centro</label>
                                     <select
                                         value={formData.center_id || ''}
-                                        onChange={(e) => setFormData({ ...formData, center_id: e.target.value ? Number(e.target.value) : null })}
+                                        onChange={async (e) => setFormData({ ...formData, center_id: e.target.value ? Number(e.target.value) : null })}
                                         style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                         disabled={!isAdmin}
                                     >
@@ -488,7 +483,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                 <input
                                     type="text"
                                     value={formData.servicio || ''}
-                                    onChange={(e) => setFormData({ ...formData, servicio: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, servicio: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     placeholder="Descripción del servicio"
                                 />
@@ -500,7 +495,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                     <input
                                         type="tel"
                                         value={formData.telefono || ''}
-                                        onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                                        onChange={async (e) => setFormData({ ...formData, telefono: e.target.value })}
                                         style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     />
                                 </div>
@@ -509,7 +504,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                     <input
                                         type="email"
                                         value={formData.email || ''}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        onChange={async (e) => setFormData({ ...formData, email: e.target.value })}
                                         style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                                     />
                                 </div>
@@ -522,7 +517,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                         <button
                                             key={star}
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, valoracion: star })}
+                                            onClick={async () => setFormData({ ...formData, valoracion: star })}
                                             style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer' }}
                                         >
                                             <Star
@@ -539,7 +534,7 @@ export const ProvidersList: React.FC<ProvidersListProps> = ({ onBack }) => {
                                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Notas</label>
                                 <textarea
                                     value={formData.notas || ''}
-                                    onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+                                    onChange={async (e) => setFormData({ ...formData, notas: e.target.value })}
                                     style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', minHeight: '80px' }}
                                     placeholder="Observaciones..."
                                 />

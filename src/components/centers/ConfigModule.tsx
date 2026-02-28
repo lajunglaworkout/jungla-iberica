@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Settings, Users, Building, FileText, Save } from 'lucide-react';
+import { ui } from '../../utils/ui';
+
 
 interface ConfigModuleProps {
   centerName: string;
@@ -34,13 +36,13 @@ const ConfigModule: React.FC<ConfigModuleProps> = ({ centerName, centerId, onBac
     capacidadMaxima: 0
   });
 
-  const handleChange = (field: keyof CenterConfig, value: any) => {
+  const handleChange = (field: keyof CenterConfig, value: CenterConfig[keyof CenterConfig]) => {
     setConfig(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {
     localStorage.setItem(`config_${centerId}`, JSON.stringify(config));
-    alert('Configuración guardada correctamente');
+    ui.success('Configuración guardada correctamente');
   };
 
   const empleados = [

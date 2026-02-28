@@ -7,6 +7,8 @@ import {
 import MarketingAnalyticsDashboard from './marketing/MarketingAnalyticsDashboard';
 import StrategyHub from './marketing/StrategyHub';
 import CompetitorWatch from './marketing/CompetitorWatch';
+import { ui } from '../utils/ui';
+
 
 // ============ INTERFACES ============
 interface ContentItem {
@@ -318,10 +320,10 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ userEmail, use
 
         setContentItems(prev => [...prev, newContent]);
         setShowCreateModal(false);
-        alert('¡Contenido creado exitosamente!');
+        ui.success('¡Contenido creado exitosamente!');
       } catch (error) {
         console.error('Error creating content:', error);
-        alert('Error al crear el contenido');
+        ui.error('Error al crear el contenido');
       }
     };
 
@@ -629,7 +631,7 @@ const MarketingContentSystem: React.FC<MarketingSystemProps> = ({ userEmail, use
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setCurrentView(tab.id as any)}
+              onClick={() => setCurrentView(tab.id as 'dashboard' | 'strategy' | 'competitors' | 'content' | 'calendar')}
               style={{
                 flex: 1,
                 minWidth: '120px',

@@ -3,8 +3,10 @@ import {
     CheckSquare, Plus, ArrowLeft, Calendar, Clock, AlertCircle,
     CheckCircle, Edit3, Trash2, X, Filter, Layout, List, RefreshCw
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { onlineTaskService } from '../../../services/academyService';
 import { OnlineTask, OnlineTaskPriority, OnlineTaskStatus } from '../../../types/online';
+import { ui } from '../../../utils/ui';
+
 
 interface OnlineTareasViewProps {
     onBack: () => void;
@@ -42,26 +44,12 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
     const loadTasks = async () => {
         setLoading(true);
         try {
-            let query = supabase
-                .from('online_tasks')
-                .select('*')
-                .order('due_date', { ascending: true });
+            const filters: { status?: string; priority?: string; assignee?: string } = {};
+            if (filterStatus !== 'all') filters.status = filterStatus;
+            if (filterPriority !== 'all') filters.priority = filterPriority;
+            if (filterAssignee !== 'all') filters.assignee = filterAssignee;
 
-            if (filterStatus !== 'all') {
-                query = query.eq('status', filterStatus);
-            }
-
-            if (filterPriority !== 'all') {
-                query = query.eq('priority', filterPriority);
-            }
-
-            if (filterAssignee !== 'all') {
-                query = query.contains('assigned_to', [filterAssignee]);
-            }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
+            const data = await onlineTaskService.getAll(filters);
             setTasks(data || []);
         } catch (error) {
             console.error('Error loading tasks:', error);
@@ -74,27 +62,22 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
         if (!formTitle.trim()) return;
 
         try {
-            const { data, error } = await supabase
-                .from('online_tasks')
-                .insert([{
-                    title: formTitle,
-                    description: formDescription,
-                    status: formStatus,
-                    priority: formPriority,
-                    assigned_to: formAssignees,
-                    due_date: formDueDate ? new Date(formDueDate).toISOString() : null,
-                    origin: 'Manual'
-                }])
-                .select()
-                .single();
+            const data = await onlineTaskService.create({
+                title: formTitle,
+                description: formDescription,
+                status: formStatus,
+                priority: formPriority,
+                assigned_to: formAssignees,
+                due_date: formDueDate ? new Date(formDueDate).toISOString() : null,
+                origin: 'Manual'
+            });
 
-            if (error) throw error;
             setTasks([...tasks, data]);
             setShowAddModal(false);
             resetForm();
         } catch (error) {
             console.error('Error creating task:', error);
-            alert('Error al crear la tarea');
+            ui.error('Error al crear la tarea');
         }
     };
 
@@ -102,19 +85,14 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
         if (!editingTask || !formTitle.trim()) return;
 
         try {
-            const { error } = await supabase
-                .from('online_tasks')
-                .update({
-                    title: formTitle,
-                    description: formDescription,
-                    priority: formPriority,
-                    due_date: formDueDate ? new Date(formDueDate).toISOString() : null,
-                    status: formStatus,
-                    assigned_to: formAssignees
-                })
-                .eq('id', editingTask.id);
-
-            if (error) throw error;
+            await onlineTaskService.update(editingTask.id, {
+                title: formTitle,
+                description: formDescription,
+                priority: formPriority,
+                due_date: formDueDate ? new Date(formDueDate).toISOString() : null,
+                status: formStatus,
+                assigned_to: formAssignees
+            });
 
             setTasks(tasks.map(t => t.id === editingTask.id ? {
                 ...t,
@@ -131,7 +109,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
             resetForm();
         } catch (error) {
             console.error('Error updating task:', error);
-            alert('Error al actualizar la tarea');
+            ui.error('Error al actualizar la tarea');
         }
     };
 
@@ -141,16 +119,11 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
         }
 
         try {
-            const { error } = await supabase
-                .from('online_tasks')
-                .delete()
-                .eq('id', task.id);
-
-            if (error) throw error;
+            await onlineTaskService.delete(task.id);
             setTasks(tasks.filter(t => t.id !== task.id));
         } catch (error) {
             console.error('Error deleting task:', error);
-            alert('Error al eliminar la tarea');
+            ui.error('Error al eliminar la tarea');
         }
     };
 
@@ -378,7 +351,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
                     zIndex: 20
                 }}>
                     <button
-                        onClick={() => alert('Funcionalidad de sincronización próximamente')}
+                        onClick={() => ui.info('Funcionalidad de sincronización próximamente')}
                         style={{
                             backgroundColor: 'rgba(255, 255, 255, 0.15)',
                             color: 'white',
@@ -452,7 +425,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
                     {/* Status Filter */}
                     <select
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value as any)}
+                        onChange={(e) => setFilterStatus(e.target.value as OnlineTaskStatus | 'all')}
                         style={{
                             padding: '10px 16px',
                             borderRadius: '8px',
@@ -474,7 +447,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
                     {/* Priority Filter */}
                     <select
                         value={filterPriority}
-                        onChange={(e) => setFilterPriority(e.target.value as any)}
+                        onChange={(e) => setFilterPriority(e.target.value as OnlineTaskPriority | 'all')}
                         style={{
                             padding: '10px 16px',
                             borderRadius: '8px',
@@ -698,7 +671,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Prioridad</label>
                                         <select
                                             value={formPriority}
-                                            onChange={(e) => setFormPriority(e.target.value as any)}
+                                            onChange={(e) => setFormPriority(e.target.value as OnlineTaskPriority)}
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
@@ -717,7 +690,7 @@ export const OnlineTareasView: React.FC<OnlineTareasViewProps> = ({ onBack }) =>
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Estado</label>
                                         <select
                                             value={formStatus}
-                                            onChange={(e) => setFormStatus(e.target.value as any)}
+                                            onChange={(e) => setFormStatus(e.target.value as OnlineTaskStatus)}
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',

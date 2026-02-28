@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { ChecklistIncident, checklistIncidentService } from '../../services/checklistIncidentService';
+import { ui } from '../../utils/ui';
+
 
 interface Props {
   isOpen: boolean;
@@ -21,11 +23,11 @@ export const IncidentVerificationModal: React.FC<Props> = ({
 
   const handleVerify = async (approved: boolean) => {
     if (!notes.trim()) {
-      alert('Proporciona comentarios sobre la resolución.');
+      ui.info('Proporciona comentarios sobre la resolución.');
       return;
     }
     if (!approved && !rejection.trim()) {
-      alert('Explica por qué no estás satisfecho.');
+      ui.info('Explica por qué no estás satisfecho.');
       return;
     }
 
@@ -34,11 +36,11 @@ export const IncidentVerificationModal: React.FC<Props> = ({
       await checklistIncidentService.verifyIncidentResolution(
         incident.id!, approved, notes, employeeName, approved ? undefined : rejection
       );
-      alert(approved ? '✅ Incidencia verificada correctamente' : '❌ Incidencia reabierta');
+      approved ? ui.success('Incidencia verificada correctamente') : ui.warning('Incidencia reabierta');
       onComplete();
       onClose();
     } catch (error) {
-      alert('Error al verificar');
+      ui.error('Error al verificar');
     } finally {
       setSubmitting(false);
     }

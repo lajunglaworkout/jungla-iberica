@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Loader, Upload, Link as LinkIcon, Trash2, FileText, Image as ImageIcon } from 'lucide-react';
 import { completeTask } from '../../services/taskService';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // NOTE: supabase.storage used for file uploads (task-attachments bucket). No service exists for storage uploads.
+import { ui } from '../../utils/ui';
+
 
 interface TaskCompletionModalProps {
   isOpen: boolean;
@@ -52,7 +54,7 @@ export const TaskCompletionModal: React.FC<TaskCompletionModalProps> = ({
 
   const handleComplete = async () => {
     if (!completionNotes.trim()) {
-      alert('Por favor, añade una justificación del cierre');
+      ui.info('Por favor, añade una justificación del cierre');
       return;
     }
 
@@ -104,18 +106,18 @@ export const TaskCompletionModal: React.FC<TaskCompletionModalProps> = ({
       );
 
       if (result.success) {
-        alert('✅ Tarea completada correctamente');
+        ui.success('✅ Tarea completada correctamente');
         setCompletionNotes('');
         setSelectedFiles([]);
         setLinks([]);
         onSuccess();
         onClose();
       } else {
-        alert('❌ Error: ' + result.error);
+        ui.error(`❌ Error: ${result.error}`);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al completar la tarea');
+      ui.error('Error al completar la tarea');
     } finally {
       setLoading(false);
       setUploadProgress(0);

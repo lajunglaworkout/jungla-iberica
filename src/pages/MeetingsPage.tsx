@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, ArrowLeft, Search, Filter } from 'lucide-react';
 import MeetingRecorderComponent from '../components/MeetingRecorderComponent';
-import { loadMeetingsFromSupabase } from '../services/meetingService';
-import { supabase } from '../lib/supabase';
+import { getMeetingRecordsRaw } from '../services/meetingService';
 
 interface Meeting {
   id: number;
@@ -45,18 +44,8 @@ export const MeetingsPage: React.FC<MeetingsPageProps> = ({
   const loadMeetings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('meetings')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) {
-        console.error('Error cargando reuniones:', error);
-        return;
-      }
-
-      setMeetings(data || []);
-      console.log('✅ Reuniones cargadas:', data?.length || 0);
+      const data = await getMeetingRecordsRaw();
+      setMeetings(data as unknown as Meeting[]);
     } catch (error) {
       console.error('Error:', error);
     } finally {

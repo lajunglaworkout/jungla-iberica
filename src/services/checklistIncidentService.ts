@@ -194,7 +194,7 @@ class ChecklistIncidentService {
     resolutionNotes?: string
   ): Promise<boolean> {
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         status,
         updated_at: new Date().toISOString()
       };
@@ -448,7 +448,7 @@ class ChecklistIncidentService {
     rejectionReason?: string
   ): Promise<ChecklistIncident | null> {
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         verification_status: isApproved ? 'aprobada' : 'rechazada',
         verification_notes: verificationNotes,
         verified_by: verifiedBy,

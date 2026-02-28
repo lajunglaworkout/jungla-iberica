@@ -4,8 +4,10 @@ import {
     MoreVertical, ExternalLink, PlayCircle, FileText, Edit3, Trash2, X,
     CheckCircle, Clock, Film, Check, Calendar
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { onlineContentService } from '../../../services/academyService';
 import { OnlineContent, ContentLevel, ContentCategory, ContentStatus } from '../../../types/online';
+import { ui } from '../../../utils/ui';
+
 
 interface OnlineContenidoViewProps {
     onBack: () => void;
@@ -27,48 +29,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
     const [editingItem, setEditingItem] = useState<OnlineContent | null>(null);
     const [formData, setFormData] = useState<Partial<OnlineContent>>({});
 
-    // Mock Data for visualization
-    const MOCK_CONTENT: OnlineContent[] = [
-        {
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            title: 'Rutina de Espalda en Casa',
-            level: 'common',
-            category: 'exercise',
-            status: 'published',
-            description: 'Una rutina completa para fortalecer la espalda sin equipo.',
-            video_url: 'https://youtube.com/watch?v=123',
-            scheduled_date: '2023-10-25',
-            created_at: new Date().toISOString(),
-            gym_compatible: false,
-            producer: 'Juan Pérez',
-            duration: 45
-        },
-        {
-            id: '550e8400-e29b-41d4-a716-446655440001',
-            title: 'Nutrición para Principiantes',
-            level: 'specific',
-            buyer_persona: 'Pérdida de Peso',
-            category: 'community',
-            status: 'editing',
-            description: 'Consejos básicos de nutrición para empezar a comer sano.',
-            scheduled_date: '2023-11-01',
-            created_at: new Date().toISOString(),
-            gym_compatible: true,
-            producer: 'Ana Gómez',
-            duration: 120
-        },
-        {
-            id: '550e8400-e29b-41d4-a716-446655440002',
-            title: 'Entrevista con Experto',
-            level: 'common',
-            category: 'viral',
-            status: 'idea',
-            description: 'Entrevista sobre las tendencias del fitness en 2024.',
-            created_at: new Date().toISOString(),
-            gym_compatible: false,
-            duration: 0
-        }
-    ];
+    // Mock Data Eliminado a petición del usuario.
 
     // Constants
     const CATEGORIES: { id: ContentCategory; label: string; color: string }[] = [
@@ -96,51 +57,29 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
     const loadContent = async () => {
         setLoading(true);
         try {
-            let query = supabase
-                .from('online_content')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const filters: { level?: string; category?: string; status?: string } = {};
+            if (filterLevel !== 'all') filters.level = filterLevel;
+            if (filterCategory !== 'all') filters.category = filterCategory;
+            if (filterStatus !== 'all') filters.status = filterStatus;
 
-            if (filterLevel !== 'all') query = query.eq('level', filterLevel);
-            if (filterCategory !== 'all') query = query.eq('category', filterCategory);
-            if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-
-            const { data, error } = await query;
+            const data = await onlineContentService.getAll(filters);
 
             // If we have real data, use it
             if (data && data.length > 0) {
                 setContent(data);
             } else {
-                // If no real data (or error), fall back to MOCK_CONTENT but apply filters locally
-                let filteredMock = [...MOCK_CONTENT];
-
-                if (filterLevel !== 'all') {
-                    filteredMock = filteredMock.filter(item => item.level === filterLevel);
-                }
-                if (filterCategory !== 'all') {
-                    filteredMock = filteredMock.filter(item => item.category === filterCategory);
-                }
-                if (filterStatus !== 'all') {
-                    filteredMock = filteredMock.filter(item => item.status === filterStatus);
-                }
-
-                setContent(filteredMock);
+                setContent([]);
             }
         } catch (error) {
             console.error('Error loading content:', error);
-            // Fallback to filtered mock data on error
-            let filteredMock = [...MOCK_CONTENT];
-            if (filterLevel !== 'all') filteredMock = filteredMock.filter(item => item.level === filterLevel);
-            if (filterCategory !== 'all') filteredMock = filteredMock.filter(item => item.category === filterCategory);
-            if (filterStatus !== 'all') filteredMock = filteredMock.filter(item => item.status === filterStatus);
-            setContent(filteredMock);
+            setContent([]);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSave = async () => {
-        if (!formData.title) return alert('El título es obligatorio');
+        if (!formData.title) return ui.error('El título es obligatorio');
 
         try {
             const payload = {
@@ -153,16 +92,9 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
             };
 
             if (editingItem) {
-                const { error } = await supabase
-                    .from('online_content')
-                    .update(payload)
-                    .eq('id', editingItem.id);
-                if (error) throw error;
+                await onlineContentService.update(editingItem.id, payload);
             } else {
-                const { error } = await supabase
-                    .from('online_content')
-                    .insert([payload]);
-                if (error) throw error;
+                await onlineContentService.create(payload);
             }
 
             setShowModal(false);
@@ -171,15 +103,14 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
             loadContent();
         } catch (error) {
             console.error('Error saving content:', error);
-            alert('Error al guardar el contenido');
+            ui.error('Error al guardar el contenido');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de eliminar este contenido?')) return;
+        if (!await ui.confirm('¿Estás seguro de eliminar este contenido?')) return;
         try {
-            const { error } = await supabase.from('online_content').delete().eq('id', id);
-            if (error) throw error;
+            await onlineContentService.delete(id);
             setContent(content.filter(c => c.id !== id));
         } catch (error) {
             console.error('Error deleting content:', error);
@@ -208,21 +139,15 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
         setContent(content.map(c => c.id === item.id ? { ...c, status: newStatus } : c));
 
         // If it's a mock item, don't try to update Supabase
-        const isMock = MOCK_CONTENT.some(m => m.id === item.id);
-        if (isMock) return;
+        // (Mock logic removed)
 
         try {
-            const { error } = await supabase
-                .from('online_content')
-                .update({ status: newStatus })
-                .eq('id', item.id);
-
-            if (error) throw error;
+            await onlineContentService.update(item.id, { status: newStatus });
         } catch (error) {
             console.error('Error updating status:', error);
             // Revert optimistic update on error
             setContent(content.map(c => c.id === item.id ? { ...c, status: item.status } : c));
-            alert('Error al actualizar el estado en la base de datos');
+            ui.error('Error al actualizar el estado en la base de datos');
         }
     };
 
@@ -329,7 +254,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                 {/* Action Button */}
                 <div className="absolute top-8 right-8 z-20">
                     <button
-                        onClick={() => openModal()}
+                        onClick={async () => openModal()}
                         style={{
                             backgroundColor: 'white',
                             color: '#1e40af',
@@ -388,14 +313,14 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                         }}
                         className="focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={async (e) => setSearchTerm(e.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-4 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0">
                     <select
                         value={filterLevel}
-                        onChange={(e) => setFilterLevel(e.target.value as any)}
+                        onChange={async (e) => setFilterLevel(e.target.value as 'all' | ContentLevel)}
                         style={{
                             padding: '10px 16px',
                             borderRadius: '10px',
@@ -416,7 +341,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
 
                     <select
                         value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value as any)}
+                        onChange={async (e) => setFilterCategory(e.target.value as 'all' | ContentCategory)}
                         style={{
                             padding: '10px 16px',
                             borderRadius: '10px',
@@ -436,7 +361,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
 
                     <select
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value as any)}
+                        onChange={async (e) => setFilterStatus(e.target.value as 'all' | ContentStatus)}
                         style={{
                             padding: '10px 16px',
                             borderRadius: '10px',
@@ -463,13 +388,13 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
 
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button
-                            onClick={() => setViewMode('gallery')}
+                            onClick={async () => setViewMode('gallery')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'gallery' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <LayoutGrid size={20} />
                         </button>
                         <button
-                            onClick={() => setViewMode('table')}
+                            onClick={async () => setViewMode('table')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <List size={20} />
@@ -569,14 +494,14 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
 
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); openModal(item); }}
+                                                onClick={async (e) => { e.stopPropagation(); openModal(item); }}
                                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                 title="Editar"
                                             >
                                                 <Edit3 size={16} />
                                             </button>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                onClick={async (e) => { e.stopPropagation(); handleDelete(item.id); }}
                                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Eliminar"
                                             >
@@ -714,7 +639,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                     <td className="px-6 py-5 text-center">
                                                         <div className="flex justify-center">
                                                             <div
-                                                                onClick={(e) => { e.stopPropagation(); handleQuickStatusUpdate(item, 'produced'); }}
+                                                                onClick={async (e) => { e.stopPropagation(); handleQuickStatusUpdate(item, 'produced'); }}
                                                                 className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${['ready', 'published'].includes(item.status)
                                                                     ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-110'
                                                                     : 'bg-white border-gray-300 text-transparent hover:border-blue-400 hover:bg-blue-50'
@@ -728,7 +653,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                     <td className="px-6 py-5 text-center">
                                                         <div className="flex justify-center">
                                                             <div
-                                                                onClick={(e) => { e.stopPropagation(); handleQuickStatusUpdate(item, 'published'); }}
+                                                                onClick={async (e) => { e.stopPropagation(); handleQuickStatusUpdate(item, 'published'); }}
                                                                 className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${item.status === 'published'
                                                                     ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110'
                                                                     : 'bg-white border-gray-300 text-transparent hover:border-emerald-400 hover:bg-emerald-50'
@@ -742,14 +667,14 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex justify-end items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                             <button
-                                                                onClick={() => openModal(item)}
+                                                                onClick={async () => openModal(item)}
                                                                 className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                                 title="Editar"
                                                             >
                                                                 <Edit3 size={16} />
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDelete(item.id)}
+                                                                onClick={async () => handleDelete(item.id)}
                                                                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                                 title="Eliminar"
                                                             >
@@ -813,7 +738,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                 </p>
                             </div>
                             <button
-                                onClick={() => setShowModal(false)}
+                                onClick={async () => setShowModal(false)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '8px' }}
                                 className="hover:bg-gray-100 rounded-full transition-colors"
                             >
@@ -890,7 +815,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                 <div className="relative">
                                                     <select
                                                         value={formData.level}
-                                                        onChange={e => setFormData({ ...formData, level: e.target.value as any })}
+                                                        onChange={e => setFormData({ ...formData, level: e.target.value as ContentLevel })}
                                                         style={{
                                                             width: '100%',
                                                             padding: '12px 16px',
@@ -945,7 +870,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                         <div className="relative">
                                                             <select
                                                                 value={formData.category || ''}
-                                                                onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                                                                onChange={e => setFormData({ ...formData, category: e.target.value as ContentCategory })}
                                                                 style={{
                                                                     width: '100%',
                                                                     padding: '12px 16px',
@@ -1016,7 +941,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                                     <button
                                                         key={p}
                                                         type="button"
-                                                        onClick={() => toggleArrayItem('platforms', p)}
+                                                        onClick={async () => toggleArrayItem('platforms', p)}
                                                         className={`px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${formData.platforms?.includes(p)
                                                             ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200'
                                                             : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
@@ -1060,7 +985,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                             <div className="relative">
                                                 <select
                                                     value={formData.status}
-                                                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                                                    onChange={e => setFormData({ ...formData, status: e.target.value as ContentStatus })}
                                                     style={{
                                                         width: '100%',
                                                         padding: '12px',
@@ -1193,7 +1118,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                                             <button
                                                 key={l}
                                                 type="button"
-                                                onClick={() => toggleArrayItem('locations', l)}
+                                                onClick={async () => toggleArrayItem('locations', l)}
                                                 className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all w-full text-left flex items-center justify-between group ${formData.locations?.includes(l)
                                                     ? 'bg-green-50 text-green-700 border-green-200'
                                                     : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 hover:border-gray-200'
@@ -1219,7 +1144,7 @@ export const OnlineContenidoView: React.FC<OnlineContenidoViewProps> = ({ onBack
                             zIndex: 10
                         }}>
                             <button
-                                onClick={() => setShowModal(false)}
+                                onClick={async () => setShowModal(false)}
                                 style={{
                                     padding: '12px 24px',
                                     backgroundColor: 'white',

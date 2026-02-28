@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Calculator, Plus, Trash2, Save, Calendar, ArrowLeft } from 'lucide-react';
 import { brandService, type IngresoMarca, type GastoMarca } from '../../services/brandService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface BrandIncomeModuleProps {
   onBack: () => void;
@@ -94,7 +96,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
   // Funciones para manejar ingresos
   const addIngreso = async () => {
     if (!employee) {
-      alert('Debes estar autenticado para añadir ingresos');
+      ui.info('Debes estar autenticado para añadir ingresos');
       return;
     }
     
@@ -117,7 +119,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
       setData(prev => ({ ...prev, ingresos: [...prev.ingresos, createdIngreso] }));
     } catch (error) {
       console.error('❌ Error creando ingreso:', error);
-      alert('Error al crear el ingreso: ' + (error as Error).message);
+      ui.error(`Error al crear el ingreso: ${(error as Error).message}`);
     }
   };
 
@@ -141,7 +143,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
   };
 
   const removeIngreso = async (id: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este ingreso?')) {
+    if (await ui.confirm('¿Estás seguro de que quieres eliminar este ingreso?')) {
       try {
         console.log('🗑️ Eliminando ingreso:', id);
         await brandService.deleteIngreso(id);
@@ -149,7 +151,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
         console.log('✅ Ingreso eliminado');
       } catch (error) {
         console.error('❌ Error eliminando ingreso:', error);
-        alert('Error al eliminar el ingreso');
+        ui.error('Error al eliminar el ingreso');
       }
     }
   };
@@ -157,7 +159,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
   // Funciones para manejar gastos
   const addGasto = async () => {
     if (!employee) {
-      alert('Debes estar autenticado para añadir gastos');
+      ui.info('Debes estar autenticado para añadir gastos');
       return;
     }
     
@@ -180,7 +182,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
       setData(prev => ({ ...prev, gastos: [...prev.gastos, createdGasto] }));
     } catch (error) {
       console.error('❌ Error creando gasto:', error);
-      alert('Error al crear el gasto: ' + (error as Error).message);
+      ui.error(`Error al crear el gasto: ${(error as Error).message}`);
     }
   };
 
@@ -204,7 +206,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
   };
 
   const removeGasto = async (id: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este gasto?')) {
+    if (await ui.confirm('¿Estás seguro de que quieres eliminar este gasto?')) {
       try {
         console.log('🗑️ Eliminando gasto:', id);
         await brandService.deleteGasto(id);
@@ -212,7 +214,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
         console.log('✅ Gasto eliminado');
       } catch (error) {
         console.error('❌ Error eliminando gasto:', error);
-        alert('Error al eliminar el gasto');
+        ui.error('Error al eliminar el gasto');
       }
     }
   };
@@ -223,10 +225,10 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
       console.log('💾 Calculando y guardando resumen mensual...');
       await brandService.calculateAndSaveResumen(data.mes, data.año);
       console.log('✅ Resumen guardado correctamente');
-      alert('Resumen mensual calculado y guardado correctamente');
+      ui.success('Resumen mensual calculado y guardado correctamente');
     } catch (error) {
       console.error('❌ Error guardando resumen:', error);
-      alert('Error al guardar el resumen: ' + (error as Error).message);
+      ui.error(`Error al guardar el resumen: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -249,7 +251,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
           <Calendar style={{ width: '20px', height: '20px', color: '#6b7280' }} />
           <select 
             value={data.mes} 
-            onChange={(e) => setData(prev => ({ ...prev, mes: parseInt(e.target.value) }))}
+            onChange={async (e) => setData(prev => ({ ...prev, mes: parseInt(e.target.value) }))}
             style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', minWidth: '120px' }}
           >
             {MESES.map((mes, index) => (
@@ -258,7 +260,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
           </select>
           <select 
             value={data.año} 
-            onChange={(e) => setData(prev => ({ ...prev, año: parseInt(e.target.value) }))}
+            onChange={async (e) => setData(prev => ({ ...prev, año: parseInt(e.target.value) }))}
             style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', minWidth: '100px' }}
           >
             {Array.from({ length: 10 }, (_, i) => {
@@ -292,10 +294,10 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
       <div style={{ padding: '32px', minWidth: '1200px', overflowX: 'auto' }}>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px' }}>
-          <button onClick={() => setActiveTab('entrada')} style={{ padding: '12px 24px', backgroundColor: activeTab === 'entrada' ? '#059669' : '#f3f4f6', color: activeTab === 'entrada' ? 'white' : '#6b7280', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+          <button onClick={async () => setActiveTab('entrada')} style={{ padding: '12px 24px', backgroundColor: activeTab === 'entrada' ? '#059669' : '#f3f4f6', color: activeTab === 'entrada' ? 'white' : '#6b7280', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
             📝 Entrada de Datos
           </button>
-          <button onClick={() => setActiveTab('reportes')} style={{ padding: '12px 24px', backgroundColor: activeTab === 'reportes' ? '#059669' : '#f3f4f6', color: activeTab === 'reportes' ? 'white' : '#6b7280', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+          <button onClick={async () => setActiveTab('reportes')} style={{ padding: '12px 24px', backgroundColor: activeTab === 'reportes' ? '#059669' : '#f3f4f6', color: activeTab === 'reportes' ? 'white' : '#6b7280', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
             📊 Reportes
           </button>
         </div>
@@ -329,13 +331,13 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                           type="text"
                           placeholder="Concepto del ingreso"
                           value={ingreso.concepto}
-                          onChange={(e) => updateIngreso(ingreso.id, 'concepto', e.target.value)}
+                          onChange={async (e) => updateIngreso(ingreso.id, 'concepto', e.target.value)}
                           style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                         />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <select
                             value={ingreso.tipo}
-                            onChange={(e) => updateIngreso(ingreso.id, 'tipo', e.target.value)}
+                            onChange={async (e) => updateIngreso(ingreso.id, 'tipo', e.target.value)}
                             style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                           >
                             {CATEGORIAS_INGRESOS.map(categoria => (
@@ -346,7 +348,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                             type="number"
                             placeholder="Importe"
                             value={ingreso.importe || ''}
-                            onChange={(e) => updateIngreso(ingreso.id, 'importe', e.target.value)}
+                            onChange={async (e) => updateIngreso(ingreso.id, 'importe', e.target.value)}
                             style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                             step="0.01"
                           />
@@ -356,12 +358,12 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                             <input
                               type="checkbox"
                               checked={ingreso.iva}
-                              onChange={(e) => updateIngreso(ingreso.id, 'iva', e.target.checked)}
+                              onChange={async (e) => updateIngreso(ingreso.id, 'iva', e.target.checked)}
                             />
                             IVA (21%)
                           </label>
                           <button 
-                            onClick={() => removeIngreso(ingreso.id)}
+                            onClick={async () => removeIngreso(ingreso.id)}
                             style={{ padding: '4px', color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
                           >
                             <Trash2 style={{ width: '14px', height: '14px' }} />
@@ -425,13 +427,13 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                           type="text"
                           placeholder="Concepto del gasto"
                           value={gasto.concepto}
-                          onChange={(e) => updateGasto(gasto.id, 'concepto', e.target.value)}
+                          onChange={async (e) => updateGasto(gasto.id, 'concepto', e.target.value)}
                           style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                         />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <select
                             value={gasto.tipo}
-                            onChange={(e) => updateGasto(gasto.id, 'tipo', e.target.value)}
+                            onChange={async (e) => updateGasto(gasto.id, 'tipo', e.target.value)}
                             style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                           >
                             {CATEGORIAS_GASTOS.map(categoria => (
@@ -442,7 +444,7 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                             type="number"
                             placeholder="Importe"
                             value={gasto.importe || ''}
-                            onChange={(e) => updateGasto(gasto.id, 'importe', e.target.value)}
+                            onChange={async (e) => updateGasto(gasto.id, 'importe', e.target.value)}
                             style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px' }}
                             step="0.01"
                           />
@@ -452,12 +454,12 @@ const BrandIncomeModule: React.FC<BrandIncomeModuleProps> = ({ onBack }) => {
                             <input
                               type="checkbox"
                               checked={gasto.iva}
-                              onChange={(e) => updateGasto(gasto.id, 'iva', e.target.checked)}
+                              onChange={async (e) => updateGasto(gasto.id, 'iva', e.target.checked)}
                             />
                             IVA (21%)
                           </label>
                           <button 
-                            onClick={() => removeGasto(gasto.id)}
+                            onClick={async () => removeGasto(gasto.id)}
                             style={{ padding: '4px', color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
                           >
                             <Trash2 style={{ width: '14px', height: '14px' }} />

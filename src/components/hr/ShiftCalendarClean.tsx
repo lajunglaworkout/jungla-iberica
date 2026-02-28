@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase'; // TODO: Extract to shiftService.ts - queries employee_shifts, employees, shifts tables (no existing service covers shift calendar)
 import { Calendar as CalendarIcon, RefreshCw, Trash2, ChevronLeft, ChevronRight, Filter, Download, X } from 'lucide-react';
 import { Holiday } from '../../services/holidayService';
+import { ui } from '../../utils/ui';
+
 
 interface ShiftAssignment {
   id: number;
@@ -32,8 +34,8 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
   const [showQuickAssign, setShowQuickAssign] = useState(false);
-  const [quickAssignData, setQuickAssignData] = useState<{employeeId: number; date: Date} | null>(null);
-  const [availableShifts, setAvailableShifts] = useState<any[]>([]);
+  const [quickAssignData, setQuickAssignData] = useState<{ employeeId: number; date: Date } | null>(null);
+  const [availableShifts, setAvailableShifts] = useState<Array<{ id: number; name: string; start_time?: string; end_time?: string }>>([]);
   const [filterEmployee, setFilterEmployee] = useState<number | null>(null);
   const [filterShiftType, setFilterShiftType] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -73,7 +75,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
         setAssignments([]);
       } else {
         console.log('✅ Datos reales cargados:', data);
-        setAssignments((data as any) || []);
+        setAssignments((data as ShiftAssignment[]) || []);
       }
     } catch (err) {
       console.error('❌ Error:', err);
@@ -87,13 +89,13 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const loadEmployees = async () => {
     try {
       console.log('🔄 Cargando empleados del centro:', selectedCenter);
-      
+
       let query = supabase
         .from('employees')
         .select('id, nombre, apellidos, name, center_id')
         .eq('is_active', true)
         .order('nombre');
-      
+
       // Filtrar por centro si está seleccionado
       if (selectedCenter) {
         query = query.eq('center_id', selectedCenter);
@@ -134,7 +136,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const handleCellClick = (employeeId: number, date: Date) => {
     const holiday = isHoliday(fmt(date));
     if (holiday) {
-      alert('⚠️ No se pueden asignar turnos en días festivos');
+      ui.warning('⚠️ No se pueden asignar turnos en días festivos');
       return;
     }
     setQuickAssignData({ employeeId, date });
@@ -155,16 +157,16 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
         });
 
       if (!error) {
-        alert('✅ Turno asignado correctamente');
+        ui.success('✅ Turno asignado correctamente');
         setShowQuickAssign(false);
         setQuickAssignData(null);
         loadAssignments();
       } else {
-        alert('❌ Error al asignar turno');
+        ui.error('❌ Error al asignar turno');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('❌ Error al asignar turno');
+      ui.error('❌ Error al asignar turno');
     }
   };
 
@@ -172,19 +174,19 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const getWeekDates = () => {
     // Usar la fecha actual si estamos en el mes actual, sino el primer día del mes
     const today = new Date();
-    const isCurrentMonth = selectedMonth.getMonth() === today.getMonth() && 
-                          selectedMonth.getFullYear() === today.getFullYear();
-    
+    const isCurrentMonth = selectedMonth.getMonth() === today.getMonth() &&
+      selectedMonth.getFullYear() === today.getFullYear();
+
     const start = isCurrentMonth ? new Date(today) : new Date(selectedMonth);
-    
+
     // Ajustar al lunes de esa semana
     const dayOfWeek = start.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Si es domingo, retroceder 6 días
     start.setDate(start.getDate() + diff);
-    
+
     // Aplicar offset de semanas
     start.setDate(start.getDate() + (weekOffset * 7));
-    
+
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(start);
       date.setDate(start.getDate() + i);
@@ -210,13 +212,13 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
 
   const handleDrop = async (e: React.DragEvent, newDate: string) => {
     e.preventDefault();
-    
+
     if (!draggedAssignment) return;
 
     // Verificar si es festivo
     const holiday = isHoliday(newDate);
     if (holiday) {
-      alert('⚠️ No se pueden mover turnos a días festivos');
+      ui.warning('⚠️ No se pueden mover turnos a días festivos');
       setDraggedAssignment(null);
       return;
     }
@@ -235,14 +237,14 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
         .eq('id', draggedAssignment.id);
 
       if (!error) {
-        alert('✅ Turno movido correctamente');
+        ui.success('✅ Turno movido correctamente');
         loadAssignments();
       } else {
-        alert('❌ Error al mover turno');
+        ui.error('❌ Error al mover turno');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('❌ Error al mover turno');
+      ui.error('❌ Error al mover turno');
     } finally {
       setDraggedAssignment(null);
     }
@@ -264,22 +266,22 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   // Eliminar turnos seleccionados
   const handleDeleteSelected = async () => {
     if (selectedAssignments.size === 0) return;
-    
-    if (!confirm(`¿Eliminar ${selectedAssignments.size} turno(s) seleccionado(s)?`)) return;
-    
+
+    if (!await ui.confirm(`¿Eliminar ${selectedAssignments.size} turno(s) seleccionado(s)?`)) return;
+
     try {
       const { error } = await supabase
         .from('employee_shifts')
         .delete()
         .in('id', Array.from(selectedAssignments));
-      
+
       if (error) throw error;
-      
-      alert(`✅ ${selectedAssignments.size} turno(s) eliminado(s)`);
+
+      ui.success(`✅ ${selectedAssignments.size} turno(s) eliminado(s)`);
       setSelectedAssignments(new Set());
       loadAssignments();
-    } catch (error: any) {
-      alert(`❌ Error: ${error.message}`);
+    } catch (error: unknown) {
+      ui.error(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -287,11 +289,11 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const getEmployeeShifts = (employeeId: number, date: Date) => {
     const dateStr = fmt(date);
     const filtered = assignments.filter(a => a.employee_id === employeeId && a.date === dateStr);
-    
+
     if (filtered.length > 0) {
       console.log(`📅 ${dateStr} - Empleado ${employeeId}: ${filtered.length} turnos`, filtered);
     }
-    
+
     return filtered;
   };
 
@@ -328,22 +330,22 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
   const exportToExcel = () => {
     const weekDates = getWeekDates();
     const filteredEmployees = getFilteredEmployees();
-    
+
     // Header
-    let csv = 'Empleado,' + weekDates.map(d => 
+    let csv = 'Empleado,' + weekDates.map(d =>
       d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
     ).join(',') + '\n';
 
     // Filas de empleados
     filteredEmployees.forEach(employee => {
       const row = [`"${employee.nombre} ${employee.apellidos}"`];
-      
+
       weekDates.forEach(date => {
         const shifts = filterShiftsByType(getEmployeeShifts(employee.id, date));
         const shiftNames = shifts.map(s => `${s.shift?.name} (${s.shift?.start_time}-${s.shift?.end_time})`).join('; ');
         row.push(`"${shiftNames || '-'}"`);
       });
-      
+
       csv += row.join(',') + '\n';
     });
 
@@ -357,8 +359,8 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    alert('✅ Calendario exportado correctamente');
+
+    ui.success('✅ Calendario exportado correctamente');
   };
 
   // Limpiar TODO
@@ -368,11 +370,16 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
     // Limpiar estado
     setAssignments([]);
 
-    // Limpiar localStorage / sessionStorage
+    // SEC-04: Only remove shift-related keys, never clear all (destroys Supabase auth session)
     try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch {}
+      const keysToRemove = Object.keys(localStorage).filter(k =>
+        k.startsWith('shift_') || k.startsWith('hr_') || k.startsWith('calendar_')
+      );
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      const sessionKeysToRemove = Object.keys(sessionStorage).filter(k => k.startsWith('shift_') || k.startsWith('hr_'));
+      sessionKeysToRemove.forEach(k => sessionStorage.removeItem(k));
+      window.location.reload();
+    } catch { }
 
     // Limpiar caches del navegador si existen
     try {
@@ -380,12 +387,12 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
         const names = await caches.keys();
         await Promise.all(names.map(name => caches.delete(name)));
       }
-    } catch {}
+    } catch { }
 
     // Recargar datos
     await loadAssignments();
 
-    alert('✅ Limpieza completa realizada');
+    ui.success('✅ Limpieza completa realizada');
   };
 
   useEffect(() => {
@@ -432,11 +439,11 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
             <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0, color: '#111827' }}>
               📅 Turnos
             </h2>
-            
+
             {/* Toggle Vista */}
             <div style={{ display: 'flex', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '4px' }}>
               <button
-                onClick={() => setViewMode('week')}
+                onClick={async () => setViewMode('week')}
                 style={{
                   padding: '6px 16px',
                   backgroundColor: viewMode === 'week' ? 'white' : 'transparent',
@@ -452,7 +459,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
                 Semana
               </button>
               <button
-                onClick={() => setViewMode('month')}
+                onClick={async () => setViewMode('month')}
                 style={{
                   padding: '6px 16px',
                   backgroundColor: viewMode === 'month' ? 'white' : 'transparent',
@@ -469,73 +476,73 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               </button>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: showFilters ? '#059669' : '#f3f4f6',
-              color: showFilters ? 'white' : '#374151',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            <Filter size={16} /> Filtros
-          </button>
+            <button
+              onClick={async () => setShowFilters(!showFilters)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: showFilters ? '#059669' : '#f3f4f6',
+                color: showFilters ? 'white' : '#374151',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <Filter size={16} /> Filtros
+            </button>
 
-          <button
-            onClick={exportToExcel}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            <Download size={16} /> Exportar
-          </button>
+            <button
+              onClick={exportToExcel}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <Download size={16} /> Exportar
+            </button>
 
-          <button
-            onClick={loadAssignments}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#059669',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            <RefreshCw size={16} /> Recargar
-          </button>
+            <button
+              onClick={loadAssignments}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <RefreshCw size={16} /> Recargar
+            </button>
           </div>
         </div>
 
         {/* Panel de Filtros */}
         {showFilters && (
-          <div style={{ 
-            marginTop: '16px', 
-            padding: '16px', 
-            backgroundColor: '#f9fafb', 
+          <div style={{
+            marginTop: '16px',
+            padding: '16px',
+            backgroundColor: '#f9fafb',
             borderRadius: '8px',
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -547,7 +554,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               </label>
               <select
                 value={filterEmployee || ''}
-                onChange={(e) => setFilterEmployee(e.target.value ? Number(e.target.value) : null)}
+                onChange={async (e) => setFilterEmployee(e.target.value ? Number(e.target.value) : null)}
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -571,7 +578,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               </label>
               <select
                 value={filterShiftType}
-                onChange={(e) => setFilterShiftType(e.target.value)}
+                onChange={async (e) => setFilterShiftType(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -592,7 +599,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
 
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setFilterEmployee(null);
                   setFilterShiftType('all');
                 }}
@@ -617,8 +624,8 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
 
       {/* Navegación estilo Factorial */}
       <div style={{ backgroundColor: 'white', padding: '16px 24px', marginBottom: '0', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
-        <button 
-          onClick={() => {
+        <button
+          onClick={async () => {
             if (viewMode === 'week') {
               navigateWeek('prev');
             } else {
@@ -639,7 +646,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               const firstDate = weekDates[0];
               const lastDate = weekDates[6];
               const sameMonth = firstDate.getMonth() === lastDate.getMonth();
-              
+
               if (sameMonth) {
                 return `Semana del ${firstDate.getDate()} al ${lastDate.getDate()} de ${firstDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
               } else {
@@ -650,8 +657,8 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
             selectedMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
           )}
         </span>
-        <button 
-          onClick={() => {
+        <button
+          onClick={async () => {
             if (viewMode === 'week') {
               navigateWeek('next');
             } else {
@@ -691,14 +698,14 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               <React.Fragment key={employee.id}>
                 {/* Columna empleado */}
                 <div style={{ backgroundColor: 'white', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ 
-                    width: '32px', 
-                    height: '32px', 
-                    borderRadius: '50%', 
-                    backgroundColor: '#059669', 
-                    color: 'white', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '14px',
                     fontWeight: '600'
@@ -718,13 +725,13 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
                   const shifts = filterShiftsByType(getEmployeeShifts(employee.id, date));
                   const dateStr = fmt(date);
                   const holiday = isHoliday(dateStr);
-                  
+
                   return (
-                    <div 
-                      key={dayIndex} 
-                      onClick={() => handleCellClick(employee.id, date)}
-                      style={{ 
-                        backgroundColor: holiday ? '#fef2f2' : 'white', 
+                    <div
+                      key={dayIndex}
+                      onClick={async () => handleCellClick(employee.id, date)}
+                      style={{
+                        backgroundColor: holiday ? '#fef2f2' : 'white',
                         padding: '8px',
                         minHeight: '80px',
                         cursor: holiday ? 'not-allowed' : 'pointer',
@@ -738,7 +745,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
                       }}
                     >
                       {shifts.map((shift, idx) => (
-                        <div 
+                        <div
                           key={idx}
                           style={{
                             backgroundColor: getShiftColor(shift.shift?.name || ''),
@@ -781,117 +788,117 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
       ) : (
         /* VISTA MENSUAL */
         assignments.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f0fdf4', border: '2px solid #10b981', borderRadius: '10px' }}>
-          <h3 style={{ color: '#10b981' }}>✅ CALENDARIO LIMPIO</h3>
-          <p>No hay turnos asignados en la base de datos para este mes</p>
-          <p>NO hay datos hardcodeados ni información fantasma</p>
-        </div>
-      ) : (
-        <div style={{ backgroundColor: 'white', padding: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-            <div key={day} style={{ padding: '12px', backgroundColor: '#f9fafb', textAlign: 'center', fontWeight: '600', fontSize: '13px', color: '#6b7280' }}>
-              {day.toUpperCase()}
-            </div>
-          ))}
-
-          {Array.from({ length: calendarDays[0]?.dayOfWeek || 0 }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ backgroundColor: '#f9fafb' }} />
-          ))}
-
-          {calendarDays.map(({ date, day, assignments }) => {
-            const holiday = isHoliday(date);
-            const isHolidayDay = !!holiday;
-            
-            return (
-              <div 
-                key={date}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, date)}
-                style={{ 
-                  backgroundColor: isHolidayDay ? '#fef2f2' : (draggedAssignment ? '#f0fdf4' : 'white'), 
-                  minHeight: '100px', 
-                  padding: '5px', 
-                  border: isHolidayDay ? '2px solid #ef4444' : '1px solid #e5e7eb',
-                  position: 'relative',
-                  transition: 'background-color 0.2s'
-                }}
-              >
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: isHolidayDay ? '#dc2626' : '#111827' }}>
-                  {day}
-                  {isHolidayDay && <span style={{ marginLeft: '4px' }}>🎉</span>}
-                </div>
-                
-                {isHolidayDay && (
-                  <div style={{ 
-                    fontSize: '10px', 
-                    padding: '4px', 
-                    marginBottom: '4px', 
-                    backgroundColor: '#fee2e2', 
-                    borderRadius: '4px',
-                    color: '#991b1b',
-                    fontWeight: '600',
-                    border: '1px solid #fca5a5'
-                  }}>
-                    {holiday.name}
-                  </div>
-                )}
-                
-                {assignments.map((assignment, idx) => (
-                  <div 
-                    key={idx}
-                    draggable={!isHolidayDay}
-                    onDragStart={(e) => handleDragStart(e, assignment)}
-                    style={{
-                      fontSize: '10px',
-                      padding: '6px',
-                      marginBottom: '4px',
-                      backgroundColor: getShiftColor(assignment.shift?.name || ''),
-                      color: 'white',
-                      borderRadius: '4px',
-                      opacity: isHolidayDay ? 0.6 : (draggedAssignment?.id === assignment.id ? 0.5 : 1),
-                      cursor: isHolidayDay ? 'not-allowed' : 'grab',
-                      transition: 'transform 0.2s, opacity 0.2s',
-                      border: selectedAssignments.has(assignment.id) ? '3px solid #fbbf24' : (draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none'),
-                      position: 'relative',
-                      boxShadow: selectedAssignments.has(assignment.id) ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none'
-                    }}
-                    onMouseOver={(e) => {
-                      if (!isHolidayDay) e.currentTarget.style.transform = 'scale(1.02)';
-                    }}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAssignments.has(assignment.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleAssignmentSelection(assignment.id);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        left: '4px',
-                        cursor: 'pointer',
-                        width: '14px',
-                        height: '14px'
-                      }}
-                    />
-                    <div style={{ fontWeight: '600', marginBottom: '2px', marginLeft: '18px' }}>
-                      🔄 {assignment.shift?.name}
-                    </div>
-                    <div style={{ fontSize: '9px', opacity: 0.9 }}>{assignment.employee?.name}</div>
-                    <div style={{ fontSize: '9px', opacity: 0.9 }}>
-                      {assignment.shift?.start_time} - {assignment.shift?.end_time}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+          <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f0fdf4', border: '2px solid #10b981', borderRadius: '10px' }}>
+            <h3 style={{ color: '#10b981' }}>✅ CALENDARIO LIMPIO</h3>
+            <p>No hay turnos asignados en la base de datos para este mes</p>
+            <p>NO hay datos hardcodeados ni información fantasma</p>
           </div>
-        </div>
-      )
+        ) : (
+          <div style={{ backgroundColor: 'white', padding: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
+                <div key={day} style={{ padding: '12px', backgroundColor: '#f9fafb', textAlign: 'center', fontWeight: '600', fontSize: '13px', color: '#6b7280' }}>
+                  {day.toUpperCase()}
+                </div>
+              ))}
+
+              {Array.from({ length: calendarDays[0]?.dayOfWeek || 0 }).map((_, i) => (
+                <div key={`empty-${i}`} style={{ backgroundColor: '#f9fafb' }} />
+              ))}
+
+              {calendarDays.map(({ date, day, assignments }) => {
+                const holiday = isHoliday(date);
+                const isHolidayDay = !!holiday;
+
+                return (
+                  <div
+                    key={date}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, date)}
+                    style={{
+                      backgroundColor: isHolidayDay ? '#fef2f2' : (draggedAssignment ? '#f0fdf4' : 'white'),
+                      minHeight: '100px',
+                      padding: '5px',
+                      border: isHolidayDay ? '2px solid #ef4444' : '1px solid #e5e7eb',
+                      position: 'relative',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', color: isHolidayDay ? '#dc2626' : '#111827' }}>
+                      {day}
+                      {isHolidayDay && <span style={{ marginLeft: '4px' }}>🎉</span>}
+                    </div>
+
+                    {isHolidayDay && (
+                      <div style={{
+                        fontSize: '10px',
+                        padding: '4px',
+                        marginBottom: '4px',
+                        backgroundColor: '#fee2e2',
+                        borderRadius: '4px',
+                        color: '#991b1b',
+                        fontWeight: '600',
+                        border: '1px solid #fca5a5'
+                      }}>
+                        {holiday.name}
+                      </div>
+                    )}
+
+                    {assignments.map((assignment, idx) => (
+                      <div
+                        key={idx}
+                        draggable={!isHolidayDay}
+                        onDragStart={(e) => handleDragStart(e, assignment)}
+                        style={{
+                          fontSize: '10px',
+                          padding: '6px',
+                          marginBottom: '4px',
+                          backgroundColor: getShiftColor(assignment.shift?.name || ''),
+                          color: 'white',
+                          borderRadius: '4px',
+                          opacity: isHolidayDay ? 0.6 : (draggedAssignment?.id === assignment.id ? 0.5 : 1),
+                          cursor: isHolidayDay ? 'not-allowed' : 'grab',
+                          transition: 'transform 0.2s, opacity 0.2s',
+                          border: selectedAssignments.has(assignment.id) ? '3px solid #fbbf24' : (draggedAssignment?.id === assignment.id ? '2px dashed white' : 'none'),
+                          position: 'relative',
+                          boxShadow: selectedAssignments.has(assignment.id) ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none'
+                        }}
+                        onMouseOver={(e) => {
+                          if (!isHolidayDay) e.currentTarget.style.transform = 'scale(1.02)';
+                        }}
+                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAssignments.has(assignment.id)}
+                          onChange={async (e) => {
+                            e.stopPropagation();
+                            toggleAssignmentSelection(assignment.id);
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            left: '4px',
+                            cursor: 'pointer',
+                            width: '14px',
+                            height: '14px'
+                          }}
+                        />
+                        <div style={{ fontWeight: '600', marginBottom: '2px', marginLeft: '18px' }}>
+                          🔄 {assignment.shift?.name}
+                        </div>
+                        <div style={{ fontSize: '9px', opacity: 0.9 }}>{assignment.employee?.name}</div>
+                        <div style={{ fontSize: '9px', opacity: 0.9 }}>
+                          {assignment.shift?.start_time} - {assignment.shift?.end_time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
       )}
 
       <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '5px' }}>
@@ -906,32 +913,32 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
 
       {/* Modal de Asignación Rápida */}
       {showQuickAssign && quickAssignData && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'rgba(0,0,0,0.5)', 
-            display: 'flex', 
-            alignItems: 'center', 
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000
           }}
-          onClick={() => setShowQuickAssign(false)}
+          onClick={async () => setShowQuickAssign(false)}
         >
-          <div 
-            style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '12px', 
-              padding: '24px', 
-              maxWidth: '500px', 
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '500px',
               width: '90%',
               maxHeight: '80vh',
               overflowY: 'auto'
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={async (e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600' }}>
               ⚡ Asignación Rápida
@@ -944,7 +951,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
               {availableShifts.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
                   <p style={{ margin: 0, color: '#92400e' }}>
-                    ⚠️ No hay turnos disponibles.<br/>
+                    ⚠️ No hay turnos disponibles.<br />
                     <small>Crea turnos en la pestaña "Gestión de Turnos"</small>
                   </p>
                 </div>
@@ -952,7 +959,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
                 availableShifts.map(shift => (
                   <button
                     key={shift.id}
-                    onClick={() => handleQuickAssign(shift.id)}
+                    onClick={async () => handleQuickAssign(shift.id)}
                     style={{
                       padding: '16px',
                       backgroundColor: getShiftColor(shift.name),
@@ -977,7 +984,7 @@ const ShiftCalendarClean: React.FC<ShiftCalendarCleanProps> = ({ holidays = [], 
             </div>
 
             <button
-              onClick={() => setShowQuickAssign(false)}
+              onClick={async () => setShowQuickAssign(false)}
               style={{
                 marginTop: '16px',
                 width: '100%',

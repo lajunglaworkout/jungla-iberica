@@ -2,6 +2,7 @@
 import React from 'react';
 import { useSession } from '../../contexts/SessionContext';
 import EmployeeOperations from './EmployeeOperations';
+import type { Employee } from '../../types/employee';
 
 const DailyOperations: React.FC = () => {
   const { employee } = useSession();
@@ -26,7 +27,7 @@ const DailyOperations: React.FC = () => {
           </p>
         </div>
         
-        <EmployeeOperations employee={employee as any} />
+        <EmployeeOperations employee={employee as unknown as Employee} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, AlertTriangle, Clock, CheckCircle, Calendar, Users, ChevronRight, X } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 import { useSession } from '../../contexts/SessionContext';
 
 interface Alert {
@@ -37,14 +37,10 @@ export const EventAlerts: React.FC<EventAlertsProps> = ({ onNavigateToEvent }) =
             const todayStr = today.toISOString().split('T')[0];
 
             // 1. Load overdue checklist items
-            const { data: overdueItems } = await supabase
-                .from('evento_checklist')
-                .select('*, eventos:evento_id(id, nombre, center_id)')
-                .eq('completado', false)
-                .lt('fecha_limite', todayStr);
+            const overdueItems = await eventService.checklist.getOverdue(todayStr);
 
-            overdueItems?.forEach(item => {
-                const evento = item.eventos as any;
+            overdueItems.forEach(item => {
+                const evento = item.eventos as { id?: number; nombre?: string } | null;
                 alertsList.push({
                     id: `checklist-${item.id}`,
                     type: 'overdue',
@@ -61,15 +57,10 @@ export const EventAlerts: React.FC<EventAlertsProps> = ({ onNavigateToEvent }) =
             threeDaysLater.setDate(threeDaysLater.getDate() + 3);
             const threeDaysStr = threeDaysLater.toISOString().split('T')[0];
 
-            const { data: upcomingItems } = await supabase
-                .from('evento_checklist')
-                .select('*, eventos:evento_id(id, nombre, center_id)')
-                .eq('completado', false)
-                .gte('fecha_limite', todayStr)
-                .lte('fecha_limite', threeDaysStr);
+            const upcomingItems = await eventService.checklist.getUpcoming(todayStr, threeDaysStr);
 
-            upcomingItems?.forEach(item => {
-                const evento = item.eventos as any;
+            upcomingItems.forEach(item => {
+                const evento = item.eventos as { id?: number; nombre?: string } | null;
                 alertsList.push({
                     id: `upcoming-${item.id}`,
                     type: 'upcoming',
@@ -82,34 +73,21 @@ export const EventAlerts: React.FC<EventAlertsProps> = ({ onNavigateToEvent }) =
             });
 
             // 3. Load events that ended but have no surveys
-            const { data: finishedEvents } = await supabase
-                .from('eventos')
-                .select('id, nombre, fecha_evento')
-                .eq('estado', 'finalizado')
-                .lt('fecha_evento', todayStr);
+            const finishedEvents = await eventService.eventos.getFinishedBefore(todayStr);
 
-            if (finishedEvents) {
-                for (const evento of finishedEvents) {
-                    const { count: surveyCount } = await supabase
-                        .from('evento_encuestas')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('evento_id', evento.id);
+            for (const evento of finishedEvents) {
+                const surveyCount = await eventService.encuestas.countByEventId(evento.id);
+                const participantCount = await eventService.participantes.countByEventId(evento.id);
 
-                    const { count: participantCount } = await supabase
-                        .from('evento_participantes')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('evento_id', evento.id);
-
-                    if ((surveyCount || 0) < (participantCount || 0) && (participantCount || 0) > 0) {
-                        alertsList.push({
-                            id: `survey-${evento.id}`,
-                            type: 'survey',
-                            title: 'Encuestas pendientes',
-                            description: `${surveyCount || 0}/${participantCount} encuestas registradas`,
-                            eventoId: evento.id,
-                            eventoNombre: evento.nombre
-                        });
-                    }
+                if (surveyCount < participantCount && participantCount > 0) {
+                    alertsList.push({
+                        id: `survey-${evento.id}`,
+                        type: 'survey',
+                        title: 'Encuestas pendientes',
+                        description: `${surveyCount}/${participantCount} encuestas registradas`,
+                        eventoId: evento.id,
+                        eventoNombre: evento.nombre
+                    });
                 }
             }
 

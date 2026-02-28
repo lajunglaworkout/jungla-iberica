@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { leadService, interactionService } from '../../services/leadService';
 import {
   Users, Plus, Search, Filter, Phone, Mail, Calendar, MessageSquare,
   FileText, TrendingUp, Clock, CheckCircle, XCircle, AlertCircle,
@@ -79,19 +79,8 @@ const LeadManagementSystem: React.FC = () => {
   const cargarLeads = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (filtroEstado !== 'todos') {
-        query = query.eq('estado', filtroEstado);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setLeads(data || []);
+      const data = await leadService.getLeads(filtroEstado);
+      setLeads(data);
     } catch (error) {
       console.error('Error cargando leads:', error);
     } finally {
@@ -102,14 +91,8 @@ const LeadManagementSystem: React.FC = () => {
   // Cargar interacciones de un lead
   const cargarInteracciones = async (leadId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('lead_interactions')
-        .select('*')
-        .eq('lead_id', leadId)
-        .order('fecha', { ascending: false });
-
-      if (error) throw error;
-      setInteractions(data || []);
+      const data = await interactionService.getByLeadId(leadId);
+      setInteractions(data);
     } catch (error) {
       console.error('Error cargando interacciones:', error);
     }
@@ -465,7 +448,7 @@ const LeadManagementSystem: React.FC = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {interactions.map(interaction => {
-                  const iconMap: any = {
+                  const iconMap: Record<string, React.ElementType> = {
                     email: Mail,
                     llamada: Phone,
                     reunion: Calendar,

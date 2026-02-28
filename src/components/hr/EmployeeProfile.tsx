@@ -1,16 +1,17 @@
 // src/components/hr/EmployeeProfile.tsx - Perfil del Empleado con Edición
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Phone, Mail, Edit3, Save, X, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getEmployeeById, updateEmployeeProfile } from '../../services/userService';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import type { Employee } from '../../types/employee';
 
 interface EmployeeProfileProps {
   onBack: () => void;
-  currentEmployee: any;
+  currentEmployee: Employee;
 }
 
 const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmployee }) => {
-  const [employee, setEmployee] = useState<any>(currentEmployee || null);
+  const [employee, setEmployee] = useState<Employee | null>(currentEmployee || null);
   const [loading, setLoading] = useState(!currentEmployee);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,21 +53,16 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
     }
 
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('id', Number(currentEmployee.id))
-        .single();
-
-      if (error) throw error;
-
-      setEmployee(data);
-      setFormData({
-        first_name: data?.first_name || data?.name || '',
-        last_name: data?.last_name || '',
-        phone: data?.phone || '',
-        dni: data?.dni || ''
-      });
+      const data = await getEmployeeById(Number(currentEmployee.id));
+      if (data) {
+        setEmployee(data as unknown as Employee);
+        setFormData({
+          first_name: String(data.first_name || data.name || ''),
+          last_name: String(data.last_name || ''),
+          phone: String(data.phone || ''),
+          dni: String(data.dni || '')
+        });
+      }
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -86,18 +82,14 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
     setSuccess(null);
 
     try {
-      const { error } = await supabase
-        .from('employees')
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone,
-          dni: formData.dni,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', Number(employee.id));
+      const { success, error: updateError } = await updateEmployeeProfile(Number(employee.id), {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        dni: formData.dni
+      });
 
-      if (error) throw error;
+      if (!success) throw new Error(updateError);
 
       // Update local state
       setEmployee({
@@ -113,9 +105,9 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({ onBack, currentEmploy
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error guardando perfil:', error);
-      setError(error.message || 'Error al guardar los cambios');
+      setError(error instanceof Error ? error.message : 'Error al guardar los cambios');
     } finally {
       setSaving(false);
     }

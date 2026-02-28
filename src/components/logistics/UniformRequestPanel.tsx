@@ -2,8 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Minus, Plus, Shirt, ShoppingBag, CheckCircle, Package, AlertTriangle, Truck, Clock } from 'lucide-react';
 import { LocationType } from '../../types/logistics';
 import { useInventory } from '../../hooks/useInventory';
-import { supabase } from '../../lib/supabase';
+import { getEmployeeUniformAssignments, getUniformRequestsByEmployee, updateUniformRequestStatus, createUniformRequest, updateUniformRequest } from '../../services/hrService';
+import { updateEmployeeById } from '../../services/userService';
 import { useSession } from '../../contexts/SessionContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
 
 type ReasonType = 'reposicion' | 'compra';
 type RequestStatus = 'pending' | 'approved' | 'shipped' | 'awaiting_confirmation' | 'confirmed' | 'disputed' | 'rejected';
@@ -36,11 +40,12 @@ const PRENDAS_FIJAS = [
 ];
 
 const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation, employeeName, onSubmit }) => {
+  const isMobile = useIsMobile();
   const { employee } = useSession();
   const { inventoryItems } = useInventory();
   const [activeTab, setActiveTab] = useState<'my-uniform' | 'requests'>('my-uniform');
-  const [assignedItems, setAssignedItems] = useState<any>({});
-  const [requests, setRequests] = useState<any[]>([]);
+  const [assignedItems, setAssignedItems] = useState<Record<string, number>>({});
+  const [requests, setRequests] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Request Form State
@@ -73,49 +78,28 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
     setLoading(true);
     try {
       // 1. Fetch assigned items
-      const { data: empData, error: empError } = await supabase
-        .from('employees')
-        .select('vestuario_chandal, vestuario_sudadera_frio, vestuario_chaleco_frio, vestuario_pantalon_corto, vestuario_polo_verde, vestuario_camiseta_entrenamiento, vestuario_observaciones')
-        .eq('id', employee.id)
-        .single();
-
-      if (empError) throw empError;
+      const empData = await getEmployeeUniformAssignments(employee.id);
       setAssignedItems(empData);
 
       // 2. Fetch requests history
-      const { data: reqData, error: reqError } = await supabase
-        .from('uniform_requests')
-        .select('*')
-        .eq('employee_name', employeeName) // Using name as linker based on current DB structure
-        .order('created_at', { ascending: false });
-
-      if (reqError) throw reqError;
+      const reqData = await getUniformRequestsByEmployee(employeeName);
 
       // Check for auto-transitions (shipped -> awaiting_confirmation)
       const now = new Date();
-      const needsUpdate = reqData?.filter(r =>
+      const needsUpdate = reqData.filter((r: Record<string, unknown>) =>
         r.status === 'shipped' &&
         r.shipped_at &&
-        (now.getTime() - new Date(r.shipped_at).getTime() > 3 * 24 * 60 * 60 * 1000)
-      ) || [];
+        (now.getTime() - new Date(r.shipped_at as string).getTime() > 3 * 24 * 60 * 60 * 1000)
+      );
 
-      // Optimistically update local state for better UX, actual DB update can happen in background? 
-      // ideally we update DB. Let's do it if we find any.
       if (needsUpdate.length > 0) {
         for (const req of needsUpdate) {
-          await supabase.from('uniform_requests')
-            .update({ status: 'awaiting_confirmation' })
-            .eq('id', req.id);
+          await updateUniformRequestStatus((req as Record<string, unknown>).id as number, 'awaiting_confirmation');
         }
-        // Reload requests
-        const { data: reloaded } = await supabase
-          .from('uniform_requests')
-          .select('*')
-          .eq('employee_name', employeeName)
-          .order('created_at', { ascending: false });
-        setRequests(reloaded || []);
+        const reloaded = await getUniformRequestsByEmployee(employeeName);
+        setRequests(reloaded as any[]);
       } else {
-        setRequests(reqData || []);
+        setRequests(reqData as any[]);
       }
 
     } catch (err) {
@@ -127,7 +111,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
 
   const handleRequestSubmit = async (prendaKey: string, inventoryName: string) => {
     if (!selectedSize) {
-      alert('Por favor selecciona una talla');
+      ui.info('Por favor selecciona una talla');
       return;
     }
     setSubmitting(true);
@@ -147,13 +131,10 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
         requested_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('uniform_requests')
-        .insert(payload);
+      const result = await createUniformRequest(payload);
+      if (!result.success) throw new Error(result.error);
 
-      if (error) throw error;
-
-      alert('Solicitud enviada correctamente');
+      ui.success('Solicitud enviada correctamente');
       setShowRequestForm(null);
       setNotes('');
       setSelectedSize('');
@@ -161,26 +142,19 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       setActiveTab('requests'); // Switch to requests tab
     } catch (err) {
       console.error('Error submitting request:', err);
-      alert('Error al enviar la solicitud');
+      ui.error('Error al enviar la solicitud');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleConfirmReceipt = async (requestId: number, items: any[]) => {
-    if (!confirm('¿Confirmas que has recibido las prendas correctamente?')) return;
+  const handleConfirmReceipt = async (requestId: number, items: Record<string, unknown>[]) => {
+    if (!await ui.confirm('¿Confirmas que has recibido las prendas correctamente?')) return;
 
     try {
       // 1. Update request status
-      const { error: reqError } = await supabase
-        .from('uniform_requests')
-        .update({
-          status: 'confirmed',
-          confirmed_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
-
-      if (reqError) throw reqError;
+      const reqResult = await updateUniformRequest(requestId, { status: 'confirmed', confirmed_at: new Date().toISOString() });
+      if (!reqResult.success) throw new Error(reqResult.error);
 
       // 2. Update employee assigned items
       // Map inventory names back to DB columns if possible, or just update based on what we know
@@ -188,8 +162,8 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       // Ideally requests should store the 'prendaKey' or we map it back.
       // Since we stored 'itemId' as 'prendaKey' in handleRequestSubmit (e.g., 'vestuario_chandal'), we can use it.
 
-      const updateData: any = {};
-      items.forEach((item: any) => {
+      const updateData: Record<string, unknown> = {};
+      items.forEach((item) => {
         // item.itemId holds the key like 'vestuario_chandal'
         if (item.itemId && item.itemId.startsWith('vestuario_')) {
           updateData[item.itemId] = item.size;
@@ -197,19 +171,15 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       });
 
       if (Object.keys(updateData).length > 0) {
-        const { error: empError } = await supabase
-          .from('employees')
-          .update(updateData)
-          .eq('id', employee?.id);
-
-        if (empError) console.error('Error updating employee profile:', empError);
+        const empResult = await updateEmployeeById(employee?.id as number, updateData);
+        if (!empResult.success) console.error('Error updating employee profile:', empResult.error);
       }
 
-      alert('¡Gracias! Tu vestuario ha sido actualizado.');
+      ui.success('¡Gracias! Tu vestuario ha sido actualizado.');
       loadData();
     } catch (err) {
       console.error('Error confirming receipt:', err);
-      alert('Error al confirmar recepción');
+      ui.error('Error al confirmar recepción');
     }
   };
 
@@ -218,20 +188,13 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
     if (!reason) return;
 
     try {
-      const { error } = await supabase
-        .from('uniform_requests')
-        .update({
-          status: 'disputed',
-          dispute_reason: reason
-        })
-        .eq('id', requestId);
-
-      if (error) throw error;
-      alert('Incidencia reportada. Logística revisará tu caso.');
+      const disputeResult = await updateUniformRequest(requestId, { status: 'disputed', dispute_reason: reason });
+      if (!disputeResult.success) throw new Error(disputeResult.error);
+      ui.info('Incidencia reportada. Logística revisará tu caso.');
       loadData();
     } catch (err) {
       console.error('Error reporting dispute:', err);
-      alert('Error al reportar incidencia');
+      ui.error('Error al reportar incidencia');
     }
   };
 
@@ -242,15 +205,15 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
       {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, #059669, #047857)',
-        borderRadius: window.innerWidth < 768 ? '12px' : '16px',
-        padding: window.innerWidth < 768 ? '16px' : '24px',
+        borderRadius: isMobile ? '12px' : '16px',
+        padding: isMobile ? '16px' : '24px',
         color: 'white',
         marginBottom: '20px',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <span style={{ fontSize: '28px' }}>👕</span>
-          <h1 style={{ margin: 0, fontSize: window.innerWidth < 768 ? '20px' : '24px', fontWeight: '700' }}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px', fontWeight: '700' }}>
             Mi Vestuario
           </h1>
         </div>
@@ -260,13 +223,13 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
           </p>
           <div className="flex bg-white/10 rounded-lg p-1 gap-1">
             <button
-              onClick={() => setActiveTab('my-uniform')}
+              onClick={async () => setActiveTab('my-uniform')}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${activeTab === 'my-uniform' ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
             >
               Mis Prendas
             </button>
             <button
-              onClick={() => setActiveTab('requests')}
+              onClick={async () => setActiveTab('requests')}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${activeTab === 'requests' ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
             >
               Solicitudes {requests.filter(r => r.status === 'pending' || r.status === 'awaiting_confirmation').length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{requests.filter(r => r.status === 'pending' || r.status === 'awaiting_confirmation').length}</span>}
@@ -312,7 +275,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
                         {REASONS.map(r => (
                           <button
                             key={r.id}
-                            onClick={() => setReason(r.id)}
+                            onClick={async () => setReason(r.id)}
                             className={`flex-1 py-1.5 px-2 rounded text-xs font-medium border ${reason === r.id ? 'bg-white border-emerald-500 text-emerald-700 shadow-sm' : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-200'}`}
                           >
                             {r.label}
@@ -322,7 +285,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
                       <div className="flex gap-2">
                         <select
                           value={selectedSize}
-                          onChange={(e) => setSelectedSize(e.target.value)}
+                          onChange={async (e) => setSelectedSize(e.target.value)}
                           className="flex-1 rounded-lg border-gray-300 text-sm py-1.5"
                         >
                           <option value="">Seleccionar Talla</option>
@@ -332,19 +295,19 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
                           type="text"
                           placeholder="Notas (opcional)..."
                           value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
+                          onChange={async (e) => setNotes(e.target.value)}
                           className="flex-[2] rounded-lg border-gray-300 text-sm py-1.5"
                         />
                       </div>
                       <div className="flex gap-2 pt-1">
                         <button
-                          onClick={() => setShowRequestForm(null)}
+                          onClick={async () => setShowRequestForm(null)}
                           className="flex-1 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                         >
                           Cancelar
                         </button>
                         <button
-                          onClick={() => handleRequestSubmit(prenda.key, prenda.inventoryName)}
+                          onClick={async () => handleRequestSubmit(prenda.key, prenda.inventoryName)}
                           disabled={submitting || !selectedSize}
                           className="flex-1 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 shadow-sm"
                         >
@@ -354,7 +317,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
                     </div>
                   ) : (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setShowRequestForm(prenda.key);
                         setReason(isAssigned ? 'reposicion' : 'reposicion'); // Default logic?
                         setSelectedSize(isAssigned ? assignedSize : '');
@@ -384,7 +347,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
               <Package size={48} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500">No has realizado ninguna solicitud aún.</p>
-              <button onClick={() => setActiveTab('my-uniform')} className="mt-4 text-emerald-600 font-medium hover:underline">
+              <button onClick={async () => setActiveTab('my-uniform')} className="mt-4 text-emerald-600 font-medium hover:underline">
                 Ir a Mi Vestuario
               </button>
             </div>
@@ -406,7 +369,7 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
 
                   <div className="p-4">
                     <div className="space-y-3">
-                      {req.items?.map((item: any, idx: number) => (
+                      {req.items?.map((item: Record<string, unknown>, idx: number) => (
                         <div key={idx} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <div className="bg-gray-100 p-1.5 rounded-md text-xl">🧥</div>
@@ -431,13 +394,13 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
                             </p>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleConfirmReceipt(req.id, req.items)}
+                                onClick={async () => handleConfirmReceipt(req.id, req.items)}
                                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition-colors shadow-sm"
                               >
                                 ✅ Sí, todo correcto
                               </button>
                               <button
-                                onClick={() => handleDispute(req.id)}
+                                onClick={async () => handleDispute(req.id)}
                                 className="px-3 bg-white border border-orange-200 text-orange-700 hover:bg-orange-100 text-xs font-medium py-2 rounded-lg transition-colors"
                               >
                                 ❌ Reportar problema

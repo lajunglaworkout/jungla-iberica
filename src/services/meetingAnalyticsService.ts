@@ -176,7 +176,7 @@ export const getPreviousMeetingObjectives = async (
  */
 export const getDepartmentPerformance = async (
   departamento: string
-): Promise<{ success: boolean; performance?: any; error?: string }> => {
+): Promise<{ success: boolean; performance?: Record<string, unknown>; error?: string }> => {
   try {
     console.log('📈 Obteniendo rendimiento de departamento:', departamento);
 
@@ -204,7 +204,7 @@ export const getDepartmentPerformance = async (
  */
 export const getRecurringBottlenecks = async (
   departamento?: string
-): Promise<{ success: boolean; bottlenecks?: any[]; error?: string }> => {
+): Promise<{ success: boolean; bottlenecks?: Record<string, unknown>[]; error?: string }> => {
   try {
     console.log('🔍 Buscando cuellos de botella recurrentes');
 
@@ -239,7 +239,7 @@ export const getRecurringBottlenecks = async (
 export const getObjectivesEvolution = async (
   departamento: string,
   objetivo: string
-): Promise<{ success: boolean; evolution?: any[]; error?: string }> => {
+): Promise<{ success: boolean; evolution?: Record<string, unknown>[]; error?: string }> => {
   try {
     console.log('📊 Obteniendo evolución de objetivo:', { departamento, objetivo });
 

@@ -10,11 +10,31 @@ import {
   AlertTriangle,
   Clock
 } from 'lucide-react';
-import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS, MAINTENANCE_STATUS, TASK_PRIORITY } from '../../types/maintenance';
+import { MAINTENANCE_ZONES, MAINTENANCE_CONCEPTS, MAINTENANCE_STATUS, TASK_PRIORITY, MaintenanceZone, MaintenanceConcept } from '../../types/maintenance';
 import maintenanceService from '../../services/maintenanceService';
+
+interface InspectionItemState {
+  id: string;
+  zone_id?: string | number;
+  zone_name?: string;
+  concept_id?: string | number;
+  concept_name?: string;
+  status?: 'bien' | 'regular' | 'mal';
+  observations?: string;
+  task_to_perform?: string;
+  task_priority?: string;
+  photos_deterioro?: string[];
+  photos_reparacion?: string[];
+  photos_required?: boolean;
+  notes?: string;
+  uuid?: string;
+  [key: string]: unknown;
+}
 import quarterlyMaintenanceService from '../../services/quarterlyMaintenanceService';
 import { useSession } from '../../contexts/SessionContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
 
 interface ManagerQuarterlyMaintenanceProps {
   onBack: () => void;
@@ -35,7 +55,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   const centerId = propCenterId?.toString() || employee?.center_id || '9';
   const [currentStep, setCurrentStep] = useState(0); // 0 = inicio, 1-9 = zonas, 10 = resumen
   const [selectedCenter, setSelectedCenter] = useState({ id: centerId, name: centerName });
-  const [inspectionData, setInspectionData] = useState<any>({});
+  const [inspectionData, setInspectionData] = useState<Record<string, InspectionItemState>>({});
 
 
   // Centros disponibles
@@ -47,7 +67,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
 
   // Inicializar datos de inspección
   useEffect(() => {
-    const items: any = {};
+    const items: Record<string, InspectionItemState> = {};
 
     MAINTENANCE_ZONES.forEach(zone => {
       const zoneConcepts = MAINTENANCE_CONCEPTS.filter(c => c.zone_id === zone.id);
@@ -71,12 +91,12 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
       });
     });
 
-    setInspectionData((prev: any) => ({ ...prev, ...items }));
+    setInspectionData((prev) => ({ ...prev, ...items }));
   }, []);
 
   // Actualizar item de inspección
-  const updateInspectionItem = (itemId: string, updates: any) => {
-    setInspectionData((prev: any) => ({
+  const updateInspectionItem = (itemId: string, updates: Partial<InspectionItemState>) => {
+    setInspectionData((prev) => ({
       ...prev,
       [itemId]: {
         ...prev[itemId],
@@ -96,19 +116,19 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
       console.log('🔧 Enviando revisión trimestral...');
 
       // VALIDAR FOTOS OBLIGATORIAS
-      const allItems = Object.values(inspectionData) as any[];
-      const itemsWithPhotosRequired = allItems.filter((item: any) =>
+      const allItems = Object.values(inspectionData);
+      const itemsWithPhotosRequired = allItems.filter((item) =>
         item.status === 'regular' || item.status === 'mal'
       );
 
-      const itemsWithoutPhotos = itemsWithPhotosRequired.filter((item: any) =>
+      const itemsWithoutPhotos = itemsWithPhotosRequired.filter((item) =>
         !item.photos_deterioro || item.photos_deterioro.length === 0
       );
 
       if (itemsWithoutPhotos.length > 0) {
-        alert(`❌ No se puede enviar la revisión.\n\n` +
+        ui.error(`❌ No se puede enviar la revisión.\n\n` +
           `${itemsWithoutPhotos.length} items requieren fotos obligatorias:\n` +
-          itemsWithoutPhotos.map((item: any) => `• ${item.zone_name}: ${item.concept_name}`).join('\n') +
+          itemsWithoutPhotos.map((item) => `• ${item.zone_name}: ${item.concept_name}`).join('\n') +
           `\n\nPor favor, sube las fotos de deterioro para todos los items marcados como REGULAR o MAL.`);
         return;
       }
@@ -118,9 +138,9 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
       const inspectionMonth = inspectionDate.toISOString().substring(0, 7); // "2025-09"
 
       // Calcular estadísticas
-      const itemsOk = allItems.filter((item: any) => item.status === 'bien').length;
-      const itemsRegular = allItems.filter((item: any) => item.status === 'regular').length;
-      const itemsBad = allItems.filter((item: any) => item.status === 'mal').length;
+      const itemsOk = allItems.filter((item) => item.status === 'bien').length;
+      const itemsRegular = allItems.filter((item) => item.status === 'regular').length;
+      const itemsBad = allItems.filter((item) => item.status === 'mal').length;
       const totalItems = allItems.length;
       const overallScore = Math.round(((itemsOk * 100) + (itemsRegular * 60) + (itemsBad * 20)) / totalItems);
 
@@ -149,7 +169,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
         const [zoneId, conceptId] = itemId.split('_');
         const zone = MAINTENANCE_ZONES.find(z => z.id === zoneId);
         const concept = MAINTENANCE_CONCEPTS.find(c => c.id === conceptId);
-        const itemData = item as any;
+        const itemData = item;
 
         return {
           zone_id: zoneId,
@@ -174,7 +194,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
       const assignmentResult = await quarterlyMaintenanceService.getAssignments(centerNumId);
 
       if (!assignmentResult.success || !assignmentResult.assignments || assignmentResult.assignments.length === 0) {
-        alert('❌ No se encontró una asignación activa para este centro');
+        ui.error('❌ No se encontró una asignación activa para este centro');
         return;
       }
 
@@ -188,19 +208,19 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
         const completeResult = await quarterlyMaintenanceService.completeAssignment(assignment.id, userEmail);
 
         if (completeResult.success) {
-          alert('✅ Revisión trimestral completada y enviada a Beni');
+          ui.success('✅ Revisión trimestral completada y enviada a Beni');
           onBack(); // Volver al dashboard
         } else {
-          alert('❌ Error completando la revisión');
+          ui.error('❌ Error completando la revisión');
         }
       } else {
         console.error('Error guardando items:', result.error);
-        alert('Error guardando la revisión: ' + result.error);
+        ui.error();
       }
 
     } catch (error) {
       console.error('Error en handleSubmitInspection:', error);
-      alert('Error enviando inspección');
+      ui.error('Error enviando inspección');
     }
   };
 
@@ -318,7 +338,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           <input
             type="date"
             value={inspectionData.inspection_date}
-            onChange={(e) => setInspectionData((prev: any) => ({
+            onChange={(e) => setInspectionData((prev) => ({
               ...prev,
               inspection_date: e.target.value
             }))}
@@ -351,7 +371,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '12px'
         }}>
-          {MAINTENANCE_ZONES.map((zone: any) => (
+          {MAINTENANCE_ZONES.map((zone: MaintenanceZone) => (
             <div key={zone.id} style={{
               display: 'flex',
               alignItems: 'center',
@@ -366,7 +386,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
               <div>
                 <div style={{ fontWeight: '500' }}>{zone.name}</div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                  {MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id).length} conceptos
+                  {MAINTENANCE_CONCEPTS.filter((c: MaintenanceConcept) => c.zone_id === zone.id).length} conceptos
                 </div>
               </div>
             </div>
@@ -407,7 +427,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
   // Renderizar paso de zona
   const renderZoneStep = (zoneIndex: number) => {
     const zone = MAINTENANCE_ZONES[zoneIndex];
-    const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: any) => c.zone_id === zone.id);
+    const zoneConcepts = MAINTENANCE_CONCEPTS.filter((c: MaintenanceConcept) => c.zone_id === zone.id);
 
     return (
       <div style={{
@@ -467,7 +487,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           gap: '24px',
           marginBottom: '32px'
         }}>
-          {zoneConcepts.map((concept: any) => {
+          {zoneConcepts.map((concept: MaintenanceConcept) => {
             const itemId = `${zone.id}_${concept.id}`;
             const item = inspectionData[itemId];
 
@@ -722,10 +742,10 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
 
   // Renderizar paso de resumen
   const renderSummaryStep = () => {
-    const items = Object.values(inspectionData).filter((item: any) => item && typeof item === 'object' && item.status);
-    const bien = items.filter((item: any) => item.status === 'bien').length;
-    const regular = items.filter((item: any) => item.status === 'regular').length;
-    const mal = items.filter((item: any) => item.status === 'mal').length;
+    const items = Object.values(inspectionData).filter((item) => item && typeof item === 'object' && item.status);
+    const bien = items.filter((item) => item.status === 'bien').length;
+    const regular = items.filter((item) => item.status === 'regular').length;
+    const mal = items.filter((item) => item.status === 'mal').length;
     const total = items.length;
     const score = total > 0 ? Math.round(((bien * 100 + regular * 50) / total)) : 0;
 
@@ -837,7 +857,7 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
           <textarea
             placeholder="Añade cualquier observación general sobre la inspección..."
             value={inspectionData.notes}
-            onChange={(e) => setInspectionData((prev: any) => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setInspectionData((prev) => ({ ...prev, notes: e.target.value }))}
             style={{
               width: '100%',
               padding: '12px',
@@ -911,63 +931,55 @@ const ManagerQuarterlyMaintenance: React.FC<ManagerQuarterlyMaintenanceProps> = 
     );
   };
 
+  const totalSteps = MAINTENANCE_ZONES.length + 2;
+  const progress = getProgress();
+  const currentZone = currentStep > 0 && currentStep <= MAINTENANCE_ZONES.length
+    ? MAINTENANCE_ZONES[currentStep - 1]
+    : null;
+
   return (
-    <div style={{
-      backgroundColor: '#f9fafb',
-      padding: '24px',
-      height: '100%',
-      overflow: 'auto'
-    }}>
-      {/* Barra de progreso */}
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100%' }}>
+
+      {/* Barra de progreso sticky */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '16px',
-        marginBottom: '24px'
+        borderBottom: '1px solid #e5e7eb',
+        padding: '12px 24px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '8px'
-        }}>
-          <span style={{
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151'
-          }}>
-            Progreso de Inspección
-          </span>
-          <span style={{
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#059669'
-          }}>
-            {getProgress()}%
-          </span>
-        </div>
-        <div style={{
-          width: '100%',
-          backgroundColor: '#e5e7eb',
-          borderRadius: '9999px',
-          height: '8px'
-        }}>
-          <div style={{
-            backgroundColor: '#059669',
-            height: '8px',
-            borderRadius: '9999px',
-            width: `${getProgress()}%`,
-            transition: 'width 0.3s ease'
-          }}></div>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
+                {currentStep === 0 ? 'Inicio' :
+                  currentStep <= MAINTENANCE_ZONES.length ? `Zona ${currentStep}/${MAINTENANCE_ZONES.length}: ${currentZone?.name}` :
+                    'Resumen final'}
+              </span>
+              {currentZone && (
+                <span style={{ fontSize: '18px' }}>{currentZone.icon}</span>
+              )}
+            </div>
+            <span style={{
+              fontSize: '13px', fontWeight: '700', color: '#059669',
+              backgroundColor: '#f0fdf4', padding: '2px 10px', borderRadius: '12px'
+            }}>
+              {progress}%
+            </span>
+          </div>
+          <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '6px' }}>
+            <div style={{
+              backgroundColor: progress === 100 ? '#059669' : '#10b981',
+              height: '6px', borderRadius: '9999px',
+              width: `${progress}%`, transition: 'width 0.4s ease'
+            }} />
+          </div>
         </div>
       </div>
 
       {/* Contenido principal */}
-      <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto'
-      }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }}>
         {currentStep === 0 && renderStartStep()}
         {currentStep > 0 && currentStep <= MAINTENANCE_ZONES.length && renderZoneStep(currentStep - 1)}
         {currentStep === MAINTENANCE_ZONES.length + 1 && renderSummaryStep()}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, BarChart3, Calendar, Users, Star, Award, Target, Filter, ChevronDown, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { eventService } from '../../services/eventService';
 
 interface Evento {
     id: number;
@@ -61,19 +61,16 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ onBack }) =>
         setLoading(true);
         try {
             // Load eventos with more details
-            const { data: eventosData } = await supabase
-                .from('eventos')
-                .select('*')
-                .order('fecha_evento', { ascending: false });
+            const eventosData = await eventService.eventos.getAll();
 
             // Load all gastos
-            const { data: gastosData } = await supabase.from('evento_gastos').select('evento_id, coste');
+            const gastosData = await eventService.gastos.getAll('evento_id, coste');
 
             // Load participantes
-            const { data: participantesData } = await supabase.from('evento_participantes').select('evento_id, asistio');
+            const participantesData = await eventService.participantes.getAll('evento_id, asistio');
 
             // Load encuestas
-            const { data: encuestasData } = await supabase.from('evento_encuestas').select('evento_id, puntuacion_general');
+            const encuestasData = await eventService.encuestas.getAll('evento_id, puntuacion_general');
 
             // Calculate per evento
             const financialsByEvento: EventoFinanciero[] = (eventosData || []).map(evento => {
@@ -215,7 +212,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ onBack }) =>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <select
                         value={filterPeriod}
-                        onChange={(e) => setFilterPeriod(e.target.value as any)}
+                        onChange={(e) => setFilterPeriod(e.target.value as 'all' | 'month' | 'quarter' | 'year')}
                         style={{ padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', fontSize: '14px' }}
                     >
                         <option value="all">Todo el tiempo</option>
@@ -225,7 +222,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ onBack }) =>
                     </select>
                     <select
                         value={filterEstado}
-                        onChange={(e) => setFilterEstado(e.target.value as any)}
+                        onChange={(e) => setFilterEstado(e.target.value as 'all' | 'completado' | 'activo' | 'pendiente')}
                         style={{ padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', fontSize: '14px' }}
                     >
                         <option value="all">Todos los estados</option>
@@ -401,7 +398,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ onBack }) =>
                     </h3>
                     <select
                         value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
+                        onChange={(e) => setSortBy(e.target.value as 'date' | 'balance' | 'participantes')}
                         style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '13px' }}
                     >
                         <option value="date">Por fecha</option>

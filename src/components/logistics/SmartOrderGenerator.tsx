@@ -6,64 +6,71 @@ interface SmartOrderGeneratorProps {
     initialCenterId?: number | 'all';
 }
 
+const CENTER_IDS = [1, 9, 10, 11];
+const CENTER_NAME_MAP: Record<number, string> = { 1: 'Central', 9: 'Sevilla', 10: 'Jerez', 11: 'Puerto' };
+const CENTER_KEY_MAP: Record<string, number> = { central: 1, sevilla: 9, jerez: 10, puerto: 11 };
+
 const SmartOrderGenerator: React.FC<SmartOrderGeneratorProps> = ({ initialCenterId = 'all' }) => {
     const { inventoryItems, loading, refetch } = useInventory();
     const [selectedCenter, setSelectedCenter] = useState<number | 'all'>(initialCenterId);
+    const [activeTab, setActiveTab] = useState<number>(1); // tab activo cuando selectedCenter === 'all'
     const [generatedText, setGeneratedText] = useState('');
     const [copied, setCopied] = useState(false);
 
-    // Filtrar items que necesitan reposición
+    // Items bajo mínimos para el centro seleccionado (o todos)
     const itemsToOrder = inventoryItems.filter(item => {
-        // Filtro por centro
         if (selectedCenter !== 'all') {
-            const centerMap: Record<string, number> = { central: 1, sevilla: 9, jerez: 10, puerto: 11 };
-            if (centerMap[item.center] !== selectedCenter) return false;
+            if (CENTER_KEY_MAP[item.center] !== selectedCenter) return false;
         }
-
-        // Solo items con stock bajo o agotado
         return item.quantity <= item.min_stock;
     }).map(item => ({
         ...item,
         suggestedQuantity: Math.max(0, item.max_stock - item.quantity)
     }));
 
-    const getCenterName = (id: number | 'all') => {
-        if (id === 'all') return 'Todos los Centros';
-        const map: Record<number, string> = { 1: 'Central', 9: 'Sevilla', 10: 'Jerez', 11: 'Puerto' };
-        return map[id] || 'Desconocido';
-    };
+    // Items para un centro concreto (para tabs)
+    const itemsForCenter = (centerId: number) =>
+        itemsToOrder.filter(item => CENTER_KEY_MAP[item.center] === centerId);
 
-    const generateOrderText = () => {
-        const centerName = getCenterName(selectedCenter);
+    const generateOrderTextForCenter = (items: typeof itemsToOrder, centerName: string) => {
         const date = new Date().toLocaleDateString('es-ES');
-
         let text = `📋 SOLICITUD DE PEDIDO - ${centerName.toUpperCase()}\n`;
         text += `📅 Fecha: ${date}\n\n`;
         text += `Hola,\n\nNecesitamos reponer los siguientes artículos que están bajo mínimos:\n\n`;
-
-        if (itemsToOrder.length === 0) {
-            text += "(No hay artículos bajo mínimos actualmente)";
+        if (items.length === 0) {
+            text += '(No hay artículos bajo mínimos actualmente)';
         } else {
-            // Agrupar por proveedor
-            const bySupplier: Record<string, typeof itemsToOrder> = {};
-
-            itemsToOrder.forEach(item => {
+            const bySupplier: Record<string, typeof items> = {};
+            items.forEach(item => {
                 const supplier = item.supplier || 'Sin Proveedor';
                 if (!bySupplier[supplier]) bySupplier[supplier] = [];
                 bySupplier[supplier].push(item);
             });
-
-            Object.entries(bySupplier).forEach(([supplier, items]) => {
+            Object.entries(bySupplier).forEach(([supplier, sitems]) => {
                 text += `🏭 PROVEEDOR: ${supplier}\n`;
-                items.forEach(item => {
-                    text += `- ${item.name} (${item.size || 'Única'}): ${item.suggestedQuantity} uds (Stock actual: ${item.quantity})\n`;
+                sitems.forEach(item => {
+                    text += `• ${item.name}: ${item.suggestedQuantity} uds (stock actual: ${item.quantity})\n`;
                 });
                 text += '\n';
             });
         }
+        text += `Quedo a la espera de confirmación.\n\nSaludos,\nEquipo La Jungla`;
+        return text;
+    };
 
-        text += `\nQuedo a la espera de confirmación.\n\nSaludos,\nEquipo La Jungla`;
-        setGeneratedText(text);
+    const generateOrderText = () => {
+        if (selectedCenter !== 'all') {
+            setGeneratedText(generateOrderTextForCenter(itemsToOrder, CENTER_NAME_MAP[selectedCenter] || 'Centro'));
+        } else {
+            const sections: string[] = [];
+            CENTER_IDS.forEach(centerId => {
+                const centerItems = itemsForCenter(centerId);
+                if (centerItems.length > 0) {
+                    sections.push(generateOrderTextForCenter(centerItems, CENTER_NAME_MAP[centerId]));
+                }
+            });
+            setGeneratedText(sections.join('\n\n' + '─'.repeat(50) + '\n\n') || '(Sin artículos bajo mínimos)');
+        }
         setCopied(false);
     };
 
@@ -77,8 +84,48 @@ const SmartOrderGenerator: React.FC<SmartOrderGeneratorProps> = ({ initialCenter
         generateOrderText();
     }, [itemsToOrder.length, selectedCenter]);
 
+    // Tabs de centros disponibles cuando 'all' está seleccionado
+    const centersWithItems = CENTER_IDS.filter(id => itemsForCenter(id).length > 0);
+
+    // Si el tab activo no tiene items, mover al primer centro con items
+    useEffect(() => {
+        if (selectedCenter === 'all' && centersWithItems.length > 0 && !centersWithItems.includes(activeTab)) {
+            setActiveTab(centersWithItems[0]);
+        }
+    }, [centersWithItems.length, selectedCenter]);
+
+    const displayItems = selectedCenter !== 'all'
+        ? itemsToOrder
+        : itemsForCenter(activeTab);
+
+    const renderItem = (item: typeof itemsToOrder[0]) => (
+        <div key={item.id} style={{
+            padding: '12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: item.quantity === 0 ? '#fee2e2' : 'white'
+        }}>
+            <div>
+                <div style={{ fontWeight: '600', color: '#374151' }}>{item.name}</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>{item.supplier || 'Sin proveedor'}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 'bold' }}>
+                    Stock: {item.quantity} / Mín: {item.min_stock}
+                </div>
+                <div style={{ color: '#059669', fontWeight: '600', fontSize: '14px' }}>
+                    Pedir: {item.suggestedQuantity}
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div style={{ padding: '2rem' }}>
+            {/* Cabecera */}
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -126,42 +173,63 @@ const SmartOrderGenerator: React.FC<SmartOrderGeneratorProps> = ({ initialCenter
                         <span style={{ fontSize: '12px', color: '#6b7280' }}>Basado en Stock Mínimo</span>
                     </div>
 
+                    {/* Tabs por centro (solo cuando 'Todos' está seleccionado) */}
+                    {selectedCenter === 'all' && !loading && (
+                        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', overflowX: 'auto' }}>
+                            {CENTER_IDS.map(centerId => {
+                                const count = itemsForCenter(centerId).length;
+                                const isActive = activeTab === centerId;
+                                return (
+                                    <button
+                                        key={centerId}
+                                        onClick={() => setActiveTab(centerId)}
+                                        style={{
+                                            padding: '8px 14px',
+                                            border: 'none',
+                                            borderBottom: isActive ? '2px solid #059669' : '2px solid transparent',
+                                            backgroundColor: 'transparent',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: isActive ? '600' : '400',
+                                            color: isActive ? '#059669' : count === 0 ? '#9ca3af' : '#374151',
+                                            whiteSpace: 'nowrap',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        {CENTER_NAME_MAP[centerId]}
+                                        {count > 0 && (
+                                            <span style={{
+                                                backgroundColor: isActive ? '#059669' : '#e5e7eb',
+                                                color: isActive ? 'white' : '#6b7280',
+                                                borderRadius: '10px',
+                                                padding: '1px 6px',
+                                                fontSize: '11px',
+                                                fontWeight: '600'
+                                            }}>
+                                                {count}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     <div style={{ overflowY: 'auto', flex: 1, padding: '1rem' }}>
                         {loading ? (
                             <p style={{ textAlign: 'center', color: '#6b7280' }}>Cargando inventario...</p>
-                        ) : itemsToOrder.length === 0 ? (
+                        ) : displayItems.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '2rem', color: '#10b981' }}>
                                 <Check size={48} style={{ marginBottom: '1rem' }} />
-                                <p>¡Todo en orden! No hay artículos bajo mínimos.</p>
+                                <p>¡Todo en orden! No hay artículos bajo mínimos
+                                    {selectedCenter === 'all' ? ` en ${CENTER_NAME_MAP[activeTab]}` : ''}.
+                                </p>
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {itemsToOrder.map(item => (
-                                    <div key={item.id} style={{
-                                        padding: '12px',
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        backgroundColor: item.quantity === 0 ? '#fee2e2' : 'white'
-                                    }}>
-                                        <div>
-                                            <div style={{ fontWeight: '600', color: '#374151' }}>{item.name}</div>
-                                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                                                {item.supplier} • {item.center.toUpperCase()}
-                                            </div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 'bold' }}>
-                                                Stock: {item.quantity} / Min: {item.min_stock}
-                                            </div>
-                                            <div style={{ color: '#059669', fontWeight: '600', fontSize: '14px' }}>
-                                                Pedir: {item.suggestedQuantity}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                {displayItems.map(renderItem)}
                             </div>
                         )}
                     </div>

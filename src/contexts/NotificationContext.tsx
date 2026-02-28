@@ -40,7 +40,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const { data, error: fetchError } = await supabase
                 .from('notifications')
                 .select('*')
-                .eq('user_id', employee.id)
+                .eq('recipient_email', employee.email)
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -81,7 +81,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const { error: updateError } = await supabase
                 .from('notifications')
                 .update({ is_read: true })
-                .eq('user_id', employee.id)
+                .eq('recipient_email', employee.email)
                 .eq('is_read', false);
 
             if (updateError) throw updateError;
@@ -149,7 +149,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     event: 'INSERT',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${employee.id}`
+                    filter: `recipient_email=eq.${employee.email}`
                 },
                 (payload) => {
                     console.log('🔔 Nueva notificación recibida:', payload.new);
@@ -171,7 +171,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${employee.id}`
+                    filter: `recipient_email=eq.${employee.email}`
                 },
                 (payload) => {
                     const updatedNotification = payload.new as AppNotification;
@@ -186,10 +186,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     event: 'DELETE',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${employee.id}`
+                    filter: `recipient_email=eq.${employee.email}`
                 },
                 (payload) => {
-                    const deletedId = (payload.old as any).id;
+                    const deletedId = (payload.old as Partial<AppNotification>).id;
                     setNotifications(prev => prev.filter(n => n.id !== deletedId));
                 }
             )

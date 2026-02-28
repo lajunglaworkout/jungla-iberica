@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, FileText, ChevronDown, ChevronUp, Eye } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { getMeetingRecordsRaw } from '../services/meetingService';
 
+interface MeetingObjective {
+  text?: string;
+  title?: string;
+  [key: string]: unknown;
+}
+interface MeetingTask {
+  titulo?: string;
+  asignado_a?: string;
+  estado?: string;
+  [key: string]: unknown;
+}
 interface Meeting {
   id: string;
   type: string;
   department: string;
   date: string;
   participants: string[];
-  objectives: any[];
-  tasks: any[];
+  objectives: MeetingObjective[];
+  tasks: MeetingTask[];
   notes: string;
   created_at: string;
 }
@@ -47,26 +58,9 @@ const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onC
   const loadMeetings = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('meetings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // 🔧 NUEVO: Filtrar por participantes si se proporciona email
-      if (userEmail) {
-        query = query.or(`created_by.eq.${userEmail},leader_email.eq.${userEmail},participants.cs.{${userEmail}}`);
-        console.log(`🔍 Filtrando historial para: ${userEmail}`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error cargando reuniones:', error);
-        return;
-      }
-
-      setMeetings(data || []);
-      console.log(`✅ Reuniones cargadas en historial: ${data?.length || 0}`);
+      const data = await getMeetingRecordsRaw(userEmail);
+      setMeetings(data);
+      console.log(`✅ Reuniones cargadas en historial: ${data.length}`);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -264,7 +258,7 @@ const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onC
                           </h4>
                           {meeting.objectives && meeting.objectives.length > 0 ? (
                             <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
-                              {meeting.objectives.map((objective: any, index: number) => (
+                              {meeting.objectives.map((objective: MeetingObjective, index: number) => (
                                 <li key={index} style={{ 
                                   fontSize: '14px', 
                                   color: '#374151', 
@@ -293,7 +287,7 @@ const MeetingHistorySystem: React.FC<MeetingHistorySystemProps> = ({ isOpen, onC
                           </h4>
                           {meeting.tasks && meeting.tasks.length > 0 ? (
                             <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
-                              {meeting.tasks.map((task: any, index: number) => (
+                              {meeting.tasks.map((task: MeetingTask, index: number) => (
                                 <li key={index} style={{ 
                                   fontSize: '14px', 
                                   color: '#374151', 

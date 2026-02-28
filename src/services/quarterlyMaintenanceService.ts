@@ -214,7 +214,8 @@ class QuarterlyMaintenanceService {
             review_id: reviewId,
             user_email: encargadoEmail,
             notification_type: 'review_assigned',
-            message: `Nueva revisión trimestral de mantenimiento asignada: ${review.quarter} - ${center.name}. Fecha límite: ${review.deadline_date || 'Sin definir'}`
+            message: `Nueva revisión trimestral de mantenimiento asignada: ${review.quarter} - ${center.name}. Fecha límite: ${review.deadline_date || 'Sin definir'}`,
+            link: 'center-management-maintenance'
           });
         }
       }
@@ -299,7 +300,7 @@ class QuarterlyMaintenanceService {
   }
 
   // Guardar items de la revisión
-  async saveReviewItems(assignmentId: number, items: any[]) {
+  async saveReviewItems(assignmentId: number, items: MaintenanceItem[]) {
     try {
       console.log('💾 Guardando items de revisión de mantenimiento...');
       console.log('📋 Items a guardar:', items.length);
@@ -354,14 +355,16 @@ class QuarterlyMaintenanceService {
           user_email: 'beni.jungla@gmail.com', // Email del director de mantenimiento
           notification_type: 'review_completed_with_issues',
           message: `Revisión de mantenimiento completada por ${completedBy} en ${data.center_name}. Se encontraron ${criticalItems.length} incidencias que requieren atención.`,
-          deadline_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Plazo de 7 días
+          deadline_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Plazo de 7 días
+          link: 'maintenance-quarterly'
         });
       } else {
         await this.sendNotification({
           review_id: data.review_id,
           user_email: 'beni.jungla@gmail.com',
           notification_type: 'review_completed',
-          message: `Revisión de mantenimiento completada por ${completedBy} en ${data.center_name}. Sin incidencias reportadas.`
+          message: `Revisión de mantenimiento completada por ${completedBy} en ${data.center_name}. Sin incidencias reportadas.`,
+          link: 'maintenance-quarterly'
         });
       }
 
@@ -372,6 +375,134 @@ class QuarterlyMaintenanceService {
     }
   }
 
+  // Obtener revisiones con sus asignaciones
+  async getReviewsWithAssignments(): Promise<Record<string, unknown>[]> {
+    try {
+      const { data: reviewsData, error } = await supabase
+        .from('quarterly_maintenance_reviews')
+        .select('*')
+        .order('created_date', { ascending: false });
+      if (error) return [];
+
+      const reviewsWithAssignments = await Promise.all(
+        (reviewsData || []).map(async (review: Record<string, unknown>) => {
+          const { data: assignments } = await supabase
+            .from('quarterly_maintenance_assignments')
+            .select('*')
+            .eq('review_id', (review as Record<string, unknown>).id);
+          return { ...(review as Record<string, unknown>), assignments: assignments || [] };
+        })
+      );
+      return reviewsWithAssignments as Record<string, unknown>[];
+    } catch { return []; }
+  }
+
+  // Obtener emails de encargados de centro
+  async getCenterManagerEmails(): Promise<Record<number, string>> {
+    try {
+      const { data: managers } = await supabase
+        .from('users')
+        .select('email, center_id')
+        .eq('role', 'center_manager')
+        .in('center_id', [9, 10, 11]);
+      const result: Record<number, string> = {};
+      managers?.forEach((m: Record<string, unknown>) => {
+        if (m.center_id && m.email) result[m.center_id as number] = m.email as string;
+      });
+      return result;
+    } catch { return {}; }
+  }
+
+  // Activar revisión nueva (post-createReview): actualiza review, crea assignments y envía notificaciones
+  async activateNewReview(
+    reviewId: number,
+    centers: Array<{ id: number; name: string }>,
+    encargadosEmails: Record<number, string>,
+    deadlineDate: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await supabase
+        .from('quarterly_maintenance_reviews')
+        .update({ status: 'active', activated_at: new Date().toISOString() })
+        .eq('id', reviewId);
+
+      for (const center of centers) {
+        const encargadoEmail = encargadosEmails[center.id];
+        await supabase.from('quarterly_maintenance_assignments').insert({
+          review_id: reviewId, center_id: center.id, center_name: center.name,
+          assigned_to: encargadoEmail, status: 'pending',
+        });
+        if (encargadoEmail) {
+          await supabase.from('notifications').insert({
+            recipient_email: encargadoEmail, type: 'review_assigned',
+            title: 'Nueva Revisión Trimestral de Mantenimiento',
+            message: `Tienes una nueva revisión trimestral asignada para ${center.name}. Fecha límite: ${new Date(deadlineDate).toLocaleDateString('es-ES')}`,
+            reference_type: 'quarterly_maintenance_review',
+            reference_id: reviewId.toString(), link: 'maintenance', is_read: false,
+          });
+        }
+      }
+      return { success: true };
+    } catch { return { success: false, error: 'Error activando revisión' }; }
+  }
+
+  // Activar revisión existente: actualiza review + assignments y envía notificaciones
+  async activateExistingReview(reviewId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      await supabase
+        .from('quarterly_maintenance_reviews')
+        .update({ status: 'active', activated_at: new Date().toISOString() })
+        .eq('id', reviewId);
+
+      const { data: assignments } = await supabase
+        .from('quarterly_maintenance_assignments')
+        .select('*')
+        .eq('review_id', reviewId);
+
+      for (const assignment of assignments || []) {
+        await supabase
+          .from('quarterly_maintenance_assignments')
+          .update({ status: 'in_progress' })
+          .eq('id', (assignment as Record<string, unknown>).id);
+        if ((assignment as Record<string, unknown>).assigned_to) {
+          await supabase.from('notifications').insert({
+            recipient_email: (assignment as Record<string, unknown>).assigned_to,
+            type: 'review_assigned',
+            title: 'Gestión de Mantenimiento',
+            message: `Nueva revisión trimestral asignada: ${(assignment as Record<string, unknown>).center_name}. Fecha límite: ${new Date().toLocaleDateString('es-ES')}`,
+            reference_type: 'quarterly_maintenance_review',
+            reference_id: reviewId.toString(), is_read: false,
+          });
+        }
+      }
+      return { success: true };
+    } catch { return { success: false, error: 'Error activando revisión existente' }; }
+  }
+
+  // Obtener items de una asignación de mantenimiento
+  async getMaintenanceItemsByAssignmentId(assignmentId: number): Promise<Record<string, unknown>[]> {
+    try {
+      const { data, error } = await supabase
+        .from('quarterly_maintenance_items')
+        .select('*')
+        .eq('assignment_id', assignmentId);
+      if (error) return [];
+      return (data ?? []) as Record<string, unknown>[];
+    } catch { return []; }
+  }
+
+  // Obtener revisiones con join de assignments para KPIs
+  async getReviewsWithAssignmentsJoined(): Promise<Record<string, unknown>[]> {
+    try {
+      const { data, error } = await supabase
+        .from('quarterly_maintenance_reviews')
+        .select(`*, assignments:quarterly_maintenance_assignments(*)`)
+        .order('created_date', { ascending: false });
+      if (error) return [];
+      return (data ?? []) as Record<string, unknown>[];
+    } catch { return []; }
+  }
+
   // Enviar notificación
   private async sendNotification(data: {
     review_id: number;
@@ -379,6 +510,7 @@ class QuarterlyMaintenanceService {
     notification_type: string;
     message: string;
     deadline_date?: string;
+    link?: string;
   }) {
     try {
       const { error } = await supabase
@@ -390,6 +522,7 @@ class QuarterlyMaintenanceService {
           message: data.message,
           reference_type: 'quarterly_maintenance_review',
           reference_id: data.review_id.toString(),
+          link: data.link || 'maintenance-quarterly',
           is_read: false
         });
 

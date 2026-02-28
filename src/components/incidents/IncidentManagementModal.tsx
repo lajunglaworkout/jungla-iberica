@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, CheckCircle, MessageSquare, AlertTriangle } from 'lucide-react';
 import { checklistIncidentService, ChecklistIncident } from '../../services/checklistIncidentService';
 import { useSession } from '../../contexts/SessionContext';
+import { ui } from '../../utils/ui';
+
 
 interface IncidentManagementModalProps {
   isOpen: boolean;
@@ -100,7 +102,7 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
 
   const handleCloseIncident = async (incidentId: number) => {
     if (!response.trim()) {
-      alert('Por favor, proporciona una descripción de la solución antes de cerrar la incidencia.');
+      ui.info('Por favor, proporciona una descripción de la solución antes de cerrar la incidencia.');
       return;
     }
 
@@ -119,10 +121,10 @@ const IncidentManagementModal: React.FC<IncidentManagementModalProps> = ({
       setResponse('');
       setSelectedIncident(null);
 
-      alert('✅ Incidencia cerrada y enviada para verificación del empleado que la reportó.');
+      ui.success('✅ Incidencia cerrada y enviada para verificación del empleado que la reportó.');
     } catch (error) {
       console.error('Error cerrando incidencia:', error);
-      alert('Error al cerrar la incidencia');
+      ui.error('Error al cerrar la incidencia');
     }
   };
 

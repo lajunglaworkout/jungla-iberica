@@ -395,7 +395,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                     key={cat}
                     type="button"
                     className={`category-btn ${formData.category === cat ? 'active' : ''}`}
-                    onClick={() => setFormData(prev => ({ ...prev, category: cat as any }))}
+                    onClick={() => setFormData(prev => ({ ...prev, category: cat as Task['category'] }))}
                   >
                     {getCategoryIcon(cat)}
                     {cat === 'task' && 'Tarea'}
@@ -435,7 +435,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                   key={level}
                   type="button"
                   className={`priority-btn ${level} ${formData.priority === level ? 'active' : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, priority: level as any }))}
+                  onClick={() => setFormData(prev => ({ ...prev, priority: level as Task['priority'] }))}
                 >
                   {level === 'low' && 'Baja'}
                   {level === 'medium' && 'Media'}

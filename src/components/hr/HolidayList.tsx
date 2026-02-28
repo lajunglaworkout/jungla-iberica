@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Calendar, Plus, Trash2, X } from 'lucide-react';
 import { Holiday, holidayService } from '../../services/holidayService';
+import { ui } from '../../utils/ui';
+
 
 interface HolidayListProps {
   holidays: Holiday[];
@@ -21,14 +23,14 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays, selectedCenter, onR
   // Añadir festivo local
   const handleAddHoliday = async () => {
     if (!newHoliday.name || !newHoliday.date || !selectedCenter) {
-      alert('Por favor completa todos los campos');
+      ui.info('Por favor completa todos los campos');
       return;
     }
 
     // Verificar si ya existe un festivo en esa fecha
     const existingHoliday = holidays.find(h => h.date === newHoliday.date);
     if (existingHoliday) {
-      alert(`Ya existe un festivo en esta fecha: ${existingHoliday.name}`);
+      ui.warning(`Ya existe un festivo en esta fecha: ${existingHoliday.name}`);
       return;
     }
 
@@ -42,14 +44,14 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays, selectedCenter, onR
         is_active: true
       });
 
-      alert('✅ Festivo local añadido correctamente');
+      ui.success('✅ Festivo local añadido correctamente');
       setShowAddModal(false);
       setNewHoliday({ name: '', date: '', type: 'local' });
       
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error añadiendo festivo:', error);
-      alert('❌ Error al añadir festivo');
+      ui.error('❌ Error al añadir festivo');
     } finally {
       setIsSubmitting(false);
     }
@@ -58,7 +60,7 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays, selectedCenter, onR
   // Eliminar festivo (solo locales)
   const handleDeleteHoliday = async (holiday: Holiday) => {
     if (holiday.type !== 'local') {
-      alert('⚠️ Solo se pueden eliminar festivos locales');
+      ui.warning('⚠️ Solo se pueden eliminar festivos locales');
       return;
     }
 
@@ -67,18 +69,18 @@ const HolidayList: React.FC<HolidayListProps> = ({ holidays, selectedCenter, onR
     }
 
     if (!holiday.id) {
-      alert('❌ Error: ID de festivo no válido');
+      ui.error('❌ Error: ID de festivo no válido');
       return;
     }
 
     try {
       await holidayService.deleteHoliday(holiday.id);
-      alert('✅ Festivo eliminado correctamente');
+      ui.success('✅ Festivo eliminado correctamente');
       
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error eliminando festivo:', error);
-      alert('❌ Error al eliminar festivo');
+      ui.error('❌ Error al eliminar festivo');
     }
   };
 

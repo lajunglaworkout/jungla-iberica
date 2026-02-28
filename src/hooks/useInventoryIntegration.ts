@@ -9,6 +9,8 @@ import {
   integrateWithChecklist 
 } from '../services/inventoryService';
 import { createAutomaticOrder } from '../services/orderService';
+import { ui } from '../utils/ui';
+
 
 interface ChecklistIncident {
   itemName: string;
@@ -92,7 +94,7 @@ export const useInventoryIntegration = (userLocation: LocationType, userEmail: s
       
       // En lugar de alert, en producción usarías una librería como react-toastify
       setTimeout(() => {
-        if (confirm(`${message}\n\n¿Quieres crear un pedido automáticamente?`)) {
+        if (await ui.confirm(`${message}\n\n¿Quieres crear un pedido automáticamente?`)) {
           createAutomaticOrderHandler(alert);
         }
       }, 1000);
@@ -118,12 +120,12 @@ export const useInventoryIntegration = (userLocation: LocationType, userEmail: s
         
         // Mostrar confirmación al usuario
         if (typeof window !== 'undefined') {
-          window.alert(`✅ Pedido automático creado exitosamente!\n\nPedido: ${result.order.orderNumber}\nTotal: €${result.order.totalAmount.toFixed(2)}\n\nEl equipo de logística ha sido notificado.`);
+          window.ui.success(`✅ Pedido automático creado exitosamente!\n\nPedido: ${result.order.orderNumber}\nTotal: €${result.order.totalAmount.toFixed(2)}\n\nEl equipo de logística ha sido notificado.`);
         }
       } else {
         console.error('❌ Error creando pedido automático:', result.error);
         if (typeof window !== 'undefined') {
-          window.alert(`❌ Error creando pedido automático: ${result.error}`);
+          window.ui.error(`❌ Error creando pedido automático: ${result.error}`);
         }
       }
     } catch (error) {

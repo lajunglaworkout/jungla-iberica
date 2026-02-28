@@ -12,6 +12,8 @@ import ChecklistCompleteSystem from './ChecklistCompleteSystem';
 import MarketingContentSystem from './MarketingContentSystem';
 import HRManagementSystem from './HRManagementSystem';
 import ExecutiveDashboard from './ExecutiveDashboard';
+import { ui } from '../utils/ui';
+
 
 // ============ INTERFACES ============
 interface Task {
@@ -61,17 +63,17 @@ const RoleDashboard: React.FC = () => {
     { id: 'settings', label: 'Configuración', icon: Settings }
   ];
 
-  const handleTaskCreated = (task: any) => {
+  const handleTaskCreated = (task: Record<string, unknown>) => {
     console.log('🎯 Nueva tarea creada:', task);
-    alert(`¡Tarea creada exitosamente!`);
+    ui.success(`¡Tarea creada exitosamente!`);
   };
 
-  const handleMeetingCreated = (meeting: any) => {
+  const handleMeetingCreated = (meeting: Record<string, unknown>) => {
     console.log('📅 Nueva reunión creada:', meeting);
-    alert(`¡Reunión programada exitosamente!`);
+    ui.success(`¡Reunión programada exitosamente!`);
   };
 
-  const handleMarketingComplete = (data: any) => {
+  const handleMarketingComplete = (data: Record<string, unknown>) => {
     console.log('📱 Marketing data:', data);
     setShowMarketingModal(false);
   };
@@ -292,7 +294,7 @@ const RoleDashboard: React.FC = () => {
   const CreateTaskModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (task: any) => void;
+    onSave: (task: Record<string, unknown>) => void;
   }> = ({ isOpen, onClose, onSave }) => {
     if (!isOpen) return null;
 
@@ -361,7 +363,7 @@ const RoleDashboard: React.FC = () => {
   const CreateMeetingModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (meeting: any) => void;
+    onSave: (meeting: Record<string, unknown>) => void;
   }> = ({ isOpen, onClose, onSave }) => {
     if (!isOpen) return null;
 

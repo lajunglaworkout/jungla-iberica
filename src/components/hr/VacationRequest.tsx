@@ -1,19 +1,36 @@
 // src/components/hr/VacationRequest.tsx - Sistema de Solicitud de Vacaciones
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getVacationRequests, createVacationRequest } from '../../services/hrService';
 import { notifyVacationRequest } from '../../services/notificationService';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { ui } from '../../utils/ui';
+
+
+import type { Employee } from '../../types/employee';
+
+interface VacationRequestRecord {
+  id: number;
+  employee_id: number;
+  start_date: string;
+  end_date: string;
+  days_requested: number;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  [key: string]: unknown;
+}
 
 interface VacationRequestProps {
   onBack: () => void;
-  currentEmployee: any;
+  currentEmployee: Employee;
 }
 
 const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmployee }) => {
   console.log('🚨 VacationRequest COMPONENT CARGADO - SI VES ESTO, EL COMPONENTE FUNCIONA');
 
+  const isMobile = useIsMobile();
   const [showModal, setShowModal] = useState(false);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<VacationRequestRecord[]>([]);
   const [balance, setBalance] = useState({ total: 22, used: 0, available: 22 });
   const [formData, setFormData] = useState({ start_date: '', end_date: '', reason: '' });
 
@@ -26,16 +43,11 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
   const loadVacationData = async () => {
     if (!currentEmployee?.id) return;
 
-    const { data } = await supabase
-      .from('vacation_requests')
-      .select('*')
-      .eq('employee_id', currentEmployee.id);
-
-    if (data) {
-      setRequests(data);
-      const used = data.filter(r => r.status === 'approved').reduce((sum, r) => sum + r.days_requested, 0);
-      setBalance({ total: 22, used, available: 22 - used });
-    }
+    const data = await getVacationRequests(currentEmployee.id);
+    const typedData = data as unknown as VacationRequestRecord[];
+    setRequests(typedData);
+    const used = typedData.filter(r => r.status === 'approved').reduce((sum, r) => sum + r.days_requested, 0);
+    setBalance({ total: 22, used, available: 22 - used });
   };
 
   const calculateDays = (start: string, end: string) => {
@@ -47,35 +59,31 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
 
   const handleSubmit = async () => {
     if (!currentEmployee?.id || !formData.start_date || !formData.end_date || !formData.reason.trim()) {
-      alert('Por favor, completa todos los campos');
+      ui.info('Por favor, completa todos los campos');
       return;
     }
 
     const daysRequested = calculateDays(formData.start_date, formData.end_date);
 
     if (daysRequested > balance.available) {
-      alert(`No tienes suficientes días disponibles. Solicitas: ${daysRequested}, Disponibles: ${balance.available}`);
+      ui.info(`No tienes suficientes días disponibles. Solicitas: ${daysRequested}, Disponibles: ${balance.available}`);
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('vacation_requests')
-        .insert([
-          {
-            employee_id: currentEmployee.id,
-            employee_name: currentEmployee.nombre || 'Empleado',
-            start_date: formData.start_date,
-            end_date: formData.end_date,
-            days_requested: daysRequested,
-            reason: formData.reason.trim(),
-            status: 'pending'
-          }
-        ]);
+      const { success, error: insertError } = await createVacationRequest({
+        employee_id: currentEmployee.id,
+        employee_name: currentEmployee.nombre || 'Empleado',
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        days_requested: daysRequested,
+        reason: formData.reason.trim(),
+        status: 'pending'
+      });
 
-      if (error) {
-        console.error('Error al enviar solicitud:', error);
-        alert('Error al enviar la solicitud. Inténtalo de nuevo.');
+      if (!success) {
+        console.error('Error al enviar solicitud:', insertError);
+        ui.error('Error al enviar la solicitud. Inténtalo de nuevo.');
         return;
       }
 
@@ -94,7 +102,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
       }
 
       // Éxito
-      alert(`¡Solicitud enviada correctamente!\n\nDías solicitados: ${daysRequested}\nFechas: ${formData.start_date} al ${formData.end_date}\n\nTu solicitud será revisada por RRHH.`);
+      ui.success(`¡Solicitud enviada correctamente!\n\nDías solicitados: ${daysRequested}\nFechas: ${formData.start_date} al ${formData.end_date}\n\nTu solicitud será revisada por RRHH.`);
 
       // Limpiar formulario y cerrar modal
       setFormData({ start_date: '', end_date: '', reason: '' });
@@ -105,7 +113,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
 
     } catch (error) {
       console.error('Error inesperado:', error);
-      alert('Error inesperado. Inténtalo de nuevo.');
+      ui.error('Error inesperado. Inténtalo de nuevo.');
     }
   };
 
@@ -177,7 +185,7 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
       {/* Balance */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         gap: '16px',
         marginBottom: '32px'
       }}>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { loadAllEmployees, loadCenters } from '../services/userService';
 import type { Center, Employee } from '../types/database';
 
 // CENTROS REALES - Solo estos 3 centros autorizados
@@ -30,43 +30,36 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       try {
         // Cargar centros: 3 gimnasios + Central (marca/almacén)
-        const { data: centersData, error: centersError } = await supabase
-          .from('centers')
-          .select('*')
-          .or('name.eq.Sevilla,name.eq.Jerez,name.eq.Puerto,name.ilike.%Central%,name.ilike.%Almacén%');
-        
-        if (centersError) {
-          console.error('Error cargando centros:', centersError);
-          throw centersError;
+        const centersResult = await loadCenters('name.eq.Sevilla,name.eq.Jerez,name.eq.Puerto,name.ilike.%Central%,name.ilike.%Almacén%');
+        if (!centersResult.success) {
+          console.error('Error cargando centros:', centersResult.error);
+          throw new Error(centersResult.error);
         }
-        
-        setCenters(centersData || []);
-        console.log('✅ Centros cargados:', centersData?.map(c => c.name));
+        setCenters((centersResult.centers as Center[]) || []);
+        console.log('✅ Centros cargados:', centersResult.centers?.map((c: Center) => c.name));
 
         // Cargar empleados desde la tabla correcta
-        const { data: employeesData, error: employeesError } = await supabase
-          .from('employees')
-          .select('*');
-        
-        if (employeesError) {
-          console.error('Error cargando empleados:', employeesError);
-          throw employeesError;
+        const employeesResult = await loadAllEmployees();
+        if (!employeesResult.success) {
+          console.error('Error cargando empleados:', employeesResult.error);
+          throw new Error(employeesResult.error);
         }
-        
-        setEmployees(employeesData || []);
-        console.log('✅ Empleados cargados:', employeesData?.length);
-        
+        setEmployees((employeesResult.employees as Employee[]) || []);
+        console.log('✅ Empleados cargados:', employeesResult.employees?.length);
+
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error cargando datos maestros:", err);
-        setError(err);
+        setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
+
+  void CENTROS_REALES; // static fallback reference kept for future use
 
   const value = { centers, employees, loading, error };
 

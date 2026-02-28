@@ -5,7 +5,9 @@ import {
   BarChart, Palmtree, ArrowLeft, TrendingUp, UserCheck,
   Users, MapPin, AlertCircle, CheckCircle, Home
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { loadUsers } from '../../services/userService';
+import { ui } from '../../utils/ui';
+
 
 interface DashboardCard {
   id: string;
@@ -22,7 +24,7 @@ interface HRDashboardProps {
   onBack?: () => void;
   userRole?: string;
   isRegularEmployee?: boolean;
-  currentEmployee?: any;
+  currentEmployee?: import('../../types/employee').Employee;
 }
 
 interface DashboardStats {
@@ -56,11 +58,9 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
 
   const loadDashboardStats = async () => {
     try {
-      // Cargar estadísticas reales desde Supabase
-      const { data: employees } = await supabase
-        .from('employees')
-        .select('id, is_active')
-        .eq('is_active', true);
+      // Cargar estadísticas reales (migrated to userService)
+      const result = await loadUsers();
+      const employees = result.success ? result.users : [];
 
       const totalEmployees = employees?.length || 24;
       const presentToday = Math.floor(totalEmployees * 0.75); // 75% presente (simulado)
@@ -277,7 +277,7 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
       description: 'Funciones administrativas',
       color: '#6b7280',
       count: '',
-      status: 'separator' as any
+      status: 'separator' as const
     },
     ...adminCards
   ];
@@ -364,9 +364,9 @@ const HRDashboard: React.FC<HRDashboardProps> = ({
     
     if (status === 'coming-soon' || status === 'development' || status === 'separator') {
       if (status === 'coming-soon') {
-        alert('⏳ Próximamente\n\nEste módulo será implementado en futuras versiones del sistema.');
+        ui.info('⏳ Próximamente\n\nEste módulo será implementado en futuras versiones del sistema.');
       } else if (status === 'development') {
-        alert('🚧 Módulo en desarrollo\n\nEste módulo está siendo implementado y estará disponible próximamente.');
+        ui.info('🚧 Módulo en desarrollo\n\nEste módulo está siendo implementado y estará disponible próximamente.');
       }
       return;
     }

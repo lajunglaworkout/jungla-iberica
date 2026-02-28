@@ -2,9 +2,16 @@
 import React, { useState } from 'react';
 import { Building2, Lock, Mail, ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
+interface CenterData {
+  id: number;
+  name: string;
+  location: string;
+  type: string;
+}
+
 interface CenterLoginProps {
   onBack: () => void;
-  onLoginSuccess: (centerData: any) => void;
+  onLoginSuccess: (centerData: CenterData) => void;
 }
 
 interface CenterAccount {
@@ -87,9 +94,9 @@ const CenterLogin: React.FC<CenterLoginProps> = ({ onBack, onLoginSuccess }) => 
       // Login exitoso
       onLoginSuccess(centerData);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error en login de centro:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }

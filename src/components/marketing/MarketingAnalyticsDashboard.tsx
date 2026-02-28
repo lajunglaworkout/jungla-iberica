@@ -8,13 +8,15 @@ import {
 } from 'recharts';
 import { useFacebookSdk } from '../../hooks/useFacebookSdk';
 import { marketingService, InstagramProfile, PostMetric, MOCK_PROFILE, MOCK_POSTS } from '../../services/marketingService';
+import { ui } from '../../utils/ui';
+
 
 const MarketingAnalyticsDashboard: React.FC = () => {
     const { login, isSdkLoaded, sdkError } = useFacebookSdk();
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [profile, setProfile] = useState<InstagramProfile | null>(null);
     const [topPosts, setTopPosts] = useState<PostMetric[]>([]);
-    const [engagementHistory, setEngagementHistory] = useState<any[]>([]);
+    const [engagementHistory, setEngagementHistory] = useState<Array<{ date: string; value: number }>>([]);
     const [loading, setLoading] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
     const [isDemoMode, setIsDemoMode] = useState(false);
@@ -36,7 +38,7 @@ const MarketingAnalyticsDashboard: React.FC = () => {
             setEngagementHistory(historyData);
         } catch (error) {
             console.error("Error restoring session:", error);
-            localStorage.removeItem('ig_access_token');
+            // SEC-02: Token no longer stored in localStorage
             setIsConnected(false);
             setAccessToken(null);
         } finally {
@@ -59,11 +61,9 @@ const MarketingAnalyticsDashboard: React.FC = () => {
     };
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('ig_access_token');
-        if (storedToken && isSdkLoaded) {
-            setAccessToken(storedToken);
-            loadData(storedToken);
-        } else if (isSdkLoaded && !storedToken) {
+        // SEC-02: Token is no longer persisted to localStorage
+        // The user must reconnect each session for security
+        if (isSdkLoaded) {
             setLoading(false);
         }
     }, [isSdkLoaded]);
@@ -73,27 +73,27 @@ const MarketingAnalyticsDashboard: React.FC = () => {
 
         setLoading(true);
         try {
-            const authResponse: any = await login();
+            const authResponse = await login() as { status: string; authResponse?: { accessToken: string } };
             console.log('Logged in:', authResponse);
 
             if (authResponse.status === 'connected') {
                 const newAccessToken = authResponse.authResponse.accessToken;
                 setAccessToken(newAccessToken);
-                localStorage.setItem('ig_access_token', newAccessToken); // Persist token
+                // SEC-02: Token kept in memory only, not persisted to localStorage
 
                 await loadData(newAccessToken);
             } else {
-                alert("No se pudo conectar con Facebook");
+                ui.error("No se pudo conectar con Facebook");
                 setIsConnected(false);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Login error:", error);
             // Show the specific error message if it's our custom one
-            const errorMessage = error.message || 'Error desconocido';
-            alert(`Error de conexión: ${errorMessage}`);
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            ui.error(`Error de conexión: ${errorMessage}`);
 
             // Force logout state
-            localStorage.removeItem('ig_access_token');
+            // SEC-02: Token no longer stored in localStorage
             setAccessToken(null);
             setIsConnected(false);
         } finally {

@@ -161,7 +161,7 @@ export interface EmployeeWithRole {
 
 // ===== FUNCIONES DEL SISTEMA DE ROLES =====
 
-export function getAdvancedRole(dbRole: string, employee: any): UserRole {
+export function getAdvancedRole(dbRole: string, employee: Record<string, unknown>): UserRole {
   // Mapeo específico para tus usuarios
   const email = employee.correo_electronico || employee.email;
 

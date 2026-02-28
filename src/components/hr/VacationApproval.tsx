@@ -1,18 +1,33 @@
 // src/components/hr/VacationApproval.tsx - Aprobación de Vacaciones para RRHH
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, X, Clock, CheckCircle, XCircle, MapPin, Filter } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getAllVacationRequestsWithEmployees, updateVacationRequestStatus } from '../../services/hrService';
 import { notifyVacationResponse } from '../../services/notificationService';
 import { useData } from '../../contexts/DataContext';
+import { ui } from '../../utils/ui';
+
+
+import type { Employee } from '../../types/employee';
+
+interface VacationApprovalRecord {
+  id: number;
+  employee_id: number;
+  start_date: string;
+  end_date: string;
+  days_requested: number;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  [key: string]: unknown;
+}
 
 interface VacationApprovalProps {
   onBack: () => void;
-  currentEmployee: any;
+  currentEmployee: Employee;
 }
 
 const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmployee }) => {
   const { centers, employees } = useData();
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<VacationApprovalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -29,38 +44,8 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
 
   const loadRequests = async () => {
     try {
-      // Cargar solicitudes con información del empleado
-      const { data: vacationData } = await supabase
-        .from('vacation_requests')
-        .select('*')
-        .order('requested_at', { ascending: false });
-
-      if (!vacationData) {
-        setRequests([]);
-        setLoading(false);
-        return;
-      }
-
-      // Obtener IDs de empleados
-      const employeeIds = [...new Set(vacationData.map(v => v.employee_id))];
-
-      // Cargar datos de empleados con centro
-      const { data: employeesData } = await supabase
-        .from('employees')
-        .select('id, name, center_id')
-        .in('id', employeeIds);
-
-      // Combinar datos
-      const enrichedRequests = vacationData.map(request => {
-        const employee = employeesData?.find(e => e.id === request.employee_id);
-        return {
-          ...request,
-          employee_name: employee?.name || request.employee_name || 'Desconocido',
-          center_id: employee?.center_id || null
-        };
-      });
-
-      setRequests(enrichedRequests);
+      const enrichedRequests = await getAllVacationRequestsWithEmployees();
+      setRequests(enrichedRequests as VacationApprovalRecord[]);
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       setRequests([]);
@@ -70,16 +55,11 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
   };
 
   const handleAction = async (id: number, status: 'approved' | 'rejected') => {
-    const { error } = await supabase
-      .from('vacation_requests')
-      .update({
-        status,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: currentEmployee?.nombre || 'RRHH'
-      })
-      .eq('id', id);
+    const result = await updateVacationRequestStatus(
+      id, status, new Date().toISOString(), currentEmployee?.nombre || 'RRHH'
+    );
 
-    if (!error) {
+    if (result.success) {
       // Enviar notificación al empleado
       const request = requests.find(r => r.id === id);
       if (request) {
@@ -97,7 +77,7 @@ const VacationApproval: React.FC<VacationApprovalProps> = ({ onBack, currentEmpl
       }
 
       loadRequests();
-      alert(`Solicitud ${status === 'approved' ? 'aprobada' : 'rechazada'}`);
+      ui.info(`Solicitud ${status === 'approved' ? 'aprobada' : 'rechazada'}`);
     }
   };
 

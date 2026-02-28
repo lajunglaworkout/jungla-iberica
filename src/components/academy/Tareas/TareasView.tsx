@@ -3,9 +3,11 @@ import {
     CheckSquare, Plus, ArrowLeft, Calendar, Clock, AlertCircle,
     CheckCircle, Edit3, Trash2, X
 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { academyTaskService, academyUserService, academyMeetingService } from '../../../services/academyService';
 import { AcademyTask } from '../../../types/academy';
 import { useSession } from '../../../contexts/SessionContext';
+import { ui } from '../../../utils/ui';
+
 
 interface TareasViewProps {
     onBack: () => void;
@@ -37,34 +39,24 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
     const loadTasks = async () => {
         setLoading(true);
         try {
-            let query = supabase
-                .from('academy_tasks')
-                .select('*')
-                .order('due_date', { ascending: true });
+            const filters: { status?: string; assignedTo?: string } = {};
 
             if (filterStatus !== 'all') {
-                query = query.eq('status', filterStatus);
+                filters.status = filterStatus;
             }
 
             // Filter by person
             if (filterPerson === 'me') {
-                query = query.eq('assigned_to', user?.id);
+                filters.assignedTo = user?.id;
             } else if (filterPerson === 'dani') {
                 // Get Dani's user ID
-                const { data: daniUser } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('email', 'danivf1991@gmail.com')
-                    .single();
-
+                const daniUser = await academyUserService.findByEmail('danivf1991@gmail.com');
                 if (daniUser) {
-                    query = query.eq('assigned_to', daniUser.id);
+                    filters.assignedTo = daniUser.id;
                 }
             }
 
-            const { data, error } = await query;
-
-            if (error) throw error;
+            const data = await academyTaskService.getAll(filters);
             setTasks(data || []);
         } catch (error) {
             console.error('Error loading tasks:', error);
@@ -76,20 +68,12 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
     const syncMeetingTasks = async () => {
         try {
             // Get all Academy meetings with tasks - try case insensitive
-            const { data: meetings, error: meetingsError } = await supabase
-                .from('meetings')
-                .select('id, title, tasks, date, department')
-                .ilike('department', '%academy%');
+            const meetings = await academyMeetingService.getAcademyMeetings();
 
             console.log('🔍 Meetings query result:', meetings);
 
-            if (meetingsError) {
-                console.error('Error fetching meetings:', meetingsError);
-                throw meetingsError;
-            }
-
             if (!meetings || meetings.length === 0) {
-                alert('No hay reuniones de Academy encontradas');
+                ui.info('No hay reuniones de Academy encontradas');
                 return;
             }
 
@@ -101,24 +85,20 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
             console.log(`✅ Meetings with tasks: ${meetingsWithTasks.length}`);
 
             if (meetingsWithTasks.length === 0) {
-                alert(`Se encontraron ${meetings.length} reuniones de Academy pero ninguna tiene tareas. Las reuniones deben tener el campo 'tasks' con datos.`);
+                ui.warning(`Se encontraron ${meetings.length} reuniones de Academy pero ninguna tiene tareas. Las reuniones deben tener el campo 'tasks' con datos.`);
                 return;
             }
 
             let syncedCount = 0;
 
             for (const meeting of meetingsWithTasks) {
-                const meetingTasks = meeting.tasks as any[];
+                const meetingTasks = meeting.tasks as Record<string, unknown>[];
 
                 console.log(`📝 Processing ${meetingTasks.length} tasks from meeting "${meeting.title}"`);
 
                 for (const task of meetingTasks) {
                     // Check if task already exists
-                    const { data: existing } = await supabase
-                        .from('academy_tasks')
-                        .select('id')
-                        .eq('title', task.title)
-                        .eq('created_by', `meeting_${meeting.id}`);
+                    const existing = await academyTaskService.findByTitleAndCreator(task.title, `meeting_${meeting.id}`);
 
                     if (existing && existing.length > 0) {
                         console.log(`⏭️ Skipping duplicate task: ${task.title}`);
@@ -128,12 +108,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     // Map assigned_to email to user ID
                     let assignedToId = null;
                     if (task.assigned_to) {
-                        const { data: assignedUser } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('email', task.assigned_to)
-                            .single();
-
+                        const assignedUser = await academyUserService.findByEmail(task.assigned_to);
                         assignedToId = assignedUser?.id || user?.id;
                     }
 
@@ -161,9 +136,8 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                     const status = statusMap[task.status?.toLowerCase()] || 'pending';
 
                     // Insert task
-                    const { error: insertError } = await supabase
-                        .from('academy_tasks')
-                        .insert([{
+                    try {
+                        await academyTaskService.create({
                             title: task.title,
                             description: `Tarea de reunión: ${meeting.title}`,
                             assigned_to: assignedToId,
@@ -172,22 +146,20 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                             priority: priority,
                             due_date: task.deadline || meeting.date,
                             progress: status === 'completed' ? 100 : 0
-                        }]);
-
-                    if (!insertError) {
+                        });
                         syncedCount++;
                         console.log(`✅ Synced task: ${task.title}`);
-                    } else {
+                    } catch (insertError) {
                         console.error(`❌ Error syncing task ${task.title}:`, insertError);
                     }
                 }
             }
 
-            alert(`✓ Sincronizadas ${syncedCount} tareas desde ${meetingsWithTasks.length} reuniones de Academy`);
+            ui.success(`✓ Sincronizadas ${syncedCount} tareas desde ${meetingsWithTasks.length} reuniones de Academy`);
             loadTasks(); // Reload tasks
         } catch (error) {
             console.error('Error syncing meeting tasks:', error);
-            alert('Error al sincronizar tareas de reuniones');
+            ui.error('Error al sincronizar tareas de reuniones');
         }
     };
 
@@ -208,9 +180,9 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
         setEditingTask(task);
         setFormTitle(task.title);
         setFormDescription(task.description || '');
-        setFormPriority(task.priority as any);
+        setFormPriority(task.priority as 'low' | 'normal' | 'high' | 'urgent');
         setFormDueDate(task.due_date ? task.due_date.split('T')[0] : '');
-        setFormStatus(task.status as any);
+        setFormStatus(task.status as 'pending' | 'in_progress' | 'completed');
         setShowEditModal(true);
     };
 
@@ -218,27 +190,22 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
         if (!formTitle.trim() || !formDueDate) return;
 
         try {
-            const { data, error } = await supabase
-                .from('academy_tasks')
-                .insert([{
-                    title: formTitle,
-                    description: formDescription,
-                    status: formStatus,
-                    priority: formPriority,
-                    assigned_to: user?.id,
-                    due_date: new Date(formDueDate).toISOString(),
-                    progress: 0
-                }])
-                .select()
-                .single();
+            const data = await academyTaskService.create({
+                title: formTitle,
+                description: formDescription,
+                status: formStatus,
+                priority: formPriority,
+                assigned_to: user?.id,
+                due_date: new Date(formDueDate).toISOString(),
+                progress: 0
+            });
 
-            if (error) throw error;
             setTasks([...tasks, data]);
             setShowAddModal(false);
             resetForm();
         } catch (error) {
             console.error('Error creating task:', error);
-            alert('Error al crear la tarea');
+            ui.error('Error al crear la tarea');
         }
     };
 
@@ -246,18 +213,13 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
         if (!editingTask || !formTitle.trim() || !formDueDate) return;
 
         try {
-            const { error } = await supabase
-                .from('academy_tasks')
-                .update({
-                    title: formTitle,
-                    description: formDescription,
-                    priority: formPriority,
-                    due_date: new Date(formDueDate).toISOString(),
-                    status: formStatus
-                })
-                .eq('id', editingTask.id);
-
-            if (error) throw error;
+            await academyTaskService.update(editingTask.id, {
+                title: formTitle,
+                description: formDescription,
+                priority: formPriority,
+                due_date: new Date(formDueDate).toISOString(),
+                status: formStatus
+            });
 
             setTasks(tasks.map(t => t.id === editingTask.id ? {
                 ...t,
@@ -273,26 +235,21 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
             resetForm();
         } catch (error) {
             console.error('Error updating task:', error);
-            alert('Error al actualizar la tarea');
+            ui.error('Error al actualizar la tarea');
         }
     };
 
     const handleDeleteTask = async (task: AcademyTask) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar la tarea "${task.title}"?`)) {
+        if (!await ui.confirm(`¿Estás seguro de que deseas eliminar la tarea "${task.title}"?`)) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('academy_tasks')
-                .delete()
-                .eq('id', task.id);
-
-            if (error) throw error;
+            await academyTaskService.delete(task.id);
             setTasks(tasks.filter(t => t.id !== task.id));
         } catch (error) {
             console.error('Error deleting task:', error);
-            alert('Error al eliminar la tarea');
+            ui.error('Error al eliminar la tarea');
         }
     };
 
@@ -411,7 +368,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                 {/* Person Filter */}
                 <select
                     value={filterPerson}
-                    onChange={(e) => setFilterPerson(e.target.value as any)}
+                    onChange={(e) => setFilterPerson(e.target.value as 'all' | 'me' | 'dani')}
                     style={{
                         padding: '10px 16px',
                         borderRadius: '8px',
@@ -435,7 +392,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                 {['all', 'pending', 'in_progress', 'completed'].map((status) => (
                     <button
                         key={status}
-                        onClick={() => setFilterStatus(status as any)}
+                        onClick={() => setFilterStatus(status as 'all' | 'pending' | 'in_progress' | 'completed')}
                         style={{
                             padding: '10px 20px',
                             borderRadius: '8px',
@@ -706,7 +663,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                     </label>
                                     <select
                                         value={formPriority}
-                                        onChange={(e) => setFormPriority(e.target.value as any)}
+                                        onChange={(e) => setFormPriority(e.target.value as 'low' | 'normal' | 'high' | 'urgent')}
                                         style={{
                                             width: '100%',
                                             padding: '10px 12px',
@@ -761,7 +718,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                 </label>
                                 <select
                                     value={formStatus}
-                                    onChange={(e) => setFormStatus(e.target.value as any)}
+                                    onChange={(e) => setFormStatus(e.target.value as 'pending' | 'in_progress' | 'completed')}
                                     style={{
                                         width: '100%',
                                         padding: '10px 12px',
@@ -930,7 +887,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                     </label>
                                     <select
                                         value={formPriority}
-                                        onChange={(e) => setFormPriority(e.target.value as any)}
+                                        onChange={(e) => setFormPriority(e.target.value as 'low' | 'normal' | 'high' | 'urgent')}
                                         style={{
                                             width: '100%',
                                             padding: '10px 12px',
@@ -983,7 +940,7 @@ export const TareasView: React.FC<TareasViewProps> = ({ onBack }) => {
                                 </label>
                                 <select
                                     value={formStatus}
-                                    onChange={(e) => setFormStatus(e.target.value as any)}
+                                    onChange={(e) => setFormStatus(e.target.value as 'pending' | 'in_progress' | 'completed')}
                                     style={{
                                         width: '100%',
                                         padding: '10px 12px',

@@ -2,12 +2,21 @@
 import React, { useState } from 'react';
 import { User, Building2, Smartphone, Monitor, ArrowRight } from 'lucide-react';
 import CenterLogin from './CenterLogin';
+import { useIsMobile } from '../../hooks/useIsMobile';
+
+interface CenterData {
+  id: number;
+  name: string;
+  location: string;
+  type: string;
+}
 
 interface ProfileSelectorProps {
-  onSelectProfile: (type: 'employee' | 'center', data?: any) => void;
+  onSelectProfile: (type: 'employee' | 'center', data?: CenterData) => void;
 }
 
 const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) => {
+  const isMobile = useIsMobile();
   const [selectedType, setSelectedType] = useState<'employee' | 'center' | null>(null);
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
   const [showCenterLogin, setShowCenterLogin] = useState(false);
@@ -27,7 +36,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
     }
   };
 
-  const handleCenterLoginSuccess = (centerData: any) => {
+  const handleCenterLoginSuccess = (centerData: CenterData) => {
     onSelectProfile('center', centerData);
   };
 
@@ -65,7 +74,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ onSelectProfile }) =>
         {/* Profile Type Selection */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
           gap: '24px',
           marginBottom: '32px'
         }}>

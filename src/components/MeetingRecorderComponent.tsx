@@ -6,7 +6,7 @@ import {
 } from '../services/meetingRecordingService';
 import { transcribeAudio } from '../services/aiService';
 import MeetingResultsPanel from './meetings/MeetingResultsPanel';
-import { supabase } from '../lib/supabase';
+import { loadUsers } from '../services/userService';
 
 interface MeetingRecorderProps {
   meetingId: number;
@@ -17,7 +17,7 @@ interface MeetingRecorderProps {
   onRecordingComplete?: (data: {
     transcript: string;
     minutes: string;
-    tasks: any[];
+    tasks: Array<{ title: string; assignedTo: string | string[]; deadline: string; priority: string }>;
   }) => void;
   onClose?: () => void;
 }
@@ -40,36 +40,27 @@ export const MeetingRecorderComponent: React.FC<MeetingRecorderProps> = ({
   const [timerInput, setTimerInput] = useState('30');
   const [transcript, setTranscript] = useState<string>('');
   const [meetingMinutes, setMeetingMinutes] = useState<string>('');
-  const [tasksAssigned, setTasksAssigned] = useState<any[]>([]);
+  const [tasksAssigned, setTasksAssigned] = useState<Array<{ title: string; assignedTo: string | string[]; deadline: string; priority: string }>>([]);
   const [error, setError] = useState<string>('');
   const [showResults, setShowResults] = useState(false);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string | number; name?: string; email?: string }>>([]);
 
   const recorderRef = useRef(new AudioRecorder());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob | null>(null);
 
-  // Cargar empleados al montar el componente
+  // Cargar empleados al montar el componente (migrated to userService)
   useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('employees')
-          .select('id, name, email, departamento')
-          .order('name', { ascending: true });
-
-        if (error) {
-          console.error('Error cargando empleados:', error);
-          return;
-        }
-
-        setEmployees(data || []);
-      } catch (error) {
-        console.error('Error:', error);
+    const fetchEmployees = async () => {
+      const result = await loadUsers();
+      if (result.success) {
+        setEmployees(result.users);
+      } else {
+        console.error('Error cargando empleados:', result.error);
       }
     };
 
-    loadEmployees();
+    fetchEmployees();
   }, []);
 
   const handleStartRecording = async () => {

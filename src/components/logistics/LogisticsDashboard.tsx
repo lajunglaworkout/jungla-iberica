@@ -144,7 +144,7 @@ export const LogisticsDashboard: React.FC<LogisticsDashboardProps> = ({
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as 'overview' | 'inventory' | 'orders' | 'checklist' | 'delivery' | 'suppliers')}
               style={{
                 display: 'flex',
                 alignItems: 'center',

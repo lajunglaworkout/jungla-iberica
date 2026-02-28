@@ -1,7 +1,21 @@
-// Servicio para gestión de inventario y conexión con check-list
+/**
+ * @deprecated MOCK SERVICE — NO usa Supabase. Datos en memoria que se pierden al recargar.
+ *
+ * Este servicio es un prototipo que simula operaciones de inventario.
+ * Para operaciones REALES de inventario, usar logisticsService.ts que SÍ conecta con Supabase.
+ *
+ * Consumidores actuales:
+ *   - hooks/useInventoryIntegration.ts
+ *   - services/orderService.ts (también mock)
+ *   - components/logistics/InventoryChecklistIntegration.tsx (via hook)
+ *   - components/logistics/LogisticsMetrics.tsx (via hook)
+ *
+ * TODO: Migrar processChecklistIncident y getStockByLocation a logisticsService.ts
+ *       con queries reales a Supabase, y eliminar este archivo.
+ */
 import { InventoryItem, InventoryStock, InventoryMovement, InventoryAlert, LocationType, MovementType } from '../types/logistics';
 
-// Simulación de base de datos en memoria (en producción sería Supabase)
+// MOCK: Simulación de base de datos en memoria (NO persiste datos)
 let inventoryItems: InventoryItem[] = [
   {
     id: 'item-001',
@@ -75,7 +89,7 @@ export const processChecklistIncident = async (
 ): Promise<{ success: boolean; alert?: InventoryAlert; error?: string }> => {
   try {
     // 1. Buscar el artículo por nombre
-    const item = inventoryItems.find(i => i.name === itemName);
+    const item = inventoryItems.find(i => i.nombre_item === itemName);
     if (!item) {
       return { success: false, error: `Artículo "${itemName}" no encontrado en inventario` };
     }
@@ -123,7 +137,7 @@ export const processChecklistIncident = async (
 
     const updatedStock = inventoryStock[stockIndex];
 
-    console.log(`✅ Stock actualizado: ${item.name} en ${location}`);
+    console.log(`✅ Stock actualizado: ${item.nombre_item || item.name} en ${location}`);
     console.log(`   Anterior: ${currentStock.currentStock} → Nuevo: ${updatedStock.currentStock}`);
 
     // 6. Verificar si necesita generar alerta
@@ -143,8 +157,8 @@ export const processChecklistIncident = async (
         minStock: updatedStock.minStock,
         severity: severity,
         message: updatedStock.currentStock === 0 
-          ? `¡SIN STOCK! ${item.name} en ${location}. Pedido urgente necesario.`
-          : `Stock bajo: ${item.name} en ${location}. Quedan ${updatedStock.currentStock} unidades (mínimo: ${updatedStock.minStock})`,
+          ? `¡SIN STOCK! ${item.nombre_item || item.name} en ${location}. Pedido urgente necesario.`
+          : `Stock bajo: ${item.nombre_item || item.name} en ${location}. Quedan ${updatedStock.currentStock} unidades (mínimo: ${updatedStock.minStock})`,
         isRead: false,
         isResolved: false,
         createdAt: new Date().toISOString()
@@ -171,7 +185,7 @@ const sendLowStockNotification = async (alert: InventoryAlert, item: InventoryIt
   // Simular envío de notificación (en producción sería email/webhook)
   console.log(`📧 Enviando notificación a logística:`);
   console.log(`   Para: pedidoslajungla@gmail.com`);
-  console.log(`   Asunto: ${alert.severity === 'critical' ? '🚨 STOCK CRÍTICO' : '⚠️ Stock Bajo'} - ${item.name}`);
+  console.log(`   Asunto: ${alert.severity === 'critical' ? '🚨 STOCK CRÍTICO' : '⚠️ Stock Bajo'} - ${item.nombre_item || item.name}`);
   console.log(`   Mensaje: ${alert.message}`);
   
   // Aquí iría la integración con servicio de email
