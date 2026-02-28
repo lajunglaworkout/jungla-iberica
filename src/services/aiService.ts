@@ -1,92 +1,124 @@
 /**
- * AI Service — Supabase Edge Functions proxy
- * 
- * All AI calls go through Supabase Edge Functions.
- * The GOOGLE_API_KEY lives ONLY in Supabase Secrets.
- * NO API keys are exposed in the frontend bundle.
+ * AI Service — Multi-provider con prioridad a Ollama local
+ *
+ * Orden de prioridad:
+ * 1. Ollama local (Deepseek/Qwen) — sin coste, sin API key, funciona offline
+ * 2. Supabase Edge Function → Google Gemini — fallback si Ollama no disponible
+ *
+ * Para transcripción de audio:
+ * 1. Web Speech API (browser built-in, gratis, tiempo real)
+ * 2. Supabase Edge Function → Gemini (fallback para grabaciones guardadas)
  */
 import { supabase } from '../lib/supabase';
+import { isOllamaAvailable, generateActaWithOllama } from './ollamaService';
+
+// ─── TRANSCRIPCIÓN DE AUDIO ───────────────────────────────────────────────────
 
 /**
- * Transcribe audio using Gemini via Supabase Edge Function.
+ * Transcribe audio usando Gemini via Supabase Edge Function.
+ * Se usa como fallback cuando Web Speech API no está disponible.
  */
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-    // Convert blob to base64
-    const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const result = reader.result as string;
-            // Remove the "data:audio/webm;base64," prefix
-            const base64Data = result.split(',')[1];
-            if (!base64Data) {
-                reject(new Error('Failed to convert audio to base64'));
-                return;
-            }
-            resolve(base64Data);
-        };
-        reader.onerror = () => reject(new Error('Failed to read audio file'));
-        reader.readAsDataURL(audioBlob);
-    });
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64Data = result.split(',')[1];
+      if (!base64Data) {
+        reject(new Error('Failed to convert audio to base64'));
+        return;
+      }
+      resolve(base64Data);
+    };
+    reader.onerror = () => reject(new Error('Failed to read audio file'));
+    reader.readAsDataURL(audioBlob);
+  });
 
-    console.log(`📝 Sending audio to transcription (${(base64.length * 0.75 / 1024).toFixed(1)} KB)...`);
+  console.log(`📝 Enviando audio a transcripción via Edge Function (${(base64.length * 0.75 / 1024).toFixed(1)} KB)...`);
 
-    const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: {
-            audio: base64,
-            mimeType: audioBlob.type || 'audio/webm',
-        },
-    });
+  const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+    body: {
+      audio: base64,
+      mimeType: audioBlob.type || 'audio/webm',
+    },
+  });
 
-    if (error) {
-        console.error('❌ Transcription edge function error:', error);
-        throw new Error(`Error de transcripción: ${error.message}`);
-    }
+  if (error) {
+    console.error('❌ Transcription edge function error:', error);
+    throw new Error(`Error de transcripción: ${error.message}`);
+  }
 
-    if (!data?.success) {
-        throw new Error(data?.error || 'Error desconocido en transcripción');
-    }
+  if (!data?.success) {
+    throw new Error(data?.error || 'Error desconocido en transcripción');
+  }
 
-    console.log(`✅ Transcription received: ${data.transcription.length} characters`);
-    return data.transcription;
+  console.log(`✅ Transcripción recibida: ${data.transcription.length} caracteres`);
+  return data.transcription;
 }
 
+// ─── GENERACIÓN DE ACTAS ──────────────────────────────────────────────────────
+
 /**
- * Generate meeting minutes and extract tasks using Gemini via Supabase Edge Function.
+ * Genera el acta de una reunión y extrae tareas.
+ *
+ * Prioridad:
+ * 1. Ollama local (Deepseek/Qwen) — sin coste, privado
+ * 2. Supabase Edge Function → Gemini — fallback
  */
 export async function generateMeetingMinutes(params: {
-    transcription: string;
-    departmentName: string;
-    date: string;
-    participants?: string[];
-    pendingTasks?: string;
-    openIncidents?: string;
-    centerData?: string;
-    objectives?: string;
-}): Promise<{ minutes: string; tasks: Record<string, unknown>[]; parseWarning?: string }> {
-    console.log(`📋 Generating meeting minutes for "${params.departmentName}"...`);
+  transcription: string;
+  departmentName: string;
+  date: string;
+  participants?: string[];
+  pendingTasks?: string;
+  openIncidents?: string;
+  centerData?: string;
+  objectives?: string;
+}): Promise<{ minutes: string; tasks: Record<string, unknown>[]; parseWarning?: string; provider?: string }> {
+  console.log(`📋 Generando acta para "${params.departmentName}"...`);
 
-    const { data, error } = await supabase.functions.invoke('generate-meeting-minutes', {
-        body: params,
-    });
-
-    if (error) {
-        console.error('❌ Minutes edge function error:', error);
-        throw new Error(`Error al generar acta: ${error.message}`);
+  // ── Intento 1: Ollama local ────────────────────────────────────────────────
+  const ollamaUp = await isOllamaAvailable();
+  if (ollamaUp) {
+    try {
+      console.log('🤖 Usando Ollama local para generar el acta...');
+      const result = await generateActaWithOllama(params);
+      console.log(`✅ Acta generada por Ollama (modelo: ${result.model}), ${result.minutes.length} chars, ${result.tasks.length} tareas`);
+      return {
+        minutes: result.minutes,
+        tasks: result.tasks,
+        provider: `Ollama (${result.model})`,
+      };
+    } catch (ollamaError) {
+      console.warn('⚠️ Ollama falló, usando Gemini como fallback:', ollamaError);
     }
+  } else {
+    console.log('ℹ️ Ollama no disponible localmente, usando Gemini via Edge Function...');
+  }
 
-    if (!data?.success) {
-        throw new Error(data?.error || 'Error desconocido al generar acta');
-    }
+  // ── Intento 2: Supabase Edge Function → Gemini ────────────────────────────
+  const { data, error } = await supabase.functions.invoke('generate-meeting-minutes', {
+    body: params,
+  });
 
-    if (data.parseWarning) {
-        console.warn('⚠️ Parse warning:', data.parseWarning);
-    }
+  if (error) {
+    console.error('❌ Minutes edge function error:', error);
+    throw new Error(`Error al generar acta: ${error.message}`);
+  }
 
-    console.log(`✅ Minutes generated: ${data.minutes?.length || 0} chars, ${data.tasks?.length || 0} tasks`);
+  if (!data?.success) {
+    throw new Error(data?.error || 'Error desconocido al generar acta');
+  }
 
-    return {
-        minutes: data.minutes,
-        tasks: data.tasks || [],
-        parseWarning: data.parseWarning,
-    };
+  if (data.parseWarning) {
+    console.warn('⚠️ Parse warning:', data.parseWarning);
+  }
+
+  console.log(`✅ Acta generada por Gemini: ${data.minutes?.length || 0} chars, ${data.tasks?.length || 0} tareas`);
+  return {
+    minutes: data.minutes,
+    tasks: data.tasks || [],
+    parseWarning: data.parseWarning,
+    provider: 'Gemini (Edge Function)',
+  };
 }

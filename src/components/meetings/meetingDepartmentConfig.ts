@@ -22,9 +22,9 @@ export const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
     { nombre: 'Leads generados', tipo: 'numero', unidad: 'leads', placeholder: 'Ej: 120' }
   ],
   rrhh: [
-    { nombre: 'Absentismo acumulado', tipo: 'numero', unidad: 'días', placeholder: 'Ej: 3' },
-    { nombre: 'Incidencias de personal', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 1' },
-    { nombre: 'Satisfacción del equipo', tipo: 'porcentaje', placeholder: 'Ej: 80' }
+    { nombre: 'Ausencias activas', tipo: 'numero', unidad: 'empleados', placeholder: 'Ej: 2' },
+    { nombre: 'Incidencias de personal abiertas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 1' },
+    { nombre: 'Contrataciones / bajas esta semana', tipo: 'numero', unidad: 'personas', placeholder: 'Ej: 1' }
   ],
   procedimientos: [
     { nombre: 'Procedimientos actualizados', tipo: 'numero', unidad: 'documentos', placeholder: 'Ej: 5' },
@@ -42,9 +42,10 @@ export const OBJECTIVES_BY_DEPT: Record<string, DepartmentObjective[]> = {
     { nombre: 'Altas de socios esta semana', tipo: 'numero', unidad: 'socios', placeholder: 'Ej: 12' }
   ],
   direccion: [
-    { nombre: 'Resultado operativo global', tipo: 'numero', unidad: '€', placeholder: 'Ej: 22000' },
-    { nombre: 'Objetivos estratégicos completados', tipo: 'porcentaje', placeholder: 'Ej: 60' },
-    { nombre: 'NPS / Satisfacción cliente', tipo: 'numero', unidad: 'puntos', placeholder: 'Ej: 8.5' }
+    { nombre: 'Facturación total semana (todos centros)', tipo: 'numero', unidad: '€', placeholder: 'Ej: 18500' },
+    { nombre: 'Altas de socios semana', tipo: 'numero', unidad: 'socios', placeholder: 'Ej: 12' },
+    { nombre: 'Bajas de socios semana', tipo: 'numero', unidad: 'socios', placeholder: 'Ej: 4' },
+    { nombre: 'Incidencias críticas abiertas', tipo: 'numero', unidad: 'incidencias', placeholder: 'Ej: 2' }
   ]
 };
 

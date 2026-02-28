@@ -285,8 +285,21 @@ export const useMeetingModal = ({
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(12, 0, 0, 0);
 
+      const DEPT_LABELS: Record<string, string> = {
+        direccion: 'Dirección', rrhh: 'RRHH', procedimientos: 'Procedimientos',
+        logistica: 'Logística', mantenimiento: 'Mantenimiento', contabilidad: 'Contabilidad',
+        ventas: 'Ventas', operaciones: 'Operaciones', marketing: 'Marketing',
+        online: 'Online', investigacion: 'I+D', sales: 'Ventas', centro_sevilla: 'Centro Sevilla',
+        centro_jerez: 'Centro Jerez', centro_puerto: 'Centro Puerto'
+      };
+      const deptLabel = DEPT_LABELS[departmentId] || departmentId.charAt(0).toUpperCase() + departmentId.slice(1);
+      const dateLabel = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const autoTitle = meeting?.title && meeting.title !== 'Nueva Reunión'
+        ? meeting.title
+        : `Reunión ${deptLabel} — ${dateLabel}`;
+
       const meetingResult = await scheduleMeeting({
-          title: meeting?.title || 'Nueva Reunión',
+          title: autoTitle,
           department: departmentId,
           date: yesterday.toISOString(),
           start_time: meeting?.start_time || new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),

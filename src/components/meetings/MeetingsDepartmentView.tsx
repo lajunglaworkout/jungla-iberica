@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, History, ListTodo, Check, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { DEPARTMENTS_CONFIG } from '../../config/departmentPermissions';
 import { supabase } from '../../lib/supabase'; // TODO: Migrate meeting queries to meetingService.getMeetingsByDepartment, task queries to taskService from '../../services/meetingService' and '../../services/taskService'
 import MeetingModal from './MeetingModal';
 import ParticipantsSelectionModal from './ParticipantsSelectionModal';
 import TaskCompletionModal from './TaskCompletionModal';
-import { sanitizeHtml } from '../../utils/sanitize';
 import { ui } from '../../utils/ui';
 
 
@@ -928,12 +928,24 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
                     backgroundColor: '#f9fafb',
                     borderRadius: '8px',
                     fontSize: '14px',
-                    lineHeight: '1.6'
-                  }}
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeHtml(selectedMeetingDetail.summary.replace(/\n/g, '<br/>'))
-                    }}
-                  />
+                    lineHeight: '1.7',
+                    color: '#1f2937'
+                  }}>
+                    <ReactMarkdown
+                      components={{
+                        h1: ({ children }) => <h1 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 12px 0', color: '#111827' }}>{children}</h1>,
+                        h2: ({ children }) => <h2 style={{ fontSize: '16px', fontWeight: '600', margin: '16px 0 8px 0', color: '#1f2937', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>{children}</h2>,
+                        h3: ({ children }) => <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '12px 0 6px 0', color: '#374151' }}>{children}</h3>,
+                        p: ({ children }) => <p style={{ margin: '0 0 10px 0' }}>{children}</p>,
+                        ul: ({ children }) => <ul style={{ margin: '0 0 10px 0', paddingLeft: '20px' }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ margin: '0 0 10px 0', paddingLeft: '20px' }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ margin: '4px 0' }}>{children}</li>,
+                        strong: ({ children }) => <strong style={{ fontWeight: '600', color: '#111827' }}>{children}</strong>,
+                      }}
+                    >
+                      {selectedMeetingDetail.summary}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 
