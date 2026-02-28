@@ -289,13 +289,13 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           <h1 style={{
             margin: 0,
             color: '#1f2937',
-            fontSize: isMobile ? '20px' : '24px',
+            fontSize: isMobile ? '18px' : '24px',
             fontWeight: 'bold',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '10px'
           }}>
-            <Clock size={28} style={{ color: '#059669' }} />
+            <Clock size={isMobile ? 22 : 28} style={{ color: '#059669' }} />
             Control de Fichajes
           </h1>
 
@@ -408,58 +408,60 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: isMobile ? '8px' : '16px'
+          gap: isMobile ? '12px' : '16px'
         }}>
           <div style={{
             backgroundColor: '#f3f4f6',
-            padding: '16px',
-            borderRadius: '8px',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '10px',
             textAlign: 'center'
           }}>
-            <Users size={24} style={{ color: '#059669', margin: '0 auto 8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
+            <Users size={isMobile ? 20 : 24} style={{ color: '#059669', margin: '0 auto 6px' }} />
+            <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.2 }}>
               {stats.presentToday}/{stats.totalEmployees}
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Empleados Presentes</div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Presentes hoy</div>
           </div>
 
           <div style={{
             backgroundColor: '#f3f4f6',
-            padding: '16px',
-            borderRadius: '8px',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '10px',
             textAlign: 'center'
           }}>
-            <BarChart3 size={24} style={{ color: '#059669', margin: '0 auto 8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
+            <BarChart3 size={isMobile ? 20 : 24} style={{ color: '#059669', margin: '0 auto 6px' }} />
+            <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.2 }}>
               {stats.totalHoursToday.toFixed(1)}h
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Horas Trabajadas</div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Horas trabajadas</div>
           </div>
 
           <div style={{
             backgroundColor: '#f3f4f6',
-            padding: '16px',
-            borderRadius: '8px',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '10px',
             textAlign: 'center'
           }}>
-            <AlertTriangle size={24} style={{ color: '#f59e0b', margin: '0 auto 8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
+            <AlertTriangle size={isMobile ? 20 : 24} style={{ color: '#f59e0b', margin: '0 auto 6px' }} />
+            <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.2 }}>
               {stats.lateArrivals}
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Llegadas Tarde</div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Llegadas tarde</div>
           </div>
 
           <div style={{
             backgroundColor: '#f3f4f6',
-            padding: '16px',
-            borderRadius: '8px',
+            padding: isMobile ? '12px 8px' : '16px',
+            borderRadius: '10px',
             textAlign: 'center'
           }}>
-            <Calendar size={24} style={{ color: '#059669', margin: '0 auto 8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
-              {new Date(selectedDate).toLocaleDateString()}
+            <Calendar size={isMobile ? 20 : 24} style={{ color: '#059669', margin: '0 auto 6px' }} />
+            <div style={{ fontSize: isMobile ? '14px' : '24px', fontWeight: 'bold', color: '#1f2937', lineHeight: 1.3 }}>
+              {isMobile
+                ? new Date(selectedDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+                : new Date(selectedDate).toLocaleDateString()}
             </div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>Fecha Seleccionada</div>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Fecha seleccionada</div>
           </div>
         </div>
       </div>
@@ -493,10 +495,20 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           <h3 style={{
             margin: 0,
             color: '#1f2937',
-            fontSize: '18px',
-            fontWeight: 'bold'
+            fontSize: isMobile ? '15px' : '18px',
+            fontWeight: 'bold',
+            lineHeight: 1.3
           }}>
-            Registros de {selectedCenterName} - {new Date(selectedDate).toLocaleDateString()}
+            {isMobile ? (
+              <>
+                <span style={{ display: 'block' }}>{selectedCenterName}</span>
+                <span style={{ display: 'block', fontWeight: 'normal', fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                  {new Date(selectedDate).toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+                </span>
+              </>
+            ) : (
+              `Registros de ${selectedCenterName} - ${new Date(selectedDate).toLocaleDateString()}`
+            )}
           </h3>
 
           <button
@@ -620,61 +632,61 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden flex flex-col gap-3 p-3 bg-gray-50">
+        <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Cargando registros...</div>
+            <div className="text-center py-10 text-gray-500">Cargando registros...</div>
           ) : filteredRecords.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No hay registros para mostrar</div>
+            <div className="text-center py-10 text-gray-500">No hay registros para mostrar</div>
           ) : (
             filteredRecords.map((record, index) => (
               <div
                 key={`${record.employee_id}-${index}`}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
               >
                 {/* Card Header */}
                 <div
-                  className="p-3 border-b border-gray-100 flex justify-between items-center"
+                  className="px-4 py-3 border-b border-gray-100 flex justify-between items-center"
                   style={{ backgroundColor: getStatusColor(record) }}
                 >
                   <div className="flex items-center gap-2">
                     {getStatusIcon(record)}
-                    <span className="font-bold text-gray-800 text-sm">
+                    <span className="font-bold text-gray-800 text-base">
                       {record.employee_name}
                     </span>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-1 bg-white/50 rounded-lg text-gray-700">
+                  <span className="text-xs font-semibold px-3 py-1 bg-white/60 rounded-full text-gray-700">
                     {getStatusText(record)}
                   </span>
                 </div>
 
                 {/* Card Body */}
-                <div className="p-3 grid grid-cols-3 gap-2">
-                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-[10px] uppercase font-bold text-gray-400">Entrada</span>
+                <div className="px-4 py-3 grid grid-cols-3 gap-3">
+                  <div className="flex flex-col items-center py-2 px-1 bg-gray-50 rounded-xl">
+                    <span className="text-xs font-semibold text-gray-400 mb-1">Entrada</span>
                     <span className="text-sm font-bold text-gray-800">
-                      {record.clock_in ? new Date(record.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      {record.clock_in ? new Date(record.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </span>
                   </div>
-                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-[10px] uppercase font-bold text-gray-400">Salida</span>
+                  <div className="flex flex-col items-center py-2 px-1 bg-gray-50 rounded-xl">
+                    <span className="text-xs font-semibold text-gray-400 mb-1">Salida</span>
                     <span className="text-sm font-bold text-gray-800">
-                      {record.clock_out ? new Date(record.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      {record.clock_out ? new Date(record.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </span>
                   </div>
-                  <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-[10px] uppercase font-bold text-gray-400">Total</span>
-                    <span className="text-sm font-bold text-emerald-600">
-                      {record.total_hours ? `${record.total_hours.toFixed(1)}h` : '-'}
+                  <div className="flex flex-col items-center py-2 px-1 bg-emerald-50 rounded-xl">
+                    <span className="text-xs font-semibold text-emerald-500 mb-1">Total</span>
+                    <span className="text-sm font-bold text-emerald-700">
+                      {record.total_hours ? `${record.total_hours.toFixed(1)}h` : '—'}
                     </span>
                   </div>
                 </div>
 
                 {/* Card Footer */}
                 {record.location_lat && record.location_lng && (
-                  <div className="px-3 pb-3 pt-0 flex justify-end">
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                  <div className="px-4 pb-3 pt-0 flex justify-end">
+                    <div className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
                       <MapPin size={12} />
-                      Ubicación Verificada
+                      Ubicación verificada
                     </div>
                   </div>
                 )}
