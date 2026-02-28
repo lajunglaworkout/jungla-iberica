@@ -114,11 +114,7 @@ const DEPARTMENTS = [
   { id: 'Direccion', name: 'Dirección', icon: '👑', color: '#ef4444' }
 ];
 
-const LEADERSHIP_TEAM = [
-  { id: 'carlossuarezparra@gmail.com', name: 'Carlos Suárez Parra', role: 'CEO' },
-  { id: 'beni.jungla@gmail.com', name: 'Benito Morales', role: 'Director' },
-  { id: 'lajunglacentral@gmail.com', name: 'Vicente Benítez', role: 'Director' }
-];
+// LEADERSHIP_TEAM eliminado — no se usaba en ningún render
 
 // Componente principal del Dashboard Inteligente
 const IntelligentExecutiveDashboard: React.FC = () => {
@@ -189,9 +185,8 @@ const IntelligentExecutiveDashboard: React.FC = () => {
 
       if (error) throw error;
 
-      // Update local state smoothly
+      // Actualizar estado local sin recargar todo el dashboard
       setAlerts(prev => prev.filter(a => a.id !== id));
-      loadDashboardData(); // Refresh counts
     } catch (err) {
       console.error('Error dismissing alert:', err);
     }
@@ -511,6 +506,269 @@ const IntelligentExecutiveDashboard: React.FC = () => {
     </div>
   );
 
+  // ─── Vista completa de Alertas ──────────────────────────────────────────────
+  const AlertsFullView: React.FC = () => {
+    const [filterLevel, setFilterLevel] = React.useState<string>('all');
+
+    const URGENCY_CONFIG: Record<string, { bg: string; border: string; textColor: string; label: string }> = {
+      critical: { bg: '#fef2f2', border: '#fecaca', textColor: '#dc2626', label: 'Crítica' },
+      urgent:   { bg: '#fff7ed', border: '#fed7aa', textColor: '#ea580c', label: 'Urgente' },
+      warning:  { bg: '#fffbeb', border: '#fde68a', textColor: '#d97706', label: 'Aviso' },
+      info:     { bg: '#eff6ff', border: '#bfdbfe', textColor: '#2563eb', label: 'Info' },
+    };
+
+    const counts = {
+      critical: alerts.filter(a => a.nivel_urgencia === 'critical').length,
+      urgent:   alerts.filter(a => a.nivel_urgencia === 'urgent').length,
+      warning:  alerts.filter(a => a.nivel_urgencia === 'warning').length,
+      info:     alerts.filter(a => a.nivel_urgencia === 'info').length,
+    };
+
+    const filteredAlerts = filterLevel === 'all'
+      ? [...alerts].sort((a, b) => {
+          const ORDER: Record<string, number> = { critical: 0, urgent: 1, warning: 2, info: 3 };
+          return (ORDER[a.nivel_urgencia] ?? 4) - (ORDER[b.nivel_urgencia] ?? 4);
+        })
+      : alerts.filter(a => a.nivel_urgencia === filterLevel);
+
+    return (
+      <div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Zap style={{ height: '24px', width: '24px', color: '#f59e0b' }} />
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Alertas Inteligentes
+            </h2>
+            <span style={{
+              backgroundColor: alerts.length > 0 ? '#fef3c7' : '#f0fdf4',
+              color: alerts.length > 0 ? '#92400e' : '#166534',
+              padding: '4px 10px', borderRadius: '12px', fontSize: '13px', fontWeight: '600'
+            }}>
+              {alerts.length} activas
+            </span>
+          </div>
+          <button
+            onClick={() => loadAlerts()}
+            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}
+          >
+            <RefreshCw size={14} />
+            Actualizar
+          </button>
+        </div>
+
+        {/* Filtros por nivel */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'all',      label: `Todas (${alerts.length})`,          color: '#374151', bg: '#f3f4f6' },
+            { id: 'critical', label: `Críticas (${counts.critical})`,       color: '#dc2626', bg: '#fef2f2' },
+            { id: 'urgent',   label: `Urgentes (${counts.urgent})`,         color: '#ea580c', bg: '#fff7ed' },
+            { id: 'warning',  label: `Avisos (${counts.warning})`,          color: '#d97706', bg: '#fffbeb' },
+            { id: 'info',     label: `Info (${counts.info})`,               color: '#2563eb', bg: '#eff6ff' },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilterLevel(f.id)}
+              style={{
+                padding: '8px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500',
+                backgroundColor: filterLevel === f.id ? f.color : f.bg,
+                color: filterLevel === f.id ? 'white' : f.color,
+                transition: 'all 0.15s'
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Lista */}
+        {filteredAlerts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <CheckCircle2 style={{ height: '48px', width: '48px', margin: '0 auto 16px', color: '#10b981' }} />
+            <p style={{ color: '#374151', fontWeight: '600', margin: '0 0 4px' }}>¡Todo bajo control!</p>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+              {filterLevel === 'all' ? 'No hay alertas activas' : 'No hay alertas de este tipo'}
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredAlerts.map(alert => {
+              const cfg = URGENCY_CONFIG[alert.nivel_urgencia] || URGENCY_CONFIG.info;
+              return (
+                <div key={alert.id} style={{
+                  padding: '20px',
+                  backgroundColor: cfg.bg,
+                  border: `1px solid ${cfg.border}`,
+                  borderRadius: '12px',
+                  borderLeft: `4px solid ${cfg.textColor}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    {/* Icono urgencia */}
+                    <div style={{ marginTop: '2px', flexShrink: 0 }}>
+                      {alert.nivel_urgencia === 'critical' && <AlertTriangle style={{ height: '20px', width: '20px', color: cfg.textColor }} />}
+                      {alert.nivel_urgencia === 'urgent'   && <AlertCircle  style={{ height: '20px', width: '20px', color: cfg.textColor }} />}
+                      {alert.nivel_urgencia === 'warning'  && <AlertCircle  style={{ height: '20px', width: '20px', color: cfg.textColor }} />}
+                      {alert.nivel_urgencia === 'info'     && <Bell         style={{ height: '20px', width: '20px', color: cfg.textColor }} />}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                        <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                          {alert.titulo}
+                        </h4>
+                        <span style={{
+                          fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px',
+                          backgroundColor: cfg.textColor, color: 'white', textTransform: 'uppercase'
+                        }}>
+                          {cfg.label}
+                        </span>
+                        {alert.es_automatica && (
+                          <span style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Brain style={{ height: '11px', width: '11px' }} /> Auto-IA
+                          </span>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 10px' }}>
+                        {alert.descripcion}
+                      </p>
+
+                      {alert.accion_recomendada && (
+                        <div style={{ padding: '10px 14px', backgroundColor: '#f0f9ff', borderRadius: '8px', marginBottom: '10px', border: '1px solid #bae6fd' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Lightbulb style={{ height: '14px', width: '14px', color: '#0ea5e9', flexShrink: 0 }} />
+                            <span style={{ fontSize: '13px', color: '#0369a1', fontWeight: '500' }}>
+                              {alert.accion_recomendada}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                        {alert.departamento_afectado && <span>📍 {alert.departamento_afectado}</span>}
+                        {alert.creado_en && (
+                          <span>{new Date(alert.creado_en).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => dismissAlert(alert.id!)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px', borderRadius: '4px', flexShrink: 0 }}
+                      title="Marcar como resuelta"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Vista de Reuniones ──────────────────────────────────────────────────────
+  const MeetingsListView: React.FC = () => {
+    const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+      programada:  { label: 'Programada',  color: '#2563eb', bg: '#eff6ff' },
+      en_curso:    { label: 'En curso',    color: '#d97706', bg: '#fffbeb' },
+      finalizada:  { label: 'Finalizada',  color: '#059669', bg: '#f0fdf4' },
+      cancelada:   { label: 'Cancelada',   color: '#9ca3af', bg: '#f9fafb' },
+      completed:   { label: 'Completada',  color: '#059669', bg: '#f0fdf4' },
+    };
+
+    return (
+      <div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Calendar style={{ height: '24px', width: '24px', color: '#059669' }} />
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Reuniones
+            </h2>
+            <span style={{ backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontSize: '13px', fontWeight: '600' }}>
+              {meetings.length} registradas
+            </span>
+          </div>
+          <button
+            onClick={() => setShowMeetingModal(true)}
+            style={{ padding: '10px 20px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Plus size={16} /> Nueva Reunión
+          </button>
+        </div>
+
+        {/* Lista */}
+        {meetings.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <Calendar style={{ height: '48px', width: '48px', margin: '0 auto 16px', color: '#d1d5db' }} />
+            <p style={{ color: '#374151', fontWeight: '600', margin: '0 0 4px' }}>Sin reuniones registradas</p>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 16px' }}>
+              Las reuniones creadas desde los módulos de departamento aparecerán aquí.
+            </p>
+            <button
+              onClick={() => setShowMeetingModal(true)}
+              style={{ padding: '10px 20px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}
+            >
+              Crear primera reunión
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {meetings.map(meeting => {
+              const estadoCfg = ESTADO_CONFIG[meeting.estado] || ESTADO_CONFIG.programada;
+              const fechaStr = meeting.fecha
+                ? new Date(meeting.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+                : '—';
+              return (
+                <div key={meeting.id} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 8px' }}>
+                        {meeting.titulo}
+                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', color: '#6b7280', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar style={{ height: '13px', width: '13px' }} /> {fechaStr}
+                        </span>
+                        {meeting.hora_inicio && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock style={{ height: '13px', width: '13px' }} /> {meeting.hora_inicio}
+                          </span>
+                        )}
+                        {meeting.departamento_objetivo && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Users style={{ height: '13px', width: '13px' }} /> {meeting.departamento_objetivo}
+                          </span>
+                        )}
+                        {meeting.tipo && (
+                          <span style={{ textTransform: 'capitalize' }}>{meeting.tipo.replace('_', ' ')}</span>
+                        )}
+                      </div>
+                      {meeting.acta_reunion && (
+                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: '10px 0 0', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                          {meeting.acta_reunion}
+                        </p>
+                      )}
+                    </div>
+                    <span style={{
+                      flexShrink: 0, padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+                      backgroundColor: estadoCfg.bg, color: estadoCfg.color, whiteSpace: 'nowrap'
+                    }}>
+                      {estadoCfg.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Vista principal del dashboard
   const DashboardView: React.FC = () => (
     <div>
@@ -540,10 +798,10 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         </div>
 
         <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          {briefing ? briefing.greeting : 'Sistema Ejecutivo Inteligente'} 🧠
+          {briefing ? briefing.greeting : `Hola, ${employee?.first_name || 'Director'}`} 🧠
         </h2>
         <p style={{ fontSize: '16px', opacity: 0.9, margin: 0, maxWidth: '80%' }}>
-          {briefing ? briefing.summary : 'Analizando datos en tiempo real...'}
+          {briefing ? briefing.summary : `Tienes ${kpis.totalObjectives} objetivos activos y ${alerts.length} alertas pendientes de revisión.`}
         </p>
 
         {briefing && briefing.highlights.length > 0 && (
@@ -1032,8 +1290,8 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         </div>
       )}
       {activeView === 'analytics' && <MultiCenterAnalysis />}
-      {activeView === 'alerts' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Alertas (en desarrollo)</div>}
-      {activeView === 'meetings' && <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Vista de Reuniones (en desarrollo)</div>}
+      {activeView === 'alerts' && <AlertsFullView />}
+      {activeView === 'meetings' && <MeetingsListView />}
       {activeView === 'system' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <SystemAuditView />
@@ -1052,7 +1310,13 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       )}
 
       {showMeetingModal && (
-        <MeetingModal onClose={() => setShowMeetingModal(false)} />
+        <MeetingModal
+          onClose={() => setShowMeetingModal(false)}
+          onSuccess={() => {
+            loadDashboardData();
+            setShowMeetingModal(false);
+          }}
+        />
       )}
 
       {/* CX Analytics Modal */}

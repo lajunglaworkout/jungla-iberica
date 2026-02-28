@@ -6,6 +6,7 @@ import { X, Users } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 // Departamentos que tienen flujo de reunión completo en MeetingModal
@@ -15,7 +16,7 @@ const MEETING_DEPARTMENTS = [
   'marketing', 'ventas', 'eventos',
 ];
 
-export const MeetingModal: React.FC<Props> = ({ onClose }) => {
+export const MeetingModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const { employee } = useSession();
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
 
@@ -48,7 +49,7 @@ export const MeetingModal: React.FC<Props> = ({ onClose }) => {
             : undefined
         }
         onClose={onClose}
-        onSuccess={onClose}
+        onSuccess={onSuccess ?? onClose}
       />
     );
   }
