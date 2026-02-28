@@ -156,7 +156,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
           location_lng: null,
           status: 'absent',
           employee_name: emp.name,
-          center_name: centers.find(c => c.id === selectedCenter)?.name
+          center_name: centers.find(c => Number(c.id) === Number(selectedCenter))?.name
         }));
       case 'incomplete':
         return records.filter(r => r.clock_in && !r.clock_out);
@@ -177,7 +177,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
             location_lng: null,
             status: 'absent',
             employee_name: emp.name,
-            center_name: centers.find(c => c.id === selectedCenter)?.name
+            center_name: centers.find(c => Number(c.id) === Number(selectedCenter))?.name
           }));
         return [...records, ...absentList];
     }
@@ -229,12 +229,12 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `fichajes_${selectedDate}_${centers.find(c => c.id === selectedCenter)?.name}.csv`;
+    a.download = `fichajes_${selectedDate}_${centers.find(c => Number(c.id) === Number(selectedCenter))?.name}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
-  const selectedCenterName = centers.find(c => c.id === selectedCenter)?.name || 'Centro';
+  const selectedCenterName = centers.find(c => Number(c.id) === Number(selectedCenter))?.name || 'Centro';
   const filteredRecords = getFilteredRecords();
 
   return (

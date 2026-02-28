@@ -263,6 +263,13 @@ export const USER_DEPARTMENT_ACCESS: Record<string, UserDepartmentAccess> = {
     role: 'Responsable Online',
     departments: ['online'],
     isAdmin: false
+  },
+  'franciscogiraldezmorales@gmail.com': {
+    email: 'franciscogiraldezmorales@gmail.com',
+    name: 'Francisco Giráldez Morales',
+    role: 'Encargado Centro Sevilla',
+    departments: ['centro_sevilla', 'rrhh', 'procedimientos'],
+    isAdmin: false
   }
 };
 

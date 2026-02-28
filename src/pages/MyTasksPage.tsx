@@ -180,10 +180,11 @@ export const MyTasksPage: React.FC<MyTasksPageProps> = ({ userEmail, userName, u
       }}>
         <div>
           <h1 style={{
-            fontSize: '28px',
+            fontSize: 'clamp(18px, 5vw, 28px)',
             fontWeight: '700',
             color: '#1f2937',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            lineHeight: 1.2
           }}>
             📋 Mis Tareas Pendientes
           </h1>

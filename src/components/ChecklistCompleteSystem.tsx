@@ -674,14 +674,14 @@ const ChecklistCompleteSystem: React.FC<ChecklistCompleteSystemProps> = ({ cente
             borderRadius: '12px',
             marginBottom: isMobile ? '16px' : '24px'
           }}>
-            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', margin: '0 0 8px 0' }}>📋 Hoja de Tareas Diarias - {centerName}</h1>
-            <p style={{ fontSize: '18px', margin: '0', opacity: 0.9 }}>📅 Fecha: {new Date().toLocaleDateString('es-ES', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
+            <h1 style={{ fontSize: isMobile ? '16px' : '32px', fontWeight: '700', margin: '0 0 6px 0', lineHeight: 1.3 }}>📋 Hoja de Tareas — {centerName}</h1>
+            <p style={{ fontSize: isMobile ? '13px' : '18px', margin: '0', opacity: 0.9 }}>📅 {new Date().toLocaleDateString('es-ES', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
             })}</p>
-            <p style={{ fontSize: '16px', margin: '8px 0 0 0', opacity: 0.8 }}>👤 Empleado: {employee?.name || 'No identificado'}</p>
+            <p style={{ fontSize: isMobile ? '13px' : '16px', margin: '4px 0 0 0', opacity: 0.8 }}>👤 {employee?.name || 'No identificado'}</p>
           </div>
 
           {/* SECCIÓN APERTURA */}

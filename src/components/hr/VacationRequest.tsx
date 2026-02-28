@@ -334,14 +334,15 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                   setFormData({ start_date: '', end_date: '', reason: '' });
                 }}
                 style={{
-                  padding: '12px 24px',
+                  padding: '12px 20px',
                   backgroundColor: '#6b7280',
                   color: 'white',
                   borderWidth: '0',
                   borderRadius: '8px',
                   cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 Cancelar
@@ -350,14 +351,15 @@ const VacationRequest: React.FC<VacationRequestProps> = ({ onBack, currentEmploy
                 onClick={handleSubmit}
                 disabled={!formData.start_date || !formData.end_date || !formData.reason.trim()}
                 style={{
-                  padding: '12px 24px',
+                  padding: '12px 20px',
                   backgroundColor: (!formData.start_date || !formData.end_date || !formData.reason.trim()) ? '#9ca3af' : '#059669',
                   color: 'white',
                   borderWidth: '0',
                   borderRadius: '8px',
                   cursor: (!formData.start_date || !formData.end_date || !formData.reason.trim()) ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 Enviar Solicitud

@@ -217,11 +217,11 @@ const UniformRequestPanel: React.FC<UniformRequestPanelProps> = ({ userLocation,
             Mi Vestuario
           </h1>
         </div>
-        <div className="flex justify-between items-end">
-          <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>
+        <div className="flex flex-col gap-2">
+          <p style={{ margin: 0, opacity: 0.9, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {employeeName} · {userLocation.charAt(0).toUpperCase() + userLocation.slice(1)}
           </p>
-          <div className="flex bg-white/10 rounded-lg p-1 gap-1">
+          <div className="flex bg-white/10 rounded-lg p-1 gap-1 w-fit">
             <button
               onClick={async () => setActiveTab('my-uniform')}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${activeTab === 'my-uniform' ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
