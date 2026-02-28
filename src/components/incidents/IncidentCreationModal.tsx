@@ -193,30 +193,34 @@ const IncidentCreationModal: React.FC<IncidentCreationModalProps> = ({
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             justifyContent: 'center',
-            padding: '24px',
+            padding: '0',
             zIndex: 9999
         }}>
             <div style={{
                 backgroundColor: 'white',
-                borderRadius: '16px',
+                borderRadius: '20px 20px 0 0',
                 maxWidth: '600px',
                 width: '100%',
-                maxHeight: '90vh',
+                maxHeight: '92vh',
                 overflowY: 'auto',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
             }}>
-                <div style={{ padding: '32px' }}>
+                {/* Handle bar */}
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px', paddingBottom: '4px' }}>
+                    <div style={{ width: '40px', height: '4px', backgroundColor: '#d1d5db', borderRadius: '2px' }} />
+                </div>
+                <div style={{ padding: '16px 20px 24px' }}>
                     {/* Header */}
                     <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: '24px'
+                        marginBottom: '20px'
                     }}>
                         <h2 style={{
-                            fontSize: '24px',
+                            fontSize: '18px',
                             fontWeight: '700',
                             color: '#111827',
                             margin: 0

@@ -24,8 +24,10 @@ import { useSmartAlerts } from './dashboard/useSmartAlerts';
 import { DashboardWeekView } from './dashboard/DashboardWeekView';
 import { DashboardMonthView } from './dashboard/DashboardMonthView';
 import { DashboardAlertsPanel } from './dashboard/DashboardAlertsPanel';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const DashboardPage: React.FC = () => {
+  const isMobile = useIsMobile();
   const { employee, userRole } = useSession();
   const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
   const [currentView, setCurrentView] = useState<'week' | 'month'>('week');
@@ -197,7 +199,7 @@ const DashboardPage: React.FC = () => {
             </span>
           )}
         </h1>
-        {employee?.role !== 'center_manager' && (
+        {!isMobile && employee?.role !== 'center_manager' && (
           <div className="view-toggle">
             <button className={`btn ${currentView === 'week' ? 'active' : ''}`} onClick={() => setCurrentView('week')}>Semana</button>
             <button className={`btn ${currentView === 'month' ? 'active' : ''}`} onClick={() => setCurrentView('month')}>Mes</button>
@@ -218,7 +220,7 @@ const DashboardPage: React.FC = () => {
 
         {!showMeetingHistory && !showLogistics && !showMaintenance && !showUserManagement && (
           <>
-            {currentView === 'week' ? (
+            {!isMobile && (currentView === 'week' ? (
               <DashboardWeekView
                 selectedDate={selectedDate}
                 tasks={tasks}
@@ -238,7 +240,7 @@ const DashboardPage: React.FC = () => {
                 onDayClick={(day) => { setSelectedDate(day); setCurrentView('week'); }}
                 onTaskClick={handleTaskClick}
               />
-            )}
+            ))}
             <DashboardAlertsPanel
               alerts={alerts}
               canCreateMeetings={canCreate}
