@@ -18,7 +18,7 @@ export const getTimeclockRecords = async ({
   try {
     let query = supabase
       .from('timeclock_records')
-      .select(`*, employees!inner(nombre, apellidos), centers!inner(name)`)
+      .select('*')
       .eq('date', date)
       .eq('center_id', centerId);
 

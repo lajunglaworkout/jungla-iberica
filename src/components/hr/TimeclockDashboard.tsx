@@ -62,6 +62,9 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
 
   // Determinar si puede ver todos los registros
   const canViewAllRecords = ['superadmin', 'admin', 'center_manager', 'Encargado'].includes(currentUser?.role || '');
+  // Superadmin/admin pueden cambiar de centro; encargados solo ven el suyo
+  const isAdmin = ['superadmin', 'admin'].includes(userRole || '') || ['superadmin', 'admin'].includes(currentUser?.role || '');
+  const availableCenters = isAdmin ? centers : centers.filter(c => Number(c.id) === Number(currentUser?.center_id));
 
   const [selectedCenter, setSelectedCenter] = useState<number>(currentUser?.center_id || 9);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -90,12 +93,16 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
         onlyForEmployee: !canViewAllRecords
       });
 
-      // Mapear datos con nombres
-      const mappedRecords: TimeclockRecord[] = (timeclockData as TimeclockRawRecord[]).map((record) => ({
-        ...record,
-        employee_name: `${record.employees.nombre} ${record.employees.apellidos}`,
-        center_name: record.centers.name
-      })) as unknown as TimeclockRecord[];
+      // Mapear datos enriqueciendo con nombres desde contexto (sin depender de JOINs)
+      const mappedRecords: TimeclockRecord[] = (timeclockData as Record<string, unknown>[]).map((record) => {
+        const emp = employees.find(e => Number(e.id) === Number(record.employee_id));
+        const center = centers.find(c => Number(c.id) === Number(record.center_id));
+        return {
+          ...record,
+          employee_name: emp?.name || `Empleado ${record.employee_id}`,
+          center_name: center?.name || `Centro ${record.center_id}`,
+        };
+      }) as unknown as TimeclockRecord[];
 
       setRecords(mappedRecords);
 
@@ -339,7 +346,7 @@ const TimeclockDashboard: React.FC<TimeclockDashboardProps> = ({ onBack }) => {
                   fontSize: '14px'
                 }}
               >
-                {centers.map(center => (
+                {availableCenters.map(center => (
                   <option key={center.id} value={center.id}>
                     {center.name}
                   </option>
