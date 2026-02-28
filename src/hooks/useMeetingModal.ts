@@ -11,6 +11,8 @@ import { insertTasks, getPendingTasksByDepartment } from '../services/taskServic
 import { updateMeetingTasks, scheduleMeeting } from '../services/meetingService';
 import { getAllEmployees } from '../services/userService';
 import { getActiveLeads } from '../services/leadService';
+import { alertService, getOrdersByStatus } from '../services/logisticsService';
+import { getPendingVacationRequestsRaw, getPendingUniformRequestsRaw } from '../services/hrService';
 import { ui } from '../utils/ui';
 import {
   PreviousTask,
@@ -98,13 +100,14 @@ export const useMeetingModal = ({
   };
 
   const loadRecurringTasks = async () => {
+    // ── Dirección ────────────────────────────────────────────────────────────
     if (departmentId === 'direccion') {
       let maintenanceStats = { criticalIssues: 0, pendingTasks: 0 };
       try {
         const stats = await maintenanceService.getMaintenanceStats();
         maintenanceStats = { criticalIssues: stats.criticalIssues, pendingTasks: stats.pendingTasks };
       } catch (error) {
-        console.error("Error fetching maintenance stats:", error);
+        console.error('Error fetching maintenance stats:', error);
       }
       setRecurringTasks([
         { titulo: 'Incidencias urgentes', notas: '', tipo: 'incidencias', datos: { incidencias_abiertas: maintenanceStats.criticalIssues, nuevas_desde_ultima_reunion: maintenanceStats.pendingTasks } },
@@ -114,12 +117,76 @@ export const useMeetingModal = ({
       return;
     }
 
+    // ── Mantenimiento — tickets abiertos/cerrados ────────────────────────────
+    if (departmentId === 'mantenimiento') {
+      let abiertas = 0, cerradas = 0;
+      try {
+        const [openRes, closedRes] = await Promise.all([
+          maintenanceService.getTickets({ status: 'open' }),
+          maintenanceService.getTickets({ status: 'closed' }),
+        ]);
+        abiertas = openRes.data?.length ?? 0;
+        cerradas = closedRes.data?.length ?? 0;
+      } catch (e) {
+        console.error('Error cargando tickets mantenimiento:', e);
+      }
+      setRecurringTasks([
+        { ...MANTENIMIENTO_TASKS[0], datos: { abiertas, cerradas_este_periodo: cerradas } },
+        { ...MANTENIMIENTO_TASKS[1], datos: { pendientes: abiertas } },
+        { ...MANTENIMIENTO_TASKS[2], datos: {} },
+      ]);
+      return;
+    }
+
+    // ── Logística — pedidos y alertas de stock ───────────────────────────────
+    if (departmentId === 'logistica') {
+      let recibidos = 0, enviados = 0, articulosBajoMinimos = 0, pendientes = 0;
+      try {
+        const [alertsData, ordersData] = await Promise.all([
+          alertService.getActive().catch(() => []),
+          getOrdersByStatus(['pending', 'sent', 'received']).catch(() => []),
+        ]);
+        articulosBajoMinimos = alertsData.length;
+        recibidos = (ordersData as Array<{ status?: string }>).filter(o => o.status === 'received').length;
+        enviados = (ordersData as Array<{ status?: string }>).filter(o => o.status === 'sent').length;
+        pendientes = (ordersData as Array<{ status?: string }>).filter(o => o.status === 'pending').length;
+      } catch (e) {
+        console.error('Error cargando datos logística:', e);
+      }
+      setRecurringTasks([
+        { ...LOGISTICA_TASKS[0], datos: { recibidos, enviados } },
+        { ...LOGISTICA_TASKS[1], datos: {} },
+        { ...LOGISTICA_TASKS[2], datos: { articulos_bajo_minimos: articulosBajoMinimos } },
+        { ...LOGISTICA_TASKS[3], datos: { pendientes } },
+      ]);
+      return;
+    }
+
+    // ── RRHH — vacaciones pendientes e incidencias uniformes ────────────────
+    if (departmentId === 'rrhh') {
+      let bajasActivas = 0, incidenciasPendientes = 0;
+      try {
+        const [vacReq, unifReq] = await Promise.all([
+          getPendingVacationRequestsRaw().catch(() => []),
+          getPendingUniformRequestsRaw().catch(() => []),
+        ]);
+        bajasActivas = vacReq.length;
+        incidenciasPendientes = unifReq.length;
+      } catch (e) {
+        console.error('Error cargando datos RRHH:', e);
+      }
+      setRecurringTasks([
+        { ...RRHH_TASKS[0], datos: { bajas_activas: bajasActivas, incidencias_pendientes: incidenciasPendientes } },
+        { ...RRHH_TASKS[1], datos: {} },
+        { ...RRHH_TASKS[2], datos: {} },
+      ]);
+      return;
+    }
+
+    // ── Contabilidad / Operaciones — sin datos de API (se rellenan manual) ──
     const DEPT_TASK_MAP: Record<string, RecurringTask[]> = {
-      rrhh: RRHH_TASKS,
-      logistica: LOGISTICA_TASKS,
-      mantenimiento: MANTENIMIENTO_TASKS,
       contabilidad: CONTABILIDAD_TASKS,
-      operaciones: OPERACIONES_TASKS
+      operaciones: OPERACIONES_TASKS,
     };
 
     if (DEPT_TASK_MAP[departmentId]) {
@@ -127,8 +194,9 @@ export const useMeetingModal = ({
       return;
     }
 
+    // ── Resto de departamentos — tareas simples de texto ────────────────────
     const simpleTasks = RECURRING_TASKS_SIMPLE[departmentId] || [];
-    setRecurringTasks(simpleTasks.map(titulo => ({ titulo, notas: '', tipo: 'simple' })));
+    setRecurringTasks(simpleTasks.map(titulo => ({ titulo, notas: '', tipo: 'simple' as const })));
   };
 
   const loadPreviousTasks = async () => {
