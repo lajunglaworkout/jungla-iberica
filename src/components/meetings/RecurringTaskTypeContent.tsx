@@ -1,3 +1,12 @@
+/**
+ * RecurringTaskTypeContent — Contenido expandible por tipo de tarea recurrente
+ *
+ * NOTA: Los campos "Cargando..." muestran datos que vienen de task.datos (cargados
+ * por useMeetingModal.loadRecurringTasks). Para los tipos que no tienen integración
+ * real con Supabase aún, el usuario puede rellenar las notas manualmente.
+ *
+ * TODOS los textareas están conectados a onNoteChange para que las notas se guarden.
+ */
 import React from 'react';
 import { RecurringTask } from './MeetingModalTypes';
 
@@ -7,7 +16,48 @@ interface RecurringTaskTypeContentProps {
   onNoteChange: (index: number, note: string) => void;
 }
 
-export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> = ({ task, index, onNoteChange }) => {
+// Helper: textarea conectado que siempre guarda datos
+const NotesTextarea: React.FC<{
+  value: string;
+  placeholder: string;
+  index: number;
+  onNoteChange: (index: number, note: string) => void;
+}> = ({ value, placeholder, index, onNoteChange }) => (
+  <textarea
+    placeholder={placeholder}
+    value={value || ''}
+    onChange={(e) => onNoteChange(index, e.target.value)}
+    style={{
+      width: '100%',
+      padding: '8px',
+      border: '1px solid #d1d5db',
+      borderRadius: '4px',
+      fontSize: '13px',
+      minHeight: '60px',
+      marginTop: '8px',
+      boxSizing: 'border-box',
+      resize: 'vertical',
+      fontFamily: 'inherit',
+    }}
+  />
+);
+
+// Helper: fila de dato con valor o "Sin datos"
+const DataRow: React.FC<{ label: string; value?: string | number; color?: string }> = ({
+  label, value, color = '#6b7280'
+}) => (
+  <div>
+    <strong>{label}</strong>{' '}
+    <span style={{ color: value !== undefined && value !== null && value !== '' ? color : '#9ca3af' }}>
+      {value !== undefined && value !== null && value !== '' ? value : '—'}
+    </span>
+  </div>
+);
+
+export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> = ({
+  task, index, onNoteChange
+}) => {
+
   if (task.tipo === 'expandible_centros') {
     return (
       <div style={{ marginTop: '12px' }}>
@@ -18,15 +68,15 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
             </summary>
             <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', marginTop: '4px' }}>
               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                <div><strong>💰 Ingresos mes:</strong> <span style={{ color: '#059669' }}>{task.datos?.valores?.[centro]?.ingresos || 'Cargando...'}</span></div>
-                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>{task.datos?.valores?.[centro]?.clientes_activos || 'Cargando...'}</span></div>
-                <div><strong>✨ Clientes nuevos:</strong> <span style={{ color: '#10b981' }}>{task.datos?.valores?.[centro]?.nuevos || 'Cargando...'}</span></div>
-                <div><strong>📉 Bajas del mes:</strong> <span style={{ color: '#ef4444' }}>{task.datos?.valores?.[centro]?.bajas || 'Cargando...'}</span></div>
-                <textarea placeholder="Observaciones..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', marginTop: '8px', boxSizing: 'border-box' }} />
+                <DataRow label="💰 Ingresos mes:" value={task.datos?.valores?.[centro]?.ingresos} color="#059669" />
+                <DataRow label="👥 Clientes activos:" value={task.datos?.valores?.[centro]?.clientes_activos} color="#3b82f6" />
+                <DataRow label="✨ Clientes nuevos:" value={task.datos?.valores?.[centro]?.nuevos} color="#10b981" />
+                <DataRow label="📉 Bajas del mes:" value={task.datos?.valores?.[centro]?.bajas} color="#ef4444" />
               </div>
             </div>
           </details>
         ))}
+        <NotesTextarea value={task.notas} placeholder="Observaciones sobre los centros..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -41,18 +91,15 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
             </summary>
             <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', marginTop: '4px' }}>
               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                <div><strong>✅ Cumplimiento:</strong> <span style={{ color: '#059669' }}>{task.datos?.valores?.[dept]?.cumplimiento || 'Cargando...'}</span></div>
-                <div><strong>📝 Tareas completadas:</strong> <span style={{ color: '#3b82f6' }}>{task.datos?.valores?.[dept]?.completadas ?? 'Cargando...'}</span></div>
-                <div><strong>⏳ Tareas pendientes:</strong> <span style={{ color: '#f59e0b' }}>{task.datos?.valores?.[dept]?.pendientes ?? 'Cargando...'}</span></div>
-                <div><strong>⚠️ Cuellos de botella:</strong> <span style={{ color: '#ef4444' }}>{task.datos?.valores?.[dept]?.cuellos_botella || 'Cargando...'}</span></div>
-                <select style={{ padding: '6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', marginTop: '4px' }}>
-                  <option>Óptimo</option><option>Normal</option><option>Requiere atención</option><option>Crítico</option>
-                </select>
-                <textarea placeholder="Acciones a tomar..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', marginTop: '4px', boxSizing: 'border-box' }} />
+                <DataRow label="✅ Cumplimiento:" value={task.datos?.valores?.[dept]?.cumplimiento} color="#059669" />
+                <DataRow label="📝 Tareas completadas:" value={task.datos?.valores?.[dept]?.completadas} color="#3b82f6" />
+                <DataRow label="⏳ Tareas pendientes:" value={task.datos?.valores?.[dept]?.pendientes} color="#f59e0b" />
+                <DataRow label="⚠️ Cuellos de botella:" value={task.datos?.valores?.[dept]?.cuellos_botella} color="#ef4444" />
               </div>
             </div>
           </details>
         ))}
+        <NotesTextarea value={task.notas} placeholder="Acciones a tomar por departamento..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -67,15 +114,15 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
             </summary>
             <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', marginTop: '4px' }}>
               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                <div><strong>💰 Ingresos del mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
-                <div><strong>💸 Gastos del mes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-                <div><strong>📊 Balance:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-                <div><strong>📈 Comparativa mes anterior:</strong> <span style={{ color: '#6b7280' }}>Cargando...</span></div>
-                <textarea placeholder="Observaciones contables..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', marginTop: '8px', boxSizing: 'border-box' }} />
+                <DataRow label="💰 Ingresos del mes:" value={task.datos?.valores?.[centro]?.ingresos} color="#059669" />
+                <DataRow label="💸 Gastos del mes:" value={task.datos?.valores?.[centro]?.gastos} color="#ef4444" />
+                <DataRow label="📊 Balance:" value={task.datos?.valores?.[centro]?.balance} color="#3b82f6" />
+                <DataRow label="📈 Comparativa mes anterior:" value={task.datos?.valores?.[centro]?.comparativa} color="#6b7280" />
               </div>
             </div>
           </details>
         ))}
+        <NotesTextarea value={task.notas} placeholder="Observaciones contables..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -90,16 +137,15 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
             </summary>
             <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', marginTop: '4px' }}>
               <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-                <div><strong>👥 Clientes activos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-                <div><strong>📊 Tendencia clientes:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-                <div><strong>💰 Facturación mes:</strong> <span style={{ color: '#059669' }}>Cargando...</span></div>
-                <div><strong>📈 Tendencia facturación:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-                <div><strong>⭐ Satisfacción media:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-                <textarea placeholder="Análisis de tendencias..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', marginTop: '8px', boxSizing: 'border-box' }} />
+                <DataRow label="👥 Clientes activos:" value={task.datos?.valores?.[centro]?.clientes_activos} color="#3b82f6" />
+                <DataRow label="📊 Tendencia:" value={task.datos?.valores?.[centro]?.tendencia} color="#10b981" />
+                <DataRow label="💰 Facturación mes:" value={task.datos?.valores?.[centro]?.facturacion} color="#059669" />
+                <DataRow label="⭐ Satisfacción media:" value={task.datos?.valores?.[centro]?.satisfaccion} color="#f59e0b" />
               </div>
             </div>
           </details>
         ))}
+        <NotesTextarea value={task.notas} placeholder="Análisis de tendencias y acciones..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -108,11 +154,10 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
         <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
-          <div><strong>🔴 Incidencias abiertas:</strong> <span style={{ color: '#dc2626' }}>{task.datos?.incidencias_abiertas ?? 'Cargando...'}</span></div>
-          <div><strong>📊 Nuevas desde última reunión:</strong> <span style={{ color: '#f59e0b' }}>{task.datos?.nuevas_desde_ultima_reunion ?? 'Cargando...'}</span></div>
-          <textarea placeholder="Motivos de no cierre..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', marginTop: '8px', boxSizing: 'border-box' }} />
-          <textarea placeholder="Comentarios adicionales..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '50px', boxSizing: 'border-box' }} />
+          <DataRow label="🔴 Incidencias abiertas:" value={task.datos?.incidencias_abiertas} color="#dc2626" />
+          <DataRow label="📊 Nuevas desde última reunión:" value={task.datos?.nuevas_desde_ultima_reunion} color="#f59e0b" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Motivos, acciones y comentarios sobre incidencias..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -123,14 +168,14 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
         <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
           <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>🚨 Bajas activas</div>
-            <div style={{ color: '#6b7280' }}>Cargando bajas de personal...</div>
+            <DataRow label="" value={task.datos?.bajas_activas !== undefined ? `${task.datos.bajas_activas} empleado(s) de baja` : undefined} color="#dc2626" />
           </div>
           <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
             <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>⚠️ Incidencias pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando incidencias de personal...</div>
+            <DataRow label="" value={task.datos?.incidencias_pendientes !== undefined ? `${task.datos.incidencias_pendientes} incidencia(s)` : undefined} color="#f59e0b" />
           </div>
-          <textarea placeholder="Comentarios sobre incidencias de personal..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Comentarios sobre incidencias de personal, medidas adoptadas..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -138,20 +183,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'checklist_incidencias') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📋 Incidencias en checklist</div>
-            <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-              <div>• <strong>Resueltas esta semana:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Acciones a tomar sobre checklist..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="📋 Incidencias en checklist pendientes:" value={task.datos?.pendientes_checklist} color="#ef4444" />
+          <DataRow label="✅ Resueltas esta semana:" value={task.datos?.resueltas_semana} color="#10b981" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Acciones a tomar sobre incidencias de checklist..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -159,21 +195,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'propuestas_sanciones') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f3e8ff', border: '1px solid #a855f7', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Propuestas pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando propuestas...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#dc2626' }}>⚖️ Sanciones activas</div>
-            <div style={{ color: '#6b7280' }}>Cargando sanciones...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📝 Cambios de procedimientos</div>
-            <div style={{ color: '#6b7280' }}>Cargando cambios pendientes...</div>
-          </div>
-          <textarea placeholder="Decisiones tomadas sobre propuestas, sanciones o cambios..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '80px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="💡 Propuestas pendientes:" value={task.datos?.propuestas_pendientes} color="#a855f7" />
+          <DataRow label="⚖️ Sanciones activas:" value={task.datos?.sanciones_activas} color="#dc2626" />
+          <DataRow label="📝 Cambios de procedimientos:" value={task.datos?.cambios_pendientes} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Decisiones sobre propuestas, sanciones y cambios..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -181,17 +208,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'pedidos_logistica') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>📦 Pedidos recibidos</div>
-            <div style={{ color: '#6b7280' }}>Cargando pedidos recibidos...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📤 Pedidos enviados</div>
-            <div style={{ color: '#6b7280' }}>Cargando pedidos enviados...</div>
-          </div>
-          <textarea placeholder="Observaciones sobre pedidos..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="📦 Pedidos recibidos:" value={task.datos?.pedidos_recibidos} color="#10b981" />
+          <DataRow label="📤 Pedidos enviados:" value={task.datos?.pedidos_enviados} color="#3b82f6" />
+          <DataRow label="⏳ Pendientes de envío:" value={task.datos?.pedidos_pendientes} color="#f59e0b" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Observaciones sobre pedidos, proveedores, prioridades..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -199,17 +221,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'roturas_perdidas') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>💔 Roturas reportadas</div>
-            <div style={{ color: '#6b7280' }}>Cargando roturas...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>❓ Pérdidas registradas</div>
-            <div style={{ color: '#6b7280' }}>Cargando pérdidas...</div>
-          </div>
-          <textarea placeholder="Acciones tomadas sobre roturas y pérdidas..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="💔 Roturas reportadas:" value={task.datos?.roturas} color="#ef4444" />
+          <DataRow label="❓ Pérdidas registradas:" value={task.datos?.perdidas} color="#f59e0b" />
+          <DataRow label="💸 Coste estimado:" value={task.datos?.coste_estimado} color="#dc2626" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Acciones sobre roturas y pérdidas, responsables..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -217,17 +234,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'stock_minimo') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>⚠️ Materiales cerca de stock mínimo</div>
-            <div style={{ color: '#6b7280' }}>Cargando materiales con stock bajo...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#059669' }}>💰 Estimación de inversión</div>
-            <div style={{ color: '#6b7280' }}>Calculando inversión necesaria...</div>
-          </div>
-          <textarea placeholder="Decisiones sobre compras y reposición..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="⚠️ Artículos bajo mínimos:" value={task.datos?.articulos_bajo_minimo} color="#f59e0b" />
+          <DataRow label="💰 Inversión estimada:" value={task.datos?.inversion_estimada} color="#059669" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Decisiones sobre compras, reposición, proveedores..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -235,20 +246,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'envios_pendientes') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#e0e7ff', border: '1px solid #6366f1', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🚚 Envíos pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando envíos pendientes...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-              <div>• <strong>Urgentes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Plan de envíos y prioridades..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="🚚 Envíos pendientes total:" value={task.datos?.envios_pendientes} color="#6366f1" />
+          <DataRow label="🔴 Urgentes:" value={task.datos?.envios_urgentes} color="#ef4444" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Plan de envíos, prioridades y responsables..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -256,24 +258,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'incidencias_mantenimiento') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>🔴 Incidencias abiertas</div>
-            <div style={{ color: '#6b7280' }}>Cargando incidencias abiertas...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#10b981' }}>✅ Incidencias cerradas</div>
-            <div style={{ color: '#6b7280' }}>Cargando incidencias cerradas...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Estadísticas</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Tiempo medio resolución:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-              <div>• <strong>Tasa de resolución:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Observaciones sobre incidencias..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="🔴 Incidencias abiertas:" value={task.datos?.abiertas} color="#ef4444" />
+          <DataRow label="✅ Cerradas esta semana:" value={task.datos?.cerradas_semana} color="#10b981" />
+          <DataRow label="⏱️ Tiempo medio resolución:" value={task.datos?.tiempo_medio} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Observaciones sobre incidencias de mantenimiento..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -281,21 +271,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'reparaciones_pendientes') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>🔧 Reparaciones pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando reparaciones pendientes...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Prioridad</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Urgentes:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-              <div>• <strong>Normales:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-              <div>• <strong>Bajas:</strong> <span style={{ color: '#10b981' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Plan de reparaciones y prioridades..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="🔧 Reparaciones pendientes total:" value={task.datos?.total_reparaciones} color="#3b82f6" />
+          <DataRow label="🔴 Urgentes:" value={task.datos?.urgentes} color="#ef4444" />
+          <DataRow label="🟡 Normales:" value={task.datos?.normales} color="#f59e0b" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Plan de reparaciones, prioridades y presupuesto..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -303,21 +284,13 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'coste_reparaciones') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#d1fae5', border: '1px solid #10b981', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#059669' }}>💰 Coste total reparaciones</div>
-            <div style={{ color: '#6b7280' }}>Cargando costes...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Desglose</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Materiales:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-              <div>• <strong>Mano de obra:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-              <div>• <strong>Externos:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Análisis de costes y optimizaciones..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="💰 Coste total reparaciones:" value={task.datos?.coste_total} color="#059669" />
+          <DataRow label="🔩 Materiales:" value={task.datos?.coste_materiales} color="#3b82f6" />
+          <DataRow label="👷 Mano de obra:" value={task.datos?.coste_mano_obra} color="#3b82f6" />
+          <DataRow label="🏢 Externos:" value={task.datos?.coste_externos} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Análisis de costes, optimizaciones, decisiones..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -325,20 +298,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'pagos_pendientes') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#f59e0b' }}>📝 Pagos pendientes de apuntar</div>
-            <div style={{ color: '#6b7280' }}>Cargando pagos sin apuntar...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Total pendientes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-              <div>• <strong>Importe total:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Acciones sobre pagos pendientes..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="📝 Pagos sin apuntar:" value={task.datos?.pagos_sin_apuntar} color="#f59e0b" />
+          <DataRow label="💸 Importe total pendiente:" value={task.datos?.importe_pendiente} color="#ef4444" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Acciones sobre pagos pendientes, prioridades..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -346,20 +310,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'transferencias_autorizar') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#e0e7ff', border: '1px solid #6366f1', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>🔐 Transferencias no recurrentes por autorizar</div>
-            <div style={{ color: '#6b7280' }}>Cargando transferencias pendientes...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Pendientes de autorización:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-              <div>• <strong>Importe total:</strong> <span style={{ color: '#6366f1' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Decisiones sobre autorizaciones..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="🔐 Pendientes de autorización:" value={task.datos?.pendientes_autorizacion} color="#6366f1" />
+          <DataRow label="💰 Importe total:" value={task.datos?.importe_total} color="#6366f1" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Decisiones sobre autorizaciones, detalles..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -367,17 +322,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'gastos_extra') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Gastos extra detectados</div>
-            <div style={{ color: '#6b7280' }}>Cargando gastos fuera de lo normal...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Por departamento/centro</div>
-            <div style={{ color: '#6b7280', fontSize: '12px' }}>Cargando desglose...</div>
-          </div>
-          <textarea placeholder="Análisis de gastos extra y justificaciones..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="⚠️ Gastos fuera de lo normal:" value={task.datos?.num_gastos_extra} color="#ef4444" />
+          <DataRow label="💸 Importe total:" value={task.datos?.importe_gastos_extra} color="#dc2626" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Análisis de gastos extra, justificaciones, acciones..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -385,20 +334,12 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'incidencias_checklist_operaciones') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#ef4444' }}>⚠️ Incidencias importantes del checklist</div>
-            <div style={{ color: '#6b7280' }}>Cargando incidencias de checklist...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Resumen</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Críticas:</strong> <span style={{ color: '#ef4444' }}>Cargando...</span></div>
-              <div>• <strong>Importantes:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Plan de acción sobre incidencias..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="🔴 Críticas:" value={task.datos?.criticas} color="#ef4444" />
+          <DataRow label="🟡 Importantes:" value={task.datos?.importantes} color="#f59e0b" />
+          <DataRow label="🟢 Menores:" value={task.datos?.menores} color="#10b981" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Plan de acción sobre incidencias de operaciones..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -406,17 +347,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'eventos_actividades') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#e0e7ff', border: '1px solid #6366f1', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6366f1' }}>📅 Próximos eventos</div>
-            <div style={{ color: '#6b7280' }}>Cargando eventos programados...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>✅ Actividades pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando actividades...</div>
-          </div>
-          <textarea placeholder="Planificación y coordinación de eventos..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="📅 Próximos eventos programados:" value={task.datos?.proximos_eventos} color="#6366f1" />
+          <DataRow label="✅ Actividades pendientes:" value={task.datos?.actividades_pendientes} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Planificación y coordinación de eventos, responsables..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -424,17 +359,11 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'sugerencias_peticiones') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f3e8ff', border: '1px solid #a855f7', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#a855f7' }}>💡 Sugerencias del sistema</div>
-            <div style={{ color: '#6b7280' }}>Cargando sugerencias...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📝 Peticiones pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando peticiones...</div>
-          </div>
-          <textarea placeholder="Respuesta a sugerencias y peticiones..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="💡 Sugerencias pendientes:" value={task.datos?.sugerencias_pendientes} color="#a855f7" />
+          <DataRow label="📝 Peticiones sin resolver:" value={task.datos?.peticiones_pendientes} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Respuesta a sugerencias y peticiones, decisiones..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
@@ -442,31 +371,32 @@ export const RecurringTaskTypeContent: React.FC<RecurringTaskTypeContentProps> =
   if (task.tipo === 'comunicados_franquiciados') {
     return (
       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px' }}>
-        <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3b82f6' }}>📢 Comunicados pendientes</div>
-            <div style={{ color: '#6b7280' }}>Cargando comunicados con franquiciados...</div>
-          </div>
-          <div style={{ padding: '8px', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#6b7280' }}>📊 Estado</div>
-            <div style={{ display: 'grid', gap: '4px', fontSize: '12px' }}>
-              <div>• <strong>Pendientes de envío:</strong> <span style={{ color: '#f59e0b' }}>Cargando...</span></div>
-              <div>• <strong>Enviados sin respuesta:</strong> <span style={{ color: '#3b82f6' }}>Cargando...</span></div>
-            </div>
-          </div>
-          <textarea placeholder="Nuevos comunicados o seguimiento..." style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', boxSizing: 'border-box' }} />
+        <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+          <DataRow label="📢 Pendientes de envío:" value={task.datos?.comunicados_pendientes} color="#f59e0b" />
+          <DataRow label="📬 Enviados sin respuesta:" value={task.datos?.sin_respuesta} color="#3b82f6" />
         </div>
+        <NotesTextarea value={task.notas} placeholder="Nuevos comunicados, seguimiento, respuestas..." index={index} onNoteChange={onNoteChange} />
       </div>
     );
   }
 
-  // Default: simple task with note textarea
+  // Default: simple task — textarea siempre guardado
   return (
     <textarea
       placeholder="Notas sobre esta tarea recurrente..."
-      value={task.notas}
-      onChange={async (e) => onNoteChange(index, e.target.value)}
-      style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', minHeight: '60px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+      value={task.notas || ''}
+      onChange={(e) => onNoteChange(index, e.target.value)}
+      style={{
+        width: '100%',
+        padding: '8px 12px',
+        border: '1px solid #d1d5db',
+        borderRadius: '6px',
+        fontSize: '14px',
+        minHeight: '60px',
+        fontFamily: 'inherit',
+        resize: 'vertical',
+        boxSizing: 'border-box'
+      }}
     />
   );
 };
