@@ -149,7 +149,8 @@ async function syncPagos(center: CenterKey): Promise<number> {
 }
 
 // ── Handler principal ────────────────────────────────────────────────────────
-export default async function handler() {
+// Acepta Request opcional: funciona tanto como cron scheduled como HTTP on-demand
+export default async function handler(_req?: Request) {
     console.log(`[wodbuster-daily-sync] Iniciando sync — ${new Date().toISOString()}`);
 
     const results: Record<string, any> = {};
