@@ -1,6 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Guarda snapshot en wodbuster_snapshots con el tag de centro correcto
+async function saveSnapshot(center: string, atletas: unknown[]) {
+    const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const activeCount = (atletas as any[]).filter((a) => !a.Borrado).length
+    const { error } = await supabaseAdmin.from('wodbuster_snapshots').insert({
+        center,
+        data:          atletas,
+        athlete_count: atletas.length,
+        active_count:  activeCount,
+    })
+    if (error) console.error(`[proxy] saveSnapshot [${center}] error:`, error.message)
+    else console.log(`[proxy] Snapshot guardado [${center}]: ${atletas.length} atletas, ${activeCount} activos`)
+}
+
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -120,7 +138,12 @@ serve(async (req) => {
         const data = await wbResponse.json()
         console.log(`✅ [${center.toUpperCase()}] Received ${Array.isArray(data) ? data.length : 0} records`)
 
-        // 4. Return Data with center metadata
+        // 4. Si es llamada a Atletas, guardar snapshot con centro tag
+        if (endpoint.includes('Atletas') && Array.isArray(data) && data.length > 0) {
+            await saveSnapshot(center, data)
+        }
+
+        // 5. Return Data with center metadata
         return new Response(JSON.stringify({
             center,
             timestamp: new Date().toISOString(),

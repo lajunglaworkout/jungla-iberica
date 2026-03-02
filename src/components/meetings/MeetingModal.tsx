@@ -4,7 +4,6 @@ import { TaskCompletionModal } from './TaskCompletionModal';
 import { MeetingModalProps } from './MeetingModalTypes';
 import { PreviousTasksSection } from './PreviousTasksSection';
 import { RecurringTasksSection } from './RecurringTasksSection';
-import { ObjectivesSection } from './ObjectivesSection';
 import { TranscriptionSection } from './TranscriptionSection';
 import { ActaPreviewModal } from './ActaPreviewModal';
 import { NextMeetingScheduler } from './NextMeetingScheduler';
@@ -58,7 +57,15 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
     handleRemoveRecurringTask,
     handleToggleRecurringTaskCompleted,
     handleGenerateActa,
-    handleSaveAfterReview
+    handleSaveAfterReview,
+    previousObjectives,
+    objectiveReviews,
+    newObjectives,
+    handleObjectiveReview,
+    handleObjectiveReviewNota,
+    handleNewObjectiveChange,
+    handleAddNewObjective,
+    handleRemoveNewObjective,
   } = useMeetingModal({ departmentId, meeting, userEmail, participants, preselectedLeadId, onClose, onSuccess });
 
   return (
@@ -183,6 +190,108 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
 
         {/* Contenido Principal */}
         <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+
+          {/* ── [0] Objetivos de la reunión anterior ── */}
+          {previousObjectives.length > 0 && (
+            <div style={{
+              marginBottom: '24px',
+              border: '2px solid #f59e0b',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 1px 4px rgba(245,158,11,0.15)',
+            }}>
+              <div style={{
+                padding: '12px 18px',
+                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}>
+                <span style={{ fontSize: '18px' }}>🎯</span>
+                <span style={{ fontWeight: '700', fontSize: '15px', color: '#92400e' }}>
+                  Objetivos de la reunión anterior
+                </span>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: '11px',
+                  background: '#92400e',
+                  color: 'white',
+                  borderRadius: '20px',
+                  padding: '2px 10px',
+                  fontWeight: '600',
+                }}>
+                  {Object.values(objectiveReviews).filter(r => r.conseguido !== null).length}/{previousObjectives.length} revisados
+                </span>
+              </div>
+              <div style={{ padding: '14px 18px', background: 'white', display: 'grid', gap: '12px' }}>
+                {previousObjectives.map((obj) => {
+                  const r = objectiveReviews[obj.id];
+                  const estado = r?.conseguido === true ? 'conseguido' : r?.conseguido === false ? 'no_conseguido' : null;
+                  return (
+                    <div key={obj.id} style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${estado === 'conseguido' ? '#10b981' : estado === 'no_conseguido' ? '#ef4444' : '#e5e7eb'}`,
+                      background: estado === 'conseguido' ? '#f0fdf4' : estado === 'no_conseguido' ? '#fef2f2' : '#f9fafb',
+                    }}>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#374151', fontWeight: '500' }}>
+                        "{obj.texto}"
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleObjectiveReview(obj.id, true)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            border: '2px solid #10b981',
+                            background: estado === 'conseguido' ? '#10b981' : 'white',
+                            color: estado === 'conseguido' ? 'white' : '#10b981',
+                            fontWeight: '600',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✅ Conseguido
+                        </button>
+                        <button
+                          onClick={() => handleObjectiveReview(obj.id, false)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            border: '2px solid #ef4444',
+                            background: estado === 'no_conseguido' ? '#ef4444' : 'white',
+                            color: estado === 'no_conseguido' ? 'white' : '#ef4444',
+                            fontWeight: '600',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ❌ No conseguido
+                        </button>
+                        {estado !== null && (
+                          <input
+                            type="text"
+                            placeholder="Nota opcional..."
+                            value={r?.nota ?? ''}
+                            onChange={(e) => handleObjectiveReviewNota(obj.id, e.target.value)}
+                            style={{
+                              flex: 1,
+                              minWidth: '160px',
+                              padding: '6px 10px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <PreviousTasksSection
             previousTasks={previousTasks}
             previousTasksCompleted={previousTasksCompleted}
@@ -209,12 +318,6 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             onAddManualTask={handleAddManualTask}
           />
 
-          <ObjectivesSection
-            departmentObjectives={departmentObjectives}
-            objectiveValues={objectiveValues}
-            onSetObjectiveValues={setObjectiveValues}
-          />
-
           <TranscriptionSection
             manualTranscript={manualTranscript}
             showRecorder={showRecorder}
@@ -225,6 +328,85 @@ export const MeetingModal: React.FC<MeetingModalProps> = ({
             onShowRecorder={setShowRecorder}
             onRecordingComplete={(transcript) => setManualTranscript(transcript)}
           />
+
+          {/* ── [5] Nuevos objetivos para la próxima reunión ── */}
+          <div style={{
+            marginTop: '24px',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '12px 18px',
+              background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              <span style={{ fontSize: '18px' }}>🎯</span>
+              <span style={{ fontWeight: '700', fontSize: '15px', color: '#1e40af' }}>
+                Objetivos para la próxima reunión
+              </span>
+              <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#1e40af' }}>
+                La IA los incluirá en el acta y los recordará en la siguiente reunión
+              </span>
+            </div>
+            <div style={{ padding: '14px 18px', background: 'white', display: 'grid', gap: '8px' }}>
+              {newObjectives.map((txt, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#3b82f6', fontWeight: '700', fontSize: '16px', flexShrink: 0 }}>·</span>
+                  <input
+                    type="text"
+                    placeholder={`Objetivo ${idx + 1}... (ej: mejorar retención en Jerez)`}
+                    value={txt}
+                    onChange={(e) => handleNewObjectiveChange(idx, e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1.5px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                  {newObjectives.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveNewObjective(idx)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#9ca3af',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        padding: '0 4px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={handleAddNewObjective}
+                style={{
+                  marginTop: '4px',
+                  padding: '7px 14px',
+                  border: '1.5px dashed #93c5fd',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#3b82f6',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  width: 'fit-content',
+                }}
+              >
+                + Añadir objetivo
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Footer */}

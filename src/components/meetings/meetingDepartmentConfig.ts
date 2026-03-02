@@ -94,3 +94,23 @@ export const OPERACIONES_TASKS: RecurringTask[] = [
   { titulo: 'Sugerencias o peticiones', notas: '', tipo: 'sugerencias_peticiones', datos: {} },
   { titulo: 'Comunicados con franquiciados', notas: '', tipo: 'comunicados_franquiciados', datos: {} }
 ];
+
+// ── Módulos con datos reales en tiempo real ───────────────────────────────────
+
+export const EVENTOS_TASKS: RecurringTask[] = [
+  { titulo: 'Estado del módulo de Eventos', notas: '', tipo: 'eventos_resumen', datos: {} },
+  { titulo: 'Próximos eventos y seguimiento', notas: '', tipo: 'simple', datos: {} },
+  { titulo: 'Decisiones y acciones pendientes', notas: '', tipo: 'simple', datos: {} },
+];
+
+export const ACADEMY_TASKS: RecurringTask[] = [
+  { titulo: 'Estado de la Academia', notas: '', tipo: 'academy_resumen', datos: {} },
+  { titulo: 'Seguimiento de cohortes y alumnos', notas: '', tipo: 'simple', datos: {} },
+  { titulo: 'Decisiones y acciones pendientes', notas: '', tipo: 'simple', datos: {} },
+];
+
+export const ONLINE_TASKS: RecurringTask[] = [
+  { titulo: 'Estado del módulo Online', notas: '', tipo: 'online_resumen', datos: {} },
+  { titulo: 'Estrategia y planificación de contenido', notas: '', tipo: 'simple', datos: {} },
+  { titulo: 'Decisiones y acciones pendientes', notas: '', tipo: 'simple', datos: {} },
+];

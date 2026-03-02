@@ -247,7 +247,7 @@ const LogisticsManagementSystem: React.FC = () => {
     else { if (!newOrder.supplier_id || newOrder.items.length === 0) { ui.info('Por favor, selecciona un proveedor y añade al menos un producto'); return; } }
     const totalAmount = newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
     const orderPrefix = newOrder.type === 'center_to_brand' ? 'REQ' : 'PED';
-    const newOrderId = `${orderPrefix}-2025-${String(orders.length + 1).padStart(3, '0')}`;
+    const newOrderId = `${orderPrefix}-${new Date().getFullYear()}-${String(orders.length + 1).padStart(3, '0')}`;
     const orderToAdd: Order = { id: newOrderId, type: newOrder.type, from: newOrder.from, to: newOrder.to, date: new Date().toISOString().split('T')[0], delivery_date: newOrder.expected_delivery, estimated_delivery: newOrder.expected_delivery, amount: totalAmount, status: 'pending', created_by: currentUser?.name || 'Sistema', items: newOrder.items.map(item => ({ ...item, total_price: item.quantity * item.unit_price, available_stock: inventoryItems.find(inv => inv.id === item.product_id)?.quantity || 0, has_sufficient_stock: (inventoryItems.find(inv => inv.id === item.product_id)?.quantity || 0) >= item.quantity })), notes: newOrder.notes };
     setOrders(prev => [...prev, orderToAdd]);
     setNotifications(prev => [{ id: Date.now(), type: 'new_order', title: newOrder.type === 'center_to_brand' ? '🏪 Nueva Solicitud de Centro' : '📦 Nuevo Pedido a Proveedor', message: `${newOrderId} creado: €${totalAmount.toFixed(2)}`, order_id: newOrderId, timestamp: new Date().toISOString(), priority: 'medium', from: 'Sistema', read: false, urgent: totalAmount > 500 }, ...prev]);

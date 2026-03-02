@@ -128,35 +128,31 @@ export const OnlineDashboard: React.FC<OnlineDashboardProps> = ({ hideBilling = 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12">
                 <KPICard
                     title="Facturación Mes"
-                    value={`${metrics.monthlyRevenue} €`}
-                    subtitle="Harbiz"
+                    value="—"
+                    subtitle="Harbiz no conectado"
                     icon={DollarSign}
-                    color="#14b8a6" // Teal
-                    trend="stable"
-                    trendValue="+0%"
+                    color="#14b8a6"
                 />
                 <KPICard
                     title="Clientes Activos"
                     value={metrics.activeClients}
                     subtitle="Suscripciones activas"
                     icon={Users}
-                    color="#22c55e" // Green
-                    trend="up"
-                    trendValue="+0"
+                    color="#22c55e"
                 />
                 <KPICard
                     title="Contenido Publicado"
                     value={metrics.contentPieces}
                     subtitle="Total biblioteca"
                     icon={Video}
-                    color="#f59e0b" // Amber
+                    color="#f59e0b"
                 />
                 <KPICard
                     title="Engagement"
-                    value="0%"
-                    subtitle="Promedio mensual"
+                    value="—"
+                    subtitle="Sin datos conectados"
                     icon={Activity}
-                    color="#ec4899" // Pink
+                    color="#ec4899"
                 />
             </div>
 

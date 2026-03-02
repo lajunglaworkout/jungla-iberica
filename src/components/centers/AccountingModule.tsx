@@ -210,7 +210,6 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
   };
 
   // Suppress unused variable warnings for functions defined but not yet wired to JSX
-  void addCuota; void updateCuotaTipo; void removeCuota;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', overflowX: 'auto' }}>
@@ -246,13 +245,6 @@ const AccountingModule: React.FC<AccountingModuleProps> = ({ centerName, centerI
 
         {activeTab === 'entrada' && (
           <>
-            <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', padding: '12px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ fontSize: '20px' }}>🚀</div>
-              <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#065f46' }}>Sistema de Registro Incremental</p>
-                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#047857' }}>Día 5: Añade +200 clientes • Día 15: Añade +150 clientes • Total automático: 350 clientes</p>
-              </div>
-            </div>
             {loading && <p style={{ textAlign: 'center', color: '#6b7280' }}>Cargando datos...</p>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', minWidth: '1100px' }}>
               <AccountingIngresosPanel data={data} onChange={handleChange} />

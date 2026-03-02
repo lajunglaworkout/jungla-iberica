@@ -7,6 +7,11 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Sync diario Wodbuster — 04:00 UTC todos los días
+[functions."wodbuster-daily-sync"]
+  schedule = "0 4 * * *"
 
 [[redirects]]
   from = "/*"

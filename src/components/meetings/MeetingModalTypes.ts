@@ -46,6 +46,21 @@ export interface ObjectiveValue {
 
 export type MeetingType = 'FISICA' | 'VIDEOLLAMADA';
 
+// ── Objetivos por reunión (nuevo sistema texto libre) ────────────────────────
+
+/** Objetivo de la reunión anterior pendiente de revisión */
+export interface PendingObjective {
+  id: string;
+  texto: string;
+  orden: number;
+}
+
+/** Estado de revisión de un objetivo pendiente en la reunión actual */
+export interface ObjectiveReview {
+  conseguido: boolean | null;   // null = sin marcar
+  nota: string;
+}
+
 export interface NewTask {
   title: string;
   assignedTo: string;

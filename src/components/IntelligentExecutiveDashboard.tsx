@@ -1,12 +1,12 @@
 // src/components/IntelligentExecutiveDashboard.tsx - Sistema Ejecutivo Inteligente
 import React, { useState, useEffect } from 'react';
 import {
-  Calendar, Clock, Target, Flag, MessageSquare, FileText, Send,
-  AlertCircle, CheckCircle, TrendingUp, TrendingDown, Zap,
-  Brain, BarChart3, Users, Bell, X, Plus, Eye, Edit, Trash2,
-  ArrowUp, ArrowDown, Minus, Activity, Lightbulb, Shield,
-  Timer, Award, AlertTriangle, CheckCircle2, XCircle,
-  Search, Filter, RefreshCw, Download, Settings, Loader2
+  Calendar, Clock, Target, MessageSquare,
+  AlertCircle, TrendingUp, TrendingDown, Zap,
+  Brain, BarChart3, Users, Bell, X, Plus,
+  Minus, Lightbulb, Shield,
+  Award, AlertTriangle, CheckCircle2,
+  RefreshCw, Loader2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase'; // TODO: Extract to executiveDashboardService.ts - queries alertas_automaticas, objetivos, reuniones, inbox_messages, metricas_departamento (no existing service covers these)
 import { useSession } from '../contexts/SessionContext';
@@ -66,22 +66,6 @@ interface SmartAlert {
   resuelta_en?: string;
 }
 
-interface DepartmentMetrics {
-  departamento: string;
-  mes: string;
-  objetivos_totales: number;
-  objetivos_completados: number;
-  objetivos_en_riesgo: number;
-  tasa_cumplimiento: number;
-  tiempo_promedio_resolucion: number;
-  efectividad_reuniones: number;
-  numero_reuniones: number;
-  tendencia: 'mejorando' | 'estable' | 'empeorando';
-  prediccion_siguiente_mes: number;
-  score_rendimiento: number;
-  calculado_en?: string;
-}
-
 interface SmartMeeting {
   id?: string;
   titulo: string;
@@ -126,7 +110,6 @@ const IntelligentExecutiveDashboard: React.FC = () => {
   const [objectives, setObjectives] = useState<SmartObjective[]>([]);
   const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [meetings, setMeetings] = useState<SmartMeeting[]>([]);
-  const [departmentMetrics, setDepartmentMetrics] = useState<DepartmentMetrics[]>([]);
 
   // Estados para modales
   const [showObjectiveModal, setShowObjectiveModal] = useState(false);
@@ -160,7 +143,6 @@ const IntelligentExecutiveDashboard: React.FC = () => {
         loadObjectives(),
         loadAlerts(),
         loadMeetings(),
-        loadDepartmentMetrics(),
         loadCXStats()
       ]);
 
@@ -258,17 +240,6 @@ const IntelligentExecutiveDashboard: React.FC = () => {
       }
     } catch {
       // Error loading CX stats, ignorar
-    }
-  };
-
-  const loadDepartmentMetrics = async () => {
-    const { data, error } = await supabase
-      .from('metricas_departamento')
-      .select('*')
-      .order('calculado_en', { ascending: false });
-
-    if (!error && data) {
-      setDepartmentMetrics(data);
     }
   };
 

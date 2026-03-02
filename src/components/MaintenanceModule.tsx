@@ -64,7 +64,6 @@ const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
         : null;
 
       if (activeAssignment) {
-        console.log('✅ Revisión trimestral activa encontrada:', activeAssignment.id);
         setHasActiveQuarterly(true);
         setCurrentView('quarterly');
       } else {

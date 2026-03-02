@@ -37,42 +37,6 @@ interface MarketingContent {
     center_id?: string; // For specific center content
 }
 
-// ============ MOCK DATA ============
-const MOCK_CONTENT: MarketingContent[] = [
-    {
-        id: '1',
-        title: 'Testimonio Cliente - Transformación 6 meses',
-        category: 'clientes',
-        type: 'video',
-        status: 'grabado',
-        filmmaker_id: 'luis',
-        scheduled_date: '2025-12-15',
-        drive_link: 'https://drive.google.com/file/d/1...',
-        script: 'Entrevista con María sobre su proceso de pérdida de peso...',
-        created_at: '2025-12-01T10:00:00Z'
-    },
-    {
-        id: '2',
-        title: '5 Tips para mejorar tu Sentadilla',
-        category: 'educativo',
-        type: 'reel',
-        status: 'pendiente',
-        filmmaker_id: 'maria',
-        scheduled_date: '2025-12-20',
-        created_at: '2025-12-02T15:30:00Z'
-    },
-    {
-        id: '3',
-        title: 'Challenge Burpees - Staff vs Clientes',
-        category: 'viral',
-        type: 'reel',
-        status: 'editado',
-        filmmaker_id: 'diego',
-        scheduled_date: '2025-12-10',
-        drive_link: 'https://drive.google.com/file/d/2...',
-        created_at: '2025-11-28T09:15:00Z'
-    }
-];
 
 const CATEGORIES = [
     { value: 'clientes', label: 'Clientes', color: '#2563eb' },
@@ -96,7 +60,7 @@ interface MarketingContenidoViewProps {
 }
 
 export const MarketingContenidoView: React.FC<MarketingContenidoViewProps> = ({ onBack }) => {
-    const [contents, setContents] = useState<MarketingContent[]>(MOCK_CONTENT);
+    const [contents, setContents] = useState<MarketingContent[]>([]);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');

@@ -6,6 +6,7 @@ import {
   saveMeetingBottlenecks
 } from '../services/meetingAnalyticsService';
 import { maintenanceService } from '../services/maintenanceService';
+import { clientsService } from '../services/clientsService';
 import { notificationService } from '../services/notificationService';
 import { insertTasks, getPendingTasksByDepartment } from '../services/taskService';
 import { updateMeetingTasks, scheduleMeeting } from '../services/meetingService';
@@ -13,13 +14,16 @@ import { getAllEmployees } from '../services/userService';
 import { getActiveLeads } from '../services/leadService';
 import { alertService, getOrdersByStatus } from '../services/logisticsService';
 import { getPendingVacationRequestsRaw, getPendingUniformRequestsRaw } from '../services/hrService';
+import { meetingObjectivesService } from '../services/meetingObjectivesService';
 import { ui } from '../utils/ui';
 import {
   PreviousTask,
   RecurringTask,
   DepartmentObjective,
   MeetingType,
-  Employee
+  Employee,
+  PendingObjective,
+  ObjectiveReview,
 } from '../components/meetings/MeetingModalTypes';
 import {
   OBJECTIVES_BY_DEPT,
@@ -28,8 +32,13 @@ import {
   LOGISTICA_TASKS,
   MANTENIMIENTO_TASKS,
   CONTABILIDAD_TASKS,
-  OPERACIONES_TASKS
+  OPERACIONES_TASKS,
+  EVENTOS_TASKS,
+  ACADEMY_TASKS,
+  ONLINE_TASKS,
 } from '../components/meetings/meetingDepartmentConfig';
+import { eventosService, participantesService, gastosService, ingresosService, tareasService as eventosTareasService } from '../services/eventService';
+import { academyDashboardService, onlineDashboardService } from '../services/academyService';
 
 export const useMeetingModal = ({
   departmentId,
@@ -62,6 +71,10 @@ export const useMeetingModal = ({
   const [showRecorder, setShowRecorder] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  // ── Objetivos (nuevo sistema texto libre) ─────────────────────────────────
+  const [previousObjectives, setPreviousObjectives] = useState<PendingObjective[]>([]);
+  const [objectiveReviews, setObjectiveReviews] = useState<Record<string, ObjectiveReview>>({});
+  const [newObjectives, setNewObjectives] = useState<string[]>(['']);
   const [generatingActa, setGeneratingActa] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedTaskForCompletion, setSelectedTaskForCompletion] = useState<PreviousTask | null>(null);
@@ -84,6 +97,7 @@ export const useMeetingModal = ({
     loadRecurringTasks();
     loadDepartmentObjectives();
     loadEmployees();
+    loadPreviousObjectives();
 
     if (departmentId === 'ventas' || departmentId === 'sales') {
       loadLeads();
@@ -99,19 +113,85 @@ export const useMeetingModal = ({
     setDepartmentObjectives(objectives);
   };
 
+  const loadPreviousObjectives = async () => {
+    try {
+      const objs = await meetingObjectivesService.getPendingObjectives(departmentId);
+      setPreviousObjectives(objs.map(o => ({ id: o.id!, texto: o.texto, orden: o.orden ?? 0 })));
+    } catch (e) {
+      console.error('Error cargando objetivos previos:', e);
+    }
+  };
+
+  const handleObjectiveReview = (id: string, conseguido: boolean | null, nota?: string) => {
+    setObjectiveReviews(prev => ({
+      ...prev,
+      [id]: { conseguido, nota: nota ?? prev[id]?.nota ?? '' },
+    }));
+  };
+
+  const handleObjectiveReviewNota = (id: string, nota: string) => {
+    setObjectiveReviews(prev => ({
+      ...prev,
+      [id]: { conseguido: prev[id]?.conseguido ?? null, nota },
+    }));
+  };
+
+  const handleNewObjectiveChange = (idx: number, value: string) => {
+    setNewObjectives(prev => prev.map((v, i) => (i === idx ? value : v)));
+  };
+
+  const handleAddNewObjective = () => {
+    setNewObjectives(prev => [...prev, '']);
+  };
+
+  const handleRemoveNewObjective = (idx: number) => {
+    setNewObjectives(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const loadRecurringTasks = async () => {
     // ── Dirección ────────────────────────────────────────────────────────────
     if (departmentId === 'direccion') {
-      let maintenanceStats = { criticalIssues: 0, pendingTasks: 0 };
-      try {
-        const stats = await maintenanceService.getMaintenanceStats();
-        maintenanceStats = { criticalIssues: stats.criticalIssues, pendingTasks: stats.pendingTasks };
-      } catch (error) {
-        console.error('Error fetching maintenance stats:', error);
-      }
+      // Objetivos de facturación por centro (configurables — sin tabla BD por ahora)
+      const CENTROS_CONFIG = [
+        { label: 'Sevilla', id: 'sevilla', objetivo_facturacion: 22000 },
+        { label: 'Jerez',   id: 'jerez',   objetivo_facturacion: 17000 },
+        { label: 'Puerto',  id: 'puerto',  objetivo_facturacion: 15000 },
+      ];
+
+      const now = new Date();
+      const mes = now.getMonth() + 1;
+      const año = now.getFullYear();
+
+      const [maintenanceStats, centrosValores] = await Promise.all([
+        maintenanceService.getMaintenanceStats().catch(() => ({ criticalIssues: 0, pendingTasks: 0 })),
+        Promise.all(
+          CENTROS_CONFIG.map(async (c) => {
+            try {
+              const m = await clientsService.getClientMetrics(c.id, c.label, mes, año);
+              return {
+                label: c.label,
+                valores: {
+                  ingresos: m.facturacion_total,
+                  clientes_activos: m.clientes_activos,
+                  nuevos: m.altas_reales,
+                  bajas: m.bajas_reales,
+                  objetivo_clientes: m.objetivo_mensual,
+                  objetivo_facturacion: c.objetivo_facturacion,
+                },
+              };
+            } catch (e) {
+              console.error(`Error cargando métricas ${c.label}:`, e);
+              return { label: c.label, valores: { objetivo_facturacion: c.objetivo_facturacion } };
+            }
+          })
+        ).then((results) =>
+          Object.fromEntries(results.map((r) => [r.label, r.valores]))
+        ),
+      ]);
+
       setRecurringTasks([
         { titulo: 'Incidencias urgentes', notas: '', tipo: 'incidencias', datos: { incidencias_abiertas: maintenanceStats.criticalIssues, nuevas_desde_ultima_reunion: maintenanceStats.pendingTasks } },
-        { titulo: 'Revisión de contabilidad y clientes de cada centro', notas: '', tipo: 'expandible_centros', datos: { centros: ['Sevilla', 'Jerez', 'Puerto'], valores: {} } },
+        { titulo: 'Revisión de contabilidad y clientes de cada centro', notas: '', tipo: 'expandible_centros', datos: { centros: CENTROS_CONFIG.map((c) => c.label), valores: centrosValores } },
         { titulo: 'Datos de rendimiento de cada departamento', notas: '', tipo: 'expandible_departamentos', datos: { departamentos: ['rrhh', 'procedimientos', 'logistica', 'mantenimiento', 'marketing', 'ventas'], valores: {} } }
       ]);
       return;
@@ -191,6 +271,78 @@ export const useMeetingModal = ({
 
     if (DEPT_TASK_MAP[departmentId]) {
       setRecurringTasks(DEPT_TASK_MAP[departmentId]);
+      return;
+    }
+
+    // ── Eventos — datos en tiempo real desde eventService ───────────────────
+    if (departmentId === 'eventos') {
+      const hoy = new Date();
+      const firstDay = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay  = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      let activos = 0, este_mes = 0, participantes = 0, tareas_pendientes = 0, balance = 0;
+      try {
+        const [a, m, p, t, gastos, ingresos] = await Promise.all([
+          eventosService.countActive(),
+          eventosService.countByDateRange(firstDay, lastDay),
+          participantesService.countAll(),
+          eventosTareasService.countPending(),
+          gastosService.getAll('coste'),
+          ingresosService.getAll('importe'),
+        ]);
+        activos          = a;
+        este_mes         = m;
+        participantes    = p;
+        tareas_pendientes = t;
+        const totalGastos   = (gastos as Record<string, number>[]).reduce((s, g) => s + (g.coste   || 0), 0);
+        const totalIngresos = (ingresos as Record<string, number>[]).reduce((s, i) => s + (i.importe || 0), 0);
+        balance = totalIngresos - totalGastos;
+      } catch { /* mantiene defaults */ }
+
+      setRecurringTasks([
+        { ...EVENTOS_TASKS[0], datos: { activos, este_mes, participantes, tareas_pendientes, balance } },
+        { ...EVENTOS_TASKS[1] },
+        { ...EVENTOS_TASKS[2] },
+      ]);
+      return;
+    }
+
+    // ── Academy — datos en tiempo real desde academyDashboardService ─────────
+    if (departmentId === 'academy') {
+      let alumnos_activos = 0, tutores_activos = 0, centros_activos = 0, cohortes_proximas = 0, tareas_pendientes = 0;
+      try {
+        const m = await academyDashboardService.getMetrics();
+        alumnos_activos   = m.activeStudents  ?? 0;
+        tutores_activos   = m.activeTutors    ?? 0;
+        centros_activos   = m.activeCenters   ?? 0;
+        cohortes_proximas = m.upcomingCohorts ?? 0;
+        tareas_pendientes = m.pendingTasks    ?? 0;
+      } catch { /* mantiene defaults */ }
+
+      setRecurringTasks([
+        { ...ACADEMY_TASKS[0], datos: { alumnos_activos, tutores_activos, centros_activos, cohortes_proximas, tareas_pendientes } },
+        { ...ACADEMY_TASKS[1] },
+        { ...ACADEMY_TASKS[2] },
+      ]);
+      return;
+    }
+
+    // ── Online — datos en tiempo real desde onlineDashboardService ───────────
+    if (departmentId === 'online') {
+      let tareas_pendientes = 0, contenido_produccion = 0, publicaciones_programadas = 0, ideas_nuevas = 0;
+      try {
+        const m = await onlineDashboardService.getMetrics();
+        tareas_pendientes        = m.pendingTasks    ?? 0;
+        contenido_produccion     = m.contentPieces   ?? 0;
+        publicaciones_programadas = m.scheduledPosts ?? 0;
+        ideas_nuevas             = m.newIdeas        ?? 0;
+      } catch { /* mantiene defaults */ }
+
+      setRecurringTasks([
+        { ...ONLINE_TASKS[0], datos: { tareas_pendientes, contenido_produccion, publicaciones_programadas, ideas_nuevas } },
+        { ...ONLINE_TASKS[1] },
+        { ...ONLINE_TASKS[2] },
+      ]);
       return;
     }
 
@@ -309,13 +461,29 @@ export const useMeetingModal = ({
         .map(t => `- ${t.titulo} (asignada a: ${t.asignado_a})`)
         .join('\n') || 'No hay tareas pendientes';
 
+      // Contexto de objetivos para la AI
+      const prevObjContext = previousObjectives.length > 0
+        ? previousObjectives.map(o => {
+            const r = objectiveReviews[o.id];
+            const estado = r?.conseguido === true ? '✅ CONSEGUIDO' : r?.conseguido === false ? '❌ NO CONSEGUIDO' : '⬜ Sin revisar';
+            return `- "${o.texto}" → ${estado}${r?.nota ? ` (nota: ${r.nota})` : ''}`;
+          }).join('\n')
+        : '';
+      const newObjContext = newObjectives.filter(t => t.trim()).length > 0
+        ? newObjectives.filter(t => t.trim()).map(t => `- ${t}`).join('\n')
+        : '';
+      const objectivesContext = [
+        prevObjContext ? `Objetivos reunión anterior:\n${prevObjContext}` : '',
+        newObjContext ? `Nuevos objetivos para próxima reunión:\n${newObjContext}` : '',
+      ].filter(Boolean).join('\n\n');
+
       const result = await generateMeetingMinutes({
         transcription,
         departmentName: departmentId || 'General',
         date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
         participants: participants || [],
         pendingTasks: pendingTasksText,
-        objectives: departmentObjectives.map(o => o.nombre).join(', '),
+        objectives: objectivesContext || departmentObjectives.map(o => o.nombre).join(', '),
       });
 
       if (result.parseWarning) {
@@ -421,6 +589,26 @@ export const useMeetingModal = ({
           fecha_limite: task.fecha_limite
         }));
       if (bottlenecksToSave.length > 0) await saveMeetingBottlenecks(bottlenecksToSave);
+
+      // ── Guardar revisiones de objetivos previos ────────────────────────────
+      await Promise.all(
+        previousObjectives
+          .filter(o => objectiveReviews[o.id]?.conseguido !== null && objectiveReviews[o.id]?.conseguido !== undefined)
+          .map(o =>
+            meetingObjectivesService.reviewObjective(
+              o.id,
+              objectiveReviews[o.id].conseguido as boolean,
+              objectiveReviews[o.id].nota,
+              meetingId
+            )
+          )
+      );
+
+      // ── Guardar nuevos objetivos para la próxima reunión ──────────────────
+      const textos = newObjectives.filter(t => t.trim());
+      if (textos.length > 0) {
+        await meetingObjectivesService.saveObjectives(meetingId, departmentId, textos);
+      }
 
       if (generatedTasks && generatedTasks.length > 0) {
         const tasksToSave = generatedTasks.map((task: Record<string, unknown>) => ({
@@ -547,6 +735,15 @@ export const useMeetingModal = ({
     handleRemoveRecurringTask,
     handleToggleRecurringTaskCompleted,
     handleGenerateActa,
-    handleSaveAfterReview
+    handleSaveAfterReview,
+    // Objetivos nuevo sistema
+    previousObjectives,
+    objectiveReviews,
+    newObjectives,
+    handleObjectiveReview,
+    handleObjectiveReviewNota,
+    handleNewObjectiveChange,
+    handleAddNewObjective,
+    handleRemoveNewObjective,
   };
 };

@@ -93,24 +93,14 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         return;
       }
 
-      console.log(`📊 Reuniones futuras cargadas para ${departmentId}:`, data?.length || 0);
-
       // Cargar tareas para cada reunión
       const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
         const { data: tasks, error: tasksError } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_origen', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
+          .eq('reunion_origen', meeting.id);
 
-        if (tasksError) {
-          console.error('Error cargando tareas de reunión:', tasksError);
-          return { ...meeting, tasks: [] };
-        }
-
-        console.log(`📋 Tareas de reunión "${meeting.title}":`, tasks);
-        tasks?.forEach(task => {
-          console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}", estado="${task.estado}"`);
-        });
+        if (tasksError) return { ...meeting, tasks: [] };
 
         return { ...meeting, tasks: tasks || [] };
       }));
@@ -139,19 +129,12 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         return;
       }
 
-      console.log(`📚 Historial de reuniones cargado para ${departmentId}:`, data?.length || 0);
-
       // Cargar tareas para cada reunión
       const meetingsWithTasks = await Promise.all((data || []).map(async (meeting) => {
-        const { data: tasks, error: tasksError } = await supabase
+        const { data: tasks } = await supabase
           .from('tareas')
           .select('*')
-          .eq('reunion_origen', meeting.id); // 🔧 FIX: Usar ID en lugar de título para evitar duplicados
-
-        if (tasksError) {
-          console.error('Error cargando tareas de reunión:', tasksError);
-          return { ...meeting, tasks: [] };
-        }
+          .eq('reunion_origen', meeting.id);
 
         return { ...meeting, tasks: tasks || [] };
       }));
@@ -181,8 +164,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         return;
       }
 
-      console.log('✅ Tarea eliminada correctamente');
-      loadTasks(); // Recargar tareas
+      loadTasks();
     } catch (error) {
       console.error('Error:', error);
       ui.error('Error al eliminar la tarea');
@@ -191,9 +173,6 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
 
   const loadTasks = async () => {
     try {
-      console.log(`🔍 Buscando tareas para usuario: "${userEmail}"`);
-
-      // Cargar tareas pendientes asignadas al usuario actual
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
@@ -202,15 +181,9 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
         .order('fecha_limite', { ascending: true });
 
       if (error) {
-        console.error('Error cargando tareas:', error);
         setTasks([]);
         return;
       }
-
-      console.log(`📊 Tareas encontradas:`, data);
-      data?.forEach(task => {
-        console.log(`  - ${task.titulo}: asignado_a="${task.asignado_a}"`);
-      });
 
       const formattedTasks = (data || []).map((task: Record<string, unknown>) => ({
         id: task.id,
@@ -222,9 +195,7 @@ export const MeetingsDepartmentView: React.FC<MeetingsDepartmentViewProps> = ({
       }));
 
       setTasks(formattedTasks);
-      console.log(`ℹ️ Tareas pendientes asignadas a ${userEmail}: ${formattedTasks.length} tareas`);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       setTasks([]);
     }
   };

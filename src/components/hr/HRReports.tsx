@@ -1,9 +1,9 @@
 // src/components/hr/HRReports.tsx - Sistema de Reportes de RRHH
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, TrendingUp, TrendingDown, Clock, Calendar, AlertCircle, 
-  DollarSign, FileText, Award, Activity, BarChart3, PieChart,
-  Download, Filter, RefreshCw, ArrowLeft, ChevronRight
+import {
+  Users, TrendingDown, Clock, Calendar, AlertCircle,
+  DollarSign, FileText, Activity, BarChart3,
+  Filter, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { getFinancialDataByMonthYear } from '../../services/franquiciadoService';
 import { getAllEmployees } from '../../services/userService';
@@ -74,8 +74,8 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
 
       const data = await getFinancialDataByMonthYear(currentMonth, currentYear);
       setAccountingData(data);
-    } catch (error) {
-      console.error('Error cargando datos de contabilidad:', error);
+    } catch {
+      // non-critical: costes section shows 0 if unavailable
     }
   };
 
@@ -143,15 +143,6 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
         incidentsOverdue
       });
 
-      console.log('📊 Métricas cargadas:', {
-        ausencias: totalAbsences,
-        retrasos: totalLateArrivals,
-        bajas: totalSickLeaves,
-        incidencias: totalIncidents,
-        sinRespuesta: incidentsUnanswered,
-        vencidas: incidentsOverdue,
-        vacacionesPendientes: pendingVacations
-      });
     } catch (error) {
       console.error('Error cargando métricas:', error);
     } finally {
@@ -272,7 +263,7 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
-                📊 Reportes y Analíticas de RRHH
+                Reportes y Analíticas de RRHH
               </h1>
               <p style={{ fontSize: '16px', color: '#6b7280' }}>
                 Dashboard ejecutivo con métricas clave y reportes detallados
@@ -379,12 +370,11 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                 subtitle={`de ${metrics.totalEmployees} totales`}
               />
               <MetricCard
-                title="Nuevas Altas"
-                value={metrics.newHires}
-                icon={<TrendingUp size={24} />}
-                color="#10b981"
-                trend={15}
-                subtitle="Este periodo"
+                title="Bajas del periodo"
+                value={metrics.terminations}
+                icon={<TrendingDown size={24} />}
+                color="#ef4444"
+                subtitle={`de ${metrics.totalEmployees} totales`}
               />
               <MetricCard
                 title="Cobertura de Turnos"
@@ -479,54 +469,74 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                 <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
                   🚨 Alertas y Acciones Requeridas
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {metrics.pendingVacations > 0 && (
-                    <div style={{
-                      padding: '12px',
-                      backgroundColor: '#fef3c7',
-                      borderLeft: '4px solid #f59e0b',
-                      borderRadius: '6px'
-                    }}>
-                      <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
-                        {metrics.pendingVacations} solicitudes de vacaciones pendientes
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#78350f' }}>
-                        Requieren aprobación o rechazo
-                      </div>
+                {(() => {
+                  const hasAlerts = metrics.pendingVacations > 0 || metrics.incidentsUnanswered > 0 || metrics.incidentsOverdue > 0;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {metrics.pendingVacations > 0 && (
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#fef3c7',
+                          borderLeft: '4px solid #f59e0b',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
+                            {metrics.pendingVacations} solicitudes de vacaciones pendientes
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#78350f' }}>
+                            Requieren aprobación o rechazo
+                          </div>
+                        </div>
+                      )}
+                      {metrics.incidentsUnanswered > 0 && (
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#fee2e2',
+                          borderLeft: '4px solid #ef4444',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>
+                            {metrics.incidentsUnanswered} incidencias sin respuesta de RRHH
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#7f1d1d' }}>
+                            Requieren atención inmediata
+                          </div>
+                        </div>
+                      )}
+                      {metrics.incidentsOverdue > 0 && (
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#fee2e2',
+                          borderLeft: '4px solid #dc2626',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>
+                            {metrics.incidentsOverdue} incidencias fuera de plazo
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#7f1d1d' }}>
+                            El plazo de resolución ha vencido
+                          </div>
+                        </div>
+                      )}
+                      {!hasAlerts && (
+                        <div style={{
+                          padding: '12px',
+                          backgroundColor: '#d1fae5',
+                          borderLeft: '4px solid #10b981',
+                          borderRadius: '6px',
+                          textAlign: 'center',
+                          color: '#065f46',
+                          fontWeight: '600'
+                        }}>
+                          Sin alertas pendientes
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {metrics.expiredDocuments > 0 && (
-                    <div style={{
-                      padding: '12px',
-                      backgroundColor: '#fee2e2',
-                      borderLeft: '4px solid #ef4444',
-                      borderRadius: '6px'
-                    }}>
-                      <div style={{ fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>
-                        {metrics.expiredDocuments} documentos vencidos
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#7f1d1d' }}>
-                        Renovar certificados y formaciones
-                      </div>
-                    </div>
-                  )}
-                  {metrics.pendingVacations === 0 && metrics.expiredDocuments === 0 && (
-                    <div style={{
-                      padding: '12px',
-                      backgroundColor: '#d1fae5',
-                      borderLeft: '4px solid #10b981',
-                      borderRadius: '6px',
-                      textAlign: 'center',
-                      color: '#065f46',
-                      fontWeight: '600'
-                    }}>
-                      ✅ No hay alertas pendientes
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
 
-              {/* Acciones rápidas */}
+              {/* Resumen de asistencia */}
               <div style={{
                 backgroundColor: 'white',
                 borderRadius: '12px',
@@ -534,83 +544,36 @@ const HRReports: React.FC<HRReportsProps> = ({ onBack }) => {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
               }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
-                  ⚡ Acciones Rápidas
+                  Resumen del periodo
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button style={{
-                    padding: '12px',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#374151',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <Download size={16} />
-                    Exportar nómina
-                  </button>
-                  <button style={{
-                    padding: '12px',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#374151',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <FileText size={16} />
-                    Generar informe
-                  </button>
-                  <button style={{
-                    padding: '12px',
-                    backgroundColor: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#374151',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <Award size={16} />
-                    Ver evaluaciones
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[
+                    { label: 'Ausencias', value: metrics.totalAbsences, color: '#ef4444' },
+                    { label: 'Retrasos', value: metrics.totalLateArrivals, color: '#f59e0b' },
+                    { label: 'Bajas médicas', value: metrics.totalSickLeaves, color: '#8b5cf6' },
+                    { label: 'Incidencias totales', value: metrics.totalIncidents, color: '#3b82f6' },
+                  ].map(item => (
+                    <div key={item.label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      backgroundColor: `${item.color}08`,
+                      borderRadius: '8px',
+                      borderLeft: `3px solid ${item.color}`
+                    }}>
+                      <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>
+                        {item.label}
+                      </span>
+                      <span style={{ fontSize: '18px', fontWeight: '700', color: item.color }}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Próximamente: Gráficos */}
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '40px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <PieChart size={64} style={{ margin: '0 auto 16px', color: '#9ca3af' }} />
-              <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-                Gráficos y Tendencias
-              </h3>
-              <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-                Visualizaciones de datos próximamente
-              </p>
-              <div style={{ fontSize: '14px', color: '#9ca3af' }}>
-                • Evolución de plantilla • Distribución por centros • Costes laborales • Absentismo
-              </div>
-            </div>
           </div>
         )}
 

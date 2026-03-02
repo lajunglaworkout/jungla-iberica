@@ -95,7 +95,6 @@ export const AIAnalysisService = {
      */
     runFullAnalysis: async (): Promise<void> => {
         try {
-            console.log('Running AI analysis cycle...');
 
             // Check for overdue objectives and create alerts
             const { data: objectives } = await supabase.from('objetivos')

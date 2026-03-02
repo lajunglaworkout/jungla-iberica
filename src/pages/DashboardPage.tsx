@@ -18,7 +18,6 @@ import IncidentCreationModal from '../components/incidents/IncidentCreationModal
 import IncidentManagementModal from '../components/incidents/IncidentManagementModal';
 import '../styles/dashboard.css';
 
-import { SAMPLE_TASKS } from './dashboard/DashboardSampleData';
 import { SmartAlert } from './dashboard/DashboardTypes';
 import { useSmartAlerts } from './dashboard/useSmartAlerts';
 import { DashboardWeekView } from './dashboard/DashboardWeekView';
@@ -29,7 +28,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 const DashboardPage: React.FC = () => {
   const isMobile = useIsMobile();
   const { employee, userRole } = useSession();
-  const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [currentView, setCurrentView] = useState<'week' | 'month'>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showTaskModal, setShowTaskModal] = useState(false);

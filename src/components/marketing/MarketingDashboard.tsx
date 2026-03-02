@@ -61,37 +61,31 @@ export const MarketingDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <KPICard
                     title="Contenido Mes"
-                    value="12"
-                    subtitle="Piezas producidas"
+                    value="—"
+                    subtitle="Sin datos conectados"
                     icon={Video}
-                    color="#10b981" // Emerald
-                    trend="up"
-                    trendValue="+2"
+                    color="#10b981"
                 />
                 <KPICard
                     title="Engagement"
-                    value="4.8%"
-                    subtitle="Promedio mensual"
+                    value="—"
+                    subtitle="Sin datos conectados"
                     icon={Activity}
-                    color="#f59e0b" // Amber
-                    trend="stable"
-                    trendValue="+0.1%"
+                    color="#f59e0b"
                 />
                 <KPICard
                     title="Alcance Total"
-                    value="15.2k"
-                    subtitle="Últimos 30 días"
+                    value="—"
+                    subtitle="Sin datos conectados"
                     icon={TrendingUp}
-                    color="#3b82f6" // Blue
-                    trend="up"
-                    trendValue="+12%"
+                    color="#3b82f6"
                 />
                 <KPICard
                     title="Inversión"
-                    value="0 €"
-                    subtitle="Ads & Colaboraciones"
+                    value="—"
+                    subtitle="Sin datos conectados"
                     icon={DollarSign}
-                    color="#ef4444" // Red
+                    color="#ef4444"
                 />
             </div>
 

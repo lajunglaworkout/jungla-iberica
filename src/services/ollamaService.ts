@@ -158,15 +158,16 @@ Tu tarea es analizar la transcripción de una reunión y generar:
 1. Un acta estructurada y profesional en formato Markdown
 2. Una lista de tareas concretas con responsable y fecha límite
 
-El acta debe tener las secciones: # Acta de Reunión, ## Resumen, ## Puntos Tratados, ## Decisiones Tomadas, ## Próximos Pasos.
-Sé concreto y accionable. No inventes información que no esté en la transcripción.`;
+El acta debe tener las secciones: # Acta de Reunión, ## Resumen, ## Puntos Tratados, ## Decisiones Tomadas, ## Seguimiento de Objetivos (solo si hay objetivos), ## Próximos Pasos.
+En la sección de Seguimiento de Objetivos, analiza los objetivos conseguidos/no conseguidos e identifica patrones o tendencias relevantes para la dirección.
+Sé concreto y accionable. No inventes información que no esté en la transcripción ni en el contexto.`;
 
   const userPrompt = `Genera el acta de la siguiente reunión.
 
 **Departamento:** ${departmentName}
 **Fecha:** ${date}
 **Participantes:** ${participants.join(', ') || 'No especificados'}
-${objectives ? `**KPIs / Objetivos a revisar:** ${objectives}` : ''}
+${objectives ? `**Contexto de objetivos:**\n${objectives}` : ''}
 ${pendingTasks ? `**Tareas pendientes de reunión anterior:**\n${pendingTasks}` : ''}
 
 **TRANSCRIPCIÓN:**
