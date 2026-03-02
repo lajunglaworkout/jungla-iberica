@@ -1,8 +1,8 @@
 // crear-usuarios-empleados.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://gfnjlmfziczimaohgkct.supabase.co'
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmbmpsbWZ6aWN6aW1hb2hna2N0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDEzNzQ2OCwiZXhwIjoyMDY5NzEzNDY4fQ._UBAs1jxVzWcgYkYExS2iYPStl9KdQT1oBQby4ThtDQ'
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://gfnjlmfziczimaohgkct.supabase.co'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {

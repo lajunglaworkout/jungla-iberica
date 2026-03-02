@@ -4,6 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # WODBUSTER_USERNAME es un identificador público (nombre del gym), no un secreto real.
+  # Aparece legítimamente en docs, config y código fuente.
+  SECRETS_SCAN_OMIT_KEYS = "WODBUSTER_USERNAME"
 
 [functions]
   directory = "netlify/functions"
